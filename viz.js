@@ -8,7 +8,7 @@ const K = { bg:'#070a0f', grid:'#18222f', axis:'#2c3a4b', mut:'#8494a8', txt:'#e
             red:'#f87171', yellow:'#facc15', pink:'#f472b6', dim:'#3a4d63' };
 
 let cvsEl = null, cvs = null, cx = null;
-/* 2x iç çözünürlük — mantıksal koordinatlar 1500 genişlikte kalır,
+/* 2x iç çözünürlük, mantıksal koordinatlar 1500 genişlikte kalır,
    piksel yoğunluğu iki katına çıkar. Metin artık keskin. */
 function useCanvas(el, W, H){
   const S = 2;
@@ -120,13 +120,13 @@ VIZ.tablo = s => {
 
   /* üst şerit: hangi kavramı vurguluyoruz */
   const ETIKET = {
-    0:['YOK SAYILAN SÜTUN', 'İsim modele verilmez — tahminle ilgisi yok', K.mut],
-    1:['ÖZELLİK  ·  feature  ·  x', 'Modelin elindeki bilgi — girdisi', K.blue],
+    0:['YOK SAYILAN SÜTUN', 'İsim modele verilmez, tahminle ilgisi yok', K.mut],
+    1:['ÖZELLİK  ·  feature  ·  x', 'Modelin elindeki bilgi, girdisi', K.blue],
     2:['ETİKET  ·  label  ·  y', 'Modelin tahmin etmesi istenen şey', K.green],
   };
   let banner = null;
   if (colHL !== undefined) banner = ETIKET[colHL];
-  else if (rowHL !== undefined) banner = ['ÖRNEK  ·  sample  ·  bir satır', S_.isim[rowHL]+' — tek bir gözlem', K.yellow];
+  else if (rowHL !== undefined) banner = ['ÖRNEK  ·  sample  ·  bir satır', S_.isim[rowHL]+', tek bir gözlem', K.yellow];
   if (banner){
     const bw = 720, bx = (1500-bw)/2;
     box(bx, 24, bw, 68, banner[2]+'1e', banner[2]+'66', 2);
@@ -266,8 +266,8 @@ VIZ.ezberKural = s => {
     }
     return P;
   };
-  mk(110, 'EZBERLEYEN — en yakın kaydı söyler', 'ezber', K.orange);
-  mk(110+W+90, 'KURAL ÖĞRENEN — formül uygular', 'kural', K.green);
+  mk(110, 'EZBERLEYEN, en yakın kaydı söyler', 'ezber', K.orange);
+  mk(110+W+90, 'KURAL ÖĞRENEN, formül uygular', 'kural', K.green);
 };
 
 /* ── kayıp haritası (w,b) ── */
@@ -319,7 +319,7 @@ VIZ.kayipHarita = s => {
         cx.moveTo(Q.sx(x),Q.sy(S_.Y[i])); cx.lineTo(Q.sx(x),Q.sy(predY(s.w,s.b,x))); cx.stroke(); cx.setLineDash([]); });
       cx.strokeStyle = K.yellow; cx.lineWidth = 5; cx.beginPath();
       cx.moveTo(Q.sx(0),Q.sy(predY(s.w,s.b,0))); cx.lineTo(Q.sx(10),Q.sy(predY(s.w,s.b,10))); cx.stroke();
-    } else if (s.iraksadi) txt('model yok — sayılar taştı', Q.R.x+Q.R.w/2, Q.R.y+Q.R.h/2, K.red, 24);
+    } else if (s.iraksadi) txt('model yok, sayılar taştı', Q.R.x+Q.R.w/2, Q.R.y+Q.R.h/2, K.red, 24);
     S_.X.forEach((x,i) => { dot(Q.sx(x),Q.sy(S_.Y[i]),10,K.blue); dot(Q.sx(x),Q.sy(S_.Y[i]),10,'#0b1119',null,3); });
     txt('KAYIP HARİTASI', P.R.x+P.R.w/2, 560, K.mut, 20);
     txt('BU NOKTADAKİ MODEL', Q.R.x+Q.R.w/2, 560, K.mut, 20);
@@ -364,7 +364,7 @@ VIZ.esik = s => {
       let xs = '';
       for (let i=0;i<11;i++) xs += '0        ';
       txt(xs.trim(), P.R.x+P.R.w/2, 560, K.red, 26);
-      txt('her yerde SIFIR — eşikte tanımsız', P.R.x+P.R.w-16, 522, K.red, 19, 'right');
+      txt('her yerde SIFIR, eşikte tanımsız', P.R.x+P.R.w-16, 522, K.red, 19, 'right');
     } else {
       txt('∂σ / ∂t  =  σ(1−σ)/T', P.R.x+16, 522, K.mut, 18, 'left');
       cx.strokeStyle = K.green; cx.lineWidth = 4; cx.beginPath();
@@ -456,7 +456,7 @@ VIZ.polinom = s => {
       if (ilk2){ cx.moveTo(P.sx(x),P.sy(v)); ilk2 = false; } else cx.lineTo(P.sx(x),P.sy(v));
     }
     cx.stroke(); cx.setLineDash([]);
-    txt('— — gerçek ilişki', P.R.x+P.R.w-16, P.R.y+62, K.mut, 19, 'right');
+    txt('-, gerçek ilişki', P.R.x+P.R.w-16, P.R.y+62, K.mut, 19, 'right');
   }
   P0.tr.forEach(i => { dot(P.sx(P0.x[i]),P.sy(P0.y[i]),11,K.blue); dot(P.sx(P0.x[i]),P.sy(P0.y[i]),11,'#0b1119',null,3); });
   if (s.test) P0.te.forEach(i => { dot(P.sx(P0.x[i]),P.sy(P0.y[i]),13,K.orange);
@@ -490,7 +490,7 @@ VIZ.polinom = s => {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   2.5D ÇİZİM KİTİ — kutular, gölge, parlama, zemin
+   2.5D ÇİZİM KİTİ, kutular, gölge, parlama, zemin
    ═══════════════════════════════════════════════════════════════ */
 function tint(hex, amt){
   const n = parseInt(hex.slice(1),16);
@@ -522,7 +522,7 @@ function golge(X, Y, w){
   cx.beginPath(); cx.ellipse(X+w/2+DX/2, Y-DY/2+5, w*.62, 9, 0, 0, 7); cx.fill();
   cx.restore();
 }
-/* 2.5D kutu — X,Y = ön yüzün sol-alt köşesi */
+/* 2.5D kutu, X,Y = ön yüzün sol-alt köşesi */
 function kutu3(X, Y, w, h, renk, o){
   o = o || {};
   const dx = o.dx || DX, dy = o.dy || DY;
@@ -538,7 +538,7 @@ function kutu3(X, Y, w, h, renk, o){
   cx.beginPath();
   cx.moveTo(X, Y-h); cx.lineTo(X+dx, Y-dy-h); cx.lineTo(X+w+dx, Y-dy-h); cx.lineTo(X+w, Y-h);
   cx.closePath(); cx.fill();
-  /* ön yüz — dikey degrade */
+  /* ön yüz, dikey degrade */
   const g = cx.createLinearGradient(X, Y-h, X, Y);
   g.addColorStop(0, tint(renk, 14)); g.addColorStop(1, tint(renk, -22));
   cx.fillStyle = g; cx.fillRect(X, Y-h, w, h);
@@ -569,7 +569,7 @@ function disk(X, Y, r, renk, o){
   cx.beginPath(); cx.arc(X,Y,r,0,7); cx.stroke();
   if (o.etiket !== undefined) txt(String(o.etiket), X, Y+9, o.yaziRenk || '#0b1119', o.boy || 22);
 }
-/* boru — kalınlığı ağırlığa göre, üstünde akan sinyal */
+/* boru, kalınlığı ağırlığa göre, üstünde akan sinyal */
 function boru(x1,y1,x2,y2, kalinlik, renk, akis){
   cx.save();
   /* dış halo */
@@ -603,10 +603,10 @@ function baslikSerit(ust, alt, cipler){
 /* alt durum yazısı */
 function durum(s, renk){ txt(s, 750, cvs.height-28, renk || K.orange, 28); }
 
-/* ═══════════════ SIRALAMA — 3B kutular ═══════════════ */
+/* ═══════════════ SIRALAMA, 3B kutular ═══════════════ */
 VIZ.sirala = s => {
   clear();
-  baslikSerit('BUBBLE SORT', 'Komşu çiftleri karşılaştırır, ters olanı takas eder — büyükler sona “kabarır”.',
+  baslikSerit('BUBBLE SORT', 'Komşu çiftleri karşılaştırır, ters olanı takas eder, büyükler sona “kabarır”.',
     [['ZAMAN','O(n²)',K.blue], ['BELLEK','O(1)',K.green]]);
   const d = s.dizi, n = d.length;
   const bw = 92, gap = 22, tot = n*bw + (n-1)*gap;
@@ -689,7 +689,7 @@ VIZ.noron = s => {
   if (H[faz]) durum(H[faz], faz===4 ? K.green : K.blue);
 };
 
-/* ═══════════════ ATTENTION — ışın demeti ═══════════════ */
+/* ═══════════════ ATTENTION, ışın demeti ═══════════════ */
 VIZ.attention = s => {
   clear();
   const T = s.tokenlar, n = T.length, q = s.q, faz = s.faz || 0;
@@ -765,7 +765,7 @@ VIZ.attention = s => {
   if (H[faz]) durum(H[faz], faz>=3 ? K.green : K.blue);
 };
 
-/* ═══════════════ NEDEN SIRALAMA? — arama karşılaştırması ═══════════════ */
+/* ═══════════════ NEDEN SIRALAMA?, arama karşılaştırması ═══════════════ */
 const A_KAR = [23,7,41,15,3,38,29,11,45,19,33,5,27,9,36,21];
 const A_SIR = [...A_KAR].sort((a,b)=>a-b);
 const A_HEDEF = 33;
@@ -822,13 +822,13 @@ VIZ.arama = s => {
       sagX+tot/2, sagY+58, sagBuldu ? K.green : K.blue, 24);
 
   if (sagBuldu && !solBuldu)
-    durum('sıralı dizi bitirdi — sırasız hâlâ arıyor', K.green);
+    durum('sıralı dizi bitirdi, sırasız hâlâ arıyor', K.green);
   else if (solBuldu && sagBuldu)
     durum((solIdx+1)+' kontrol  vs  '+adimlar.length+' kontrol', K.green);
   else durum('ikisi de arıyor…', K.mut);
 };
 
-/* ═══════════════ BUBBLE SORT — TUR ÖZETİ ═══════════════ */
+/* ═══════════════ BUBBLE SORT, TUR ÖZETİ ═══════════════ */
 VIZ.turOzet = s => {
   clear();
   baslikSerit('TUR TUR NE OLDU?', 'Her turda en büyük kalan sayı, dizinin sonuna “kabarıyor”.',
@@ -870,7 +870,7 @@ function rng(seed){ return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0;
   t = t + Math.imul(t ^ t>>>7, 61|t) ^ t;
   return ((t ^ t>>>14) >>> 0) / 4294967296; }; }
 
-/* halka içinde halka — doğrusal ayrılamaz */
+/* halka içinde halka, doğrusal ayrılamaz */
 const NN_VERI = (() => {
   const R = rng(7), X = [], Y = [];
   for (let i=0;i<180;i++){
@@ -965,7 +965,7 @@ function agIzgara(n){
   }
   return z;
 }
-/* eğitim kayeleri — dışarıdan tek çağrı */
+/* eğitim kayeleri, dışarıdan tek çağrı */
 function agEgitimKareleri(){
   const n = agKur(42), kayit = [0,2,5,9,15,24,38,60,95,150,240,380,600,900];
   const F = []; let e = 0;
@@ -977,7 +977,7 @@ function agEgitimKareleri(){
   return F;
 }
 
-/* ═══════ TENSORFLOW PLAYGROUND TARZI — canlı eğitilen ağ ═══════ */
+/* ═══════ TENSORFLOW PLAYGROUND TARZI, canlı eğitilen ağ ═══════ */
 VIZ.agEgitim = s => {
   clear();
   baslikSerit('SİNİR AĞI EĞİTİLİYOR', 'Aynı ağ, her kare biraz daha öğreniyor. Renkli bölge = modelin kararı.',
@@ -1025,13 +1025,13 @@ VIZ.agEgitim = s => {
     dot(R2.sx(s.tarih.length-1), R2.sy(s.tarih[s.tarih.length-1]), 6, K.orange);
     txt('kayıp: '+(s.kayip||0).toFixed(4), 1000, 550, K.orange, 19);
   }
-  durum(s.epoch === 0 ? 'rastgele ağırlıklar — model hiçbir şey bilmiyor'
+  durum(s.epoch === 0 ? 'rastgele ağırlıklar, model hiçbir şey bilmiyor'
       : (s.dogruluk > 0.97 ? 'halkayı öğrendi  ·  doğruluk %'+(s.dogruluk*100).toFixed(0)
                            : 'epoch '+s.epoch+'  ·  doğruluk %'+(s.dogruluk*100).toFixed(0)),
     s.dogruluk > 0.97 ? K.green : K.blue);
 };
 
-/* ═══════ GERİ YAYILIM — hata geriye akarken ═══════ */
+/* ═══════ GERİ YAYILIM, hata geriye akarken ═══════ */
 VIZ.geriYayilim = s => {
   clear();
   const faz = s.faz || 0;
@@ -1073,7 +1073,7 @@ VIZ.geriYayilim = s => {
       {parla:gr || (akt && faz-1 === l-1), vurgu:gr,
        etiket: akt ? (A[l][j]!==undefined ? A[l][j].toFixed(2) : '') : '', boy:17,
        yaziRenk: gr ? '#ffdada' : '#04121d'});
-    if (gr) txt('∂L/∂a = '+(G[l][j]!==undefined?G[l][j].toFixed(2):'—'), x, y+50, K.red, 16);
+    if (gr) txt('∂L/∂a = '+(G[l][j]!==undefined?G[l][j].toFixed(2):'-'), x, y+50, K.red, 16);
   }));
   ['girdi','gizli 1','gizli 2','çıktı'].forEach((t,l) => txt(t, nx[l], 200, K.mut, 18));
 
@@ -1084,16 +1084,16 @@ VIZ.geriYayilim = s => {
     txt('L = 0.186', 750, 410, K.red, 26);
   }
   const H = ['Ağ hazır, girdi bekliyor.',
-    'İleri geçiş — katman 1 hesaplandı',
-    'İleri geçiş — çıktı üretildi: 0.83',
+    'İleri geçiş, katman 1 hesaplandı',
+    'İleri geçiş, çıktı üretildi: 0.83',
     'Hata ölçüldü: tahmin 0.83, gerçek 1.00',
-    'Geri yayılım — son katmanın payı hesaplanıyor',
-    'Geri yayılım — zincir kuralı bir katman geriye taşındı',
-    'Geri yayılım — girdiye kadar ulaştı. Her ağırlık kendi ∂L/∂w değerini biliyor.'];
+    'Geri yayılım, son katmanın payı hesaplanıyor',
+    'Geri yayılım, zincir kuralı bir katman geriye taşındı',
+    'Geri yayılım, girdiye kadar ulaştı. Her ağırlık kendi ∂L/∂w değerini biliyor.'];
   if (H[faz]) durum(H[faz], faz >= 3 ? K.red : K.blue);
 };
 
-/* ═══════ K-MEANS — merkezler yürürken ═══════ */
+/* ═══════ K-MEANS, merkezler yürürken ═══════ */
 const KM_VERI = (() => { const R = rng(11), P = [];
   [[-1.1,0.9],[1.2,1.0],[0.1,-1.1]].forEach(([cx0,cy0]) => {
     for (let i=0;i<34;i++) P.push([cx0 + (R()+R()+R()-1.5)*0.62, cy0 + (R()+R()+R()-1.5)*0.62]);
@@ -1149,12 +1149,12 @@ VIZ.kmeans = s => {
     cx.strokeStyle = '#0b1119'; cx.lineWidth = 2.4; cx.stroke();
   });
   const H = {baslangic:'3 merkez rastgele (kötü) bir yere kondu',
-             ata:'ADIM 1 — her nokta EN YAKIN merkeze atandı',
-             guncelle:'ADIM 2 — her merkez, kendi noktalarının ORTASINA taşındı'};
+             ata:'ADIM 1, her nokta EN YAKIN merkeze atandı',
+             guncelle:'ADIM 2, her merkez, kendi noktalarının ORTASINA taşındı'};
   durum(H[s.faz], s.faz === 'guncelle' ? K.green : K.blue);
 };
 
-/* ═══════ EVRİŞİM (CNN) — çekirdek görüntüde gezerken ═══════ */
+/* ═══════ EVRİŞİM (CNN), çekirdek görüntüde gezerken ═══════ */
 const CNN_IMG = (() => {
   const g = Array.from({length:12}, () => new Array(12).fill(0));
   /* kaba bir "7" */
@@ -1162,7 +1162,7 @@ const CNN_IMG = (() => {
   for (let r=3;r<10;r++) g[r][Math.max(2, 9-Math.floor((r-2)*0.8))] = 1;
   for (let r=3;r<10;r++) g[r][Math.max(2, 9-Math.floor((r-2)*0.8))-1] = 0.6;
   return g; })();
-const CNN_K = [[1,0,-1],[2,0,-2],[1,0,-1]];   // Sobel — dikey kenar
+const CNN_K = [[1,0,-1],[2,0,-2],[1,0,-1]];   // Sobel, dikey kenar
 VIZ.evrisim = s => {
   clear();
   baslikSerit('EVRİŞİM  ·  CONVOLUTION', 'Küçük bir filtre görüntüde geziyor ve her yerde aynı örüntüyü arıyor.',
@@ -1209,7 +1209,7 @@ VIZ.evrisim = s => {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   ROTA 0 · ORTAK SENARYO — dolandırıcılık tespiti
+   ROTA 0 · ORTAK SENARYO, dolandırıcılık tespiti
    1000 işlem, 30'u dolandırıcılık (%3). Metrikler, bölme ve
    sızıntı dersleri hep bu veriyi kullanır.
    ═══════════════════════════════════════════════════════════════ */
@@ -1306,10 +1306,10 @@ VIZ.metrik = s => {
     box(420, y, 420*v, 30, renk+'cc', null);
     txt('%'+(v*100).toFixed(1), 856, y+22, renk, 19, 'left');
   });
-  txt('METRİKLER', 500, 484, K.mut, 18);
+  txt('METRİKLER', 500, 486, K.mut, 18);
 
   /* ── ROC (sağ alt) ── */
-  const R2 = plot(rect(1080,510,320,196), 0,1, 0,1);
+  const R2 = plot(rect(1080,505,320,172), 0,1, 0,1);
   frame(R2,'yanlış alarm oranı','yakalama oranı',[0,0.5,1],[0,0.5,1]);
   const roc = dolROC();
   cx.setLineDash([5,5]); cx.strokeStyle = 'rgba(132,148,168,.4)'; cx.lineWidth = 2;
@@ -1319,7 +1319,7 @@ VIZ.metrik = s => {
   roc.P.forEach((p,i) => i ? cx.lineTo(R2.sx(p[0]),R2.sy(p[1])) : cx.moveTo(R2.sx(p[0]),R2.sy(p[1])));
   cx.stroke();
   dot(R2.sx(m.yanlisPozOran), R2.sy(m.duyarlilik), 9, K.orange);
-  txt('ROC  ·  AUC = '+roc.auc.toFixed(3), R2.R.x+R2.R.w/2, 484, K.mut, 18);
+  txt('ROC  ·  AUC = '+roc.auc.toFixed(3), R2.R.x+R2.R.w/2, 486, K.mut, 18);
 
   durum(m.duyarlilik < 0.05
     ? 'eşik çok yüksek · doğruluk %'+(m.dogruluk*100).toFixed(1)+' ama '+m.FN+' dolandırıcılık KAÇTI'
@@ -1386,8 +1386,8 @@ VIZ.bolme = s => {
     }
   }
   durum(mod === 'kfold'
-    ? (s.kat >= 4 ? '5 kat bitti — tek sayı değil, bir DAĞILIM elde ettin' : 'tur '+((s.kat||0)+1)+': bir parça test, kalanı eğitim')
-    : ['veri geldi — henüz bölünmedi','model bundan öğrenecek','burada ayar yapacaksın','buraya SADECE bir kez dokunacaksın'][Math.min(3,(s.adim||0)+1)],
+    ? (s.kat >= 4 ? '5 kat bitti, tek sayı değil, bir DAĞILIM elde ettin' : 'tur '+((s.kat||0)+1)+': bir parça test, kalanı eğitim')
+    : ['veri geldi, henüz bölünmedi','model bundan öğrenecek','burada ayar yapacaksın','buraya SADECE bir kez dokunacaksın'][Math.min(3,(s.adim||0)+1)],
     K.blue);
 };
 
@@ -1420,7 +1420,7 @@ VIZ.sizinti = s => {
     box(x0, y+14, bw*kor, 34, renk+'cc', null);
     txt(kor.toFixed(2), x0+bw+16, y+38, renk, 19, 'left');
     if (faz >= 1 && kor > 0.9 && !ifsa) txt('◄ şüpheli', x0+bw+80, y+38, K.yellow, 18, 'left');
-    if (ifsa) txt('◄ SIZINTI — ' + (ad === 'manuel_inceleme'
+    if (ifsa) txt('◄ SIZINTI, ' + (ad === 'manuel_inceleme'
         ? 'sadece dolandırıcılık ŞÜPHESİ sonrası doluyor'
         : 'olay gerçekleştikten SONRA yazılıyor'), x0+bw+80, y+38, K.red, 17, 'left');
     txt(ac, x0+bw+16, y+58, '#4a5a6d', 15, 'left');
@@ -1432,11 +1432,11 @@ VIZ.sizinti = s => {
   }
   durum(['Doğruluk %99.4. Böyle bir sayı gördüğünde ilk tepkin şüphe olmalı.',
          'İki sütunun etiketle ilişkisi 0.90 üstünde. Bu neredeyse hiçbir zaman iyi bir haber değildir.',
-         'Yakalandı: bu iki sütun, tahmin ANINDA mevcut değil — olaydan sonra doluyor.',
+         'Yakalandı: bu iki sütun, tahmin ANINDA mevcut değil, olaydan sonra doluyor.',
          'Gerçek performans %71.2. Üretimde alacağın sonuç bu.'][faz], faz >= 2 ? K.red : K.blue);
 };
 
-/* ═══════ KARAR SINIRI — sınıflandırmanın temeli ═══════ */
+/* ═══════ KARAR SINIRI, sınıflandırmanın temeli ═══════ */
 const SN_VERI = (() => { const R = rng(21), X = [], Y = [];
   for (let i=0;i<120;i++){
     const c = i < 60 ? 0 : 1;
@@ -1487,25 +1487,25 @@ VIZ.sinir = s => {
   txt('● sınıf A', P.R.x+P.R.w-130, P.R.y+28, K.pink, 18, 'left');
   txt('● sınıf B', P.R.x+P.R.w-130, P.R.y+52, K.green, 18, 'left');
   txt('◎ yanlış', P.R.x+P.R.w-130, P.R.y+76, K.red, 18, 'left');
-  durum(FP+FN === 0 ? 'kusursuz ayrım — hiç hata yok'
+  durum(FP+FN === 0 ? 'kusursuz ayrım, hiç hata yok'
       : (FP+FN < 8 ? 'iyi sınır · '+(FP+FN)+' hata' : 'kötü sınır · '+(FP+FN)+' hata'),
     FP+FN < 8 ? K.green : K.orange);
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   ROTA 1 MOTORLARI — CART, Random Forest, Gradient Boosting, k-NN
+   ROTA 1 MOTORLARI, CART, Random Forest, Gradient Boosting, k-NN
    Hepsi gerçek implementasyon; derslerdeki her sayı buradan gelir.
    ═══════════════════════════════════════════════════════════════ */
 
 /* Çapraz sınır + %6 etiket gürültüsü.
    Ağaçlar yalnızca eksen-hizalı kesebildiği için bu sınırı MERDİVEN'le
-   yaklaşırlar — derinlik arttıkça basamaklar incelir. Dersin çekirdeği bu. */
+   yaklaşırlar, derinlik arttıkça basamaklar incelir. Dersin çekirdeği bu. */
 const AGAC_VERI = (() => {
   const R = rng(5), X = [], Y = [];
   for (let i=0;i<240;i++){
     const x = R()*10, y = R()*10;
     let c = (x + y > 10) ? 1 : 0;
-    if (R() < 0.06) c = 1 - c;            // gürültü — kusursuz ayrım imkânsız
+    if (R() < 0.06) c = 1 - c;            // gürültü, kusursuz ayrım imkânsız
     X.push([x,y]); Y.push(c);
   }
   return {X, Y};
@@ -1784,7 +1784,7 @@ VIZ.bolunmeAra = s => {
     txt(b, 1368, 576+i*27, c, 18, 'right');
   });
   durum(Math.abs(t-3.95) < 0.3 && oz === 1 ? 'işte en iyi bölünme: y ≤ 3.95, kazanç 0.1107'
-        : 'kazanç '+kazanc.toFixed(4)+' — en iyisi 0.1107', Math.abs(t-3.95)<0.3&&oz===1?K.green:K.orange);
+        : 'kazanç '+kazanc.toFixed(4)+', en iyisi 0.1107', Math.abs(t-3.95)<0.3&&oz===1?K.green:K.orange);
 };
 
 /* ═══════ RANDOM FOREST ═══════ */
@@ -1816,7 +1816,7 @@ VIZ.orman = s => {
   }
   if (n > 9) txt('… ve '+(n-9)+' tane daha', 1060, 250+3*(gw+gap)+34, K.mut, 17);
   durum(n === 1 ? 'tek ağaç: keskin, kararsız, gürültüye takılmış'
-      : 'ortalama alındıkça sınır YUMUŞUYOR — varyans düşüyor · %'+(dg*100).toFixed(1),
+      : 'ortalama alındıkça sınır YUMUŞUYOR, varyans düşüyor · %'+(dg*100).toFixed(1),
       n === 1 ? K.orange : K.green);
 };
 
@@ -1846,7 +1846,7 @@ VIZ.boost = s => {
   cx.stroke();
   x.forEach((xx,i) => { dot(P.sx(xx),P.sy(y[i]),6,K.blue); dot(P.sx(xx),P.sy(y[i]),6,'#0b1119',null,1.2); });
   txt('● gerçek', P.R.x+P.R.w-16, P.R.y+26, K.blue, 17, 'right');
-  txt('— model', P.R.x+P.R.w-16, P.R.y+48, K.green, 17, 'right');
+  txt('model', P.R.x+P.R.w-16, P.R.y+48, K.green, 17, 'right');
   txt('| artık (hata)', P.R.x+P.R.w-16, P.R.y+70, K.red, 17, 'right');
   /* alt sol: bu adımda eklenen kütük */
   const Q = plot(rect(110,560,470,180), -0.4,10.4, -2.6,2.6);
@@ -1859,7 +1859,7 @@ VIZ.boost = s => {
     cx.stroke();
     f.art && x.forEach((xx,i) => dot(Q.sx(xx),Q.sy(f.art[i]),3.5,'rgba(248,113,113,.55)'));
     txt('kütük '+m+':  x ≤ '+f.kutuk.t.toFixed(2), Q.R.x+Q.R.w/2, Q.R.y-14, K.orange, 18);
-  } else txt('henüz kütük yok — model sadece ortalama', Q.R.x+Q.R.w/2, Q.R.y+Q.R.h/2, K.mut, 19);
+  } else txt('henüz kütük yok, model sadece ortalama', Q.R.x+Q.R.w/2, Q.R.y+Q.R.h/2, K.mut, 19);
   /* alt sağ: MSE eğrisi */
   const R2 = plot(rect(700,560,690,180), 0,30, 0,3.7);
   frame(R2,'eklenen ağaç sayısı','MSE',[0,10,20,30],[0,1,2,3]);
@@ -1973,7 +1973,7 @@ function svmEgit(epoch, C, lr){
 
 /* ── Soft Decision Tree (neural-trees mantığı) ──
    Derinlik 1: tek OBLİK kapı σ((w·x+b)/T) + iki yaprak.
-   Kapı doğrusal olduğu için ÇAPRAZ kesebilir — CART'ın yapamadığı şey. */
+   Kapı doğrusal olduğu için ÇAPRAZ kesebilir, CART'ın yapamadığı şey. */
 function softTreeEgit(epoch, lr, T){
   const X = AGAC_VERI.X, Y = AGAC_VERI.Y, n = X.length;
   let w = [0.15,-0.1], b = 0, yL = 0, yR = 0;          // yapraklar logit
@@ -2057,7 +2057,7 @@ VIZ.lojistik = s => {
   tam.tarih.forEach((v,i) => i ? cx.lineTo(R2.sx(i),R2.sy(v)) : cx.moveTo(R2.sx(i),R2.sy(v)));
   cx.stroke();
   dot(R2.sx(e), R2.sy(m.kayip), 8, K.orange);
-  durum(e === 0 ? 'w = [0, 0] — model henüz hiçbir şey bilmiyor, herkese %50 diyor'
+  durum(e === 0 ? 'w = [0, 0], model henüz hiçbir şey bilmiyor, herkese %50 diyor'
       : 'w = ['+m.w[0].toFixed(2)+', '+m.w[1].toFixed(2)+']   b = '+m.b.toFixed(2)+
         '   ·   kayıp '+m.kayip.toFixed(3), m.dogruluk>0.95?K.green:K.blue);
 };
@@ -2067,7 +2067,7 @@ VIZ.svm = s => {
   clear();
   const C = s.C === undefined ? 2 : s.C;
   const m = svmEgit(20000, C, 0.01);
-  baslikSerit('SUPPORT VECTOR MACHINE', 'Sadece ayırmakla yetinmez — iki sınıf arasındaki BOŞLUĞU en geniş yapmaya çalışır.',
+  baslikSerit('SUPPORT VECTOR MACHINE', 'Sadece ayırmakla yetinmez, iki sınıf arasındaki BOŞLUĞU en geniş yapmaya çalışır.',
     [['C', C.toFixed(1), K.orange], ['MARJ', m.marj.toFixed(2), K.blue],
      ['DESTEK VEKTÖRÜ', String(m.destek.length), K.green]]);
   const P = plot(rect(300,200,760,480), 0,10, 0,10);
@@ -2158,7 +2158,7 @@ VIZ.softTree = s => {
   ciz(760, 'SOFT TREE  ·  derinlik 1', st.tahmin, K.green,
       '5 parametre  ·  çapraz  ·  %'+(st.dogruluk*100).toFixed(1));
   txt('sarı kesikli = gerçek sınır (x + y = 10)', 750, 736, K.yellow, 17);
-  durum(T < 0.8 ? '⚠ T çok küçük — sigmoid doydu, gradyan kayboldu, model ÖĞRENEMEDİ (%'+(st.dogruluk*100).toFixed(1)+')'
+  durum(T < 0.8 ? '⚠ T çok küçük, sigmoid doydu, gradyan kayboldu, model ÖĞRENEMEDİ (%'+(st.dogruluk*100).toFixed(1)+')'
       : 'T = '+T.toFixed(2)+' · soft tree 5 parametreyle CART\'ın 17 parametresini geçti',
       T < 0.8 ? K.red : K.green);
 };
@@ -2197,7 +2197,7 @@ function ozcozum2(C){
     const n = Math.hypot(v[0],v[1]); return [v[0]/n, v[1]/n]; };
   return {l:[l1,l2], v:[vek(l1), vek(l2)]};
 }
-/* Jacobi — yüksek boyutlu simetrik matrisler için */
+/* Jacobi, yüksek boyutlu simetrik matrisler için */
 function jacobi(A0, tur){
   const d = A0.length;
   let A = A0.map(r => r.slice());
@@ -2369,7 +2369,7 @@ VIZ.pca = s => {
   ];
   sat.forEach(([a,b,c],i) => { txt(a, 782, 458+i*36, c, 18, 'left');
     if (b) txt(b, 1340, 458+i*36, c, 19, 'right'); });
-  durum(gost === 0 ? 'ham veri: iki özellik güçlü ilişkili — bilgi aslında tek bir yönde'
+  durum(gost === 0 ? 'ham veri: iki özellik güçlü ilişkili, bilgi aslında tek bir yönde'
       : (gost === 1 ? 'PC1: verinin en çok yayıldığı yön · varyansın %'+(E.l[0]/top*100).toFixed(1)+'\'i'
       : (gost === 2 ? 'PC2 her zaman PC1\'e DİKTİR · kalan %'+(E.l[1]/top*100).toFixed(1)
                     : 'yalnızca PC1 tutulursa: 2 boyut → 1 boyut, kayıp sadece %'+(E.l[1]/top*100).toFixed(1))),
@@ -2381,7 +2381,7 @@ VIZ.scree = s => {
   clear();
   const R6 = pca6Sonuc();
   const k = s.k === undefined ? 6 : Math.round(s.k);
-  baslikSerit('KAÇ BİLEŞEN YETER?', '6 sütunluk veri — ama gerçekte kaç boyut var?',
+  baslikSerit('KAÇ BİLEŞEN YETER?', '6 sütunluk veri, ama gerçekte kaç boyut var?',
     [['TUTULAN', String(k)+' / 6', K.blue],
      ['KORUNAN VARYANS','%'+(R6.kum[k-1]*100).toFixed(1), R6.kum[k-1]>0.95?K.green:K.orange]]);
   const bw = 140, gap = 30, tot = 6*bw + 5*gap, x0 = 750 - tot/2, taban = 520;
@@ -2403,8 +2403,8 @@ VIZ.scree = s => {
   cx.beginPath(); cx.moveTo(P.R.x,P.sy(0.95)); cx.lineTo(P.R.x+P.R.w,P.sy(0.95)); cx.stroke(); cx.setLineDash([]);
   txt('%95 eşiği', P.R.x+P.R.w-10, P.sy(0.95)-10, K.green, 17, 'right');
   txt('kümülatif varyans', P.R.x+10, 220, K.yellow, 18, 'left');
-  durum(k <= 2 ? '2 bileşen varyansın %98.0\'ini taşıyor — veri aslında 2 boyutlu'
-      : 'PC3–PC6 toplamı sadece %2.0 — bunlar gürültü', k<=2?K.green:K.mut);
+  durum(k <= 2 ? '2 bileşen varyansın %98.0\'ini taşıyor, veri aslında 2 boyutlu'
+      : 'PC3–PC6 toplamı sadece %2.0, bunlar gürültü', k<=2?K.green:K.mut);
 };
 
 /* ═══════ OPTIMIZER YARIŞI ═══════ */
@@ -2601,7 +2601,7 @@ function regAdim(n, lr, wd){
       n.W[l][j][i] -= lr*(dW[l][j][i] + (wd||0)*n.W[l][j][i]);
   }
 }
-/* eğitim eğrileri — önbellekli (aynı wd tekrar hesaplanmasın) */
+/* eğitim eğrileri, önbellekli (aynı wd tekrar hesaplanmasın) */
 const _regCache = {};
 function regEgitim(wd, tur){
   const anah = wd+'|'+(tur||1200);
@@ -2699,11 +2699,11 @@ VIZ.duzenli = s => {
   sat.forEach(([a,b,c],k) => { txt(a, 706, 606+k*32, K.mut, 18, 'left');
     txt(b, 1356, 606+k*32, c, 20, 'right'); });
   durum(wd === 0
-      ? (f.epoch > en.epoch ? '⚠ epoch '+en.epoch+'\'den sonra doğrulama kaybı YÜKSELİYOR — ezberliyor'
-                            : 'henüz sağlıklı — doğrulama kaybı hâlâ düşüyor')
-      : (wd >= 0.05 ? '⚠ ceza çok güçlü — ağırlıklar sıfıra çöktü, model hiçbir şey öğrenemiyor'
-                    : (wd >= 0.01 ? 'ceza güçlü — model fazla basitleşti (yetersiz uyum)'
-                                  : 'hafif ceza — ağırlıklar küçüldü (‖W‖ '+f.agirlikNorm.toFixed(1)+'), genelleme iyileşti')),
+      ? (f.epoch > en.epoch ? '⚠ epoch '+en.epoch+'\'den sonra doğrulama kaybı YÜKSELİYOR, ezberliyor'
+                            : 'henüz sağlıklı, doğrulama kaybı hâlâ düşüyor')
+      : (wd >= 0.05 ? '⚠ ceza çok güçlü, ağırlıklar sıfıra çöktü, model hiçbir şey öğrenemiyor'
+                    : (wd >= 0.01 ? 'ceza güçlü, model fazla basitleşti (yetersiz uyum)'
+                                  : 'hafif ceza, ağırlıklar küçüldü (‖W‖ '+f.agirlikNorm.toFixed(1)+'), genelleme iyileşti')),
       wd === 0 && f.epoch > en.epoch ? K.red : (wd >= 0.01 ? K.orange : K.green));
 };
 
@@ -2713,7 +2713,7 @@ VIZ.gizli = s => {
   const g = gizli();
   const kat = s.kat === undefined ? 0 : Math.round(s.kat);   // 0 girdi · 1 gizli1 · 2 gizli2
   baslikSerit('GİZLİ KATMANLAR NE YAPIYOR?',
-    'Ağ sınıfları ayırmıyor — uzayı, ayrılabilir hâle GELENE KADAR büküyor.',
+    'Ağ sınıfları ayırmıyor, uzayı, ayrılabilir hâle GELENE KADAR büküyor.',
     [['GÖSTERİLEN', ['girdi uzayı','gizli katman 1','gizli katman 2'][kat], K.blue]]);
   const noktalar = kat === 0 ? NN_VERI.X : (kat === 1 ? g.H1 : g.H2);
   const lim = kat === 0 ? 1.25 : 1.15;
@@ -2731,7 +2731,7 @@ VIZ.gizli = s => {
     dot(P.sx(v[0]),P.sy(v[1]),16,null,c,4);
     txt('merkez '+i, P.sx(v[0]), P.sy(v[1])-26, c, 17); });
   const uz = Math.hypot(m[0][0]-m[1][0], m[0][1]-m[1][1]);
-  txt(['GİRDİ UZAYI — halka içinde halka','1. GİZLİ KATMAN (ilk 2 nöron)','2. GİZLİ KATMAN (ilk 2 nöron)'][kat],
+  txt(['GİRDİ UZAYI, halka içinde halka','1. GİZLİ KATMAN (ilk 2 nöron)','2. GİZLİ KATMAN (ilk 2 nöron)'][kat],
       P.R.x+P.R.w/2, P.R.y+P.R.h+50, K.mut, 19);
   /* bilgi kutusu */
   box(1120, 300, 320, 200, 'rgba(255,255,255,.03)', K.line, 2);
@@ -2742,14 +2742,14 @@ VIZ.gizli = s => {
   txt(uz.toFixed(3), 1412, 452, uz>1?K.green:K.orange, 22, 'right');
   txt(kat===0 ? 'doğrusal ayrılamaz' : (uz>1?'doğrusal AYRILABİLİR':'ayrışmaya başladı'),
       1280, 486, kat===0?K.red:(uz>1?K.green:K.orange), 18);
-  durum(['Girdi uzayında sınıf merkezleri ÜST ÜSTE — hiçbir doğru bunu ayıramaz',
+  durum(['Girdi uzayında sınıf merkezleri ÜST ÜSTE, hiçbir doğru bunu ayıramaz',
          'Birinci katman uzayı bükmeye başladı',
-         'İkinci katmanda merkezler ayrıştı (uzaklık '+uz.toFixed(2)+') — artık düz bir çizgi yeter'][kat],
+         'İkinci katmanda merkezler ayrıştı (uzaklık '+uz.toFixed(2)+'), artık düz bir çizgi yeter'][kat],
     kat===2?K.green:(kat===0?K.red:K.blue));
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   BATCH NORMALIZATION — aktivasyon dağılımı katman katman
+   BATCH NORMALIZATION, aktivasyon dağılımı katman katman
    ═══════════════════════════════════════════════════════════════ */
 function bnDeney(olcek, bnVar, katman){
   const K2 = katman || 12, G = 24, N = 256;
@@ -2764,7 +2764,7 @@ function bnDeney(olcek, bnVar, katman){
     const dz = M.flat();
     const mu = dz.reduce((a,b)=>a+b,0)/dz.length;
     const sd = Math.sqrt(dz.reduce((s,v)=>s+(v-mu)*(v-mu),0)/dz.length);
-    /* A zaten tanh'lanmış — doğrudan |A| > 0.99 bakılır */
+    /* A zaten tanh'lanmış, doğrudan |A| > 0.99 bakılır */
     const doygun = dz.filter(v => Math.abs(v) > 0.99).length/dz.length;
     return {mu, sd, doygun};
   };
@@ -2786,7 +2786,7 @@ function bnDeney(olcek, bnVar, katman){
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   KELİME GÖMME — skip-gram + negatif örnekleme, gerçek eğitim
+   KELİME GÖMME, skip-gram + negatif örnekleme, gerçek eğitim
    ═══════════════════════════════════════════════════════════════ */
 const W2V = (() => {
   const KAT = {
@@ -2914,8 +2914,8 @@ VIZ.batchnorm = s => {
   sat.forEach(([a,b,c],i) => { txt(a, 856, 500+i*30, K.mut, 17, 'left');
     txt(b, 1364, 500+i*30, c, 19, 'right'); });
   durum(olcek < 0.8
-      ? 'BN yok: 12 katman sonunda std '+sy.sd.toFixed(3)+' — sinyal yok oldu, gradyan akamaz'
-      : (olcek > 2.2 ? 'BN yok: nöronların %'+(sy.doygun*100).toFixed(0)+'\'i doymuş — tanh düzleşti, türev ≈ 0'
+      ? 'BN yok: 12 katman sonunda std '+sy.sd.toFixed(3)+', sinyal yok oldu, gradyan akamaz'
+      : (olcek > 2.2 ? 'BN yok: nöronların %'+(sy.doygun*100).toFixed(0)+'\'i doymuş, tanh düzleşti, türev ≈ 0'
                      : 'BN yok: bu ölçekte şanslıyız. Ama ölçeği azıcık kaydır, her şey bozuluyor.'),
       olcek < 0.8 ? K.red : (olcek > 2.2 ? K.orange : K.blue));
 };
@@ -2975,7 +2975,7 @@ VIZ.gomme = s => {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   TRANSFER ÖĞRENME — A görevinde öğrenilen özellikler B'ye taşınır
+   TRANSFER ÖĞRENME, A görevinde öğrenilen özellikler B'ye taşınır
    ═══════════════════════════════════════════════════════════════ */
 const TR_VERI = (() => {
   const R = rng(59);
@@ -3049,7 +3049,7 @@ function transferDeney(){
   /* 1) kaynak görevde ön-eğitim */
   const kaynak = trEgit(trKur(11), TR_VERI.A, 1500, 1.2, false);
   const kaynakDog = trDogruluk(kaynak, TR_VERI.A);
-  /* 2) hedef görev — üç senaryo, aynı 15 örnek */
+  /* 2) hedef görev, üç senaryo, aynı 15 örnek */
   const kayit = [0,5,10,20,40,70,110,170,250,360,500];
   const sifir = trKur(77), aktar = kopya(kaynak), tamAyar = kopya(kaynak);
   const egri = {sifirdan:[], transfer:[], tamAyar:[]};
@@ -3071,7 +3071,7 @@ function transferDeney(){
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   BPE TOKENİZASYON — gerçek eğitim, Türkçe korpus
+   BPE TOKENİZASYON, gerçek eğitim, Türkçe korpus
    ═══════════════════════════════════════════════════════════════ */
 const BPE = (() => {
   const KORPUS = {
@@ -3184,7 +3184,7 @@ VIZ.transfer = s => {
       ' puan   ·   tam ayar, donuk transferden '+
       ((T.egri.transfer[son].test-T.egri.tamAyar[son].test)*100).toFixed(1)+' puan GERİDE',
       755, 700, K.green, 19);
-  durum(ep === 0 ? 'hedef görevde henüz hiç eğitim yok — transfer zaten %77.2 (özellikler işe yarıyor)'
+  durum(ep === 0 ? 'hedef görevde henüz hiç eğitim yok, transfer zaten %77.2 (özellikler işe yarıyor)'
       : 'epoch '+ep+'  ·  donuk özellikler + tek katman eğitimi en iyisi', K.green);
 };
 
@@ -3240,9 +3240,9 @@ VIZ.bpe = s => {
   });
   BPE_TEST.forEach((k,ki) => txt(k, P.R.x+P.R.w-12, P.R.y+24+ki*22,
     k===kelime?[K.green,K.blue,K.orange,K.purple,K.pink][ki]:K.mut, 15, 'right'));
-  durum(n === 0 ? 'birleşme yok — her karakter ayrı bir token'
+  durum(n === 0 ? 'birleşme yok, her karakter ayrı bir token'
       : (kelime === 'kalemlerimizden'
-         ? 'korpusta HİÇ geçmeyen kelime — "kalem" harflere düşüyor ama ekler yakalanıyor'
+         ? 'korpusta HİÇ geçmeyen kelime, "kalem" harflere düşüyor ama ekler yakalanıyor'
          : n+' birleşme sonrası '+p.length+' token'), n===0?K.orange:K.green);
 };
 
@@ -3271,7 +3271,7 @@ function ornekleme(T, k, p){
   /* top-k */
   const sirali = tam.map((v,i)=>({i,v})).sort((a,b)=>b.v-a.v);
   const kSet = new Set(sirali.slice(0, k >= n ? n : k).map(o=>o.i));
-  /* top-p (nucleus) — kümülatif p eşiğini AŞAN ilk token dahil */
+  /* top-p (nucleus), kümülatif p eşiğini AŞAN ilk token dahil */
   const pSet = new Set(); let kum = 0;
   for (const o of sirali){ pSet.add(o.i); kum += o.v; if (kum >= p) break; }
   const izin = new Set([...kSet].filter(i => pSet.has(i)));
@@ -3313,7 +3313,7 @@ VIZ.ornekleme = s => {
   const p = s.p === undefined ? 1 : s.p;
   const r = ornekleme(T, k, p);
   baslikSerit('ÖRNEKLEME  ·  bir sonraki token nasıl seçilir',
-    '"'+SMP.cumle+' ___"  —  model olasılık verir, seçimi SEN ayarlarsın.',
+    '"'+SMP.cumle+' ___"  ·  model olasılık verir, seçimi SEN ayarlarsın.',
     [['T', T.toFixed(2), K.orange], ['top-k', k>=12?'kapalı':String(k), K.blue],
      ['top-p', p>=1?'kapalı':p.toFixed(2), K.purple]]);
   /* çubuklar */
@@ -3359,13 +3359,13 @@ VIZ.ornekleme = s => {
 /* ═══════ TRANSFORMER BLOĞU ═══════ */
 const TFM_ADIM = [
   ['girdi',      'x  (n × d)',                 'önceki bloktan gelen temsil',            '#4a5a6d', 0],
-  ['RMSNorm',    'x̂ = x / rms(x) · γ',         'ölçeği sabitler — eğitim kararlılığı',   '#a78bfa', 2*4096],
+  ['RMSNorm',    'x̂ = x / rms(x) · γ',         'ölçeği sabitler, eğitim kararlılığı',   '#a78bfa', 2*4096],
   ['Q,K,V',      'Q=x̂Wq  K=x̂Wk  V=x̂Wv',       'her token üç role bürünür',              '#4cc4ff', 3*4096*4096],
   ['Attention',  'softmax(QKᵀ/√d)·V',          'tokenlar birbirine bakar',               '#fb923c', 0],
   ['Çıkış izd.', 'A·Wo',                        'başların çıktısı birleştirilir',         '#4cc4ff', 4096*4096],
-  ['+ artık',    'x = x + attn',                'gradyan otoyolu — derinlik mümkün',      '#22d3a0', 0],
+  ['+ artık',    'x = x + attn',                'gradyan otoyolu, derinlik mümkün',      '#22d3a0', 0],
   ['RMSNorm',    'x̂ = x / rms(x) · γ',         'ikinci normalleştirme',                  '#a78bfa', 2*4096],
-  ['MLP',        'W₂·(SiLU(W₁x̂) ⊙ W₃x̂)',      'token BAŞINA düşünme — parametrenin %67\'si', '#f472b6', 3*4096*11008],
+  ['MLP',        'W₂·(SiLU(W₁x̂) ⊙ W₃x̂)',      'token BAŞINA düşünme, parametrenin %67\'si', '#f472b6', 3*4096*11008],
   ['+ artık',    'x = x + mlp',                 'ikinci artık bağlantı',                  '#22d3a0', 0],
 ];
 VIZ.tfmBlok = s => {
@@ -3418,7 +3418,7 @@ VIZ.tfmBlok = s => {
   txt('blok: '+(P.blok/1e6).toFixed(1)+'M  ×  32 katman  =  '+(P.blok*TFM.L/1e9).toFixed(2)+'B', 1080, 638, K.txt, 20);
   txt('+ gömme '+(P.gomme*2/1e9).toFixed(2)+'B  =  '+(P.toplam/1e9).toFixed(2)+'B parametre', 1080, 668, K.green, 20);
   txt('fp16 ağırlık belleği: '+(P.toplam*2/1e9).toFixed(1)+' GB', 1080, 696, K.mut, 18);
-  durum('adım '+(a+1)+': '+ad+'  —  '+ac, renk);
+  durum('adım '+(a+1)+': '+ad+'  ·  '+ac, renk);
 };
 
 /* ═══════ KV CACHE ═══════ */
@@ -3439,25 +3439,27 @@ VIZ.kv = s => {
       const v = Math.log10(Math.max(1, mm[anah]));
       N===1 ? cx.moveTo(P.sx(N),P.sy(v)) : cx.lineTo(P.sx(N),P.sy(v)); }
     cx.stroke();
-    txt(ad, P.R.x+P.R.w-14, P.R.y+28+i*26, renk, 18, 'right');
+    /* açıklama sol altta, eğriler sağ üstte yoğunlaşıyor */
+    txt('■ '+ad, P.R.x+16, P.R.y+P.R.h-38+i*24, renk, 17, 'left');
   });
-  txt('ÜRETİM MALİYETİ', P.R.x+P.R.w/2, P.R.y+P.R.h+52, K.mut, 19);
+  txt('ÜRETİM MALİYETİ', P.R.x+P.R.w/2, 196, K.mut, 19);
   /* bellek çubukları */
-  txt('KV CACHE BELLEĞİ', 1080, 200, K.mut, 19);
+  txt('KV CACHE BELLEĞİ  (GB)', 1090, 196, K.mut, 19);
+  txt('MHA', 1312, 222, K.orange, 15);
+  txt('GQA', 1400, 222, K.green, 15);
   const uzunluklar = [1024, 4096, 16384, 32768, 131072];
   uzunluklar.forEach((L2,i) => {
-    const y = 232 + i*54;
+    const y = 238 + i*54;
     const b32 = kvCache(L2,32).toplam, b8 = kvCache(L2,8).toplam;
     const mx = kvCache(131072,32).toplam;
-    txt(L2>=1024 ? (L2/1024)+'K' : String(L2), 800, y+26, L2===n?K.yellow:K.mut, 17, 'right');
-    box(820, y, 470, 34, 'rgba(255,255,255,.05)', null);
-    box(820, y, 470*(b32/mx), 34, (b32>1e10?K.red:K.orange)+'aa', null);
-    box(820, y, 470*(b8/mx), 34, K.green+'cc', null);
-    txt((b32/1e9).toFixed(1)+' GB', 1306, y+26, b32>1e10?K.red:K.mut, 16, 'left');
-    txt('/ '+(b8/1e9).toFixed(1), 1396, y+26, K.green, 16, 'left');
+    txt(L2>=1024 ? (L2/1024)+'K' : String(L2), 810, y+24, L2===n?K.yellow:K.mut, 17, 'right');
+    box(830, y, 450, 32, 'rgba(255,255,255,.05)', null);
+    box(830, y, 450*(b32/mx), 32, (b32>1e10?K.red:K.orange)+'aa', null);
+    box(830, y, 450*(b8/mx), 32, K.green+'cc', null);
+    txt((b32/1e9).toFixed(1), 1340, y+24, b32>1e10?K.red:K.orange, 17, 'right');
+    txt((b8/1e9).toFixed(1), 1428, y+24, K.green, 17, 'right');
   });
-  txt('■ MHA (32 baş)', 1160, 520, K.orange, 17);
-  txt('■ GQA (8 baş) — 4× tasarruf', 1160, 544, K.green, 17);
+  txt('GQA, K ve V için 32 yerine 8 baş kullanır: 4× tasarruf', 1120, 512, K.mut, 16);
   /* özet */
   box(120, 570, 1290, 140, 'rgba(255,255,255,.03)', K.line, 2);
   txt('token başına KV: '+(c.tokenBasi/1024).toFixed(0)+' KB   ×   '+n+' token   =   '+
@@ -3466,14 +3468,14 @@ VIZ.kv = s => {
       765, 648, K.mut, 19);
   txt(Math.min(n,4096)+' token üretimi: önbelleksiz '+(m.yok/1000).toFixed(0)+'k birim · önbellekli '+
       (m.varr/1000).toFixed(1)+'k · '+m.oran.toFixed(0)+'× fark', 765, 684, K.green, 20);
-  durum(c.toplam > 2e10 ? '⚠ KV cache modelin ağırlıklarından BÜYÜK — uzun bağlamın asıl maliyeti bu'
+  durum(c.toplam > 2e10 ? '⚠ KV cache modelin ağırlıklarından BÜYÜK, uzun bağlamın asıl maliyeti bu'
       : 'önbellek '+ (c.toplam/1e9).toFixed(2)+' GB · üretim '+m.oran.toFixed(0)+'× hızlı',
       c.toplam > 2e10 ? K.red : K.green);
 };
 
 /* ═══════ ÇOK BAŞLI DİKKAT ═══════ */
 /* Baş desenleri, literatürde belgelenmiş baş uzmanlaşma TÜRLERİNİ temsil eder
-   (Clark ve ark. 2019). Gerçek bir modelden çıkarılmamıştır — örnekleyicidir. */
+   (Clark ve ark. 2019). Gerçek bir modelden çıkarılmamıştır, örnekleyicidir. */
 const MH_TOKEN = ['kedi','masaya','çıktı','çünkü','o','meraklıydı'];
 const MH_BAS = [
   {ad:'Baş 1 · önceki token', renk:'#4cc4ff', tur:'konum',
@@ -3538,7 +3540,7 @@ VIZ.multihead = s => {
     w.forEach((v,i) => box(700+i*54, y+16, 48, 20,
       (aktif?b.renk:'#2c3a4b')+(v>0.25?'cc':'44'), null));
   });
-  durum('"'+MH_TOKEN[q]+'" için 4 baş 4 farklı yere bakıyor — çıktıları birleştirilip tek vektör olur',
+  durum('"'+MH_TOKEN[q]+'" için 4 baş 4 farklı yere bakıyor, çıktıları birleştirilip tek vektör olur',
     K.green);
 };
 
@@ -3594,8 +3596,8 @@ VIZ.llmEgitim = s => {
     });
     txt('%'+(LLM_ASAMA[a][alan]*100).toFixed(2), 1260, y+27, LLM_ASAMA[a].renk, 19, 'left');
   });
-  durum(a === 0 ? 'ön-eğitim: verinin %99.9\'u, hesabın %99\'u — model dünyayı BURADA öğrenir'
-      : (a === 1 ? 'SFT: verinin binde biri — model burada bilgi değil, DAVRANIŞ öğrenir'
+  durum(a === 0 ? 'ön-eğitim: verinin %99.9\'u, hesabın %99\'u, model dünyayı BURADA öğrenir'
+      : (a === 1 ? 'SFT: verinin binde biri, model burada bilgi değil, DAVRANIŞ öğrenir'
                  : 'RLHF: en küçük aşama ama kullanıcının hissettiği farkın çoğu buradan gelir'),
       A.renk);
 };
@@ -3607,7 +3609,7 @@ const RAG_ADIM = [
   ['2 · GÖM', 'her parça → vektör (çok dilli model)', '#a78bfa',
    'yanlış dil modeli = sessizce çöken kalite'],
   ['3 · İNDEKSLE', 'vektörler → vektör veritabanı (HNSW)', '#22d3a0',
-   'yaklaşık komşu araması — k-NN dersindeki maliyet sorununun çözümü'],
+   'yaklaşık komşu araması, k-NN dersindeki maliyet sorununun çözümü'],
   ['4 · GETİR', 'soru gömülür → en yakın 50 parça', '#fb923c',
    'burada RECALL ölç: doğru parça ilk 50\'de var mı?'],
   ['5 · YENİDEN SIRALA', 'cross-encoder → en iyi 5', '#f472b6',
@@ -3650,8 +3652,8 @@ VIZ.rag = s => {
     box(1150, y+6, 200*v, 28, c+'cc', null);
     txt('~%'+(v*100).toFixed(0), 1362, y+26, c, 17, 'left');
   });
-  txt('(tipik dağılım — önce GETİRMEYİ ölç)', 1140, 688, K.mut, 15);
-  durum('adım '+(a+1)+': '+ad.split('·')[1].trim()+'  —  '+ne, renk);
+  txt('(tipik dağılım, önce GETİRMEYİ ölç)', 1140, 688, K.mut, 15);
+  durum('adım '+(a+1)+': '+ad.split('·')[1].trim()+'  ·  '+ne, renk);
 };
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3730,7 +3732,7 @@ function wilson(basari, n, z){
   const yari = z*Math.sqrt(p*(1-p)/n + z2/(4*n*n))/payda;
   return {p, alt:Math.max(0,merkez-yari), ust:Math.min(1,merkez+yari), genislik:2*yari};
 }
-/* iki modelin farkı anlamlı mı — iki oran için z testi */
+/* iki modelin farkı anlamlı mı, iki oran için z testi */
 function oranFarki(b1,n1,b2,n2){
   const p1=b1/n1, p2=b2/n2, p=(b1+b2)/(n1+n2);
   const se = Math.sqrt(p*(1-p)*(1/n1+1/n2));
@@ -3786,7 +3788,7 @@ VIZ.cokanlam = s => {
   ['organ','sayi','fiil'].forEach((k,i) => txt('● '+k, P.R.x+P.R.w-16, P.R.y+28+i*24, CA_RENK[k], 17, 'right'));
   txt('12 BOYUTTAN 2 BOYUTA', P.R.x+P.R.w/2, P.R.y+P.R.h+52, K.mut, 19);
   /* karşılaştırma tablosu */
-  txt('KOSİNÜS BENZERLİĞİ — küme merkezlerine', 1120, 210, K.mut, 19);
+  txt('KOSİNÜS BENZERLİĞİ, küme merkezlerine', 1120, 210, K.mut, 19);
   const satirlar = [
     ['gözlük',  'organ', [0.999,0.274,0.271]],
     ['altmış',  'sayi',  [0.262,0.998,0.257]],
@@ -3812,7 +3814,7 @@ VIZ.cokanlam = s => {
   txt('ÇOK anlamlı "yüz"', 1140, 606, K.mut, 18);
   txt(c.s.fiil.toFixed(2)+'  /  '+c.s.sayi.toFixed(2)+'  /  '+c.s.organ.toFixed(2), 1140, 636, K.yellow, 22);
   txt('bir anlama çöktü, diğer ikisini kaybetti', 1140, 668, K.red, 17);
-  durum('"yüz" bir anlamla 0.98, diğeriyle 0.21 — tek vektör üç anlamı taşıyamıyor', K.red);
+  durum('"yüz" bir anlamla 0.98, diğeriyle 0.21, tek vektör üç anlamı taşıyamıyor', K.red);
 };
 
 /* ═══════ HALÜSİNASYON ═══════ */
@@ -3844,7 +3846,7 @@ VIZ.halusinasyon = s => {
       750, 676, K.red, 22);
   txt('dürüst "bilmiyorum" cevaplarının toplamı:  %'+(d.durustOran*100).toFixed(1),
       750, 704, d.durustOran<0.1?K.red:K.green, 20);
-  durum(T < 0.5 ? '⚠ sıcaklığı DÜŞÜRMEK dürüstlüğü artırmıyor — tam tersi, uydurmayı kesinleştiriyor'
+  durum(T < 0.5 ? '⚠ sıcaklığı DÜŞÜRMEK dürüstlüğü artırmıyor, tam tersi, uydurmayı kesinleştiriyor'
       : 'T='+T.toFixed(1)+' · dürüst cevap hâlâ azınlıkta', T<0.5?K.red:K.orange);
 };
 
@@ -3873,7 +3875,7 @@ VIZ.eval = s => {
     txt(ad, P.sx(ww.alt)-14, y+7, renk, 19, 'right');
     txt('['+(ww.alt*100).toFixed(0)+'%, '+(ww.ust*100).toFixed(0)+'%]', P.sx(ww.ust)+14, y+7, K.mut, 17, 'left');
   });
-  txt('%95 GÜVEN ARALIKLARI  —  çakışıyorlarsa fark kanıtlanamaz', P.R.x+P.R.w/2, P.R.y+P.R.h+48, K.mut, 19);
+  txt('%95 GÜVEN ARALIKLARI  ·  çakışıyorlarsa fark kanıtlanamaz', P.R.x+P.R.w/2, P.R.y+P.R.h+48, K.mut, 19);
   /* n → genişlik tablosu */
   txt('ÖRNEK SAYISI  →  ARALIK GENİŞLİĞİ', 420, 530, K.mut, 19);
   [10,25,50,100,400,1000].forEach((N,i) => {
@@ -3891,10 +3893,10 @@ VIZ.eval = s => {
   txt('A (%80)  vs  B (%90)   ·   her biri n='+n, 1080, 558, K.mut, 18);
   txt('z = '+f.z.toFixed(2), 1080, 600, K.blue, 24);
   txt('p = '+(f.p<0.0001?'< 0.0001':f.p.toFixed(4)), 1080, 640, f.p<0.05?K.green:K.red, 26);
-  txt(f.p<0.05 ? 'B gerçekten daha iyi (α=0.05)' : 'FARK GÖSTERİLEMEDİ — daha çok örnek gerek',
+  txt(f.p<0.05 ? 'B gerçekten daha iyi (α=0.05)' : 'FARK GÖSTERİLEMEDİ, daha çok örnek gerek',
       1080, 686, f.p<0.05?K.green:K.red, 19);
   durum(n < 30 ? '⚠ '+n+' örnekle %80 ölçtün ama gerçek değer %'+(w.alt*100).toFixed(0)+'–%'+(w.ust*100).toFixed(0)+' arasında olabilir'
-      : (f.p<0.05 ? n+' örnek yeterli — 10 puanlık fark istatistiksel olarak anlamlı'
+      : (f.p<0.05 ? n+' örnek yeterli, 10 puanlık fark istatistiksel olarak anlamlı'
                   : n+' örnek hâlâ yetmiyor'), n<30?K.red:(f.p<0.05?K.green:K.orange));
 };
 
@@ -3903,7 +3905,7 @@ VIZ.eval = s => {
    ═══════════════════════════════════════════════════════════════ */
 const PROMPT_PARCA = [
   ['ROL',      'Sen bir Türk vergi mevzuatı uzmanısın.',                '#a78bfa',
-   'Modeli doğru "kişiliğe" sokar. Abartma — "sen dünyanın en iyisisin" işe yaramaz.'],
+   'Modeli doğru "kişiliğe" sokar. Abartma, "sen dünyanın en iyisisin" işe yaramaz.'],
   ['GÖREV',    'Aşağıdaki faturayı incele ve KDV tutarını çıkar.',      '#4cc4ff',
    'Tek ve net bir görev. Birden çok iş varsa böl.'],
   ['BAĞLAM',   '<fatura>...</fatura>',                                   '#22d3a0',
@@ -3951,7 +3953,7 @@ VIZ.prompt = s => {
     box(1170, y+2, 200, 18, 'rgba(255,255,255,.05)', null);
     box(1170, y+2, 200*v, 18, c+'cc', null);
   });
-  durum(a+1+'/6 · '+ad+' — '+not.split('.')[0], renk);
+  durum(a+1+'/6 · '+ad+', '+not.split('.')[0], renk);
 };
 
 /* ═══════ AJAN DÖNGÜSÜ ═══════ */
@@ -3960,15 +3962,15 @@ const AJAN_ADIM = [
   ['ARAÇ SEÇ','sql_sorgu(...)  seçildi', '#4cc4ff'],
   ['ÇAĞIR',  'SELECT SUM(tutar) FROM satis WHERE ay=\'2026-07\'', '#22d3a0'],
   ['GÖZLEM', '→ 1.284.500 TL', '#fb923c'],
-  ['DÜŞÜN',  'Sonucu aldım. Kullanıcı karşılaştırma da istemişti — bir sorgu daha.', '#a78bfa'],
+  ['DÜŞÜN',  'Sonucu aldım. Kullanıcı karşılaştırma da istemişti, bir sorgu daha.', '#a78bfa'],
   ['ÇAĞIR',  'SELECT SUM(tutar) FROM satis WHERE ay=\'2026-06\'', '#22d3a0'],
   ['GÖZLEM', '→ 1.102.300 TL', '#fb923c'],
-  ['CEVAPLA','Temmuz 1.284.500 TL, Haziran 1.102.300 TL — %16.5 artış.', '#facc15'],
+  ['CEVAPLA','Temmuz 1.284.500 TL, Haziran 1.102.300 TL, %16.5 artış.', '#facc15'],
 ];
 VIZ.ajan = s => {
   clear();
   const a = Math.max(0, Math.min(7, Math.round(s.adim === undefined ? 0 : s.adim)));
-  baslikSerit('AJAN DÖNGÜSÜ', 'Model tek seferde cevap vermez — düşünür, araç çağırır, sonucu görür, tekrar düşünür.',
+  baslikSerit('AJAN DÖNGÜSÜ', 'Model tek seferde cevap vermez, düşünür, araç çağırır, sonucu görür, tekrar düşünür.',
     [['ADIM', (a+1)+' / 8', AJAN_ADIM[a][2]], ['ARAÇ ÇAĞRISI', String(AJAN_ADIM.slice(0,a+1).filter(x=>x[0]==='ÇAĞIR').length), K.green]]);
   AJAN_ADIM.forEach(([t,ic,c],i) => {
     const y = 190 + i*64, aktif = i === a, gecti = i < a;
@@ -3981,7 +3983,7 @@ VIZ.ajan = s => {
       cx.beginPath(); cx.moveTo(196,y+54); cx.lineTo(196,y+64); cx.stroke(); }
   });
   box(160, 700, 1120, 0, null, null);
-  durum('adım '+(a+1)+': '+AJAN_ADIM[a][0]+'  —  '+
+  durum('adım '+(a+1)+': '+AJAN_ADIM[a][0]+'  ·  '+
     (a===7 ? 'iki araç çağrısı, iki gözlem, tek cevap' : 'döngü devam ediyor'), AJAN_ADIM[a][2]);
 };
 
@@ -3996,7 +3998,7 @@ VIZ.judge = s => {
   clear();
   const uyum = s.uyum === undefined ? 0.80 : s.uyum;
   const k = judgeUyum(100, uyum);
-  baslikSerit('LLM-as-JUDGE', 'Cevap kalitesini bir modelle puanlamak — ucuz ve hızlı. Ama önce judge\'ı doğrula.',
+  baslikSerit('LLM-as-JUDGE', 'Cevap kalitesini bir modelle puanlamak, ucuz ve hızlı. Ama önce judge\'ı doğrula.',
     [['İNSANLA UYUM','%'+(uyum*100).toFixed(0), uyum>0.8?K.green:K.orange],
      ['COHEN κ', k.kappa.toFixed(2), k.kappa>0.6?K.green:(k.kappa>0.4?K.orange:K.red)]]);
   /* uyum matrisi */
@@ -4036,8 +4038,8 @@ VIZ.judge = s => {
     txt('· '+a2, 750, 552+i*34, K.orange, 17, 'left');
     txt(b2, 1356, 552+i*34, K.mut, 16, 'right');
   });
-  durum(k.kappa > 0.6 ? 'κ = '+k.kappa.toFixed(2)+' — judge güvenilir sayılabilir, yine de yanlılıkları kontrol et'
-      : '⚠ κ = '+k.kappa.toFixed(2)+' — judge insanla yeterince uyuşmuyor, sonuçlarına güvenme',
+  durum(k.kappa > 0.6 ? 'κ = '+k.kappa.toFixed(2)+', judge güvenilir sayılabilir, yine de yanlılıkları kontrol et'
+      : '⚠ κ = '+k.kappa.toFixed(2)+', judge insanla yeterince uyuşmuyor, sonuçlarına güvenme',
     k.kappa>0.6?K.green:K.red);
 };
 
@@ -4102,8 +4104,8 @@ VIZ.maliyet = s => {
     txt(b, 1178, 570+i*28, K.mut, 14, 'right');
   });
   durum(rag > 1
-      ? 'RAG bağlamı girdiyi 8× büyüttü — maliyetin çoğu artık GİRDİ tarafında'
-      : 'çıktı token\'ı girdiden '+(FIYAT[m].cikti/FIYAT[m].girdi).toFixed(0)+'× pahalı — önce çıktıyı kısalt',
+      ? 'RAG bağlamı girdiyi 8× büyüttü, maliyetin çoğu artık GİRDİ tarafında'
+      : 'çıktı token\'ı girdiden '+(FIYAT[m].cikti/FIYAT[m].girdi).toFixed(0)+'× pahalı, önce çıktıyı kısalt',
     rag>1?K.orange:K.blue);
 };
 
@@ -4194,8 +4196,8 @@ VIZ.elo = s => {
   txt('parantez içi = gerçek güç', 1190, 530, K.mut, 16);
   txt(t.dogruSira ? '✓ sıralama doğru bulundu' : '✗ sıralama HENÜZ yanlış',
       1190, 562, t.dogruSira?K.green:K.red, 19);
-  durum(n < 60 ? '⚠ '+n+' karşılaştırma az — Elo puanları hâlâ oynak, sıralama güvenilmez'
-      : (t.dogruSira ? n+' karşılaştırma yetti — sıralama gerçek güçlerle örtüşüyor'
+  durum(n < 60 ? '⚠ '+n+' karşılaştırma az, Elo puanları hâlâ oynak, sıralama güvenilmez'
+      : (t.dogruSira ? n+' karşılaştırma yetti, sıralama gerçek güçlerle örtüşüyor'
                      : n+' karşılaştırma hâlâ yetmiyor'), n<60?K.orange:(t.dogruSira?K.green:K.red));
 };
 VIZ.kirmizi = s => {
@@ -4233,6 +4235,6 @@ VIZ.kirmizi = s => {
     box(1290, y+12, 90*etki, 20, c+'cc', null);
   });
   durum(basari > 0.3
-      ? '⚠ '+ad+' savunması zor — model, veriyi talimattan güvenilir biçimde ayıramıyor'
+      ? '⚠ '+ad+' savunması zor, model, veriyi talimattan güvenilir biçimde ayıramıyor'
       : ad+' bilinen desenlerle büyük ölçüde yakalanabiliyor', basari>0.3?K.red:K.orange);
 };

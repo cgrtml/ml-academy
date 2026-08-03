@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Ders — ML Academy</title>
+<title>Ders · ML Academy</title>
 <style>
   :root{
     --bg:#080b11; --panel:#0f151e; --panel2:#141c28; --line:#1e2a3a;
@@ -31,7 +31,7 @@
          border-radius:99px;transition:width .45s cubic-bezier(.2,.8,.2,1)}
   .xp{font-family:var(--mono);font-size:13px;color:var(--green);font-weight:800;white-space:nowrap}
 
-  /* ⚠ minmax(0,1fr) + min-width:0 — canvas'ın 1500px intrinsic genişliği
+  /* ⚠ minmax(0,1fr) + min-width:0, canvas'ın 1500px intrinsic genişliği
      grid kolonunu şişirmesin diye. Bu olmadan sayfa yatay taşıyor. */
   .shell{display:grid;grid-template-columns:238px minmax(0,1fr);gap:24px;
          max-width:1240px;margin:0 auto;padding:22px 18px 120px}
@@ -450,7 +450,7 @@ function go(i){
         const bos = ids.find(x => !kodVals[x]);
         if (bos) secBlank(bos); else { aktifBlank = null; bankCiz(); }
         $('btnRun').disabled = ids.some(x => !kodVals[x]);
-        $('kodHint').textContent = $('btnRun').disabled ? (ids.length - Object.keys(kodVals).length)+' kutu kaldı' : 'hazır — çalıştır';
+        $('kodHint').textContent = $('btnRun').disabled ? (ids.length - Object.keys(kodVals).length)+' kutu kaldı' : 'hazır, çalıştır';
       });
     }
     ids.forEach(id => $('bl_'+id).onclick = () => { if (!kodOK) secBlank(id); });
@@ -473,7 +473,7 @@ function go(i){
           $('btnReset').disabled = false;
           ids.forEach(x => $('bl_'+x).classList.add(kodVals[x] === L.bosluklar[x].dogru ? 'dogru' : 'yanlis'));
           $('kodSonuc').innerHTML = '<div class="sonuc '+(r.dogru?'ok':'no')+'">' +
-            '<b class="h">'+(r.dogru?'✓ Çalıştı — kanıtladın':'✗ Çalışmadı — sebebini oku')+'</b>'+r.mesaj+'</div>';
+            '<b class="h">'+(r.dogru?'✓ Çalıştı, kanıtladın':'✗ Çalışmadı, sebebini oku')+'</b>'+r.mesaj+'</div>';
           if (r.dogru){ kodOK = true; syncPrimary(); }
           else { $('btnRun').disabled = false;
                  $('kodHint').textContent = 'temizle, tekrar dene'; }
