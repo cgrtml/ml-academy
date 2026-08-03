@@ -1252,81 +1252,79 @@ VIZ.metrik = s => {
     '1000 işlem · 30 tanesi dolandırıcılık (%3) · eşiği sen belirliyorsun',
     [['EŞİK', e.toFixed(2), K.orange], ['DOĞRULUK', '%'+(m.dogruluk*100).toFixed(1), K.blue]]);
 
-  /* 2×2 matris */
-  const bx = 120, by = 210, hw = 250, hh = 150;
-  const hucre = [
-    ['TP', m.TP, 'yakalanan\ndolandırıcılık', K.green, 0, 0],
-    ['FN', m.FN, 'KAÇAN\ndolandırıcılık', K.red, 1, 0],
-    ['FP', m.FP, 'yanlış alarm\n(masum bloke)', K.orange, 0, 1],
-    ['TN', m.TN, 'doğru geçen\nnormal işlem', '#4a5a6d', 1, 1],
-  ];
-  txt('MODELİN DEDİĞİ', bx+hw, by-56, K.mut, 19);
-  txt('dolandırıcılık', bx+hw/2, by-24, K.mut, 17);
-  txt('normal', bx+hw*1.5, by-24, K.mut, 17);
-  cx.save(); cx.translate(bx-56, by+hh); cx.rotate(-Math.PI/2);
-  txt('GERÇEK', 0, 0, K.mut, 19); cx.restore();
-  txt('dolandırıcı', bx-14, by+hh/2, K.mut, 17, 'right');
-  txt('normal', bx-14, by+hh*1.5, K.mut, 17, 'right');
-  hucre.forEach(([kod, v, ac, renk, sut, sat]) => {
+  /* ── karmaşıklık matrisi (sol üst) ── */
+  const bx = 250, by = 226, hw = 195, hh = 122;
+  txt('MODELİN DEDİĞİ', bx+hw, 184, K.mut, 18);
+  txt('dolandırıcılık', bx+hw/2, 210, K.mut, 15);
+  txt('normal', bx+hw*1.5, 210, K.mut, 15);
+  cx.save(); cx.translate(120, by+hh); cx.rotate(-Math.PI/2);
+  txt('GERÇEK', 0, 0, K.mut, 18); cx.restore();
+  txt('dolandırıcı', bx-14, by+hh/2, K.mut, 15, 'right');
+  txt('normal', bx-14, by+hh*1.5, K.mut, 15, 'right');
+  [['TP', m.TP, 'yakalanan', K.green, 0, 0],
+   ['FN', m.FN, 'KAÇAN',     K.red, 1, 0],
+   ['FP', m.FP, 'yanlış alarm', K.orange, 0, 1],
+   ['TN', m.TN, 'doğru geçen', '#4a5a6d', 1, 1],
+  ].forEach(([kod, v, ac, renk, sut, sat]) => {
     const x = bx + sut*hw, y = by + sat*hh;
     box(x, y, hw-8, hh-8, renk+'1f', renk+'88', 2.5);
-    txt(kod, x+22, y+30, renk, 18, 'left');
-    txt(String(v), x+(hw-8)/2, y+(hh-8)/2+16, renk, 46);
-    ac.split('\n').forEach((t,i) => txt(t, x+(hw-8)/2, y+hh-30+i*20, K.mut, 16));
+    txt(kod, x+18, y+24, renk, 15, 'left');
+    txt(String(v), x+(hw-8)/2, y+(hh-8)/2+16, renk, 38);
+    txt(ac, x+(hw-8)/2, y+hh-22, K.mut, 14);
   });
 
-  /* skor dağılımı */
-  const P = plot(rect(700,200,740,220), 0,1, 0,1);
-  const KOVA = 40, hist0 = new Array(KOVA).fill(0), hist1 = new Array(KOVA).fill(0);
+  /* ── skor dağılımı (sağ üst) ── */
+  const P = plot(rect(720,226,700,180), 0,1, 0,1);
+  const KOVA = 40, h0 = new Array(KOVA).fill(0), h1 = new Array(KOVA).fill(0);
   DOL.skor.forEach((sk,i) => { const k = Math.min(KOVA-1, Math.floor(sk*KOVA));
-    (DOL.etiket[i] ? hist1 : hist0)[k]++; });
-  const mx0 = Math.max(...hist0), mx1 = Math.max(...hist1);
+    (DOL.etiket[i] ? h1 : h0)[k]++; });
+  const mx0 = Math.max(...h0), mx1 = Math.max(...h1);
   for (let k=0;k<KOVA;k++){
     const w = P.R.w/KOVA;
-    const h0 = hist0[k]/mx0*P.R.h*0.92, h1 = hist1[k]/Math.max(1,mx1)*P.R.h*0.92;
-    cx.fillStyle = 'rgba(74,90,109,.75)';
-    cx.fillRect(P.R.x+k*w, P.R.y+P.R.h-h0, w-1.5, h0);
-    cx.fillStyle = 'rgba(248,113,113,.9)';
-    cx.fillRect(P.R.x+k*w, P.R.y+P.R.h-h1, w-1.5, h1);
+    const a0 = h0[k]/mx0*P.R.h*0.92, a1 = h1[k]/Math.max(1,mx1)*P.R.h*0.92;
+    cx.fillStyle = 'rgba(74,90,109,.75)'; cx.fillRect(P.R.x+k*w, P.R.y+P.R.h-a0, w-1.5, a0);
+    cx.fillStyle = 'rgba(248,113,113,.9)'; cx.fillRect(P.R.x+k*w, P.R.y+P.R.h-a1, w-1.5, a1);
   }
   frame(P,'model skoru','', [0,0.25,0.5,0.75,1], []);
   cx.strokeStyle = K.orange; cx.lineWidth = 4;
-  cx.beginPath(); cx.moveTo(P.sx(e),P.R.y-8); cx.lineTo(P.sx(e),P.R.y+P.R.h+8); cx.stroke();
-  txt('eşik', P.sx(e), P.R.y-18, K.orange, 18);
-  txt('■ normal', P.R.x+P.R.w-140, P.R.y+24, '#4a5a6d', 17, 'left');
-  txt('■ dolandırıcılık', P.R.x+P.R.w-140, P.R.y+46, K.red, 17, 'left');
+  cx.beginPath(); cx.moveTo(P.sx(e),P.R.y-6); cx.lineTo(P.sx(e),P.R.y+P.R.h+6); cx.stroke();
+  txt('eşik', P.sx(e), P.R.y-16, K.orange, 16);
+  txt('■ normal', P.R.x+8, 200, '#4a5a6d', 15, 'left');
+  txt('■ dolandırıcılık', P.R.x+110, 200, K.red, 15, 'left');
+  txt('SKOR DAĞILIMI', P.R.x+P.R.w/2, 184, K.mut, 18);
 
-  /* metrik çubukları */
-  const my = 480;
-  [['DOĞRULUK', m.dogruluk, K.blue, 'toplam isabet — dengesiz veride yanıltıcı'],
-   ['KESİNLİK (precision)', m.kesinlik, K.green, 'alarm verdiklerimin kaçı gerçekten dolandırıcı'],
-   ['DUYARLILIK (recall)', m.duyarlilik, K.orange, 'dolandırıcılıkların kaçını yakaladım'],
-   ['F1', m.f1, K.purple, 'kesinlik ile duyarlılığın harmonik ortalaması'],
-  ].forEach(([ad, v, renk, ac], i) => {
+  /* ── metrik çubukları (sol alt) ── */
+  const my = 510;
+  [['DOĞRULUK', m.dogruluk, K.blue],
+   ['KESİNLİK (precision)', m.kesinlik, K.green],
+   ['DUYARLILIK (recall)', m.duyarlilik, K.orange],
+   ['F1', m.f1, K.purple],
+  ].forEach(([ad, v, renk], i) => {
     const y = my + i*54;
-    txt(ad, 130, y+20, K.mut, 17, 'left');
-    box(430, y, 420, 26, 'rgba(255,255,255,.05)', null);
-    box(430, y, 420*v, 26, renk+'cc', null);
-    txt('%'+(v*100).toFixed(1), 870, y+20, renk, 20, 'left');
-    txt(ac, 980, y+20, K.mut, 16, 'left');
+    txt(ad, 400, y+22, K.mut, 17, 'right');
+    box(420, y, 420, 30, 'rgba(255,255,255,.05)', null);
+    box(420, y, 420*v, 30, renk+'cc', null);
+    txt('%'+(v*100).toFixed(1), 856, y+22, renk, 19, 'left');
   });
+  txt('METRİKLER', 500, 484, K.mut, 18);
 
-  /* ROC */
-  const R2 = plot(rect(1120,470,300,220), 0,1, 0,1);
+  /* ── ROC (sağ alt) ── */
+  const R2 = plot(rect(1080,510,320,196), 0,1, 0,1);
   frame(R2,'yanlış alarm oranı','yakalama oranı',[0,0.5,1],[0,0.5,1]);
   const roc = dolROC();
-  cx.strokeStyle = 'rgba(132,148,168,.4)'; cx.lineWidth = 2; cx.setLineDash([5,5]);
-  cx.beginPath(); cx.moveTo(R2.sx(0),R2.sy(0)); cx.lineTo(R2.sx(1),R2.sy(1)); cx.stroke(); cx.setLineDash([]);
+  cx.setLineDash([5,5]); cx.strokeStyle = 'rgba(132,148,168,.4)'; cx.lineWidth = 2;
+  cx.beginPath(); cx.moveTo(R2.sx(0),R2.sy(0)); cx.lineTo(R2.sx(1),R2.sy(1)); cx.stroke();
+  cx.setLineDash([]);
   cx.strokeStyle = K.green; cx.lineWidth = 3.5; cx.beginPath();
   roc.P.forEach((p,i) => i ? cx.lineTo(R2.sx(p[0]),R2.sy(p[1])) : cx.moveTo(R2.sx(p[0]),R2.sy(p[1])));
   cx.stroke();
   dot(R2.sx(m.yanlisPozOran), R2.sy(m.duyarlilik), 9, K.orange);
-  txt('ROC · AUC = '+roc.auc.toFixed(3), R2.R.x+R2.R.w/2, R2.R.y-16, K.mut, 18);
+  txt('ROC  ·  AUC = '+roc.auc.toFixed(3), R2.R.x+R2.R.w/2, 484, K.mut, 18);
 
   durum(m.duyarlilik < 0.05
-    ? 'eşik çok yüksek — doğruluk %'+(m.dogruluk*100).toFixed(1)+' ama '+m.FN+' dolandırıcılık KAÇTI'
-    : (m.kesinlik < 0.15 ? 'eşik çok düşük — '+m.FP+' masum işlem boşuna bloklandı'
-                         : 'dengeli bölge · '+m.TP+' yakalandı, '+m.FN+' kaçtı, '+m.FP+' yanlış alarm'),
+    ? 'eşik çok yüksek · doğruluk %'+(m.dogruluk*100).toFixed(1)+' ama '+m.FN+' dolandırıcılık KAÇTI'
+    : (m.kesinlik < 0.15 ? 'eşik çok düşük · '+m.FP+' masum işlem boşuna bloklandı'
+                         : m.TP+' yakalandı · '+m.FN+' kaçtı · '+m.FP+' yanlış alarm'),
     m.duyarlilik < 0.05 ? K.red : (m.kesinlik < 0.15 ? K.orange : K.green));
 };
 
@@ -1735,7 +1733,7 @@ VIZ.bolunmeAra = s => {
   const gs = gini(sol), gg = gini(sag);
   const kazanc = sol.length && sag.length ? g0 - (sol.length*gs + sag.length*gg)/240 : 0;
   baslikSerit('BÖLÜNME NASIL SEÇİLİR?', 'Her aday eşik denenir, Gini kazancı hesaplanır, en büyüğü kazanır.',
-    [['GİNİ (ebeveyn)', g0.toFixed(3), K.mut], ['KAZANÇ', kazanc.toFixed(4), kazanc>0.10?K.green:K.orange]]);
+    [['GİNİ', g0.toFixed(3), K.mut], ['KAZANÇ', kazanc.toFixed(4), kazanc>0.10?K.green:K.orange]]);
   const P = plot(rect(110,190,540,480), 0,10, 0,10);
   frame(P,'x','y',[0,2,4,6,8,10],[0,2,4,6,8,10]);
   cx.fillStyle = 'rgba(76,196,255,.07)';
@@ -1743,7 +1741,7 @@ VIZ.bolunmeAra = s => {
      : cx.fillRect(P.R.x, P.R.y, P.sx(t)-P.R.x, P.R.h);
   AGAC_VERI.X.forEach((p,i) => {
     const c = AGAC_VERI.Y[i] ? K.green : K.pink;
-    dot(P.sx(p[0]),P.sy(p[1]),5.5,c); dot(P.sx(p[0]),P.sy(p[1]),5.5,'#0b1119',null,1.2);
+    dot(P.sx(p[0]),P.sy(p[1]),6,c); dot(P.sx(p[0]),P.sy(p[1]),6,'#0b1119',null,1.4);
   });
   cx.save(); cx.shadowColor = K.orange; cx.shadowBlur = 14;
   cx.strokeStyle = K.orange; cx.lineWidth = 4; cx.beginPath();
@@ -1765,13 +1763,13 @@ VIZ.bolunmeAra = s => {
       if (ilk){ cx.moveTo(R2.sx(tt),R2.sy(kz)); ilk = false; } else cx.lineTo(R2.sx(tt),R2.sy(kz));
     }
     cx.stroke();
-    txt(o ? 'y ekseni' : 'x ekseni', R2.R.x+R2.R.w-14, R2.R.y+26+o*24, o?K.blue:K.purple, 17, 'right');
+    txt(o ? 'y ekseni' : 'x ekseni', R2.R.x+R2.R.w-14, R2.R.y+R2.R.h-38+o*24, o?K.blue:K.purple, 17, 'right');
   });
   dot(R2.sx(t), R2.sy(Math.max(0,kazanc)), 8, K.orange);
   cx.setLineDash([5,5]); cx.strokeStyle = 'rgba(34,211,160,.6)'; cx.lineWidth = 2;
   cx.beginPath(); cx.moveTo(R2.R.x,R2.sy(0.1107)); cx.lineTo(R2.R.x+R2.R.w,R2.sy(0.1107)); cx.stroke();
   cx.setLineDash([]);
-  txt('en iyi = 0.1107  (y ≤ 3.95)', R2.R.x+R2.R.w-14, R2.sy(0.1107)-10, K.green, 17, 'right');
+  txt('en iyi = 0.1107   (y ≤ 3.95)', R2.R.x+14, R2.sy(0.1107)-12, K.green, 17, 'left');
   /* hesap kutusu */
   box(770, 545, 620, 150, 'rgba(255,255,255,.03)', K.line, 2);
   const sat = [
@@ -2153,13 +2151,13 @@ VIZ.softTree = s => {
     AGAC_VERI.X.forEach((p,i) => { const c = AGAC_VERI.Y[i] ? K.green : K.pink;
       dot(P.sx(p[0]),P.sy(p[1]),4.5,c); dot(P.sx(p[0]),P.sy(p[1]),4.5,'#0b1119',null,1); });
     txt(baslik, P.R.x+P.R.w/2, 186, renk, 22);
-    txt(altYazi, P.R.x+P.R.w/2, P.R.y+P.R.h+50, K.mut, 18);
+    txt(altYazi, P.R.x+P.R.w/2, P.R.y+P.R.h+42, K.mut, 18);
   };
   ciz(90,  'CART  ·  derinlik 4', x => agacTahminP(cart,x), K.orange,
       '17 parametre  ·  merdiven  ·  %'+(cd*100).toFixed(1));
   ciz(760, 'SOFT TREE  ·  derinlik 1', st.tahmin, K.green,
       '5 parametre  ·  çapraz  ·  %'+(st.dogruluk*100).toFixed(1));
-  txt('sarı kesikli = gerçek sınır (x+y=10)', 750, 700, K.yellow, 18);
+  txt('sarı kesikli = gerçek sınır (x + y = 10)', 750, 736, K.yellow, 17);
   durum(T < 0.8 ? '⚠ T çok küçük — sigmoid doydu, gradyan kayboldu, model ÖĞRENEMEDİ (%'+(st.dogruluk*100).toFixed(1)+')'
       : 'T = '+T.toFixed(2)+' · soft tree 5 parametreyle CART\'ın 17 parametresini geçti',
       T < 0.8 ? K.red : K.green);

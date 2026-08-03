@@ -1585,7 +1585,7 @@ DERSLER['metrikler'] = {
     t:'%97 doğrulukla hiçbir şey yapmayan model',
     goal:'Dengesiz veride doğruluğun neden anlamsız olduğunu, sayılarla göreceksin.',
     todo:'Eşiği en sağa, <b>0.99</b>\'a çek. Doğruluğa ve kaçan dolandırıcılık sayısına aynı anda bak.',
-    kind:'controls', viz:'metrik', h:760,
+    kind:'controls', viz:'metrik', h:770,
     controls:[{k:'esik', lb:'KARAR EŞİĞİ', min:0.02, max:0.99, step:0.01, val:0.5, fmt:v=>v.toFixed(2)}],
     live:s => { const m = dolMatris(s.esik);
       return [['DOĞRULUK','%'+(m.dogruluk*100).toFixed(1), K.blue],
@@ -1611,7 +1611,7 @@ DERSLER['metrikler'] = {
     t:'İki soru, iki metrik',
     goal:'Kesinlik ve duyarlılığı — ve aralarındaki kaçınılmaz takası — kendi elinle göreceksin.',
     todo:'Eşiği <b>0.70\'ten 0.30\'a</b> yavaşça indir. İki çubuğun ters yönlerde hareket ettiğine dikkat et.',
-    kind:'controls', viz:'metrik', h:760,
+    kind:'controls', viz:'metrik', h:770,
     controls:[{k:'esik', lb:'KARAR EŞİĞİ', min:0.02, max:0.99, step:0.01, val:0.70, fmt:v=>v.toFixed(2)}],
     live:s => { const m = dolMatris(s.esik);
       return [['KESİNLİK','%'+(m.kesinlik*100).toFixed(1), K.green],
@@ -1651,7 +1651,7 @@ DERSLER['metrikler'] = {
     t:'ROC ve AUC: eşikten bağımsız bakmak',
     goal:'Tek bir eşiğe bağlı kalmadan modelin gerçek ayırt etme gücünü ölçmeyi öğreneceksin.',
     todo:'Eşiği baştan sona gezdir ve sağ alttaki ROC eğrisinde turuncu noktanın nasıl yürüdüğünü izle.',
-    kind:'controls', viz:'metrik', h:760,
+    kind:'controls', viz:'metrik', h:770,
     controls:[{k:'esik', lb:'KARAR EŞİĞİ', min:0.02, max:0.99, step:0.01, val:0.5, fmt:v=>v.toFixed(2)}],
     live:s => { const m = dolMatris(s.esik);
       return [['YANLIŞ ALARM ORANI', (m.yanlisPozOran*100).toFixed(1)+'%'],
@@ -2339,7 +2339,7 @@ DERSLER['soft-tree'] = {
     t:'Merdiven mi, çapraz mı?',
     goal:'Yumuşak kapının klasik ağaca göre somut kazancını, aynı veri üzerinde yan yana göreceksin.',
     todo:'Sıcaklık T\'yi <b>0.3\'ten 3.0\'a</b> çek. İki panelin sınır şekillerini ve doğruluklarını karşılaştır.',
-    kind:'controls', viz:'softTree', h:760,
+    kind:'controls', viz:'softTree', h:820,
     controls:[{k:'T', lb:'SICAKLIK T', min:0.3, max:3, step:0.1, val:0.3, fmt:v=>v.toFixed(1)}],
     live:s => { const st = softTreeEgit(3000, 2, s.T);
       return [['T', s.T.toFixed(1)],
@@ -2367,7 +2367,7 @@ DERSLER['soft-tree'] = {
     t:'Ama bedava değil: T çok küçükse eğitilemiyor',
     goal:'Sıcaklık kadranının diğer ucundaki bedeli — ve bunun neden kaçınılmaz olduğunu — göreceksin.',
     todo:'T\'yi <b>0.3\'e</b> indir ve doğruluğa bak. Sonra 1.0\'a, sonra 2.0\'a.',
-    kind:'controls', viz:'softTree', h:760,
+    kind:'controls', viz:'softTree', h:820,
     controls:[{k:'T', lb:'SICAKLIK T', min:0.3, max:3, step:0.1, val:2, fmt:v=>v.toFixed(1)}],
     live:s => { const st = softTreeEgit(3000, 2, s.T);
       return [['T', s.T.toFixed(1)], ['DOĞRULUK','%'+(st.dogruluk*100).toFixed(1), st.dogruluk>0.9?K.green:K.red],
@@ -2409,7 +2409,7 @@ DERSLER['soft-tree'] = {
     t:'Peki bu fark gerçek mi?',
     goal:'Rota 0\'da öğrendiğin istatistiksel disiplini, kendi modeline uygulayacaksın. Halka burada kapanıyor.',
     todo:'Metni oku, senaryoyu çöz.',
-    kind:'controls', viz:'softTree', h:760,
+    kind:'controls', viz:'softTree', h:820,
     controls:[{k:'T', lb:'SICAKLIK T', min:0.3, max:3, step:0.1, val:2, fmt:v=>v.toFixed(1)}],
     body:'<p>Elimizde iki sayı var: <b>CART %92.5</b> ve <b>soft tree %94.2</b>. Fark 1.7 puan.</p>' +
       '<p>Şimdi Rota 0\'daki dersi hatırla: <b>bu sayılar tek bir eğitimden geldi ve tüm veri üzerinde ölçüldü.</b> ' +
