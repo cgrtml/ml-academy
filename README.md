@@ -1,81 +1,88 @@
 # ML Academy
 
-Sıfırdan yapay zekâ öğrenmek isteyenler için hazırlanmış, tamamen tarayıcıda çalışan interaktif bir kurs.
+[Türkçe](README.tr.md) · **English**
 
-Video yok, kurulum yok, üyelik yok. `index.html` dosyasını açıp başlıyorsunuz.
+An interactive course that teaches machine learning from scratch, running entirely in the browser.
 
-**[Canlı demo](https://cagritemel.com/ml-academy/)**
+No videos, no installation, no accounts. Open `index.html` and start.
 
-![ML Academy ana sayfa](docs/img/anasayfa.png)
+**[Live demo](https://cagritemel.com/ml-academy/)**
 
-![Bir model nasıl öğrenir dersi](docs/img/ders.png)
+> **Note on language.** The course content is currently in Turkish. The home page has a TR/EN toggle,
+> so the curriculum map, track names and navigation read in English. Lesson pages and the model catalogue
+> are still Turkish. A full translation is on the roadmap. Everything else in this repository (code,
+> structure, verification suite) is language independent.
 
-## Neden yaptım
+![ML Academy home page](docs/img/anasayfa.png)
 
-İnteraktif makine öğrenmesi anlatan güzel siteler var. TensorFlow Playground, Distill.pub, Seeing Theory, Poloclub'ın CNN ve Transformer Explainer'ları. Hepsi iyi işler.
+![Lesson: how does a model learn](docs/img/ders.png)
 
-Ama hepsinin ortak bir eksiği var: size gösteriyorlar, öğrenip öğrenmediğinizi kontrol etmiyorlar. Bir kaydırıcıyı oynatıyorsunuz, "güzelmiş" deyip geçiyorsunuz. Kimse sizden tahmin yürütmenizi istemiyor, kimse güncelleme kuralını yazdırmıyor, kimse sezginizin yanlış olduğunu söylemiyor.
+## Why I built this
 
-Bu kurs o boşluğu kapatmak için yazıldı. Her derste üç şey var.
+There are good interactive sites for machine learning. TensorFlow Playground, Distill.pub, Seeing Theory, Poloclub's CNN and Transformer Explainers. All of them are solid work.
 
-### Görmeden önce tahmin etmek
+They share one gap: they show you things, but they never check whether you learned anything. You drag a slider, think "neat", and move on. Nobody asks you to commit to a prediction, nobody makes you write the update rule, nobody tells you your intuition was wrong.
 
-Animasyon çalışmadan önce bir cevap seçiyorsunuz. Sonra gerçek sonuç geliyor. Tutturma oranınız kalibrasyon skoru oluyor, yani sezginizin nerede güvenilmez olduğunu gösteren tek sayı.
+This course was built to close that gap. Every lesson does three things.
 
-### İhtiyacı hissettirmek
+### Predict before you see
 
-"İstatistiksel test önemlidir çünkü..." diye anlatmıyoruz. Önce bir model kuruyorsunuz, bir sayı çıkıyor, ona güveniyorsunuz. Sonra veriyi farklı bir rastgele tohumla tekrar bölüyorsunuz ve sıralamanın gözünüzün önünde tersine döndüğünü görüyorsunuz. Aracı ondan sonra tanıtıyoruz.
+Before the animation runs, you pick an answer. Then the real result arrives. Your hit rate becomes a calibration score, which is the one number that shows where your intuition is unreliable.
 
-### Çalıştırarak kanıtlamak
+### Feel the need before the tool
 
-Ders sonunda algoritma hakkında soru sorulmuyor, algoritmanın kendisi yazdırılıyor:
+We do not say "statistical testing matters because...". First you build a model, get a number, and trust it. Then you re-split the data with a different random seed and watch the ranking flip in front of you. Only then do we introduce the tool.
+
+### Prove it by running it
+
+Lessons do not end with a question about the algorithm. They end with the algorithm itself:
 
 ```python
-for adim in range(2000):
-    gw, gb = gradyan(w, b)
+for step in range(2000):
+    gw, gb = gradient(w, b)
     w = w [ ? ] lr [ ? ] gw
     b = b [ ? ] lr [ ? ] gb
 ```
 
-Boşlukları doldurup ÇALIŞTIR'a basıyorsunuz, kod gerçekten koşuyor. Eksi yazarsanız kayıp 2154'ten 5.20'ye düşüyor. Artı yazarsanız modelin tepeye tırmanıp patladığını izliyorsunuz, çünkü gradient ascent yazmış oluyorsunuz.
+You fill the blanks, press RUN, and the code actually executes. Write minus and the loss falls from 2154 to 5.20. Write plus and you watch the model climb the hill and blow up, because you just wrote gradient ascent.
 
-Yanlış cevap reddedilmiyor. Çalıştırılıyor ki ne olduğunu görün.
+Wrong answers are not rejected. They are executed so you can see what they do.
 
-## İçerik
+## Contents
 
-| Rota | Konu | Ders |
+| Track | Topic | Lessons |
 |---|---|---:|
-| 0 | Sıfırdan Başla: algoritma, veri, öğrenme, ezberleme, metrikler, veri sızıntısı, istatistiksel kanıt | 10 |
-| 1 | Klasik ML: k-NN, karar ağaçları, Random Forest, boosting, SVM, soft decision tree, PCA | 10 |
-| 2 | Derin Öğrenme: nöron, geri yayılım, optimizerlar, düzenlileştirme, batch norm, CNN, gömmeler, transfer | 10 |
-| 3 | Büyük Dil Modelleri: tokenizasyon, attention, transformer bloğu, örnekleme, RLHF, halüsinasyon, RAG, KV cache | 10 |
-| 4 | AI Kullanma: prompt, eval seti, Elo karşılaştırma, RAG hata ayıklama, ajanlar, LLM-judge, kırmızı takım, maliyet | 8 |
+| 0 | Start from zero: algorithms, data, learning, overfitting, metrics, data leakage, statistical evidence | 10 |
+| 1 | Classical ML: k-NN, decision trees, random forests, boosting, SVM, soft decision trees, PCA | 10 |
+| 2 | Deep learning: neurons, backpropagation, optimizers, regularization, batch norm, CNNs, embeddings, transfer | 10 |
+| 3 | Large language models: tokenization, attention, transformer block, sampling, RLHF, hallucination, RAG, KV cache | 10 |
+| 4 | Using AI: prompting, eval sets, Elo comparison, RAG debugging, agents, LLM-as-judge, red teaming, cost | 8 |
 
-Toplam 48 ders, 108 etkileşimli adım, 60 kilit açan soru, 47 kilit koşulu, 143 akademik kaynak.
+48 lessons, 108 interactive steps, 60 gating questions, 47 unlock conditions, 143 academic references.
 
-Ayrıca 25 modellik bir model kataloğu var. Her model için ne yaptığı, nasıl çalıştığı, ne zaman kullanılacağı, ne zaman kullanılmayacağı, çalışan kod, kilit hiperparametreler ve klasik tuzak yazıyor.
+There is also a catalogue of 25 models. For each one it lists what it does, how it works, when to use it, when **not** to use it, working code, key hyperparameters and the classic pitfall.
 
-## Örnek olarak neler yapabilirsiniz
+## Some things you can actually do
 
-Doğruyu önce kendi elinizle oturtup sonra gradient descent'in sizi geçmesini izlemek.
+Fit a line by hand first, then watch gradient descent beat your best score.
 
-Polinom derecesini 9'a çıkarıp eğitim hatasının 0.0000'a inerken test hatasının 2.11'e fırladığını görmek.
+Push polynomial degree to 9 and see training error hit 0.0000 while test error jumps to 2.11.
 
-Soft decision tree eğitmek. 5 parametre ile CART'ın 17 parametresini geçiyor (%93.8'e karşı %92.5). Sonra sıcaklığı 0.3'e indirip modelin hiç öğrenemediğini görmek, çünkü sigmoid doyuyor ve gradyan kayboluyor.
+Train a soft decision tree. Five parameters beat CART's seventeen (93.8% against 92.5%). Then drop the temperature to 0.3 and watch it fail to learn at all, because the sigmoid saturates and the gradient vanishes.
 
-Tarayıcıda gerçek bir sinir ağının eğitilmesini izlemek. Halka verisinde %51.7'den %100'e çıkıyor, gerçek geri yayılımla.
+Watch a real neural network train in your browser. On a ring dataset it goes from 51.7% to 100% with actual backpropagation.
 
-Kaybolan gradyanı ölçmek. Sigmoid'de gradyan 10 katmanda yaklaşık bir milyon kat eriyor. Teorik değer `0.25^9 = 3.8e-6`, ölçülen değer `1.06e-6`.
+Measure vanishing gradients. In a sigmoid network the gradient shrinks by roughly a million times across ten layers. Theory says `0.25^9 = 3.8e-6`, the measurement says `1.06e-6`.
 
-Llama-7B'nin parametre sayısını elle hesaplamak. Blok başına 202.4M, çarpı 32 katman, artı gömmeler, toplam 6.74 milyar. Gerçek değerle birebir aynı.
+Derive Llama-7B's parameter count by hand. 202.4M per block, times 32 layers, plus embeddings, gives 6.74 billion. That is exactly the real number.
 
-Uzun bağlamın neden bir bellek problemi olduğunu görmek. 128 bin tokenlik bağlamda KV cache 68.7 GB tutuyor, yani modelin ağırlıklarının beş katı.
+See why long context is a memory problem rather than a compute problem. At 128K tokens the KV cache holds 68.7 GB, five times the model weights.
 
-10 örneklik bir eval setinin neden hiçbir şey söylemediğini anlamak. Gözlenen %80, gerçekte %49 ile %94 arasında herhangi bir şey olabilir.
+Find out why a 10 sample eval set tells you nothing. An observed 80% could be anything between 49% and 94%.
 
-Tarayıcıda gerçek scikit-learn ile 5x2cv F-testi çalıştırmak ve hangi testin doğru test olduğunu seçmek.
+Run a real 5x2cv F-test on scikit-learn in the browser and pick which test is even the correct one.
 
-## Kurulum
+## Setup
 
 ```bash
 git clone https://github.com/cgrtml/ml-academy.git
@@ -83,82 +90,82 @@ cd ml-academy
 open index.html
 ```
 
-Yerel sunucu isterseniz:
+Or with a local server:
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Bağımlılık yok, derleme adımı yok, sunucu gerekmiyor. Sadece bir ders (istatistiksel model karşılaştırma) tarayıcıda scikit-learn çalıştırmak için Pyodide'yi CDN'den yüklüyor.
+No dependencies, no build step, no server required. One lesson loads Pyodide from a CDN so it can run scikit-learn in the browser.
 
-## Mimari
+## Architecture
 
-İçerik veri olarak tutuluyor, kod olarak değil. Yeni ders eklemek bir nesne yazmak demek, bileşen yazmak değil.
+Content is stored as data, not code. Adding a lesson means writing an object, not a component.
 
 ```
-index.html        müfredat ana sayfası, ilerleme, kaldığın yerden devam
-lesson.html       ders motoru: 4 adım tipi, kilitler, XP, kaynaklar
-content.js        müfredatın kendisi: 48 ders, 108 adım, 143 referans
-viz.js            54 görselleştirme ve bütün algoritma motorları
-modeller.html     model kataloğu
-ders-kanit.html   Pyodide ile 5x2cv F-testi dersi
-dogrula.sh        doğrulama scripti
+index.html        curriculum home, progress, resume where you left off
+lesson.html       lesson engine: 4 step kinds, gating, XP, sources
+content.js        the curriculum itself: 48 lessons, 108 steps, 143 references
+viz.js            54 visualizations and every algorithm engine
+modeller.html     model catalogue
+ders-kanit.html   5x2cv F-test lesson running on Pyodide
+dogrula.sh        verification script
 ```
 
-Dört adım tipi var:
+There are four step kinds:
 
-| Tip | Davranış |
+| Kind | Behaviour |
 |---|---|
-| `static` | tek görsel ve metin |
-| `phases` | ileri geri düğmeleriyle aşama aşama, kod satırı vurgulu |
-| `controls` | kaydırıcılar animasyonu sürüyor, isteğe bağlı kilit koşulu |
-| `play` | otomatik oynayan animasyon, duraklat ve kaydırma çubuğu |
+| `static` | a single visualization and prose |
+| `phases` | step through stages with back and forward buttons, code line highlighting |
+| `controls` | sliders drive the animation, optional unlock condition |
+| `play` | animation plays automatically, with pause and scrubber |
 
-Her adıma bir soru (`quiz`) veya çalışan bir kod alıştırması (`kodlab`) eklenebiliyor.
+Any step can carry a question (`quiz`) or a working code exercise (`kodlab`).
 
-Bütün algoritmalar `viz.js` içinde sıfırdan yazıldı. Gini kazançlı CART, bootstrap ve rastgele özellikli Random Forest, gradient boosting kütükleri, geri yayılımlı MLP, lojistik regresyon, lineer SVM, soft decision tree, k-means, Jacobi özçözümlü PCA, BPE tokenizer, negatif örneklemeli skip-gram word2vec, Elo sıralaması. Hiçbir kütüphane kullanılmadı. Derslerdeki bütün sayılar bu motorlardan çıkıyor.
+Every algorithm in `viz.js` was written from scratch: CART with Gini gain, random forest with bootstrap and feature subsampling, gradient boosting stumps, an MLP with backpropagation, logistic regression, linear SVM, soft decision trees, k-means, PCA with Jacobi eigendecomposition, a BPE tokenizer, skip-gram word2vec with negative sampling, and Elo ratings. No libraries. Every number in every lesson comes out of these engines.
 
-## Doğrulama
+## Verification
 
 ```bash
 ./dogrula.sh
 ```
 
-Üç aşama var.
+Three stages.
 
-**Sözdizimi.** Altı kaynak dosyanın hepsi ayrıştırılıyor.
+**Syntax.** All six source files are parsed.
 
-**Sayı ve yapı.** 153 sayısal iddia yeniden hesaplanıp ders metninde yazan değerle karşılaştırılıyor. Her soru indeksi kontrol ediliyor, her şıkkın açıklaması olması zorunlu tutuluyor, 47 kilit koşulunun tamamının parametre uzayı taranarak açılabilir olduğu kanıtlanıyor, `derive` ve `control` anahtar çakışmaları yakalanıyor.
+**Numbers and structure.** 153 numeric claims are recomputed and compared against what the lessons say. Every quiz index is checked, every option is required to have an explanation, all 47 unlock conditions are proven reachable by sweeping the parameter space, and `derive`/`control` key collisions are caught.
 
-**Çizim.** 54 görselin hepsi sahte bir canvas üzerinde 364 farklı durumda çiziliyor.
+**Rendering.** All 54 visualizations are drawn against a stub canvas across 364 states.
 
-Bu script gerçek hatalar yakaladı. Tarayıcıda ders çökerten iki anahtar çakışması, yanlış tensör üzerinden hesaplanan bir doygunluk metriği, eski bir hiperparametreden kalma beş ders sayısı ve test edilemeyen bir `Path2D` bağımlılığı.
+This script has caught real bugs. Two key collisions that crashed lessons in the browser, a saturation metric computed on the wrong tensor, five lesson numbers left over from an earlier hyperparameter, and an untestable `Path2D` dependency.
 
-Kural şu: bir sayı, testi onu yeniden hesaplamıyorsa derste yer alamaz.
+The rule is simple: a number does not appear in a lesson unless a test recomputes it.
 
-## Yol haritası
+## Roadmap
 
-- [ ] Bilinen arayüz hatalarının temizlenmesi
-- [ ] İngilizce çeviri (altyapı hazır, önceki projede 6 dil çalışıyordu)
-- [ ] Gerçek bir model uç noktasına bağlı interaktif Prompt Arena
-- [ ] Eğitmen modu: öğrenci başına farklı tohumla ödev üretici, böylece kopya yapısal olarak imkânsız
-- [ ] Ders slaytlarına ve LMS'e gömülebilir widget'lar
-- [ ] Alpaydın, Bishop ve Hastie kitaplarıyla bölüm eşlemesi
+- [ ] Clean up remaining interface bugs
+- [ ] Full English translation of lesson pages and the model catalogue
+- [ ] Interactive Prompt Arena backed by a real model endpoint
+- [ ] Instructor mode with per student seeds, so answers cannot be copied
+- [ ] Embeddable widgets for lecture slides and LMS platforms
+- [ ] Chapter mapping to Alpaydın, Bishop and Hastie
 
-## Katkı
+## Contributing
 
-En değerli katkı yeni bir ders. `content.js` içine nesneyi yazın, gerekiyorsa `viz.js` içine görselleştirmeyi ekleyin, sayısal iddialarınızı `denetim.js` içine koyun ve `./dogrula.sh` çalıştırın.
+The most valuable contribution is a new lesson. Write the object in `content.js`, add a visualization to `viz.js` if you need one, put your numeric claims in `denetim.js`, and run `./dogrula.sh`.
 
-Pedagoji hataları da kod hataları kadar değerli. Bir adım kafanızı karıştırdıysa o bir hatadır, issue açın.
+Pedagogy bugs are as welcome as code bugs. If a step confused you, that is a bug worth reporting.
 
-## Kaynaklar
+## Sources
 
-Her ders, dayandığı akademik kaynaklarla birlikte geliyor. Toplam 143 referans var. Örnek olarak: CART için Breiman ve arkadaşları 1984, Random Forest için Breiman 2001, gradient boosting için Friedman 2001, SVM için Cortes ve Vapnik 1995, attention için Vaswani ve arkadaşları 2017, soft decision tree için İrsoy, Yıldız ve Alpaydın 2012, 5x2cv F-testi için Alpaydın 1999.
+Every lesson ships with the academic work it is based on. There are 143 references in total. A few examples: Breiman and colleagues 1984 for CART, Breiman 2001 for random forests, Friedman 2001 for gradient boosting, Cortes and Vapnik 1995 for SVM, Vaswani and colleagues 2017 for attention, İrsoy, Yıldız and Alpaydın 2012 for soft decision trees, Alpaydın 1999 for the 5x2cv F-test.
 
-## Lisans
+## License
 
 MIT
 
-## Yazar
+## Author
 
-[Cagri Temel](https://cagritemel.com). [`neural-trees`](https://github.com/cgrtml/neural-trees) kütüphanesinin yazarı.
+[Cagri Temel](https://cagritemel.com), author of the [`neural-trees`](https://github.com/cgrtml/neural-trees) library.
