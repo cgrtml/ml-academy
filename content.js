@@ -106,6 +106,9 @@ DERSLER['veri'] = {
     body:'<p>10 öğrenci. Herkes için iki bilgi topladık: <b>haftada kaç saat çalıştığı</b> ve <b>sınavdan aldığı puan</b>.</p>' +
          '<p>Bu kadar. Makine öğrenmesinin başladığı yer bu, sihirli bir şey değil, bir tablo.</p>' +
          '<p>Amacımız şu: bu tablodan öyle bir kural çıkaralım ki, <b>tabloda olmayan</b> yeni bir öğrenci için de puan tahmin edebilelim.</p>',
+    learned:'<b>Makine öğrenmesi bir tabloyla başlar.</b> Satırlar kimi ölçtüğümüzü, sütunlar neyi ölçtüğümüzü söyler. ' +
+      'Sihirli bir kutu yok, elde sadece ölçülmüş sayılar var.<br><br>' +
+      'Ve hedef bu tabloyu özetlemek değil: tabloda <b>olmayan</b> bir öğrenci için tahmin üretebilmek.',
     xp:10,
   },
   {
@@ -144,6 +147,9 @@ DERSLER['veri'] = {
       '<p>Model bu çiftlere tek tek bakarak "x ile y arasında nasıl bir ilişki var?" sorusunu cevaplamaya çalışır.</p>' +
       '<p><b>Örnek sayısı kritiktir.</b> 10 örnekle bulduğun ilişki tesadüf olabilir; 10.000 örnekle bulduğun genelde gerçektir. ' +
       'Az veriyle çalışırken "bu gerçek mi tesadüf mü?" sorusu hayati hâle gelir, Rota 0\'ın son dersi tam olarak bu.</p>',
+    learned:'<b>Bir satır = bir örnek = bir (x, y) çifti.</b> Model kuralı bu çiftlere tek tek bakarak çıkarır.<br><br>' +
+      'Örnek sayısı sonucun ne kadar güvenilir olduğunu belirler. 10 örnekle gördüğün ilişki tesadüf olabilir, ' +
+      '10.000 örnekle gördüğün genelde gerçektir. Bu ayrımı yapmanın yolu Rota 0\'ın son dersinde.',
     xp:15,
   },
   {
@@ -158,6 +164,9 @@ DERSLER['veri'] = {
                      : '<p><b>İşte veri budur.</b> Aynı bilgi, ama artık ilişkiyi <i>görüyorsun</i>: noktalar sağa doğru yükseliyor. ' +
                        'Çalışma saati arttıkça puan artıyor.</p><p>Modelin işi bu yükselişi <b>sayısal bir kurala</b> çevirmek.</p>')});
       return F; },
+    learned:'<b>Aynı veri, iki farklı gösterim.</b> Tabloda satır satır okuduğun ilişki grafikte tek bakışta görünüyor: ' +
+      'noktalar sağa doğru yükseliyor, çalışma saati arttıkça puan artıyor.<br><br>' +
+      'Bundan sonraki derslerin çoğu bu grafiğin üstünde geçecek, çünkü bir modelin ne yaptığını en hızlı böyle görürsün.',
     xp:15,
   },
   {
@@ -201,6 +210,9 @@ DERSLER['ezber'] = {
       '<p><b style="color:#22d3a0">Sağda kural öğrenen model.</b> Noktalardan tek bir doğru çıkarmış: <b>ŷ = 7.73·x + 20.8</b>. ' +
       'Hiçbir noktadan tam geçmiyor ama hepsinin eğilimini yakalamış.</p>' +
       '<p>Şimdi kritik soru: <b>hangisi daha iyi?</b> Grafiğe bakarak karar veremezsin. Ezberleyen model noktalara <i>daha yakın</i> görünüyor bile.</p>',
+    learned:'<b>Aynı veriye iki farklı yaklaşım: ezberlemek ve kural çıkarmak.</b> Ezberleyen model en yakın kaydı kopyalıyor, ' +
+      'kural öğrenen model tek bir formüle indirgiyor: ŷ = 7.73·x + 20.8.<br><br>' +
+      'Grafiğe bakarak hangisinin iyi olduğuna karar veremezsin. Karar için bir ölçüye ihtiyacın var, sıradaki adımda onu deneyeceğiz.',
     xp:10,
   },
   {
@@ -219,6 +231,9 @@ DERSLER['ezber'] = {
         '<p style="color:#facc15"><b>Buraya dikkat:</b> eğer modeli sadece eğitim verisiyle değerlendirseydin, ezberleyen modeli seçerdin. ' +
         'Ve çok kötü bir karar vermiş olurdun.</p>'},
     ],
+    learned:'<b>Eğitim verisinde ezber her zaman kazanır.</b> x = 4 için ezberleyen 51 (gerçek 51), kural öğrenen 51.7. ' +
+      'x = 8 için ezberleyen 80 (gerçek 80), kural öğrenen 82.6.<br><br>' +
+      'Ezberleyenin eğitim hatası tam sıfır. Yani modeli öğrendiği veriyle ölçersen <b>her zaman yanlış modeli seçersin</b>.',
     xp:20,
   },
   {
@@ -241,6 +256,10 @@ DERSLER['ezber'] = {
       'x pürüzsüz değişince cevap da pürüzsüz değişiyor.</p>' +
       '<p>Örneğin <b>x = 6.5</b>: ezberleyen "66" diyor (6 saatlik öğrencinin puanı), kural öğrenen "71" diyor. ' +
       'Hangisi mantıklı? 6 saat 66, 7 saat 78 alıyorsa, 6.5 saat için 66 demek açıkça yanlış.</p>',
+    learned:'<b>Genelleme = görmediği girdide makul cevap verebilmek.</b> x = 6.5 için ezberleyen 66 diyor ' +
+      '(6 saatlik öğrencinin puanını kopyalıyor), kural öğrenen 71 diyor.<br><br>' +
+      '6 saat 66, 7 saat 78 alıyorsa 6.5 saat için 66 açıkça yanlış. Ezberleyenin basamaklı çizgisinin anlamı bu: ' +
+      'aradaki her değeri en yakın kayda yuvarlıyor.',
     xp:25,
   },
   {
@@ -586,6 +605,9 @@ DERSLER['ezberleme'] = {
         '<p>Model 10 mavi noktadan öğrenecek, sonra 4 turuncu noktada sınav olacak. ' +
         'Bu, "önceki derste ezberleyen modeli nasıl yakalarız?" sorusunun cevabı: <b>eğitim / test ayrımı</b>.</p>'},
     ],
+    learned:'<b>Veriyi ikiye ayırmak bir formalite değil, tek dürüst ölçüm yöntemidir.</b> 14 noktanın 4 tanesini gizledik, ' +
+      'model onları hiç görmeyecek ve sınav tam orada olacak.<br><br>' +
+      'Bir önceki dersteki soru buydu: ezberleyen modeli nasıl yakalarız? Cevap: ona görmediği veriyi sorarak.',
     xp:20,
   },
   {
@@ -913,6 +935,9 @@ DERSLER['algoritma'] = {
       '<p>Bilgisayarın elindeki tek yetenek şu: <b>iki sayıyı karşılaştır</b> ve <b>iki kutunun yerini değiştir</b>. Başka hiçbir şey.</p>' +
       '<p><b>Algoritma</b> = bu iki hamleyle işi bitiren, hiç boşluk bırakmayan tarif. ' +
       '“Sırala” bir algoritma değildir. “İlk ikiliye bak, ters ise takas et, bir sağa kay, tekrarla” bir algoritmadır.</p>',
+    learned:'<b>Bilgisayarın elinde iki hamle var: karşılaştır ve takas et.</b> Sen sekiz kutuyu bir bakışta sıralarsın ' +
+      'çünkü hepsini aynı anda görürsün, bilgisayar göremez.<br><br>' +
+      'Bu yüzden \"sırala\" bir algoritma değildir. Algoritma, bu iki hamleyle işi bitiren ve hiçbir adımı yoruma bırakmayan tariftir.',
     xp:10,
   },
   {
@@ -953,6 +978,10 @@ DERSLER['algoritma'] = {
                    'Bilgisayar hiçbir noktada resmin tamamını görmedi, sadece komşu ikilileri karşılaştırdı.</p>'});
       return F;
     },
+    learned:'<b>Bubble sort tek bir kuralı tekrar eder: komşu ikiliye bak, ters ise takas et, bir sağa kay.</b> ' +
+      'Bu 8 elemanlı dizide toplam 28 karşılaştırma ve 13 takas yaptı.<br><br>' +
+      'Her turun sonunda kalan en büyük sayı kesin olarak sona ulaşıyor, sağdaki yeşil bölge bu yüzden büyüyor. ' +
+      'Algoritmanın doğruluğunun kanıtı da tam olarak bu cümle.',
     xp:10,
   },
   {
@@ -1860,6 +1889,9 @@ DERSLER['knn'] = {
       '2 · en yakın k tanesini seç<br>3 · çoğunluk hangi sınıfsa onu söyle</p>' +
       '<p>Yeşil kesikli çember, k. komşuya kadar olan yarıçap. k büyüdükçe çember genişler ve ' +
       'karar daha uzaktaki noktalardan etkilenir.</p>',
+    learned:'<b>k-NN eğitim yapmaz, veriyi hafızaya alır.</b> Tahmin anında sorgu noktasına en yakın k komşuyu bulur ' +
+      've çoğunluk hangi sınıfsa onu söyler. Buna tembel öğrenme denir.<br><br>' +
+      'Bedeli şurada: maliyet eğitimden tahmin anına kayar. Her tahmin, tüm veri noktalarına uzaklık hesaplamak demektir.',
     xp:10,
   },
   {
@@ -2666,6 +2698,9 @@ DERSLER['aktivasyon'] = {
       '· <b style="color:#22d3a0">ReLU:</b> pozitif bölgede türev tam <b>1</b>, negatifte 0. Hesabı bedava.<br>' +
       '· <b style="color:#fb923c">LeakyReLU:</b> negatifte 0 yerine 0.01, "ölü nöron" sorununa karşı.<br>' +
       '· <b style="color:#f472b6">GELU:</b> pürüzsüz, Transformer\'ların varsayılanı.</p>',
+    learned:'<b>Aktivasyon olmadan derinliğin hiçbir anlamı yok.</b> W₂(W₁x + b₁) + b₂ sadeleşince yine W\'x + b\' oluyor, ' +
+      'yani tek bir doğrusal katman. 100 katman koysan da sonuç değişmez.<br><br>' +
+      'Doğrusal olmayan aktivasyon bu zinciri kıran halkadır. Derin öğrenmeyi mümkün kılan tek şey budur.',
     xp:15,
   },
   {
