@@ -8,9 +8,11 @@ Video yok, kurulum yok, üyelik yok. `index.html` dosyasını açıp başlıyors
 
 **[Canlı demo](https://cagritemel.com/ml-academy/)**
 
-> **Dil hakkında.** Ders içerikleri Türkçe. Ana sayfada ve ders sayfalarında bir TR/EN düğmesi var;
-> İngilizceye alınca menüler, düğmeler, başlıklar ve ilerleme etiketleri İngilizce oluyor, ders metni
-> Türkçe kalıyor. Ders içeriğinin ve model kataloğunun tam çevirisi yol haritasında.
+> **Dil hakkında.** Ana sayfada ve her ders sayfasında bir TR/EN düğmesi var. Ders içeriği tek tek
+> çevriliyor: ilk ders, görsellerin üstündeki etiketler dâhil tamamen İngilizce ve müfredatta `EN`
+> etiketiyle işaretli. Henüz çevrilmemiş dersler İngilizce arayüzle birlikte Türkçe açılıyor.
+> Çeviriler `content-en.js` dosyasında duruyor, denetim betiği her çevirinin Türkçe aslıyla adım adım
+> aynı iskelete sahip olduğunu kontrol ediyor.
 
 ![ML Academy ana sayfa](docs/img/anasayfa.png)
 
@@ -105,6 +107,7 @@ Bağımlılık yok, derleme adımı yok, sunucu gerekmiyor. Sadece bir ders (ist
 index.html        müfredat ana sayfası, ilerleme, kaldığın yerden devam
 lesson.html       ders motoru: 4 adım tipi, kilitler, XP, kaynaklar
 content.js        müfredatın kendisi: 48 ders, 108 adım, 143 referans
+content-en.js     İngilizce ders içeriği, teker teker, content.js ile aynı yapıda
 viz.js            54 görselleştirme ve bütün algoritma motorları
 modeller.html     model kataloğu
 ders-kanit.html   Pyodide ile 5x2cv F-testi dersi
@@ -132,9 +135,9 @@ Bütün algoritmalar `viz.js` içinde sıfırdan yazıldı. Gini kazançlı CART
 
 Üç aşama var.
 
-**Sözdizimi.** Altı kaynak dosyanın hepsi ayrıştırılıyor.
+**Sözdizimi.** Yedi kaynak dosyanın hepsi ayrıştırılıyor.
 
-**Sayı ve yapı.** 153 sayısal iddia yeniden hesaplanıp ders metninde yazan değerle karşılaştırılıyor. Her soru indeksi kontrol ediliyor, her şıkkın açıklaması olması zorunlu tutuluyor, 47 kilit koşulunun tamamının parametre uzayı taranarak açılabilir olduğu kanıtlanıyor, `derive` ve `control` anahtar çakışmaları yakalanıyor.
+**Sayı ve yapı.** 153 sayısal iddia yeniden hesaplanıp ders metninde yazan değerle karşılaştırılıyor. Her soru indeksi kontrol ediliyor, her şıkkın açıklaması olması zorunlu tutuluyor, 47 kilit koşulunun tamamının parametre uzayı taranarak açılabilir olduğu kanıtlanıyor, `derive` ve `control` anahtar çakışmaları yakalanıyor. İngilizce çevrilen her ders, Türkçe aslıyla aynı adım sayısına, aynı adım tipine, aynı görsele, aynı kaydırıcı aralıklarına ve aynı doğru şık indeksine sahip olmak zorunda.
 
 **Çizim.** 54 görselin hepsi sahte bir canvas üzerinde 364 farklı durumda çiziliyor.
 
@@ -145,7 +148,7 @@ Kural şu: bir sayı, testi onu yeniden hesaplamıyorsa derste yer alamaz.
 ## Yol haritası
 
 - [ ] Bilinen arayüz hatalarının temizlenmesi
-- [ ] İngilizce çeviri (altyapı hazır, önceki projede 6 dil çalışıyordu)
+- [ ] Kalan 46 dersin ve model kataloğunun İngilizceye çevrilmesi
 - [ ] Gerçek bir model uç noktasına bağlı interaktif Prompt Arena
 - [ ] Eğitmen modu: öğrenci başına farklı tohumla ödev üretici, böylece kopya yapısal olarak imkânsız
 - [ ] Ders slaytlarına ve LMS'e gömülebilir widget'lar

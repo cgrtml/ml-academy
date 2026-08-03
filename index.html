@@ -163,6 +163,7 @@
 
 <script src="viz.js"></script>
 <script src="content.js"></script>
+<script src="content-en.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const PKEY = 'mlacad_v2';
@@ -212,7 +213,14 @@ function dilUygula(){
     el.innerHTML = DIL === 'en' ? (EN[k] || TR[k]) : TR[k];
   });
   document.documentElement.lang = DIL;
-  $('dilnot').style.display = DIL === 'en' ? 'block' : 'none';
+  if (DIL === 'en'){
+    const nCev = (typeof DERSLER_EN !== 'undefined') ? Object.keys(DERSLER_EN).length : 0;
+    const nTop = Object.keys(DERSLER).length;
+    $('dilnot').innerHTML = nCev + ' of ' + nTop + ' lessons are translated into English so far (look for the '
+      + '<b style="color:var(--green)">EN</b> tag). The rest still open in Turkish, with the interface in English. '
+      + 'The remaining lessons are being translated.';
+    $('dilnot').style.display = 'block';
+  } else $('dilnot').style.display = 'none';
   document.querySelectorAll('.dilbar button').forEach(b =>
     b.classList.toggle('on', b.dataset.dil === DIL));
   ciz();
@@ -234,7 +242,9 @@ $('rotalar').innerHTML = ROTALAR.map(r => {
   nToplam += r.dersler.length; nHazir += hazir;
   const kartlar = r.dersler.map((d,i) => {
     const p = PROG[d.id];
-    const ders = DERSLER[d.id];
+    const enDers = (typeof DERSLER_EN !== 'undefined') ? DERSLER_EN[d.id] : null;
+    const cev = !!enDers;
+    const ders = (en && enDers) || DERSLER[d.id];
     const nAdim = ders ? ders.adimlar.length : 0;
     const bitti = p && nAdim && p.done.length >= nAdim;
     const oran = p && nAdim ? Math.round(p.done.length/nAdim*100) : 0;
@@ -243,9 +253,10 @@ $('rotalar').innerHTML = ROTALAR.map(r => {
     const link = d.durum === 'hazir' ? (d.dis || ('lesson.html?id=' + d.id)) : null;
     const inner =
       '<div class="no">'+(bitti ? '✓' : (i+1))+'</div>' +
-      '<div class="body"><div class="ad">'+d.ad+'</div>' +
+      '<div class="body"><div class="ad">'+((en && enDers) ? enDers.ad : d.ad)+'</div>' +
       '<div class="meta">' +
         '<span class="tag '+TAG[d.durum][1]+'">'+(en?EN.etiket[d.durum]:TAG[d.durum][0])+'</span>' +
+        (cev ? '<span class="tag t-hazir">EN</span>' : '') +
         (d.rozet ? '<span class="tag t-nt">'+d.rozet+'</span>' : '') +
         '<span>~'+d.sure+' '+(en?EN.dk:'dk')+'</span>' +
         (nAdim ? '<span>· '+nAdim+' '+(en?EN.adim:'adım')+'</span>' : '') +
@@ -273,15 +284,20 @@ $('sBitti').textContent = nBitti;
 
 /* kaldığın yerden devam */
 const sirali = ROTALAR.flatMap(r => r.dersler).filter(d => d.durum === 'hazir' && !d.dis);
-const devam = sirali.find(d => {
+const bitmedi = d => {
   const p = PROG[d.id], n = DERSLER[d.id] ? DERSLER[d.id].adimlar.length : 0;
   return !p || p.done.length < n;
-});
+};
+/* EN modunda İngilizceye çevrilmiş bir dersle başlat, yoksa normal sıraya dön */
+const devam = (en && typeof DERSLER_EN !== 'undefined'
+                 ? sirali.find(d => DERSLER_EN[d.id] && bitmedi(d)) : null)
+              || sirali.find(bitmedi);
 if (devam){
   const p = PROG[devam.id];
   $('startBtn').href = 'lesson.html?id=' + devam.id;
   $('startBtn').textContent = (p && p.done.length ? (en?EN.devam:'Kaldığın yerden devam: ')
-                                                  : (en?EN.basla:'Buradan başla: ')) + devam.ad + ' ▶';
+                                                  : (en?EN.basla:'Buradan başla: ')) +
+    ((en && typeof DERSLER_EN !== 'undefined' && DERSLER_EN[devam.id]) ? DERSLER_EN[devam.id].ad : devam.ad) + ' ▶';
 } else if (sirali.length){
   $('startBtn').textContent = en ? EN.bitti : 'Hepsini bitirdin ✓, tekrar et ▶';
 }

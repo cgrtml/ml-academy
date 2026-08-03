@@ -226,6 +226,7 @@
 
 <script src="viz.js"></script>
 <script src="content.js"></script>
+<script src="content-en.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -287,7 +288,9 @@ const T = k => L10N[k][EN ? 1 : 0];
 
 const qs = new URLSearchParams(location.search);
 const DERS_ID = qs.get('id') || 'veri';
-const D = DERSLER[DERS_ID];
+const D = (EN && typeof DERSLER_EN !== 'undefined' && DERSLER_EN[DERS_ID])
+          ? DERSLER_EN[DERS_ID] : DERSLER[DERS_ID];
+const CEVRILI = !!(typeof DERSLER_EN !== 'undefined' && DERSLER_EN[DERS_ID]);
 
 if (!D){
   document.querySelector('main').innerHTML =
@@ -342,7 +345,7 @@ function go(i){
     '<div class="stag">'+T('adim')+' '+(i+1)+' / '+D.adimlar.length+'  ·  ' +
       ((a.quiz||a.kodlab||a.unlock||a.bolgeSayisi) ? a.xp+' '+T('kazanilabilir') : T('okumaAdimi')) + '</div>' +
     '<h2>'+a.t+'</h2>' +
-    (EN ? '<div class="dilnot">'+T('dilNot')+'</div>' : '') +
+    (EN && !CEVRILI ? '<div class="dilnot">'+T('dilNot')+'</div>' : '') +
     '<div class="goal"><span class="h">'+T('ogrenecegin')+'</span><p>'+a.goal+'</p></div>' +
     '<div class="do"><b class="lbl">'+T('yapacagin')+'</b>'+a.todo+'</div>' +
     '<canvas id="cv"></canvas>' +

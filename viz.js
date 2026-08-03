@@ -33,6 +33,12 @@ const DATA = {
     tr:[0,1,2,4,5,7,8,10,11,13], te:[3,6,9,12],
   },
 };
+/* ── arayüz dili · EN seçiliyse görsel etiketleri de İngilizce ──
+   Node içinde (denetim.js / cizim-testi.js) localStorage yok, o yüzden TR'ye düşer. */
+const VDIL = (() => { try { return localStorage.getItem('mlacad_dil') === 'en' ? 'en' : 'tr'; }
+                      catch(e){ return 'tr'; } })();
+const LB = (tr, en) => VDIL === 'en' ? en : tr;
+
 const S_ = DATA.study;
 const predY = (w,b,x) => w*x + b;
 const mse = (w,b) => S_.X.reduce((s,x,i) => s + (w*x+b-S_.Y[i])**2, 0) / S_.X.length;
@@ -115,18 +121,22 @@ VIZ.tablo = s => {
   const rows = S_.X.length, cw = [250,300,300], rh = 44;
   const W = cw[0]+cw[1]+cw[2];
   const x0 = (1500 - W)/2, y0 = 118;
-  const hdr = ['öğrenci','çalışma saati (x)','sınav puanı (y)'];
+  const hdr = [LB('öğrenci','student'), LB('çalışma saati (x)','study hours (x)'), LB('sınav puanı (y)','exam score (y)')];
   const colHL = s.col, rowHL = s.row;
 
   /* üst şerit: hangi kavramı vurguluyoruz */
   const ETIKET = {
-    0:['YOK SAYILAN SÜTUN', 'İsim modele verilmez, tahminle ilgisi yok', K.mut],
-    1:['ÖZELLİK  ·  feature  ·  x', 'Modelin elindeki bilgi, girdisi', K.blue],
-    2:['ETİKET  ·  label  ·  y', 'Modelin tahmin etmesi istenen şey', K.green],
+    0:[LB('YOK SAYILAN SÜTUN','IGNORED COLUMN'),
+       LB('İsim modele verilmez, tahminle ilgisi yok','The name is never given to the model, it says nothing about the score'), K.mut],
+    1:[LB('ÖZELLİK  ·  feature  ·  x','FEATURE  ·  x'),
+       LB('Modelin elindeki bilgi, girdisi','What the model has in hand, its input'), K.blue],
+    2:[LB('ETİKET  ·  label  ·  y','LABEL  ·  y'),
+       LB('Modelin tahmin etmesi istenen şey','What the model is asked to predict'), K.green],
   };
   let banner = null;
   if (colHL !== undefined) banner = ETIKET[colHL];
-  else if (rowHL !== undefined) banner = ['ÖRNEK  ·  sample  ·  bir satır', S_.isim[rowHL]+', tek bir gözlem', K.yellow];
+  else if (rowHL !== undefined) banner = [LB('ÖRNEK  ·  sample  ·  bir satır','SAMPLE  ·  one row'),
+      S_.isim[rowHL] + LB(', tek bir gözlem',', a single observation'), K.yellow];
   if (banner){
     const bw = 720, bx = (1500-bw)/2;
     box(bx, 24, bw, 68, banner[2]+'1e', banner[2]+'66', 2);
@@ -166,9 +176,9 @@ VIZ.tabloGrafik = s => {
   clear();
   const t = s.t === undefined ? 1 : s.t;        // 0 = tablo, 1 = grafik
   const P = plot(rect(820,60,600,470), 0,10.6, 0,105);
-  if (t > 0.05) frame(P,'çalışma saati (x)','sınav puanı (y)',[0,2,4,6,8,10],[0,25,50,75,100]);
+  if (t > 0.05) frame(P,LB('çalışma saati (x)','study hours (x)'),LB('sınav puanı (y)','exam score (y)'),[0,2,4,6,8,10],[0,25,50,75,100]);
   const x0 = 130, y0 = 70, cw = [140,150], rh = 44;
-  ['saat','puan'].forEach((h,c) => {
+  [LB('saat','hours'),LB('puan','score')].forEach((h,c) => {
     box(x0+c*cw[0], y0, cw[c], rh, 'rgba(255,255,255,.05)', K.axis, 2);
     txt(h, x0+c*cw[0]+cw[c]/2, y0+29, K.mut, 20);
   });
@@ -187,7 +197,7 @@ VIZ.tabloGrafik = s => {
       dot(ex, ey, 11, K.blue); dot(ex, ey, 11, '#0b1119', null, 3);
     }
   });
-  txt('her SATIR bir NOKTA olur', 470, 300, K.mut, 21);
+  txt(LB('her SATIR bir NOKTA olur','each ROW becomes a POINT'), 470, 300, K.mut, 21);
   arw(400, 330, 560, 330, K.mut, 3);
 };
 
@@ -195,7 +205,7 @@ VIZ.tabloGrafik = s => {
 VIZ.dogruUydur = s => {
   clear();
   const P = plot(rect(110,40,1300,470), 0,10.6, 0,105);
-  frame(P,'haftalık çalışma saati','sınav puanı',[0,2,4,6,8,10],[0,25,50,75,100]);
+  frame(P,LB('haftalık çalışma saati','weekly study hours'),LB('sınav puanı','exam score'),[0,2,4,6,8,10],[0,25,50,75,100]);
   const w = s.w, b = s.b, has = (w !== undefined && w !== null);
   if (has && s.artik) S_.X.forEach((x,i) => {
     cx.strokeStyle = 'rgba(248,113,113,.8)'; cx.lineWidth = 3; cx.setLineDash([5,4]);
@@ -219,14 +229,14 @@ VIZ.dogruUydur = s => {
     cx.beginPath(); cx.moveTo(P.sx(xq),P.R.y+P.R.h); cx.lineTo(P.sx(xq),P.sy(has?predY(w,b,xq):100)); cx.stroke();
     cx.setLineDash([]);
     if (has){ dot(P.sx(xq),P.sy(predY(w,b,xq)),13,K.yellow);
-      txt('tahmin: '+predY(w,b,xq).toFixed(1), P.sx(xq), P.sy(predY(w,b,xq))-24, K.yellow, 21); }
-    txt('x = '+xq, P.sx(xq), P.R.y+P.R.h+28, K.yellow, 20);
+      txt(LB('tahmin: ','prediction: ')+predY(w,b,xq).toFixed(1), P.sx(xq), P.sy(predY(w,b,xq))-24, K.yellow, 21); }
+    txt('x = '+xq, P.sx(xq), P.R.y+P.R.h-16, K.yellow, 20);   // eksen etiketleriyle çakışmasın
   }
   if (s.mseGoster){
     box(P.R.x+P.R.w/2-300, P.R.y+140, 600, 170, 'rgba(7,10,15,.92)', K.green, 3);
-    txt('ORTALAMA KARE HATA (MSE)', P.R.x+P.R.w/2, P.R.y+186, K.mut, 21);
+    txt(LB('ORTALAMA KARE HATA (MSE)','MEAN SQUARED ERROR (MSE)'), P.R.x+P.R.w/2, P.R.y+186, K.mut, 21);
     txt(mse(w,b).toFixed(2), P.R.x+P.R.w/2, P.R.y+256, K.green, 58);
-    txt('kare alanların toplamı / 10', P.R.x+P.R.w/2, P.R.y+292, K.mut, 18);
+    txt(LB('kare alanların toplamı / 10','sum of the square areas / 10'), P.R.x+P.R.w/2, P.R.y+292, K.mut, 18);
   }
 };
 

@@ -8,15 +8,15 @@ No videos, no installation, no accounts. Open `index.html` and start.
 
 **[Live demo](https://cagritemel.com/ml-academy/)**
 
-> **Note on language.** The interface has a TR/EN switch on both the home page and the lesson pages, so
-> navigation, buttons, section headings and progress labels read in English. The lesson text itself is
-> still Turkish, which is why the screenshot below shows English chrome around Turkish prose. A full
-> translation of the lesson content and the model catalogue is on the roadmap. Everything else in this
-> repository (code, structure, verification suite) is language independent.
+> **Note on language.** The interface has a TR/EN switch on the home page and on every lesson page.
+> Lesson content is translated one lesson at a time: the first lesson is fully English, including the
+> labels drawn on the canvas, and it carries an `EN` tag in the curriculum. Lessons that are not
+> translated yet still open in Turkish with the interface in English. Translations live in
+> `content-en.js` and the audit script checks that each one mirrors its Turkish original step for step.
 
 ![ML Academy home page in English](docs/img/home-en.png)
 
-![A lesson with the interface in English](docs/img/lesson-en.png)
+![The first lesson, fully in English](docs/img/lesson-en.png)
 
 ## Why I built this
 
@@ -107,6 +107,7 @@ Content is stored as data, not code. Adding a lesson means writing an object, no
 index.html        curriculum home, progress, resume where you left off
 lesson.html       lesson engine: 4 step kinds, gating, XP, sources
 content.js        the curriculum itself: 48 lessons, 108 steps, 143 references
+content-en.js     English lesson content, one lesson at a time, same shape as content.js
 viz.js            54 visualizations and every algorithm engine
 modeller.html     model catalogue
 ders-kanit.html   5x2cv F-test lesson running on Pyodide
@@ -134,9 +135,9 @@ Every algorithm in `viz.js` was written from scratch: CART with Gini gain, rando
 
 Three stages.
 
-**Syntax.** All six source files are parsed.
+**Syntax.** All seven source files are parsed.
 
-**Numbers and structure.** 153 numeric claims are recomputed and compared against what the lessons say. Every quiz index is checked, every option is required to have an explanation, all 47 unlock conditions are proven reachable by sweeping the parameter space, and `derive`/`control` key collisions are caught.
+**Numbers and structure.** 153 numeric claims are recomputed and compared against what the lessons say. Every quiz index is checked, every option is required to have an explanation, all 47 unlock conditions are proven reachable by sweeping the parameter space, and `derive`/`control` key collisions are caught. Every translated lesson has to match its Turkish original: same step count, same step kinds, same visualization, same slider ranges, same correct answer index.
 
 **Rendering.** All 54 visualizations are drawn against a stub canvas across 364 states.
 
@@ -147,7 +148,7 @@ The rule is simple: a number does not appear in a lesson unless a test recompute
 ## Roadmap
 
 - [ ] Clean up remaining interface bugs
-- [ ] Full English translation of lesson pages and the model catalogue
+- [ ] Translate the remaining 46 lessons and the model catalogue into English
 - [ ] Interactive Prompt Arena backed by a real model endpoint
 - [ ] Instructor mode with per student seeds, so answers cannot be copied
 - [ ] Embeddable widgets for lecture slides and LMS platforms

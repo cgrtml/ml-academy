@@ -1,6 +1,7 @@
 const fs=require('fs');
 const V=fs.readFileSync('./viz.js','utf8');
 const C=fs.readFileSync('./content.js','utf8');
+const E=fs.readFileSync('./content-en.js','utf8');
 const T=`
 let ok=0,ht=0;
 function iddia(ad,bek,ger,tol){const g=typeof ger==='number'?+ger.toFixed(tol===undefined?1:tol):ger;
@@ -172,11 +173,45 @@ Object.entries(DERSLER).forEach(([id,d])=>{
       if(!acik){console.log('  ✗ '+id+'['+(i+1)+'] KİLİT AÇILAMIYOR');yh++;}}
   });
 });
+
+/* ═══ İNGİLİZCE İÇERİK · Türkçe aslıyla birebir aynı iskelet olmalı ═══ */
+let nEn = 0;
+Object.entries(DERSLER_EN).forEach(([id,e])=>{
+  const t = DERSLER[id];
+  if(!t){ console.log('  ✗ EN '+id+': Türkçe karşılığı yok'); yh++; return; }
+  nEn++;
+  if(!e.ad||!e.alt){ console.log('  ✗ EN '+id+': ad/alt eksik'); yh++; }
+  if(e.adimlar.length!==t.adimlar.length){
+    console.log('  ✗ EN '+id+': adım sayısı '+e.adimlar.length+', Türkçesi '+t.adimlar.length); yh++; return; }
+  e.adimlar.forEach((a,i)=>{
+    const b = t.adimlar[i], p = '  ✗ EN '+id+'['+(i+1)+'] ';
+    if(a.kind!==b.kind){ console.log(p+'kind: '+a.kind+' ≠ '+b.kind); yh++; }
+    if(a.viz!==b.viz){ console.log(p+'viz: '+a.viz+' ≠ '+b.viz); yh++; }
+    if(a.xp!==b.xp){ console.log(p+'xp: '+a.xp+' ≠ '+b.xp); yh++; }
+    if(!a.t||!a.goal||!a.todo||!a.learned){ console.log(p+'metin alanı eksik'); yh++; }
+    const ak=(a.controls||[]).map(c=>c.k).join(','), bk=(b.controls||[]).map(c=>c.k).join(',');
+    if(ak!==bk){ console.log(p+'control anahtarları: ['+ak+'] ≠ ['+bk+']'); yh++; }
+    (a.controls||[]).forEach((c,j)=>{ const d2=b.controls[j];
+      if(c.min!==d2.min||c.max!==d2.max||c.step!==d2.step||c.val!==d2.val){
+        console.log(p+'kaydırıcı aralığı farklı: '+c.k); yh++; } });
+    const af=a.kind==='phases'?a.phases.length:(a.kind==='play'?a.frames().length:0);
+    const bf=b.kind==='phases'?b.phases.length:(b.kind==='play'?b.frames().length:0);
+    if(af!==bf){ console.log(p+'faz/kare sayısı: '+af+' ≠ '+bf); yh++; }
+    if(!!a.quiz!==!!b.quiz){ console.log(p+'quiz var/yok farkı'); yh++; }
+    else if(a.quiz){
+      if(a.quiz.correct!==b.quiz.correct){ console.log(p+'quiz doğru şık indeksi farklı'); yh++; }
+      if(a.quiz.opts.length!==b.quiz.opts.length){ console.log(p+'quiz şık sayısı farklı'); yh++; }
+      a.quiz.opts.forEach((o3,k)=>{ if(!o3.t||!o3.why){ console.log(p+'quiz şık '+k+' eksik'); yh++; } });
+    }
+  });
+});
+
 console.log('');
 console.log('  '+hz+' hazır / '+tp+' ders · '+ad+' adım · '+xp+' XP · '+q+' soru · '+unl+' kilit · '+kn+' kaynak · '+Object.keys(VIZ).length+' görsel');
+console.log('  İngilizce çevrilmiş ders: '+nEn+' / '+Object.keys(DERSLER).length);
 console.log('');
 console.log('═════════════════════════════════');
 console.log('  SAYI: '+ok+' ✓  ·  '+ht+' ✗      YAPI: '+yh+' hata');
 console.log('═════════════════════════════════');
 `;
-eval(V+C+T);
+eval(V+C+E+T);
