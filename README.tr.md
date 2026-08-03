@@ -8,6 +8,10 @@ Video yok, kurulum yok, üyelik yok. `index.html` dosyasını açıp başlıyors
 
 **[Canlı demo](https://cagritemel.com/ml-academy/)**
 
+> **Dil hakkında.** Ders içerikleri Türkçe. Ana sayfada ve ders sayfalarında bir TR/EN düğmesi var;
+> İngilizceye alınca menüler, düğmeler, başlıklar ve ilerleme etiketleri İngilizce oluyor, ders metni
+> Türkçe kalıyor. Ders içeriğinin ve model kataloğunun tam çevirisi yol haritasında.
+
 ![ML Academy ana sayfa](docs/img/anasayfa.png)
 
 ![Bir model nasıl öğrenir dersi](docs/img/ders.png)

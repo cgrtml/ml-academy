@@ -68,8 +68,9 @@
   .goal p{margin:0;font-size:15px;font-weight:600}
   .do{background:var(--panel2);border-left:3px solid var(--blue);border-radius:0 10px 10px 0;
       padding:11px 15px;margin:14px 0;font-size:13.5px}
-  .do b{color:var(--blue);font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;
+  .do b.lbl{color:var(--blue);font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;
         text-transform:uppercase;display:block;margin-bottom:3px}
+  .do b{color:var(--txt)}
 
   canvas{width:100%;display:block;border-radius:12px;background:#070a0f;margin-top:6px}
   .body{font-size:14px;margin-top:14px}
@@ -190,6 +191,12 @@
   .toast.go{animation:pop 1.7s ease-out}
   @keyframes pop{0%{opacity:0;transform:translateY(16px)}15%{opacity:1;transform:none}
                  75%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-16px)}}
+  .dilbar{display:flex;gap:5px;flex:none}
+  .dilbar button{font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:5px 10px;
+    border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--mut);cursor:pointer}
+  .dilbar button.on{background:var(--green);border-color:var(--green);color:#04120d;font-weight:800}
+  .dilnot{font-family:var(--mono);font-size:11px;color:var(--yellow);background:rgba(250,204,21,.07);
+    border:1px solid rgba(250,204,21,.28);border-radius:9px;padding:8px 12px;margin:0 0 16px}
   .fin{text-align:center;padding:34px 20px}
   .fin .big{font-size:44px;font-family:var(--mono);font-weight:800;color:var(--green)}
 </style>
@@ -197,14 +204,15 @@
 <body>
 
 <div class="top"><div class="in">
-  <a class="bk" href="index.html">← Tüm dersler</a>
+  <a class="bk" href="index.html" id="bkLink">← Tüm dersler</a>
   <div class="pbar"><div class="pfill" id="pfill"></div></div>
+  <div class="dilbar" id="dilbar"><button data-dil="tr">TR</button><button data-dil="en">EN</button></div>
   <div class="xp" id="xpN">0 XP</div>
 </div></div>
 
 <div class="shell">
   <aside class="side">
-    <div class="hd">◆ Bu dersin adımları</div>
+    <div class="hd" id="adimBasligi">◆ Bu dersin adımları</div>
     <div class="map" id="map"></div>
     <div id="kaynakBlok"></div>
   </aside>
@@ -220,14 +228,71 @@
 <script src="content.js"></script>
 <script>
 const $ = id => document.getElementById(id);
+
+/* ═══════ dil ═══════ */
+const DIL = localStorage.getItem('mlacad_dil') || 'tr';
+const EN = DIL === 'en';
+const L10N = {
+  tumDers:['← Tüm dersler','← All lessons'],
+  adimlar:['◆ Bu dersin adımları','◆ Steps in this lesson'],
+  yokBas:['Bu ders henüz hazır değil','This lesson is not ready yet'],
+  yokGov:['Müfredatta görünüyor ama içeriği yazılmadı.','It appears in the curriculum but the content has not been written yet.'],
+  listeDon:['← Ders listesine dön','← Back to the lesson list'],
+  adim:['Adım','Step'],
+  kazanilabilir:['XP kazanılabilir','XP available'],
+  okumaAdimi:['okuma adımı · 5 XP','reading step · 5 XP'],
+  ogrenecegin:['🎯 Bu adımda öğreneceğin','🎯 What you will learn here'],
+  yapacagin:['Yapacağın','Your task'],
+  geri:['◀ GERİ','◀ BACK'],
+  oynat:['▶ OYNAT','▶ PLAY'],
+  ileri:['İLERİ ▶','NEXT ▶'],
+  durdur:['⏸ DURDUR','⏸ PAUSE'],
+  tekrar:['↻ TEKRAR','↻ REPLAY'],
+  kare:['kare ','frame '],
+  asama:['aşama ','stage '],
+  kodlabBas:['⚙ Anladığını kanıtla · kodu tamamla','⚙ Prove you understood: complete the code'],
+  icinSec:['için seç:','pick a value:'],
+  onceKutu:['önce bir kutu seç','select a blank first'],
+  calistir:['▶ ÇALIŞTIR','▶ RUN'],
+  temizle:['↺ temizle','↺ clear'],
+  kutuKaldi:['kutu kaldı','blanks left'],
+  hazirCalistir:['hazır, çalıştır','ready, run it'],
+  calisiyor:['algoritma çalışıyor…','algorithm running…'],
+  kodOk:['✓ Çalıştı, kanıtladın','✓ It ran, you proved it'],
+  kodNo:['✗ Çalışmadı, sebebini oku','✗ It failed, read why'],
+  tekrarDene:['temizle, tekrar dene','clear and try again'],
+  quizBas:['✓ Kilidi açan soru','✓ The question that unlocks the next step'],
+  devam:['Devam →','Continue →'],
+  cevapVer:['Cevabımı ver →','Submit my answer →'],
+  gorevTamam:['Görevi tamamla','Complete the task'],
+  sonuBekle:['Animasyonun sonunu bekle','Wait for the animation to finish'],
+  asamaTamam:['Aşamaları tamamla','Go through every stage'],
+  koduTamam:['Kodu doğru tamamla ve çalıştır','Complete the code correctly and run it'],
+  sikSec:['Bir şık seç','Pick an option'],
+  ogrendigin:['✦ Bu adımda öğrendiğin','✦ What you learned here'],
+  sonraki:['Sonraki adım:','Next step:'],
+  dersBitti:['Ders tamamlandı','Lesson complete'],
+  dogruCevap:['doğru cevap','correct answer'],
+  denedin:['denedin','you tried'],
+  adimOkundu:['adım okundu','step read'],
+  kaynaklar:['◆ Kaynaklar','◆ Sources'],
+  baglanti:['bağlantı','link'],
+  karsilastirma:['<b>Karşılaştırma:</b> sen 1. adımda kaydırıcılarla en iyi <b>',
+                 '<b>Comparison:</b> with the sliders in step 1 your best was <b>'],
+  karsilastirma2:["</b>'e inmiştin. Model 2142 adımda <b>", '</b>. The model reached <b>'],
+  karsilastirma3:["</b>'ye indi.", '</b> in 2142 steps.'],
+  dilNot:['','Interface language is English. The lesson text itself is still Turkish.'],
+};
+const T = k => L10N[k][EN ? 1 : 0];
+
 const qs = new URLSearchParams(location.search);
 const DERS_ID = qs.get('id') || 'veri';
 const D = DERSLER[DERS_ID];
 
 if (!D){
   document.querySelector('main').innerHTML =
-    '<div class="stage"><h2>Bu ders henüz hazır değil</h2><p class="body">' +
-    'Müfredatta görünüyor ama içeriği yazılmadı. <a href="index.html">← Ders listesine dön</a></p></div>';
+    '<div class="stage"><h2>'+T('yokBas')+'</h2><p class="body">' +
+    T('yokGov')+' <a href="index.html">'+T('listeDon')+'</a></p></div>';
   throw new Error('ders yok');
 }
 
@@ -274,11 +339,12 @@ function go(i){
   (a.controls||[]).forEach(c => st[c.k] = c.val);
 
   let html = '<div class="stage">' +
-    '<div class="stag">Adım '+(i+1)+' / '+D.adimlar.length+'  ·  ' +
-      ((a.quiz||a.kodlab||a.unlock||a.bolgeSayisi) ? a.xp+' XP kazanılabilir' : 'okuma adımı · 5 XP') + '</div>' +
+    '<div class="stag">'+T('adim')+' '+(i+1)+' / '+D.adimlar.length+'  ·  ' +
+      ((a.quiz||a.kodlab||a.unlock||a.bolgeSayisi) ? a.xp+' '+T('kazanilabilir') : T('okumaAdimi')) + '</div>' +
     '<h2>'+a.t+'</h2>' +
-    '<div class="goal"><span class="h">🎯 Bu adımda öğreneceğin</span><p>'+a.goal+'</p></div>' +
-    '<div class="do"><b>Yapacağın</b>'+a.todo+'</div>' +
+    (EN ? '<div class="dilnot">'+T('dilNot')+'</div>' : '') +
+    '<div class="goal"><span class="h">'+T('ogrenecegin')+'</span><p>'+a.goal+'</p></div>' +
+    '<div class="do"><b class="lbl">'+T('yapacagin')+'</b>'+a.todo+'</div>' +
     '<canvas id="cv"></canvas>' +
     '<div id="live"></div>';
 
@@ -292,8 +358,8 @@ function go(i){
   if (a.kind === 'phases' || a.kind === 'play'){
     html += '<div class="player">' +
       (a.kind === 'play' ? '<button id="pFirst">⏮</button>' : '') +
-      '<button id="pPrev">◀ GERİ</button>' +
-      '<button class="pl" id="pMain">'+(a.kind==='play'?'▶ OYNAT':'İLERİ ▶')+'</button>' +
+      '<button id="pPrev">'+T('geri')+'</button>' +
+      '<button class="pl" id="pMain">'+(a.kind==='play'?T('oynat'):T('ileri'))+'</button>' +
       (a.kind === 'play' ? '<button id="pNext">▶</button><button id="pLast">⏭</button>' : '') +
       '</div>' +
       (a.kind === 'play' ? '<input type="range" class="scrub" id="scrub" min="0" max="0" value="0">' : '') +
@@ -305,24 +371,24 @@ function go(i){
   /* ── kod tamamlama laboratuvarı ── */
   if (a.kodlab){
     const L = a.kodlab;
-    html += '<div class="kodlab"><span class="h">⚙ Anladığını kanıtla · kodu tamamla</span>' +
+    html += '<div class="kodlab"><span class="h">'+T('kodlabBas')+'</span>' +
       '<div class="q">'+L.q+'</div><div class="kodbox">' +
       L.satirlar.map((ln,k) => '<div class="cl"><span class="ln">'+(k+1)+'</span>' +
         ln.replace(/<(b\d+)>/g, (m,id) =>
           '<span class="blank" data-b="'+id+'" id="bl_'+id+'">?</span>')+'</div>').join('') +
       '</div><div class="bank" id="bank"></div>' +
       (L.ipucu ? '<div class="ipucu">💡 '+L.ipucu+'</div>' : '') +
-      '<div class="runbar"><button class="btn-run" id="btnRun" disabled>▶ ÇALIŞTIR</button>' +
-      '<button class="tok" id="btnReset">↺ temizle</button>' +
+      '<div class="runbar"><button class="btn-run" id="btnRun" disabled>'+T('calistir')+'</button>' +
+      '<button class="tok" id="btnReset">'+T('temizle')+'</button>' +
       '<span class="hint" id="kodHint"></span></div><div id="kodSonuc"></div></div>';
   }
 
-  if (a.quiz) html += '<div class="quiz"><span class="h">✓ Kilidi açan soru</span><div class="q">'+a.quiz.q+'</div>' +
+  if (a.quiz) html += '<div class="quiz"><span class="h">'+T('quizBas')+'</span><div class="q">'+a.quiz.q+'</div>' +
     '<div class="choices" id="qch">' + a.quiz.opts.map((o,k) =>
       '<div class="ch" data-k="'+k+'"><div class="k">'+'ABCD'[k]+'</div><div class="txt">'+o.t+'</div></div>').join('') +
     '</div></div>';
   html += '<div id="learned"></div>' +
-    '<div class="nav"><button class="btn" id="primary">Devam →</button><span class="hint" id="hint"></span></div>' +
+    '<div class="nav"><button class="btn" id="primary">'+T('devam')+'</button><span class="hint" id="hint"></span></div>' +
     '</div>';
 
   $('host').innerHTML = html;
@@ -381,18 +447,18 @@ function go(i){
   function stop(elle){
     playing = false; clearInterval(PLAY_TIMER); PLAY_TIMER = null;
     if (elle) dongu = false;
-    if ($('pMain')) $('pMain').textContent = ph >= nPh-1 ? '↻ TEKRAR' : '▶ OYNAT';
+    if ($('pMain')) $('pMain').textContent = ph >= nPh-1 ? T('tekrar') : T('oynat');
   }
   function baslat(){
     if (playing || S.i !== i) return;
     if (ph >= nPh-1) ph = 0;
-    playing = true; if ($('pMain')) $('pMain').textContent = '⏸ DURDUR';
+    playing = true; if ($('pMain')) $('pMain').textContent = T('durdur');
     clearInterval(PLAY_TIMER);
     PLAY_TIMER = setInterval(() => {
       if (S.i !== i){ clearInterval(PLAY_TIMER); return; }
       if (ph >= nPh-1){
         clearInterval(PLAY_TIMER); playing = false;
-        if ($('pMain')) $('pMain').textContent = '↻ TEKRAR';
+        if ($('pMain')) $('pMain').textContent = T('tekrar');
         syncPrimary();
         if (dongu) setTimeout(() => { if (dongu && S.i === i){ ph = 0; baslat(); } }, 1500);
         return;
@@ -414,7 +480,7 @@ function go(i){
   }
   function upPh(){
     if (ph >= nPh-1) sonaGeldi = true;      // döngü başa sarsa bile unutma
-    if ($('cnt')) $('cnt').textContent = (a.kind==='play'?'kare ':'aşama ') + (ph+1) + ' / ' + nPh;
+    if ($('cnt')) $('cnt').textContent = (a.kind==='play'?T('kare'):T('asama')) + (ph+1) + ' / ' + nPh;
     if ($('pPrev')) $('pPrev').disabled = ph === 0;
     if (a.kind === 'phases' && $('pMain')) $('pMain').disabled = ph === nPh-1;
     if ($('scrub')) $('scrub').value = ph;
@@ -441,7 +507,7 @@ function go(i){
     };
     function bankCiz(){
       const b = L.bosluklar[aktifBlank];
-      $('bank').innerHTML = '<span class="lbl">' + (aktifBlank ? aktifBlank.toUpperCase()+' için seç:' : 'önce bir kutu seç') + '</span>' +
+      $('bank').innerHTML = '<span class="lbl">' + (aktifBlank ? aktifBlank.toUpperCase()+' '+T('icinSec') : T('onceKutu')) + '</span>' +
         (b ? b.secenekler.map(o => '<button class="tok" data-o="'+o+'">'+o+'</button>').join('') : '');
       $('bank').querySelectorAll('.tok').forEach(el => el.onclick = () => {
         kodVals[aktifBlank] = el.dataset.o;
@@ -450,7 +516,7 @@ function go(i){
         const bos = ids.find(x => !kodVals[x]);
         if (bos) secBlank(bos); else { aktifBlank = null; bankCiz(); }
         $('btnRun').disabled = ids.some(x => !kodVals[x]);
-        $('kodHint').textContent = $('btnRun').disabled ? (ids.length - Object.keys(kodVals).length)+' kutu kaldı' : 'hazır, çalıştır';
+        $('kodHint').textContent = $('btnRun').disabled ? (ids.length - Object.keys(kodVals).length)+' '+T('kutuKaldi') : T('hazirCalistir');
       });
     }
     ids.forEach(id => $('bl_'+id).onclick = () => { if (!kodOK) secBlank(id); });
@@ -463,7 +529,7 @@ function go(i){
     $('btnRun').onclick = () => {
       const r = L.calistir(kodVals);
       $('btnRun').disabled = true; $('btnReset').disabled = true;
-      $('kodHint').innerHTML = '<span class="spin"></span>algoritma çalışıyor…';
+      $('kodHint').innerHTML = '<span class="spin"></span>'+T('calisiyor');
       runSeq = r.kareler; runIdx = 0; draw();
       clearInterval(RUN_TIMER);
       RUN_TIMER = setInterval(() => {
@@ -473,10 +539,10 @@ function go(i){
           $('btnReset').disabled = false;
           ids.forEach(x => $('bl_'+x).classList.add(kodVals[x] === L.bosluklar[x].dogru ? 'dogru' : 'yanlis'));
           $('kodSonuc').innerHTML = '<div class="sonuc '+(r.dogru?'ok':'no')+'">' +
-            '<b class="h">'+(r.dogru?'✓ Çalıştı, kanıtladın':'✗ Çalışmadı, sebebini oku')+'</b>'+r.mesaj+'</div>';
+            '<b class="h">'+(r.dogru?T('kodOk'):T('kodNo'))+'</b>'+r.mesaj+'</div>';
           if (r.dogru){ kodOK = true; syncPrimary(); }
           else { $('btnRun').disabled = false;
-                 $('kodHint').textContent = 'temizle, tekrar dene'; }
+                 $('kodHint').textContent = T('tekrarDene'); }
           return;
         }
         runIdx++; draw();
@@ -487,12 +553,12 @@ function go(i){
   /* ---- ilerleme koşulu ---- */
   function gate(){
     const s = vizState();
-    if (a.unlock && !a.unlock(s)) return a.unlockMsg || 'Görevi tamamla';
+    if (a.unlock && !a.unlock(s)) return a.unlockMsg || T('gorevTamam');
     if (a.bolgeSayisi && Object.keys(S.bolgeler).length < a.bolgeSayisi) return a.unlockMsg;
     if ((a.kind === 'phases' || a.kind === 'play') && !sonaGeldi)
-      return a.kind==='play' ? 'Animasyonun sonunu bekle' : 'Aşamaları tamamla';
-    if (a.kodlab && !kodOK) return 'Kodu doğru tamamla ve çalıştır';
-    if (a.quiz && !answered && sel === null) return 'Bir şık seç';
+      return a.kind==='play' ? T('sonuBekle') : T('asamaTamam');
+    if (a.kodlab && !kodOK) return T('koduTamam');
+    if (a.quiz && !answered && sel === null) return T('sikSec');
     return null;
   }
   function syncPrimary(){
@@ -500,7 +566,7 @@ function go(i){
     const g = gate();
     $('primary').disabled = !!g;
     $('hint').textContent = g || '';
-    $('primary').textContent = a.quiz ? 'Cevabımı ver →' : 'Devam →';
+    $('primary').textContent = a.quiz ? T('cevapVer') : T('devam');
   }
 
   let done = false;
@@ -509,27 +575,27 @@ function go(i){
     let lr = a.learned || '';
     if (a.compareTracked && S.tracked.length){
       const best = Math.min(...S.tracked.map(t => t.mse));
-      lr += '<br><br><b>Karşılaştırma:</b> sen 1. adımda kaydırıcılarla en iyi <b>' + best.toFixed(1) +
-            '</b>\'e inmiştin. Model 2142 adımda <b>' + DATA.study.mseStar.toFixed(2) + '</b>\'ye indi.';
+      lr += '<br><br>' + T('karsilastirma') + best.toFixed(1) +
+            T('karsilastirma2') + DATA.study.mseStar.toFixed(2) + T('karsilastirma3');
     }
-    if (lr) $('learned').innerHTML = '<div class="learned"><span class="h">✦ Bu adımda öğrendiğin</span>'+lr+'</div>';
+    if (lr) $('learned').innerHTML = '<div class="learned"><span class="h">'+T('ogrendigin')+'</span>'+lr+'</div>';
     const meydan = !!(a.quiz || a.kodlab || a.unlock || a.bolgeSayisi);
     if (!MY.done.includes(i)){
       MY.done.push(i);
-      if (meydan) award(ok ? a.xp : Math.round(a.xp*0.3), ok ? 'doğru cevap' : 'denedin');
-      else award(5, 'adım okundu');
+      if (meydan) award(ok ? a.xp : Math.round(a.xp*0.3), ok ? T('dogruCevap') : T('denedin'));
+      else award(5, T('adimOkundu'));
     }
     saveP(PROG); renderMap();
     const nx = i+1;
     $('primary').disabled = false;
     if (nx < D.adimlar.length){
-      $('primary').textContent = 'Sonraki adım: ' + D.adimlar[nx].t.slice(0,30) + ' →';
+      $('primary').textContent = T('sonraki')+' ' + D.adimlar[nx].t.slice(0,30) + ' →';
       $('primary').onclick = () => go(nx);
       $('hint').textContent = '';
     } else {
-      $('primary').textContent = '← Ders listesine dön';
+      $('primary').textContent = T('listeDon');
       $('primary').onclick = () => location.href = 'index.html';
-      $('hint').innerHTML = '<b style="color:var(--green)">Ders tamamlandı · '+MY.xp+' XP</b>';
+      $('hint').innerHTML = '<b style="color:var(--green)">'+T('dersBitti')+' · '+MY.xp+' XP</b>';
     }
   }
 
@@ -554,12 +620,19 @@ function go(i){
 }
 
 if (D.kaynaklar && D.kaynaklar.length){
-  $('kaynakBlok').innerHTML = '<div class="kh">◆ Kaynaklar</div>' + D.kaynaklar.map(k =>
+  $('kaynakBlok').innerHTML = '<div class="kh">'+T('kaynaklar')+'</div>' + D.kaynaklar.map(k =>
     '<div class="kaynak"><span class="yz">' + k.y + ' (' + k.t + ')</span>' +
     '<span class="bs">' + k.b + '</span>' +
-    '<span class="yer">' + k.n + (k.u ? ' · <a href="'+k.u+'" target="_blank">bağlantı</a>' : '') + '</span></div>'
+    '<span class="yer">' + k.n + (k.u ? ' · <a href="'+k.u+'" target="_blank">'+T('baglanti')+'</a>' : '') + '</span></div>'
   ).join('');
 }
+$('bkLink').textContent = T('tumDers');
+$('adimBasligi').textContent = T('adimlar');
+document.documentElement.lang = DIL;
+$('dilbar').querySelectorAll('button').forEach(b => {
+  b.classList.toggle('on', b.dataset.dil === DIL);
+  b.onclick = () => { localStorage.setItem('mlacad_dil', b.dataset.dil); location.reload(); };
+});
 $('dAd').textContent = D.ad;
 $('dAlt').textContent = D.alt;
 renderMap();

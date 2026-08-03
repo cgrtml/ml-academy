@@ -8,14 +8,15 @@ No videos, no installation, no accounts. Open `index.html` and start.
 
 **[Live demo](https://cagritemel.com/ml-academy/)**
 
-> **Note on language.** The course content is currently in Turkish. The home page has a TR/EN toggle,
-> so the curriculum map, track names and navigation read in English. Lesson pages and the model catalogue
-> are still Turkish. A full translation is on the roadmap. Everything else in this repository (code,
-> structure, verification suite) is language independent.
+> **Note on language.** The interface has a TR/EN switch on both the home page and the lesson pages, so
+> navigation, buttons, section headings and progress labels read in English. The lesson text itself is
+> still Turkish, which is why the screenshot below shows English chrome around Turkish prose. A full
+> translation of the lesson content and the model catalogue is on the roadmap. Everything else in this
+> repository (code, structure, verification suite) is language independent.
 
-![ML Academy home page](docs/img/anasayfa.png)
+![ML Academy home page in English](docs/img/home-en.png)
 
-![Lesson: how does a model learn](docs/img/ders.png)
+![A lesson with the interface in English](docs/img/lesson-en.png)
 
 ## Why I built this
 
