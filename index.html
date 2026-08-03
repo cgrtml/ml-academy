@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ML Academy — Sıfırdan yapay zekâ öğren</title>
+<style>
+  :root{
+    --bg:#080b11; --panel:#0f151e; --panel2:#141c28; --line:#1e2a3a;
+    --txt:#e6edf3; --mut:#8494a8;
+    --green:#22d3a0; --blue:#4cc4ff; --orange:#fb923c; --purple:#a78bfa;
+    --pink:#f472b6; --yellow:#facc15;
+    --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{max-width:100%;overflow-x:hidden}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;
+       line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{text-decoration:none;color:inherit}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 18px 100px}
+  .grid > *,.steps4 > *{min-width:0}
+
+  /* ── hero ── */
+  header{text-align:center;padding:56px 0 34px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.26em;color:var(--mut);text-transform:uppercase}
+  h1{font-size:clamp(30px,5.6vw,52px);margin:14px 0 12px;font-weight:850;letter-spacing:-.03em;line-height:1.12}
+  h1 .hl{background:linear-gradient(90deg,var(--green),var(--blue));-webkit-background-clip:text;
+         background-clip:text;color:transparent}
+  .sub{color:var(--mut);font-size:16px;max-width:610px;margin:0 auto 26px}
+  .cta{display:inline-flex;align-items:center;gap:10px;background:var(--green);color:#04120d;
+       font-weight:800;font-size:16px;padding:15px 30px;border-radius:12px;transition:.15s}
+  .cta:hover{filter:brightness(1.12);transform:translateY(-1px)}
+  .cta2{display:inline-flex;align-items:center;gap:8px;color:var(--mut);font-size:14px;
+        padding:15px 20px;font-family:var(--mono)}
+  .cta2:hover{color:var(--txt)}
+
+  /* ── istatistik şeridi ── */
+  .stats{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:30px}
+  .sb{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 20px;min-width:118px}
+  .sb .n{font-family:var(--mono);font-size:23px;font-weight:800;line-height:1}
+  .sb .l{font-family:var(--mono);font-size:9.5px;letter-spacing:.15em;color:var(--mut);
+         text-transform:uppercase;margin-top:5px}
+
+  /* ── nasıl işliyor ── */
+  .how{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:24px;margin:36px 0 14px}
+  .how h3{margin:0 0 4px;font-size:17px}
+  .how .hs{color:var(--mut);font-size:13.5px;margin:0 0 18px}
+  .steps4{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+  .s4{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .s4 .n{font-family:var(--mono);font-size:10px;letter-spacing:.16em;font-weight:800;margin-bottom:6px}
+  .s4 .t{font-size:14px;font-weight:700;margin-bottom:4px}
+  .s4 .d{font-size:12.5px;color:var(--mut);line-height:1.5}
+
+  /* ── rota ── */
+  .rota{margin-top:32px}
+  .rhd{display:flex;align-items:center;gap:13px;margin-bottom:6px}
+  .rhd .ik{font-size:22px;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;
+           background:var(--panel2);border:1px solid var(--line);flex:none}
+  .rhd h2{font-size:20px;margin:0;font-weight:800;letter-spacing:-.01em}
+  .rhd .ct{font-family:var(--mono);font-size:11px;color:var(--mut);margin-left:auto;white-space:nowrap}
+  .rozet{color:var(--mut);font-size:13.5px;margin:0 0 14px 55px}
+  @media(max-width:600px){.rozet{margin-left:0}}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:11px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:15px 17px;
+        display:flex;align-items:flex-start;gap:13px;transition:.15s}
+  .card.hazir{cursor:pointer}
+  .card.hazir:hover{border-color:var(--green);transform:translateY(-2px)}
+  .card.yapim{opacity:.62}
+  .card.planli{opacity:.42}
+  .card .no{font-family:var(--mono);font-size:12px;font-weight:800;width:26px;height:26px;border-radius:8px;
+            display:grid;place-items:center;flex:none;background:var(--panel2);color:var(--mut);border:1px solid var(--line)}
+  .card.hazir .no{background:rgba(34,211,160,.16);color:var(--green);border-color:rgba(34,211,160,.4)}
+  .card.bitti .no{background:var(--green);color:#04120d;border-color:var(--green)}
+  .card .body{flex:1;min-width:0}
+  .card .ad{font-size:14.5px;font-weight:680;margin-bottom:4px}
+  .card .meta{font-family:var(--mono);font-size:10.5px;color:var(--mut);display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .tag{font-family:var(--mono);font-size:9px;letter-spacing:.12em;padding:2.5px 7px;border-radius:5px;font-weight:800}
+  .t-hazir{background:rgba(34,211,160,.16);color:var(--green)}
+  .t-yapim{background:rgba(250,204,21,.14);color:var(--yellow)}
+  .t-planli{background:rgba(132,148,168,.14);color:var(--mut)}
+  .t-nt{background:rgba(167,139,250,.18);color:var(--purple)}
+  .pmini{height:3px;background:var(--line);border-radius:99px;margin-top:8px;overflow:hidden}
+  .pmini i{display:block;height:100%;background:var(--green);border-radius:99px}
+
+  .foot{text-align:center;color:var(--mut);font-size:12.5px;margin-top:52px;font-family:var(--mono);line-height:2}
+  .foot a{color:var(--blue)}
+  .reset{background:none;border:1px solid var(--line);color:var(--mut);font-family:var(--mono);
+         font-size:11px;padding:6px 13px;border-radius:8px;cursor:pointer}
+  .reset:hover{color:var(--red);border-color:var(--red)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="kicker">ML Academy</div>
+    <h1>Yapay zekâyı <span class="hl">sıfırdan</span>,<br>adım adım öğren</h1>
+    <p class="sub">Ders anlatan video yok, ezberlenecek formül yok. Her konuda kendi elinle
+       oynayacağın bir animasyon, her adımda ne öğrendiğini söyleyen bir hedef,
+       ve geçmeden ilerleyemediğin bir soru var.</p>
+    <div>
+      <a class="cta" id="startBtn" href="lesson.html?id=veri">Buradan başla ▶</a>
+      <a class="cta2" href="modeller.html">📚 model kataloğu</a>
+      <a class="cta2" href="#rota0">müfredatı gör ↓</a>
+    </div>
+    <div class="stats">
+      <div class="sb"><div class="n" style="color:var(--green)" id="sHazir">—</div><div class="l">hazır ders</div></div>
+      <div class="sb"><div class="n" id="sToplam">—</div><div class="l">planlı ders</div></div>
+      <div class="sb"><div class="n" style="color:var(--blue)" id="sXP">0</div><div class="l">senin XP'n</div></div>
+      <div class="sb"><div class="n" style="color:var(--yellow)" id="sBitti">0</div><div class="l">bitirdiğin</div></div>
+    </div>
+  </header>
+
+  <div class="how">
+    <h3>Her ders aynı beş adımı izler</h3>
+    <p class="hs">Konu değişir, yöntem değişmez. Bir kere alıştıktan sonra her derste ne bekleyeceğini bilirsin.</p>
+    <div class="steps4">
+      <div class="s4"><div class="n" style="color:var(--green)">01 · HEDEF</div><div class="t">Ne öğreneceksin?</div>
+        <div class="d">Her adım, tek cümlelik açık bir kazanımla başlar. Ne için burada olduğunu asla merak etmezsin.</div></div>
+      <div class="s4"><div class="n" style="color:var(--blue)">02 · GÖR</div><div class="t">Animasyon</div>
+        <div class="d">Algoritma gözünün önünde adım adım çalışır. Kod satırı vurgulanır, sayılar canlı değişir.</div></div>
+      <div class="s4"><div class="n" style="color:var(--orange)">03 · OYNA</div><div class="t">Kendin kır</div>
+        <div class="d">Kaydırıcılar sende. Modeli bozana, patlatana kadar oyna — anlamanın en hızlı yolu.</div></div>
+      <div class="s4"><div class="n" style="color:var(--purple)">04 · SORU</div><div class="t">Kilidi aç</div>
+        <div class="d">Doğru cevaplamadan sonraki adıma geçemezsin. Her şıkta neden yanlış olduğu açıklanır.</div></div>
+      <div class="s4"><div class="n" style="color:var(--pink)">05 · ÖZET</div><div class="t">Ne öğrendin?</div>
+        <div class="d">Adım biterken kazanımın tek paragrafa iner ve XP kazanırsın. Geri dönüp okuyabilirsin.</div></div>
+    </div>
+  </div>
+
+  <a class="how" href="modeller.html" style="display:block;text-decoration:none;
+     background:linear-gradient(135deg,rgba(76,196,255,.10),rgba(34,211,160,.05));
+     border-color:rgba(76,196,255,.34)">
+    <h3>📚 Model Kataloğu — <span style="color:var(--blue)">24 model, tek sayfa</span></h3>
+    <p class="hs" style="margin-bottom:0">Derslere vakit ayıramadığın anlarda başvuru kaynağın.
+       Her model için: <b>ne yapar · nasıl çalışır · ne zaman kullanılır · ne zaman kullanılmaz ·
+       çalışan kod · kilit ayarlar · klasik tuzak.</b> Ara, filtrele, kodu kopyala.</p>
+  </a>
+
+  <div id="rotalar"></div>
+
+  <div class="foot">
+    ML Academy · prototip<br>
+    <a href="modeller.html">model kataloğu</a> ·
+    <a href="https://github.com/cgrtml/ml-academy">GitHub</a><br><br>
+    <button class="reset" id="reset">↺ ilerlemeyi sıfırla</button>
+  </div>
+</div>
+
+<script src="viz.js"></script>
+<script src="content.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const PKEY = 'mlacad_v2';
+let PROG = {};
+try { PROG = JSON.parse(localStorage.getItem(PKEY)) || {}; } catch(e){ PROG = {}; }
+
+const TAG = {hazir:['HAZIR','t-hazir'], yapim:['YAPIM AŞAMASINDA','t-yapim'], planli:['PLANLI','t-planli']};
+
+let nHazir = 0, nToplam = 0, nBitti = 0, xpTop = 0;
+
+$('rotalar').innerHTML = ROTALAR.map(r => {
+  const hazir = r.dersler.filter(d => d.durum === 'hazir').length;
+  nToplam += r.dersler.length; nHazir += hazir;
+  const kartlar = r.dersler.map((d,i) => {
+    const p = PROG[d.id];
+    const ders = DERSLER[d.id];
+    const nAdim = ders ? ders.adimlar.length : 0;
+    const bitti = p && nAdim && p.done.length >= nAdim;
+    const oran = p && nAdim ? Math.round(p.done.length/nAdim*100) : 0;
+    if (bitti) nBitti++;
+    if (p) xpTop += p.xp || 0;
+    const link = d.durum === 'hazir' ? (d.dis || ('lesson.html?id=' + d.id)) : null;
+    const inner =
+      '<div class="no">'+(bitti ? '✓' : (i+1))+'</div>' +
+      '<div class="body"><div class="ad">'+d.ad+'</div>' +
+      '<div class="meta">' +
+        '<span class="tag '+TAG[d.durum][1]+'">'+TAG[d.durum][0]+'</span>' +
+        (d.rozet ? '<span class="tag t-nt">'+d.rozet+'</span>' : '') +
+        '<span>~'+d.sure+' dk</span>' +
+        (nAdim ? '<span>· '+nAdim+' adım</span>' : '') +
+      '</div>' +
+      (oran ? '<div class="pmini"><i style="width:'+oran+'%"></i></div>' : '') +
+      '</div>';
+    const cls = 'card '+d.durum+(bitti?' bitti':'');
+    return link ? '<a class="'+cls+'" href="'+link+'">'+inner+'</a>'
+                : '<div class="'+cls+'">'+inner+'</div>';
+  }).join('');
+  return '<section class="rota" id="rota'+r.id+'">' +
+    '<div class="rhd"><div class="ik" style="color:'+r.renk+'">'+r.ikon+'</div>' +
+    '<h2>Rota '+r.id+' · '+r.ad+'</h2>' +
+    '<div class="ct">'+hazir+' / '+r.dersler.length+' hazır</div></div>' +
+    '<p class="rozet">'+r.ozet+'</p>' +
+    '<div class="grid">'+kartlar+'</div></section>';
+}).join('');
+
+$('sHazir').textContent = nHazir;
+$('sToplam').textContent = nToplam;
+$('sXP').textContent = xpTop;
+$('sBitti').textContent = nBitti;
+
+/* kaldığın yerden devam */
+const sirali = ROTALAR.flatMap(r => r.dersler).filter(d => d.durum === 'hazir' && !d.dis);
+const devam = sirali.find(d => {
+  const p = PROG[d.id], n = DERSLER[d.id] ? DERSLER[d.id].adimlar.length : 0;
+  return !p || p.done.length < n;
+});
+if (devam){
+  const p = PROG[devam.id];
+  $('startBtn').href = 'lesson.html?id=' + devam.id;
+  $('startBtn').textContent = (p && p.done.length ? 'Kaldığın yerden devam: ' : 'Buradan başla: ') + devam.ad + ' ▶';
+} else if (sirali.length){
+  $('startBtn').textContent = 'Hepsini bitirdin ✓ — tekrar et ▶';
+}
+
+$('reset').onclick = () => {
+  if (confirm('Tüm ilerleme ve XP silinecek. Emin misin?')){
+    localStorage.removeItem(PKEY); location.reload();
+  }
+};
+</script>
+</body>
+</html>

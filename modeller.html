@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Model Kataloğu — ML Academy</title>
+<style>
+  :root{
+    --bg:#080b11; --panel:#0f151e; --panel2:#141c28; --line:#1e2a3a;
+    --txt:#e6edf3; --mut:#8494a8;
+    --green:#22d3a0; --blue:#4cc4ff; --orange:#fb923c; --purple:#a78bfa;
+    --red:#f87171; --yellow:#facc15; --pink:#f472b6;
+    --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{max-width:100%;overflow-x:hidden}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;
+       line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{color:var(--blue);text-decoration:none}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 18px 100px}
+  .wrap > *{min-width:0}
+
+  header{text-align:center;padding:46px 0 26px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.24em;color:var(--mut);text-transform:uppercase}
+  h1{font-size:clamp(27px,4.6vw,42px);margin:13px 0 11px;font-weight:850;letter-spacing:-.03em}
+  h1 .hl{background:linear-gradient(90deg,var(--green),var(--blue));-webkit-background-clip:text;
+         background-clip:text;color:transparent}
+  .sub{color:var(--mut);font-size:15.5px;max-width:640px;margin:0 auto}
+
+  .araclar{position:sticky;top:0;z-index:20;background:rgba(8,11,17,.96);backdrop-filter:blur(10px);
+           border-bottom:1px solid var(--line);padding:12px 0;margin-bottom:22px}
+  .araclar .in{max-width:1060px;margin:0 auto;padding:0 18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  #ara{flex:1;min-width:200px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+       border-radius:10px;padding:11px 15px;font-size:14px;font-family:inherit}
+  #ara:focus{outline:none;border-color:var(--blue)}
+  .f{font-family:var(--mono);font-size:11px;letter-spacing:.06em;padding:8px 14px;border-radius:99px;
+     border:1px solid var(--line);color:var(--mut);background:var(--panel);cursor:pointer;transition:.14s;white-space:nowrap}
+  .f:hover{color:var(--txt)}
+  .f.on{color:#04120d;font-weight:800}
+  .sayac{font-family:var(--mono);font-size:12px;color:var(--mut);white-space:nowrap}
+
+  .kart{background:var(--panel);border:1px solid var(--line);border-radius:15px;margin-bottom:12px;
+        overflow:hidden;transition:.15s}
+  .kart:hover{border-color:#2c3a4b}
+  .kart.acik{border-color:var(--blue)}
+  .bas{padding:17px 20px;cursor:pointer;display:flex;align-items:flex-start;gap:14px}
+  .bas .ok{font-family:var(--mono);color:var(--mut);font-size:13px;padding-top:3px;transition:.2s;flex:none}
+  .kart.acik .bas .ok{transform:rotate(90deg);color:var(--blue)}
+  .bas .gv{flex:1;min-width:0}
+  .bas h3{margin:0 0 5px;font-size:16.5px;font-weight:730;letter-spacing:-.01em}
+  .bas .bir{color:var(--mut);font-size:13.5px;margin:0}
+  .rozetler{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .rz{font-family:var(--mono);font-size:9px;letter-spacing:.11em;padding:3px 8px;border-radius:5px;font-weight:800}
+  .sv{background:rgba(132,148,168,.14);color:var(--mut)}
+  .nt{background:rgba(167,139,250,.2);color:var(--purple)}
+
+  .icerik{display:none;padding:0 20px 20px;border-top:1px solid var(--line);margin-top:2px}
+  .kart.acik .icerik{display:block}
+  .bl{margin-top:17px}
+  .bl .h{font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;
+         font-weight:800;margin-bottom:8px;display:block}
+  .bl p{margin:0;font-size:13.8px}
+  .iki{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:640px){.iki{grid-template-columns:1fr}}
+  ul{margin:0;padding-left:19px;font-size:13.5px}
+  li{margin-bottom:5px}
+  .ok-h{color:var(--green)} .no-h{color:var(--red)} .ns-h{color:var(--blue)}
+  .hp-h{color:var(--orange)} .tz-h{color:var(--yellow)} .kd-h{color:var(--purple)}
+
+  pre{background:#070a0f;border:1px solid var(--line);border-radius:10px;padding:14px 16px;
+      overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.75;margin:0;color:#c9d6e4;
+      white-space:pre}
+  .kopyala{float:right;font-family:var(--mono);font-size:10px;background:var(--panel2);color:var(--mut);
+           border:1px solid var(--line);border-radius:6px;padding:4px 9px;cursor:pointer;margin-left:8px}
+  .kopyala:hover{color:var(--green);border-color:var(--green)}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+  td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  td:first-child{font-family:var(--mono);color:var(--orange);white-space:nowrap;width:1%;font-size:12.5px}
+
+  .tuzak{background:rgba(250,204,21,.07);border:1px solid rgba(250,204,21,.32);border-radius:11px;
+         padding:13px 15px;font-size:13.5px}
+  .dersLink{display:inline-block;margin-top:14px;font-family:var(--mono);font-size:12px;
+            background:rgba(34,211,160,.14);color:var(--green);border:1px solid rgba(34,211,160,.4);
+            border-radius:9px;padding:9px 15px}
+  .dersLink:hover{background:rgba(34,211,160,.24)}
+  .yok{text-align:center;color:var(--mut);padding:50px 0;font-family:var(--mono);font-size:13px}
+  .foot{text-align:center;color:var(--mut);font-size:12.5px;margin-top:40px;font-family:var(--mono)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="kicker">ML Academy · Model Kataloğu</div>
+    <h1>Hangi model, <span class="hl">ne işe yarar?</span></h1>
+    <p class="sub">Her model için tek sayfada: ne yapar · nasıl çalışır · ne zaman kullanılır ·
+       <b>ne zaman kullanılmaz</b> · çalışan kod · kilit ayarlar · ve herkesin düştüğü tuzak.</p>
+  </div>
+</header>
+
+<div class="araclar"><div class="in">
+  <input id="ara" placeholder="ara:  ağaç, metin, anomali, aşırı uyum, RAG…" />
+  <div id="filtreler" style="display:flex;gap:7px;flex-wrap:wrap"></div>
+  <div class="sayac" id="sayac"></div>
+</div></div>
+
+<div class="wrap">
+  <div id="liste"></div>
+  <div class="foot"><a href="index.html">← Derslere dön</a></div>
+</div>
+
+<script src="modeller.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let aktifF = 'hepsi';
+
+$('filtreler').innerHTML =
+  '<button class="f on" data-g="hepsi" style="background:var(--green);border-color:var(--green)">HEPSİ</button>' +
+  Object.entries(GOREVLER).map(([k,v]) =>
+    '<button class="f" data-g="'+k+'" data-renk="'+v.renk+'">'+v.ad.toUpperCase()+'</button>').join('');
+
+function ciz(){
+  const q = $('ara').value.trim().toLowerCase();
+  const liste = MODELLER.filter(m => {
+    if (aktifF !== 'hepsi' && !m.gorev.includes(aktifF)) return false;
+    if (!q) return true;
+    const hepsi = [m.ad, m.bir, m.nasil, m.tuzak, m.kod,
+                   ...m.neZaman, ...m.neZamanDegil, ...m.hiper.flat()].join(' ').toLowerCase();
+    return hepsi.includes(q);
+  });
+  $('sayac').textContent = liste.length + ' / ' + MODELLER.length + ' model';
+  if (!liste.length){ $('liste').innerHTML = '<div class="yok">eşleşen model yok</div>'; return; }
+
+  $('liste').innerHTML = liste.map((m,i) => {
+    const gz = m.gorev.map(g => '<span class="rz" style="background:'+GOREVLER[g].renk+'22;color:'+
+                GOREVLER[g].renk+'">'+GOREVLER[g].ad.toUpperCase()+'</span>').join('');
+    return '<div class="kart" data-i="'+i+'">' +
+      '<div class="bas"><div class="ok">▶</div><div class="gv">' +
+        '<h3>'+m.ad+'</h3><p class="bir">'+m.bir+'</p>' +
+        '<div class="rozetler">'+gz+
+          '<span class="rz sv">'+m.seviye.toUpperCase()+'</span>' +
+          (m.rozet ? '<span class="rz nt">'+m.rozet+'</span>' : '') +
+        '</div></div></div>' +
+      '<div class="icerik">' +
+        '<div class="bl"><span class="h ns-h">◆ Nasıl çalışır</span><p>'+m.nasil+'</p></div>' +
+        '<div class="bl iki">' +
+          '<div><span class="h ok-h">✓ Ne zaman kullan</span><ul>' +
+            m.neZaman.map(x=>'<li>'+x+'</li>').join('') + '</ul></div>' +
+          '<div><span class="h no-h">✗ Ne zaman kullanma</span><ul>' +
+            m.neZamanDegil.map(x=>'<li>'+x+'</li>').join('') + '</ul></div>' +
+        '</div>' +
+        '<div class="bl"><span class="h kd-h">⚙ Kod<button class="kopyala" data-k="'+i+'">kopyala</button></span>' +
+          '<pre id="kod'+i+'">'+m.kod.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</pre></div>' +
+        '<div class="bl"><span class="h hp-h">◈ Kilit ayarlar</span><table>' +
+          m.hiper.map(([a,b])=>'<tr><td>'+a+'</td><td>'+b+'</td></tr>').join('') + '</table></div>' +
+        '<div class="bl"><span class="h tz-h">⚠ Klasik tuzak</span><div class="tuzak">'+m.tuzak+'</div></div>' +
+        (m.ders ? '<a class="dersLink" href="lesson.html?id='+m.ders+'">▶ Bu modelin interaktif dersine git</a>' : '') +
+      '</div></div>';
+  }).join('');
+
+  document.querySelectorAll('.bas').forEach(el => el.onclick = () => el.parentElement.classList.toggle('acik'));
+  document.querySelectorAll('.kopyala').forEach(el => el.onclick = ev => {
+    ev.stopPropagation();
+    navigator.clipboard.writeText($('kod'+el.dataset.k).textContent);
+    el.textContent = 'kopyalandı ✓';
+    setTimeout(() => el.textContent = 'kopyala', 1500);
+  });
+}
+
+$('ara').oninput = ciz;
+$('filtreler').onclick = e => {
+  if (!e.target.dataset.g) return;
+  aktifF = e.target.dataset.g;
+  document.querySelectorAll('.f').forEach(b => {
+    const on = b.dataset.g === aktifF;
+    b.classList.toggle('on', on);
+    b.style.background = on ? (b.dataset.renk || 'var(--green)') : '';
+    b.style.borderColor = on ? (b.dataset.renk || 'var(--green)') : '';
+    b.style.color = on ? '#04120d' : '';
+  });
+  ciz();
+};
+ciz();
+</script>
+</body>
+</html>
