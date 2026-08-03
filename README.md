@@ -161,4 +161,4 @@ MIT
 
 ## Yazar
 
-[Cagri Temel](https://cagritemel.com). [`neural-trees`](https://github.com/cgrtml/neural-trees) kütüphanesinin yazarı, IEEE SMC hakemi.
+[Cagri Temel](https://cagritemel.com). [`neural-trees`](https://github.com/cgrtml/neural-trees) kütüphanesinin yazarı.
