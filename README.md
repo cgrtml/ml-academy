@@ -4,7 +4,11 @@ Sıfırdan yapay zekâ öğrenmek isteyenler için hazırlanmış, tamamen taray
 
 Video yok, kurulum yok, üyelik yok. `index.html` dosyasını açıp başlıyorsunuz.
 
-**[Canlı demo](https://cgrtml.github.io/ml-academy/)**
+**[Canlı demo](https://cagritemel.com/ml-academy/)**
+
+![ML Academy ana sayfa](docs/img/anasayfa.png)
+
+![Bir model nasıl öğrenir dersi](docs/img/ders.png)
 
 ## Neden yaptım
 
@@ -74,7 +78,7 @@ Tarayıcıda gerçek scikit-learn ile 5x2cv F-testi çalıştırmak ve hangi tes
 ## Kurulum
 
 ```bash
-git clone https://github.com/cgrtml/ml-academy
+git clone https://github.com/cgrtml/ml-academy.git
 cd ml-academy
 open index.html
 ```
