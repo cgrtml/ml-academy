@@ -195,6 +195,13 @@
   .dilbar button{font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:5px 10px;
     border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--mut);cursor:pointer}
   .dilbar button.on{background:var(--green);border-color:var(--green);color:#04120d;font-weight:800}
+  .kitapBlok{margin-top:20px}
+  .kitap{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--purple);
+         border-radius:0 10px 10px 0;padding:9px 12px;margin-bottom:7px;font-size:11.5px;line-height:1.5}
+  .kitap .ad{color:var(--txt)}
+  .kitap .sy{font-family:var(--mono);font-size:10.5px;color:var(--purple);display:block;margin-top:3px}
+  .kitapNot{font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:var(--mut);
+            text-transform:uppercase;margin-top:6px}
   .dilnot{font-family:var(--mono);font-size:11px;color:var(--yellow);background:rgba(250,204,21,.07);
     border:1px solid rgba(250,204,21,.28);border-radius:9px;padding:8px 12px;margin:0 0 16px}
   .fin{text-align:center;padding:34px 20px}
@@ -214,6 +221,7 @@
   <aside class="side">
     <div class="hd" id="adimBasligi">◆ Bu dersin adımları</div>
     <div class="map" id="map"></div>
+    <div id="kitapBlok"></div>
     <div id="kaynakBlok"></div>
   </aside>
   <main>
@@ -227,6 +235,7 @@
 <script src="viz.js"></script>
 <script src="content.js"></script>
 <script src="content-en.js"></script>
+<script src="kitap-kaynak.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -277,6 +286,8 @@ const L10N = {
   denedin:['denedin','you tried'],
   adimOkundu:['adım okundu','step read'],
   kaynaklar:['◆ Kaynaklar','◆ Sources'],
+  kitapBas:['◆ Bu adımı kitaptan oku','◆ Read this step in a book'],
+  kitapNot:['otomatik eşleşme','matched automatically'],
   baglanti:['bağlantı','link'],
   karsilastirma:['<b>Karşılaştırma:</b> sen 1. adımda kaydırıcılarla en iyi <b>',
                  '<b>Comparison:</b> with the sliders in step 1 your best was <b>'],
@@ -331,6 +342,18 @@ function renderMap(){
   });
   $('pfill').style.width = (MY.done.length / D.adimlar.length * 100) + '%';
   $('xpN').textContent = MY.xp + ' XP';
+}
+
+/* Bu adimin konusunu kapsayan kitap bolumleri. Sadece atif gosterilir. */
+function kitapCiz(i){
+  const kutu = $('kitapBlok');
+  if (!kutu) return;
+  const liste = (typeof KITAP_KAYNAK !== 'undefined') ? KITAP_KAYNAK[DERS_ID + ':' + (i+1)] : null;
+  if (!liste || !liste.length){ kutu.innerHTML = ''; return; }
+  kutu.innerHTML = '<div class="kh">' + T('kitapBas') + '</div>' +
+    liste.map(k => '<div class="kitap"><span class="ad">' + k.k + '</span>' +
+                   '<span class="sy">s. ' + k.s + '</span></div>').join('') +
+    '<div class="kitapNot">' + T('kitapNot') + '</div>';
 }
 
 /* ═══════════════ ADIM RENDER ═══════════════ */
@@ -617,6 +640,7 @@ function go(i){
     } else complete(true);
   };
 
+  kitapCiz(i);
   draw(); upPh(); renderMap();
   if (a.kind === 'play') setTimeout(baslat, 550);
   window.scrollTo({top:0, behavior:'smooth'});

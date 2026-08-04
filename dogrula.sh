@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 echo "── 1 · SÖZDİZİMİ ──"
 node -e "
 const fs=require('fs');
-['viz.js','content.js','content-en.js','modeller.js'].forEach(f=>{new Function(fs.readFileSync(f,'utf8'));console.log('  ✓ '+f)});
+['viz.js','content.js','content-en.js','modeller.js','kitap-kaynak.js'].forEach(f=>{new Function(fs.readFileSync(f,'utf8'));console.log('  ✓ '+f)});
 ['index.html','lesson.html','modeller.html'].forEach(f=>{const s=fs.readFileSync(f,'utf8');
   [...s.matchAll(/<script>([\s\S]*?)<\/script>/g)].forEach(m=>new Function(m[1]));console.log('  ✓ '+f)});
 " || exit 1
