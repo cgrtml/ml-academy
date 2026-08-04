@@ -51,15 +51,17 @@ Yanlış cevap reddedilmiyor. Çalıştırılıyor ki ne olduğunu görün.
 
 ## İçerik
 
-| Rota | Konu | Ders |
-|---|---|---:|
-| 0 | Sıfırdan Başla: algoritma, veri, öğrenme, ezberleme, metrikler, veri sızıntısı, istatistiksel kanıt | 10 |
-| 1 | Klasik ML: k-NN, karar ağaçları, Random Forest, boosting, SVM, soft decision tree, PCA | 10 |
-| 2 | Derin Öğrenme: nöron, geri yayılım, optimizerlar, düzenlileştirme, batch norm, CNN, gömmeler, transfer | 10 |
-| 3 | Büyük Dil Modelleri: tokenizasyon, attention, transformer bloğu, örnekleme, RLHF, halüsinasyon, RAG, KV cache | 10 |
-| 4 | AI Kullanma: prompt, eval seti, Elo karşılaştırma, RAG hata ayıklama, ajanlar, LLM-judge, kırmızı takım, maliyet | 8 |
+| Rota | Konu | Hazır | Planlı |
+|---|---|---:|---:|
+| 0 | Sıfırdan Başla: algoritma, veri, öğrenme, ezberleme, metrikler, veri sızıntısı, istatistiksel kanıt | 10 | 5 |
+| 1 | Klasik ML: k-NN, ağaçlar, Random Forest, boosting, SVM, soft decision tree, PCA | 10 | 22 |
+| 2 | Derin Öğrenme: nöron, geri yayılım, optimizerlar, düzenlileştirme, batch norm, CNN, gömmeler, transfer | 10 | 11 |
+| 3 | Büyük Dil Modelleri: tokenizasyon, attention, transformer bloğu, örnekleme, RLHF, halüsinasyon, RAG, KV cache | 10 | 16 |
+| 4 | AI Kullanma: prompt, eval seti, Elo, RAG hata ayıklama, ajanlar, LLM-judge, kırmızı takım, maliyet | 8 | 9 |
 
-Toplam 48 ders, 108 etkileşimli adım, 60 kilit açan soru, 47 kilit koşulu, 143 akademik kaynak.
+Hazır 48 ders, 108 etkileşimli adım, 60 kilit açan soru, 47 kilit koşulu, 143 akademik kaynak.
+
+Planlı 63 ders daha var. Bu liste tahminle değil, 17 ders kitabının kendi içindekiler tablosundan çıkarıldı: 1672 bölüm başlığı taranıp mevcut derslerle çakışanlar ve tekrar edenler ayıklandı. Kaynaklar arasında Bishop, Zhang ve arkadaşları (d2l), Müller & Guido, Ng'in CS229 notları, Raschka, Tunstall, Xiao & Zhu, Huyen, Monarch, Weidman, Fleuret, Cormen var.
 
 Ayrıca 25 modellik bir model kataloğu var. Her model için ne yaptığı, nasıl çalıştığı, ne zaman kullanılacağı, ne zaman kullanılmayacağı, çalışan kod, kilit hiperparametreler ve klasik tuzak yazıyor.
 

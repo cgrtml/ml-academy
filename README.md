@@ -51,15 +51,17 @@ Wrong answers are not rejected. They are executed so you can see what they do.
 
 ## Contents
 
-| Track | Topic | Lessons |
-|---|---|---:|
-| 0 | Start from zero: algorithms, data, learning, overfitting, metrics, data leakage, statistical evidence | 10 |
-| 1 | Classical ML: k-NN, decision trees, random forests, boosting, SVM, soft decision trees, PCA | 10 |
-| 2 | Deep learning: neurons, backpropagation, optimizers, regularization, batch norm, CNNs, embeddings, transfer | 10 |
-| 3 | Large language models: tokenization, attention, transformer block, sampling, RLHF, hallucination, RAG, KV cache | 10 |
-| 4 | Using AI: prompting, eval sets, Elo comparison, RAG debugging, agents, LLM-as-judge, red teaming, cost | 8 |
+| Track | Topic | Ready | Planned |
+|---|---|---:|---:|
+| 0 | Start from zero: algorithms, data, learning, overfitting, metrics, data leakage, statistical evidence | 10 | 5 |
+| 1 | Classical ML: k-NN, decision trees, random forests, boosting, SVM, soft decision trees, PCA | 10 | 22 |
+| 2 | Deep learning: neurons, backpropagation, optimizers, regularization, batch norm, CNNs, embeddings, transfer | 10 | 11 |
+| 3 | Large language models: tokenization, attention, transformer block, sampling, RLHF, hallucination, RAG, KV cache | 10 | 16 |
+| 4 | Using AI: prompting, eval sets, Elo comparison, RAG debugging, agents, LLM-as-judge, red teaming, cost | 8 | 9 |
 
-48 lessons, 108 interactive steps, 60 gating questions, 47 unlock conditions, 143 academic references.
+48 lessons are ready: 108 interactive steps, 60 gating questions, 47 unlock conditions, 143 academic references.
+
+63 more are planned. That list was not guessed. It comes from the tables of contents of 17 textbooks: 1672 chapter headings were read, then anything already covered by an existing lesson and anything duplicated across books was removed. The sources include Bishop, Zhang and colleagues (d2l), Müller and Guido, Ng's CS229 notes, Raschka, Tunstall, Xiao and Zhu, Huyen, Monarch, Weidman, Fleuret and Cormen.
 
 There is also a catalogue of 25 models. For each one it lists what it does, how it works, when to use it, when **not** to use it, working code, key hyperparameters and the classic pitfall.
 
