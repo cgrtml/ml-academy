@@ -50,7 +50,7 @@ const ROTALAR = [
     {id:'dagilim-kaymasi',  ad:'Zemin kayınca: dağılım kayması',                 sure:15, durum:'hazir'},
     {id:'hiper-arama',    ad:'Hiperparametre arama: ızgara, rastgele, eleme',  sure:16, durum:'hazir'},
     {id:'gauss-surec',    ad:'Gaussian Process: belirsizliğini söyleyen model',  sure:16, durum:'hazir'},
-    {id:'bayes-reg',      ad:'Bayesçi bakış: Occam\'ın usturası hesaplanabilir mi',  sure:16, durum:'planli'},
+    {id:'bayes-reg',      ad:'Bayesçi bakış: Occam\'ın usturası hesaplanabilir mi',  sure:17, durum:'hazir'},
     {id:'fisher-lda',     ad:'Fisher\'ın fikri: sınıfları ayıran en iyi yön',   sure:14, durum:'hazir'},
     {id:'uretici-ayirici',  ad:'Sınırı mı çizersin, veriyi mi üretirsin',        sure:14, durum:'hazir'},
     {id:'spline',         ad:'Spline: eğriyi parça parça bükmek',              sure:13, durum:'hazir'},
@@ -6605,6 +6605,143 @@ DERSLER['gauss-surec'] = {
       'modelin nerede bilmediğini bilmesi.<br><br>' +
       'Bedeli n³ maliyet ve çekirdek seçimidir. Birkaç bin örneği geçince seyrek GP yaklaşımları ' +
       'ya da derin ağlarla topluluk/dropout tabanlı belirsizlik tahminleri tercih edilir.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── BAYESÇİ BAKIŞ · MODEL KANITI ─────────────── */
+DERSLER['bayes-reg'] = {
+  ad:'Occam’ın usturası: veri kendi modelini seçebilir mi?',
+  alt:'Doğrulama kümesi olmadan model karmaşıklığı seçmek. Bayesçi kanıt, basitliği bir tercih değil bir hesap sonucu yapar.',
+  kaynaklar:[
+    {y:'MacKay, D. J. C.', t:'2003', b:'Information Theory, Inference and Learning Algorithms, Bölüm 28', n:'Cambridge University Press', u:'https://www.inference.org.uk/itila/'},
+    {y:'Bishop, C. M.', t:'2006', b:'Pattern Recognition and Machine Learning, Bölüm 3.4', n:'Springer'},
+    {y:'Rasmussen, C. E. & Ghahramani, Z.', t:'2001', b:'Occam’s Razor', n:'NIPS 2000'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Eğitim hatası neden model seçemez',
+    goal:'Bir ölçütün neden karmaşıklık hakkında tek kelime edemediğini göreceksin.',
+    todo:'Dereceyi 0’dan 9’a kadar gezdir. Turuncu kesikli çizgi (eğitim hatası) hiç yükseliyor mu?',
+    kind:'controls', viz:'modelKaniti', h:770,
+    controls:[{k:'derece', lb:'POLİNOM DERECESİ', min:0, max:9, step:1, val:0, fmt:v => 'derece '+v}],
+    live:s => [['EĞİTİM HATASI', byEgitimHata(s.derece).toFixed(5), K.orange],
+               ['LOG KANIT', byKanit(s.derece).k.toFixed(2), K.blue]],
+    body:'<p>Elimizde 16 gürültülü nokta var. Gerçek fonksiyon 3. derece bir polinom, ama bunu ' +
+      'bilmiyormuş gibi davranacağız. Soru şu: <b>kaçıncı dereceden polinom uydurmalıyız?</b></p>' +
+      '<p>En bariz fikir eğitim hatasına bakmak. Dereceyi gezdirirken turuncu çizgiyi izle: ' +
+      'derece 0’da <b>0.19242</b>, derece 9’da <b>0.02155</b>. Aralarda da hep düşüyor.</p>' +
+      '<p>Bu bir tesadüf değil, matematiksel bir zorunluluk. Derece d’nin uydurabildiği her eğri, ' +
+      'derece d+1’in de uydurabildiği eğrilerin arasındadır. Daha büyük bir kümede en iyi olan, ' +
+      'daha küçük kümede en iyi olandan kötü olamaz.</p>' +
+      '<p>Yani eğitim hatası size karmaşıklık hakkında <b>hiçbir bilgi vermez</b>. Her zaman ' +
+      '"daha karmaşık" der. Aşırı uyum dersindeki tuzağın kaynağı buydu.</p>',
+    learned:'<b>Eğitim hatası model karmaşıklığı seçemez, çünkü karmaşıklıkla birlikte düşmek zorundadır.</b><br><br>' +
+      'Derece 0’da 0.19242, derece 9’da 0.02155. Hiçbir yerde yükselmiyor.<br><br>' +
+      'İç içe geçmiş model aileleri için bu bir kusur değil, tanım gereği böyle. ' +
+      'Bu yüzden <b>ayrı bir sinyale</b> ihtiyacımız var.',
+    xp:25,
+  },
+  {
+    t:'Kanıt: modelin veriyi önceden tahmin etme gücü',
+    goal:'Marjinal olabilirliğin ne ölçtüğünü ve neden kendiliğinden ceza içerdiğini göreceksin.',
+    todo:'Dereceyi 2’den 3’e geçir. Mavi eğri ne yapıyor?',
+    kind:'controls', viz:'modelKaniti', h:770,
+    controls:[{k:'derece', lb:'POLİNOM DERECESİ', min:0, max:9, step:1, val:2, fmt:v => 'derece '+v}],
+    derive:s => ({fark: byKanit(s.derece).k - byKanit(2).k}),
+    live:s => [['LOG KANIT', byKanit(s.derece).k.toFixed(3), K.blue],
+               ['DERECE 2 İLE FARK', s.fark.toFixed(2)], ['HEDEF', '> 25']],
+    unlock:s => s.fark > 25,
+    unlockMsg:'Derece 2’ye göre kanıtı 25 log biriminin üstüne çıkaran dereceyi bul',
+    body:'<p>Bayesçi soru şu: <b>bu model ailesi, veriyi görmeden önce, elimizdeki veriye ne kadar ' +
+      'olasılık verirdi?</b> Buna marjinal olabilirlik ya da <b>kanıt</b> denir:</p>' +
+      '<p style="text-align:center;font-size:1.15em">p(y) = &#8747; p(y | w) p(w) dw</p>' +
+      '<p>Ağırlıkları en iyi değerine sabitlemiyoruz, <b>hepsi üzerinden ortalama alıyoruz</b>. ' +
+      'Kritik nokta bu.</p>' +
+      '<p>Neden ceza içeriyor: olasılık toplamı 1’dir. Karmaşık bir model çok daha fazla ' +
+      'olası veri kümesi üretebilir, dolayısıyla bu 1 birim olasılığı çok geniş bir alana yaymak ' +
+      'zorundadır. Gerçekten gözlediğimiz veriye düşen pay küçülür. Basit model dar bir alana ' +
+      'yayar; eğer veri o dar alandaysa yüksek pay alır.</p>' +
+      '<p>Sonuç ölçülebilir. Derece 2’nin log kanıtı <b>&minus;34.912</b>, derece 3’ün ' +
+      '<b>&minus;6.656</b>. Fark <b>28.26</b> log birimi, yani veri derece 3’ü ' +
+      '<b>e<sup>28.3</sup> &asymp; 1.9 &times; 10<sup>12</sup></b> kat daha olası kılıyor.</p>' +
+      '<p>Hiçbir doğrulama kümesi kullanmadık. Tek bir veri noktası ayırmadık.</p>',
+    learned:'<b>Kanıt, bir model ailesinin veriyi önceden tahmin etme gücüdür.</b><br><br>' +
+      'Olasılık toplamı 1 olduğu için, karmaşık model onu geniş bir alana yaymak zorundadır. ' +
+      'Occam’ın usturası bir tercih değil, bu kısıtın sonucudur.<br><br>' +
+      'Derece 2 &rarr; 3 geçişinde log kanıt &minus;34.912’den &minus;6.656’ya çıkıyor. ' +
+      '<b>10<sup>12</sup> kat</b> fark, ve tek bir doğrulama noktası harcamadan.',
+    xp:50,
+  },
+  {
+    t:'Kanıt neyi kesin söyler, neyi söylemez',
+    goal:'Bu yöntemin gerçek çözünürlüğünü ölçeceksin.',
+    todo:'Dereceyi 3’ten 9’a gezdir. Mavi eğri ne kadar değişiyor?',
+    kind:'controls', viz:'modelKaniti', h:770,
+    controls:[{k:'derece', lb:'POLİNOM DERECESİ', min:3, max:9, step:1, val:3, fmt:v => 'derece '+v}],
+    live:s => [['LOG KANIT', byKanit(s.derece).k.toFixed(3), K.blue],
+               ['ZİRVEYE UZAKLIK', byKanit(5).k >= byKanit(s.derece).k ?
+                  (byKanit(5).k - byKanit(s.derece).k).toFixed(3) : '0.000'],
+               ['EĞİTİM HATASI', byEgitimHata(s.derece).toFixed(5), K.orange]],
+    body:'<p>Şimdi dürüst olalım. Kanıt derece 2’yi ezici bir farkla eledi, ama derece 3 ile ' +
+      '9 arasında ne yapıyor?</p>' +
+      '<p><b>derece 3:</b> &minus;6.656 &nbsp;·&nbsp; <b>4:</b> &minus;6.676 &nbsp;·&nbsp; ' +
+      '<b>5:</b> &minus;6.020 &nbsp;·&nbsp; <b>6:</b> &minus;6.132 &nbsp;·&nbsp; ' +
+      '<b>9:</b> &minus;6.709</p>' +
+      '<p>Zirve derece <b>5</b>’te, gerçek derece ise 3. Zirve ile derece 9 arasındaki fark ' +
+      'sadece <b>0.689</b> log birimi, yani yaklaşık 2 kat. Bu <b>hiçbir şeye karar verdirmez</b>.</p>' +
+      '<p>Yani kanıtın iki ayrı davranışı var:</p>' +
+      '<p><b>Yetersiz modeli reddederken kesin.</b> 28 log birimi, 10<sup>12</sup> kat.<br>' +
+      '<b>Yeterli modeller arasında kararsız.</b> 0.69 log birimi, 2 kat.</p>' +
+      '<p>Bu bir kusur değil, doğru davranış. 16 gürültülü noktayla derece 3 ile 5 arasında ' +
+      'ayrım yapacak bilgi <b>gerçekten yok</b>. Kanıt bunu uydurmuyor. Uyduran bir yöntem ' +
+      'size olmayan bir kesinlik satardı.</p>' +
+      '<p>Gaussian Process dersinde aynı dürüstlüğü görmüştün: veri bitince bant açılıyordu. ' +
+      'Burada da veri yetmeyince kanıt düzleşiyor.</p>',
+    learned:'<b>Kanıt yetersiz modeli ezer, yeterli modeller arasında kararsız kalır.</b><br><br>' +
+      'Derece 2 &rarr; 3: <b>28.26</b> log birimi fark, tartışmasız.<br>' +
+      'Derece 5 &rarr; 9: <b>0.689</b> log birimi, yaklaşık 2 kat, kararsız.<br><br>' +
+      'Zirve gerçek dereceyi (3) değil 5’i gösteriyor. 16 noktayla bu ikisini ayıracak bilgi ' +
+      'yok, ve yöntem bunu gizlemiyor. <b>Yöntemin çözünürlüğü verinin izin verdiği kadardır.</b>',
+    xp:50,
+  },
+  {
+    t:'Bunu ne zaman kullanırsın',
+    goal:'Kanıt ile çapraz doğrulama arasında seçim yapmayı öğreneceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'modelKaniti', h:770, state:{derece:3},
+    body:'<p>Aynı işi çapraz doğrulama da yapar. Ne zaman hangisi?</p>' +
+      '<p><b>Kanıt kazanır:</b> veri az olduğunda. 40 örneğin 8’ini doğrulamaya ayırmak ' +
+      'hem eğitimi zayıflatır hem de o 8 örnekle yapılan ölçüm çok gürültülü olur. Kanıt tüm ' +
+      'veriyi kullanır.</p>' +
+      '<p><b>Kanıt kazanır:</b> eğitim pahalı olduğunda. 5 katlı çapraz doğrulama, modeli 5 kez ' +
+      'eğitmek demektir.</p>' +
+      '<p><b>Çapraz doğrulama kazanır:</b> ön dağılıma güvenmediğinde. Kanıt p(w)’ye bağlıdır ' +
+      've ön dağılım yanlışsa kanıt da yanlış olabilir. Çapraz doğrulama böyle bir varsayım yapmaz.</p>' +
+      '<p>Buradaki veride bunu ölçtük: ön dağılım genişliğini optimize etmek yerine kabaca ' +
+      'α = 1 alsak da zirve yine derece 5’te kalıyor ve derece 2 &rarr; 3 sıçraması 32.95 log ' +
+      'birimi oluyor. Yani <b>bu örnekte sonuç ön dağılıma duyarlı değil</b>. Ama bu bir ' +
+      'garanti değil, bir ölçüm. Kendi probleminde aynı kontrolü yapman gerekir: ön dağılımı ' +
+      'değiştir, seçim değişiyor mu bak.</p>' +
+      '<p><b>Çapraz doğrulama kazanır:</b> olabilirlik hesaplanamadığında. Rastgele orman ya da ' +
+      'gradyan artırma için p(y | w) diye bir şey yok.</p>' +
+      '<p>Bir de temel uyarı: kanıt <b>elindeki adaylar arasında</b> karşılaştırma yapar. ' +
+      'Hepsi kötüyse en az kötüsünü seçer ve bunu size söylemez.</p>',
+    quiz:{ q:'Bir klinik çalışmadan 45 hastalık bir veri kümesi var. Yeni hasta toplamak yıllar sürüyor. Doğrusal, ikinci derece ve üçüncü derece modelden hangisini kullanacağına karar vermen gerekiyor. Nasıl yaparsın?',
+      opts:[
+        {t:'Bayesçi kanıtı hesaplayıp karşılaştırırım, ama ön dağılım seçimini açıkça raporlarım', why:'Doğru. 45 örnek çapraz doğrulama için az: 9’luk katmanlarla yapılan ölçüm o kadar gürültülü olur ki modeller arasındaki farkı ölçemez. Kanıt tüm veriyi kullanır. Ön dağılıma bağlı olduğu için de o seçimi raporlamak zorunludur, çünkü sonucu değiştirebilir.'},
+        {t:'10 katlı çapraz doğrulama yaparım, standart yöntem budur', why:'45 örnekte her katman 4-5 hasta. Bu kadar küçük bir küme üzerinde ölçülen hata öyle gürültülüdür ki modeller arası fark tesadüfün altında kalır. Standart olması bu veri boyutunda uygun olduğu anlamına gelmiyor.'},
+        {t:'En karmaşık modeli seçerim, eğitim hatası en düşük olan odur', why:'İlk adımda ölçtüğün şey tam olarak bu: eğitim hatası karmaşıklıkla düşmek zorundadır, dolayısıyla hiçbir şey söylemez. 45 hastada üçüncü derece bir model gürültüyü ezberler.'},
+        {t:'15 hastayı kenara ayırıp test kümesi yaparım', why:'45’in üçte birini harcamak hem eğitimi ciddi zayıflatır hem de 15 hastalık bir ölçüm üç model arasında ayrım yapacak hassasiyette olmaz. Veri kıtken en pahalı seçenek budur.'},
+      ], correct:0 },
+    learned:'<b>Kanıt ile çapraz doğrulama farklı varsayımlar karşılığında farklı şeyler verir.</b><br><br>' +
+      'Kanıt tüm veriyi kullanır ve tek eğitim ister, ama <b>ön dağılıma bağlıdır</b>. ' +
+      'Bu bağlılığın pratikte ne kadar ısırdığı ölçülmelidir: burada ölçtük ve α = 1 ile de ' +
+      'aynı sonuca vardık.<br>' +
+      'Çapraz doğrulama varsayımsızdır ama veriyi böler ve tekrar tekrar eğitir.<br><br>' +
+      'Az veri ya da pahalı eğitim varsa kanıt; ön dağılıma güven yoksa ya da olabilirlik ' +
+      'hesaplanamıyorsa çapraz doğrulama. Ve <b>ikisi de sadece verdiğin adaylar arasında seçer</b>.',
     xp:50,
   },
 ]};

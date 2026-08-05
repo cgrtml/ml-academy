@@ -2180,6 +2180,158 @@ VIZ.gaussSurec = s => {
        'gerçek değer ' + GP.f0(5).toFixed(3));
 };
 
+
+/* ═══════════ BAYESÇİ MODEL KANITI ═══════════
+   Doğrulama kümesi kullanmadan model karmaşıklığı seçmek.
+   Marjinal olabilirlik (kanıt): p(y) = ∫ p(y|w) p(w) dw
+   Karmaşık model olasılığı geniş bir alana yaymak zorunda kalır ve
+   veriye denk gelen bölgeye daha az pay düşer. Occam'ın usturası. */
+const BY = { N: 16, sig: 0.18, gercek: [0.1, -1.6, 0.0, 2.4] };
+BY.f0 = x => BY.gercek.reduce((s, c, k) => s + c * Math.pow(x, k), 0);
+BY.veri = (() => {
+  const r = rng(19);
+  const g = () => { let u = 0, w = 0; while (!u) u = r(); while (!w) w = r();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); };
+  const X = [], Y = [];
+  for (let i = 0; i < BY.N; i++){ const x = -1 + 2 * i / (BY.N - 1);
+    X.push(x); Y.push(BY.f0(x) + BY.sig * g()); }
+  return { X, Y };
+})();
+function byChol(A){
+  const n = A.length, L = Array.from({ length: n }, () => new Array(n).fill(0));
+  for (let i = 0; i < n; i++) for (let j = 0; j <= i; j++){
+    let s = A[i][j];
+    for (let k = 0; k < j; k++) s -= L[i][k] * L[j][k];
+    if (i === j) L[i][i] = Math.sqrt(Math.max(1e-12, s)); else L[i][j] = s / L[j][j];
+  }
+  return L;
+}
+function byCozL(L, b){ const n = b.length, y = new Array(n);
+  for (let i = 0; i < n; i++){ let s = b[i];
+    for (let k = 0; k < i; k++) s -= L[i][k] * y[k]; y[i] = s / L[i][i]; }
+  return y; }
+function byCozLT(L, y){ const n = y.length, x = new Array(n);
+  for (let i = n - 1; i >= 0; i--){ let s = y[i];
+    for (let k = i + 1; k < n; k++) s -= L[k][i] * x[k]; x[i] = s / L[i][i]; }
+  return x; }
+function byLogKanit(d, alfa){
+  const { X, Y } = BY.veri, N = BY.N, beta = 1 / (BY.sig * BY.sig);
+  const Phi = X.map(x => Array.from({ length: d + 1 }, (_, k) => Math.pow(x, k)));
+  const C = X.map((_, i) => X.map((__, j) => {
+    let s = 0; for (let k = 0; k <= d; k++) s += Phi[i][k] * Phi[j][k];
+    return s / alfa + (i === j ? 1 / beta : 0); }));
+  const L = byChol(C);
+  let logDet = 0; for (let i = 0; i < N; i++) logDet += 2 * Math.log(L[i][i]);
+  const a = byCozLT(L, byCozL(L, Y));
+  const kuad = Y.reduce((s, v2, i) => s + v2 * a[i], 0);
+  return -0.5 * (kuad + logDet + N * Math.log(2 * Math.PI));
+}
+const _byCache = {};
+function byKanit(d){
+  if (_byCache['k' + d] !== undefined) return _byCache['k' + d];
+  let en = { k: -1e9, alfa: 1 };
+  for (let e = -4; e <= 4; e += 0.05){ const alfa = Math.pow(10, e);
+    const k = byLogKanit(d, alfa);
+    if (k > en.k) en = { k, alfa }; }
+  return (_byCache['k' + d] = en);
+}
+function byEgitimHata(d){
+  if (_byCache['h' + d] !== undefined) return _byCache['h' + d];
+  const { X, Y } = BY.veri, N = BY.N, p = d + 1;
+  const A = Array.from({ length: p }, () => new Array(p + 1).fill(0));
+  for (let i = 0; i < p; i++){
+    for (let j = 0; j < p; j++){ let s = 0;
+      for (let k = 0; k < N; k++) s += Math.pow(X[k], i) * Math.pow(X[k], j);
+      A[i][j] = s + (i === j ? 1e-9 : 0); }
+    let s = 0; for (let k = 0; k < N; k++) s += Math.pow(X[k], i) * Y[k];
+    A[i][p] = s;
+  }
+  for (let c = 0; c < p; c++){
+    let pv = c;
+    for (let r2 = c + 1; r2 < p; r2++) if (Math.abs(A[r2][c]) > Math.abs(A[pv][c])) pv = r2;
+    const t = A[c]; A[c] = A[pv]; A[pv] = t;
+    const dd = A[c][c];
+    for (let j = c; j <= p; j++) A[c][j] /= dd;
+    for (let r2 = 0; r2 < p; r2++){ if (r2 === c) continue;
+      const f = A[r2][c];
+      for (let j = c; j <= p; j++) A[r2][j] -= f * A[c][j]; }
+  }
+  const w = A.map(r2 => r2[p]);
+  const hata = X.reduce((s, x, i) => s + (w.reduce((q, c, k) => q + c * Math.pow(x, k), 0) - Y[i]) ** 2, 0) / N;
+  _byCache['w' + d] = w;
+  return (_byCache['h' + d] = hata);
+}
+const byAgirlik = d => { byEgitimHata(d); return _byCache['w' + d]; };
+
+VIZ.modelKaniti = s => {
+  clear();
+  const d = Math.max(0, Math.min(9, Math.round(s.derece === undefined ? 0 : s.derece)));
+  const { X, Y } = BY.veri;
+  baslikSerit('MODEL KANITI · OCCAM’IN USTURASI',
+    'Doğrulama kümesi yok. Model karmaşıklığını verinin kendisi seçiyor.', []);
+
+  /* sol: uydurulan eğri */
+  const P = plot(rect(100, 150, 600, 470), -1.15, 1.15, -2.4, 2.4);
+  frame(P, 'x', 'y', [-1, -0.5, 0, 0.5, 1], [-2, 0, 2]);
+  cx.setLineDash([7, 6]); cx.strokeStyle = K.mut; cx.lineWidth = 2.2;
+  cx.beginPath();
+  for (let i = 0; i <= 200; i++){ const x = -1.15 + 2.3 * i / 200;
+    const Yv = Math.max(-2.4, Math.min(2.4, BY.f0(x)));
+    i ? cx.lineTo(P.sx(x), P.sy(Yv)) : cx.moveTo(P.sx(x), P.sy(Yv)); }
+  cx.stroke(); cx.setLineDash([]);
+  const w = byAgirlik(d);
+  cx.strokeStyle = K.purple; cx.lineWidth = 3.4;
+  cx.beginPath();
+  for (let i = 0; i <= 200; i++){ const x = -1.15 + 2.3 * i / 200;
+    const Yv = Math.max(-2.4, Math.min(2.4, w.reduce((q, c, k) => q + c * Math.pow(x, k), 0)));
+    i ? cx.lineTo(P.sx(x), P.sy(Yv)) : cx.moveTo(P.sx(x), P.sy(Yv)); }
+  cx.stroke();
+  X.forEach((x, i) => dot(P.sx(x), P.sy(Y[i]), 5.5, K.green));
+  txt('gerçek fonksiyon (3. derece)', P.R.x + 16, P.R.y + 26, K.mut, 18, 'left');
+  txt('uydurulan polinom', P.R.x + 16, P.R.y + 50, K.purple, 18, 'left');
+  txt('derece ' + d, P.R.x + P.R.w - 14, P.R.y + 26, K.yellow, 22, 'right');
+
+  /* sağ üst: kanıt ve eğitim hatası */
+  const Q = plot(rect(800, 150, 600, 255), -0.5, 9.5, -42, 15);
+  frame(Q, 'polinom derecesi', 'log kanıt', [0, 3, 6, 9], [-40, -20, 0]);
+  /* egitim hatasi once cizilsin ki kanit egrisi ustte kalsin · ayri olcek */
+  cx.strokeStyle = K.orange; cx.lineWidth = 2.4; cx.setLineDash([5, 4]);
+  cx.beginPath();
+  for (let k = 0; k <= 9; k++){
+    const h = byEgitimHata(k), Y2 = Q.sy(-40 + 33 * (h / 0.21));
+    k ? cx.lineTo(Q.sx(k), Y2) : cx.moveTo(Q.sx(k), Y2);
+  }
+  cx.stroke(); cx.setLineDash([]);
+  cx.strokeStyle = K.blue; cx.lineWidth = 3.2;
+  cx.beginPath();
+  for (let k = 0; k <= 9; k++){ const X2 = Q.sx(k), Y2 = Q.sy(Math.max(-42, byKanit(k).k));
+    k ? cx.lineTo(X2, Y2) : cx.moveTo(X2, Y2); }
+  cx.stroke();
+  for (let k = 0; k <= 9; k++) dot(Q.sx(k), Q.sy(Math.max(-42, byKanit(k).k)), 5, K.blue);
+  dot(Q.sx(d), Q.sy(Math.max(-42, byKanit(d).k)), 8, K.yellow);
+  txt('■ log kanıt', Q.R.x + Q.R.w - 16, Q.R.y + 26, K.blue, 17, 'right');
+  txt('■ eğitim hatası (ayrı ölçek, hep düşüyor)', Q.R.x + Q.R.w - 16, Q.R.y + 50, K.orange, 17, 'right');
+
+  /* sağ alt: kartlar */
+  const bx = 800;
+  const kart = (x, y, ww, ad, deger, renk, alt) => {
+    box(x, y, ww, 112, 'rgba(7,10,15,.7)', renk, 2);
+    txt(ad, x + ww / 2, y + 31, K.mut, 16);
+    txt(deger, x + ww / 2, y + 78, renk, 28);
+    if (alt) txt(alt, x + ww / 2, y + 101, K.mut, 14);
+  };
+  const en = (() => { let e = { k: -1e9 };
+    for (let k = 0; k <= 9; k++) if (byKanit(k).k > e.k) e = { d: k, k: byKanit(k).k };
+    return e; })();
+  kart(bx, 470, 290, 'BU DERECENİN LOG KANITI', byKanit(d).k.toFixed(3),
+       byKanit(d).k > -10 ? K.green : K.red);
+  kart(bx + 310, 470, 290, 'EĞİTİM HATASI', byEgitimHata(d).toFixed(5), K.orange,
+       'derece arttıkça hep düşer');
+  kart(bx, 600, 290, 'KANITIN ZİRVESİ', 'derece ' + en.d, K.blue, en.k.toFixed(3));
+  kart(bx + 310, 600, 290, 'DERECE 2 İLE FARK',
+       (byKanit(d).k - byKanit(2).k).toFixed(2), K.purple, 'log biriminde');
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

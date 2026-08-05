@@ -641,6 +641,64 @@ console.log('═══ GAUSSIAN PROCESS ═══');
         [0.3,0.6,1.0,2.0].every((l,i,a2) => i===0 || gpModel(l,6)(1.8).sd < gpModel(a2[i-1],6)(1.8).sd));
 }
 
+console.log('═══ BAYESÇİ MODEL KANITI ═══');
+{
+  iddia('derece 0 eğitim hatası', 0.19242, byEgitimHata(0), 5);
+  iddia('derece 9 eğitim hatası', 0.02155, byEgitimHata(9), 5);
+  /* ic ice gecmis ailelerde egitim hatasi asla yukselemez: derse dayanak bu */
+  {
+    let ihlal = 0;
+    for (let d2 = 1; d2 <= 9; d2++) if (byEgitimHata(d2) > byEgitimHata(d2-1) + 1e-9) ihlal++;
+    iddia('eğitim hatası hiçbir derecede yükselmiyor', 0, ihlal, 0);
+  }
+  iddia('derece 2 log kanıtı', -34.912, byKanit(2).k, 2);
+  iddia('derece 3 log kanıtı', -6.656, byKanit(3).k, 2);
+  iddia('derece 2→3 kanıt sıçraması', 28.26, byKanit(3).k - byKanit(2).k, 2);
+  /* sicrama 10^12 mertebesinde bir Bayes carpani */
+  iddia('sıçramanın Bayes çarpanı (log10)', 12.27,
+        (byKanit(3).k - byKanit(2).k)/Math.LN10, 2);
+  /* yetersiz modeller (0,1,2) yeterli olanlarin hepsinden acik farkla kotu */
+  {
+    let kotuYeterli = 1e9, iyiYetersiz = -1e9;
+    for (let d2 = 3; d2 <= 9; d2++) kotuYeterli = Math.min(kotuYeterli, byKanit(d2).k);
+    for (let d2 = 0; d2 <= 2; d2++) iyiYetersiz = Math.max(iyiYetersiz, byKanit(d2).k);
+    iddia('en kötü yeterli model, en iyi yetersizden 25+ log birim iyi',
+          true, kotuYeterli - iyiYetersiz > 25);
+  }
+  /* zirve gercek dereceyi (3) degil 5 i gosteriyor · ders bunu boyle yaziyor */
+  {
+    let en = {k:-1e9, d:-1};
+    for (let d2 = 0; d2 <= 9; d2++) if (byKanit(d2).k > en.k) en = {k:byKanit(d2).k, d:d2};
+    iddia('kanıtın zirvesi (gerçek derece 3 değil)', 5, en.d, 0);
+  }
+  iddia('derece 5 log kanıtı', -6.020, byKanit(5).k, 2);
+  iddia('derece 9 log kanıtı', -6.709, byKanit(9).k, 2);
+  iddia('zirve ile derece 9 farkı', 0.689, byKanit(5).k - byKanit(9).k, 2);
+  /* asil iddia: yeterli modeller arasindaki fark karar verdirmiyor */
+  {
+    let mn = 1e9, mx = -1e9;
+    for (let d2 = 3; d2 <= 9; d2++){ mn = Math.min(mn, byKanit(d2).k); mx = Math.max(mx, byKanit(d2).k); }
+    iddia('derece 3..9 kanıt aralığı 1 log biriminin altında', true, mx - mn < 1.0);
+    iddia('bu aralık Bayes çarpanı olarak 3 katın altında', true, Math.exp(mx - mn) < 3);
+  }
+  iddia('gerçek fonksiyonun 3. derece katsayısı', 2.4, BY.gercek[3], 6);
+  iddia('gerçek fonksiyonun 2. derece katsayısı sıfır', 0, BY.gercek[2], 6);
+  iddia('gözlem sayısı', 16, BY.veri.X.length, 0);
+  /* Ders "kanit on dagilima baglidir" diyor. Bu veride oyle mi? Olcelim.
+     Alfa'yi optimize etmek yerine kaba bir alfa=1 alsak sonuc degisiyor mu: hayir. */
+  {
+    let en1 = {k:-1e9, d:-1};
+    for (let d2 = 0; d2 <= 9; d2++){ const k = byLogKanit(d2, 1);
+      if (k > en1.k) en1 = {k, d:d2}; }
+    iddia('sabit α=1 ile de zirve aynı dereceye düşüyor', 5, en1.d, 0);
+    iddia('sabit α=1 ile de derece 2→3 sıçraması 25 log biriminin üstünde',
+          true, byLogKanit(3,1) - byLogKanit(2,1) > 25);
+    iddia('α=1 deki sıçrama', 32.95, byLogKanit(3,1) - byLogKanit(2,1), 2);
+  }
+  iddia('derece 2 için en iyi α > 1 (ağırlıklar bastırılıyor)', true, byKanit(2).alfa > 1);
+  iddia('derece 3 için en iyi α < 1 (ağırlıklara yer açılıyor)', true, byKanit(3).alfa < 1);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
