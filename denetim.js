@@ -278,6 +278,40 @@ console.log('═══ HİPERPARAMETRE ARAMASI ═══');
         !haIzgara(6).some(p => Math.abs(p.a-0.32) < 0.05));
 }
 
+
+console.log('═══ SOFTMAX / ÇAPRAZ ENTROPİ ═══');
+{
+  const p = smSoftmax([2,1,0]);
+  iddia('softmax([2,1,0]) kedi', 0.665, p[0], 3);
+  iddia('softmax([2,1,0]) köpek', 0.245, p[1], 3);
+  iddia('softmax([2,1,0]) kuş', 0.090, p[2], 3);
+  iddia('softmax toplamı 1', 1.000, p[0]+p[1]+p[2], 3);
+  iddia('1 birim logit farkı = e kat', 2.718, Math.exp(1), 3);
+  iddia('oran p0/p1 = e', 2.718, p[0]/p[1], 3);
+  /* CE degerleri */
+  [[0.9,0.105],[0.5,0.693],[0.1,2.303],[0.01,4.605],[0.001,6.908]].forEach(([pp,bek]) =>
+    iddia('CE kaybı p='+pp, bek, -Math.log(pp), 3));
+  /* gradyan karsilastirmasi */
+  const g = pp => { const z = smLogit(pp);
+    return { ce: Math.abs(smGradCE(z,0)[0]), mse: Math.abs(smGradMSE(z,0)[0]) }; };
+  iddia('CE gradyanı p=0.001', 0.9990, g(0.001).ce, 4);
+  iddia('MSE gradyanı p=0.001', 0.000998, g(0.001).mse, 6);
+  iddia('gradyan oranı p=0.001', 1001, g(0.001).ce/g(0.001).mse, 0);
+  iddia('MSE gradyanı p=0.5', 0.125000, g(0.5).mse, 6);
+  iddia('CE gradyanı p=0.5', 0.5000, g(0.5).ce, 4);
+  iddia('CE gradyanı hep MSE üstünde', true,
+        [0.001,0.01,0.1,0.3,0.5,0.7,0.9].every(pp => g(pp).ce > g(pp).mse));
+  /* sicaklik */
+  [[0.5,0.867],[1,0.665],[2,0.506],[5,0.402]].forEach(([T,bek]) =>
+    iddia('T='+T+' kedi olasılığı', bek, smSoftmax([2,1,0],T)[0], 3));
+  iddia('sıcaklık sıralamayı bozmuyor', true,
+        [0.2,0.5,1,2,5].every(T => { const q = smSoftmax([2,1,0],T); return q[0] > q[1] && q[1] > q[2]; }));
+  /* emin ve dogru tahminde MSE kaybi CE'den kucuk: derste bu da yaziyor */
+  const q2 = smSoftmax([2.6,-2,-2]);
+  iddia('emin+doğru CE kaybı', 0.0199, smCE(q2,0), 4);
+  iddia('emin+doğru MSE kaybı', 0.0002, ((q2[0]-1)**2+q2[1]**2+q2[2]**2)/3, 4);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

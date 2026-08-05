@@ -46,7 +46,7 @@ const ROTALAR = [
     {id:'norm-l1l2',      ad:'L1 ve L2: iki ceza, iki farklı dünya',           sure:12, durum:'hazir'},
     {id:'yanlilik',       ad:'Yanlılık ve varyans: modelin iki tür hatası',    sure:16, durum:'hazir'},
     {id:'boyut-laneti',   ad:'Boyut laneti: komşular neden uzaklaşır',         sure:16, durum:'hazir'},
-    {id:'softmax',        ad:'Softmax ve çapraz entropi',                      sure:12, durum:'planli'},
+    {id:'softmax',        ad:'Softmax ve çapraz entropi',                      sure:15, durum:'hazir'},
     {id:'dagilim-kaymasi',  ad:'Zemin kayınca: dağılım kayması',                 sure:12, durum:'planli'},
     {id:'hiper-arama',    ad:'Hiperparametre arama: ızgara, rastgele, eleme',  sure:16, durum:'hazir'},
     {id:'gauss-surec',    ad:'Gaussian Process: belirsizliğini söyleyen model',  sure:16, durum:'planli'},
@@ -5139,5 +5139,138 @@ DERSLER['hiper-arama'] = {
       '<b>Bayesçi optimizasyon</b> önceki denemelerden bir model kurup bir sonraki noktayı seçer.<br><br>' +
       'Hepsinin ortak şartı aynı: seçim çapraz doğrulama ile yapılmalı, test kümesine sadece en sonda bakılmalı.',
     xp:45,
+  },
+]};
+
+/* ─────────────── SOFTMAX ve ÇAPRAZ ENTROPİ ─────────────── */
+DERSLER['softmax'] = {
+  ad:'Softmax ve çapraz entropi',
+  alt:'Model üç sayı üretiyor. Bunlar nasıl olasılığa dönüşür, ve neden hatayı ölçerken kare almak yerine logaritma alıyoruz?',
+  kaynaklar:[
+    {y:'Bishop, C. M.', t:'2006', b:'Pattern Recognition and Machine Learning, Bölüm 4.3.4 ve 5.2', n:'Springer'},
+    {y:'Goodfellow, Bengio, Courville', t:'2016', b:'Deep Learning, Bölüm 6.2.2', n:'MIT Press', u:'https://www.deeplearningbook.org/'},
+    {y:'Zhang, A. ve ark.', t:'2022', b:'Derin Öğrenmeye Dalış, Bölüm 4.1', n:'d2l.ai'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Üç sayıyı olasılığa çevirmek',
+    goal:'Modelin ham çıktısının neden doğrudan olasılık olmadığını ve softmax\'in tam olarak ne yaptığını göreceksin.',
+    todo:'Üç ham puanı oynat. Sağdaki yüzdeler toplamı hep 1 kalıyor mu?',
+    kind:'controls', viz:'softmaxCE', h:700,
+    controls:[
+      {k:'z0', lb:'kedi puanı', min:-4, max:6, step:0.2, val:2, fmt:v => v.toFixed(1)},
+      {k:'z1', lb:'köpek puanı', min:-4, max:6, step:0.2, val:1, fmt:v => v.toFixed(1)},
+      {k:'z2', lb:'kuş puanı', min:-4, max:6, step:0.2, val:0, fmt:v => v.toFixed(1)},
+    ],
+    live:s => { const p = smSoftmax([s.z0,s.z1,s.z2]);
+      return [['kedi', (100*p[0]).toFixed(1)+'%', K.green], ['köpek', (100*p[1]).toFixed(1)+'%', K.orange],
+              ['kuş', (100*p[2]).toFixed(1)+'%', K.blue], ['TOPLAM', (p[0]+p[1]+p[2]).toFixed(3)]]; },
+    body:'<p>Bir sınıflandırma ağının son katmanı üç sayı üretir: kedi için, köpek için, kuş için. ' +
+      'Bunlara <b>logit</b> ya da ham puan denir. Negatif olabilirler, 1\'den büyük olabilirler, toplamları herhangi bir şey olabilir.</p>' +
+      '<p>Olasılık istiyorsak iki şart lazım: her biri 0 ile 1 arasında olmalı ve toplamları tam 1 olmalı. ' +
+      'Softmax bunu şöyle yapar:</p>' +
+      '<p style="text-align:center"><b>p<sub>i</sub> = e<sup>z<sub>i</sub></sup> / Σ e<sup>z<sub>j</sub></sup></b></p>' +
+      '<p>Üstel alma iki işe yarar: negatif sayıları pozitife çevirir, ve <b>farkları büyütür</b>. ' +
+      'Puanlar [2, 1, 0] iken olasılıklar [0.665, 0.245, 0.090] oluyor: aradaki 1 birimlik fark ' +
+      'olasılıkta 2.7 katlık farka dönüşüyor.</p>',
+    learned:'<b>Softmax, sıralamayı bozmadan sayıları olasılığa çevirir.</b> En büyük puan en büyük ' +
+      'olasılığı alır, toplam her zaman 1 olur.<br><br>' +
+      'Üstel alma farkları büyütür: puan farkı 1 birim ise olasılık oranı e = 2.718 kat olur. ' +
+      'Bu yüzden softmax "yumuşak maksimum"dur: en büyüğü seçer ama diğerlerine de pay bırakır.',
+    xp:25,
+  },
+  {
+    t:'Kayıp sadece doğru sınıfa bakar',
+    goal:'Çapraz entropinin neden diğer sınıfların olasılıklarını hiç umursamadığını göreceksin.',
+    todo:'Doğru cevap kedi. Kedi puanını düşürüp köpek puanını yükselt, kaybın nasıl patladığını izle.',
+    kind:'controls', viz:'softmaxCE', h:700,
+    controls:[
+      {k:'z0', lb:'kedi puanı (DOĞRU)', min:-4, max:6, step:0.2, val:2, fmt:v => v.toFixed(1)},
+      {k:'z1', lb:'köpek puanı', min:-4, max:6, step:0.2, val:1, fmt:v => v.toFixed(1)},
+      {k:'z2', lb:'kuş puanı', min:-4, max:6, step:0.2, val:0, fmt:v => v.toFixed(1)},
+    ],
+    derive:s => { const p = smSoftmax([s.z0,s.z1,s.z2]); return {kyp: smCE(p, 0), p0: p[0]}; },
+    live:s => [['p(kedi)', (100*s.p0).toFixed(1)+'%', K.green],
+               ['KAYIP', s.kyp.toFixed(4), s.kyp > 2 ? K.red : K.orange],
+               ['HEDEF', '> 4.0']],
+    unlock:s => s.kyp > 4,
+    unlockMsg:'Kaybı 4\'ün üstüne çıkar (kediyi düşür, köpeği yükselt)',
+    body:'<p>Çapraz entropi tek bir şeye bakar: <b>doğru sınıfa verdiğin olasılık.</b></p>' +
+      '<p style="text-align:center"><b>kayıp = −log( p(doğru sınıf) )</b></p>' +
+      '<p>Köpek ile kuş arasında olasılığı nasıl paylaştırdığın hiç önemli değil. Önemli olan kediye ne kadar verdiğin.</p>' +
+      '<p>Sağ üstteki eğri bu fonksiyonun şekli. Dikkat: p → 0 iken kayıp sonsuza gidiyor.</p>' +
+      '<p>p = 0.9 → kayıp 0.105 &nbsp;·&nbsp; p = 0.5 → 0.693 &nbsp;·&nbsp; p = 0.1 → 2.303 &nbsp;·&nbsp; ' +
+      'p = 0.01 → <b>4.605</b> &nbsp;·&nbsp; p = 0.001 → 6.908</p>',
+    learned:'<b>Çapraz entropi, emin olup yanılmayı acımasızca cezalandırır.</b> Doğru sınıfa %10 vermek ' +
+      '2.303 kayıp, %1 vermek <b>4.605</b>, %0.1 vermek 6.908.<br><br>' +
+      'Bu tesadüf değil, bilgi kuramından geliyor: −log p, "bu olay olduğunda ne kadar şaşırırım" ölçüsüdür. ' +
+      'Model bir şeye %1 ihtimal verip o şey olursa, model çok şaşırmıştır ve bunun bedelini öder.',
+    xp:40,
+  },
+  {
+    t:'Peki neden kare hata değil?',
+    goal:'Sınıflandırmada MSE kullanmanın neden öğrenmeyi durdurduğunu, kayıp değerine değil gradyana bakarak anlayacaksın.',
+    todo:'Kedi puanını en dibe indir, yani modeli emin ve yanlış yap. Sağ alttaki iki eğriye bak.',
+    kind:'controls', viz:'softmaxCE', h:700,
+    controls:[
+      {k:'z0', lb:'kedi puanı (DOĞRU)', min:-4, max:6, step:0.2, val:2, fmt:v => v.toFixed(1)},
+      {k:'z1', lb:'köpek puanı', min:-4, max:6, step:0.2, val:1, fmt:v => v.toFixed(1)},
+      {k:'z2', lb:'kuş puanı', min:-4, max:6, step:0.2, val:0, fmt:v => v.toFixed(1)},
+    ],
+    derive:s => { const z = [s.z0,s.z1,s.z2];
+      return {gc: Math.abs(smGradCE(z,0)[0]), gm: Math.abs(smGradMSE(z,0)[0]), pp: smSoftmax(z)[0]}; },
+    live:s => [['p(kedi)', (100*s.pp).toFixed(2)+'%'],
+               ['CE gradyanı', s.gc.toFixed(4), K.green],
+               ['MSE gradyanı', s.gm.toFixed(6), K.red],
+               ['ORAN', (s.gc/Math.max(1e-9,s.gm)).toFixed(0)+'×']],
+    unlock:s => s.gc / Math.max(1e-9, s.gm) > 100,
+    unlockMsg:'CE gradyanını MSE\'nin 100 katından fazla yap',
+    body:'<p>Sınıflandırmada "tahmin ile gerçek arasındaki farkın karesi"ni kullanmak akla yatkın görünür. ' +
+      'Ama işe yaramaz ve sebebi kaybın büyüklüğü değil, <b>türevi</b>.</p>' +
+      '<p>Softmax + çapraz entropide gradyan çok temiz çıkar: <b>∂kayıp/∂z = p − y</b>. ' +
+      'Model doğru sınıfa %0.1 veriyorsa gradyan 0.999, yani tam güçle iter.</p>' +
+      '<p>Softmax + MSE\'de ise gradyan softmax\'in türeviyle çarpılır ve o türev, model emin olduğunda sıfıra yaklaşır. ' +
+      'Doğru sınıfa %0.1 verildiğinde MSE gradyanı sadece <b>0.000998</b>.</p>' +
+      '<p>Aradaki fark <b>1001 kat</b>. Yani model en çok yanıldığı anda MSE en az öğrenir.</p>',
+    quiz:{ q:'Sınıflandırmada MSE yerine çapraz entropi kullanmanın asıl sebebi nedir?',
+      opts:[
+        {t:'Çapraz entropi hatayı daha büyük gösterir', why:'Bu her zaman doğru bile değil. Emin ve doğru tahminde MSE kaybı 0.0002, CE kaybı 0.0199; oran MSE lehine. Mesele kaybın büyüklüğü değil.'},
+        {t:'Model emin ve yanlışken çapraz entropinin gradyanı güçlü kalır, MSE\'ninki sıfıra yaklaşır', why:'Doğru. Softmax ile MSE birleşince gradyan softmax türeviyle çarpılır ve p sıfıra ya da bire yaklaşırken o türev söner. Doğru sınıfa %0.1 verildiğinde CE gradyanı 0.999, MSE gradyanı 0.000998; arada 1001 kat var. Öğrenmenin en gerekli olduğu anda MSE duruyor.'},
+        {t:'Çapraz entropi daha hızlı hesaplanır', why:'İkisi de birkaç işlemle hesaplanır, hız farkı ihmal edilebilir. Sebep hesaplama maliyeti değil.'},
+        {t:'MSE olasılıklarla çalışamaz', why:'Teknik olarak çalışır, olasılık vektörü ile tek-sıcak vektör arasındaki kare farkı hesaplanabilir. Sorun çalışmaması değil, öğrenmeyi durdurması.'},
+      ], correct:1 },
+    learned:'<b>Doğru soru "hangi kayıp daha büyük" değil, "hangi kayıp daha iyi öğretir".</b><br><br>' +
+      'Softmax + çapraz entropi ikilisinin gradyanı <b>p − y</b> kadar basittir ve model ne kadar ' +
+      'yanılıyorsa o kadar güçlü iter.<br><br>' +
+      'Softmax + MSE ikilisinde gradyan, softmax türeviyle çarpılıp söner: p = 0.001\'de 0.000998, ' +
+      'p = 0.5\'te 0.125. Yani en çok gereken yerde en zayıf.',
+    xp:50,
+  },
+  {
+    t:'Sıcaklık: aynı puanlar, farklı kararlılık',
+    goal:'Sampling dersinde gördüğün sıcaklık parametresinin softmax\'in neresinde durduğunu göreceksin.',
+    todo:'Sıcaklığı oynat. Puanlar sabitken olasılıklar nasıl değişiyor?',
+    kind:'controls', viz:'softmaxCE', h:700,
+    controls:[{k:'T', lb:'SICAKLIK T', min:0.2, max:5, step:0.1, val:1, fmt:v => 'T = '+v.toFixed(1)}],
+    state:{z0:2, z1:1, z2:0},
+    derive:s => { const p = smSoftmax([2,1,0], s.T); return {enB: p[0], entropi: -p.reduce((a,q)=>a+q*Math.log(q),0)}; },
+    live:s => { const p = smSoftmax([2,1,0], s.T);
+      return [['kedi', (100*p[0]).toFixed(1)+'%', K.green], ['köpek', (100*p[1]).toFixed(1)+'%', K.orange],
+              ['kuş', (100*p[2]).toFixed(1)+'%', K.blue], ['ENTROPİ', s.entropi.toFixed(3)]]; },
+    body:'<p>Softmax\'e bir ayar daha eklenebilir: puanları önce T\'ye bölmek.</p>' +
+      '<p style="text-align:center"><b>p<sub>i</sub> = e<sup>z<sub>i</sub>/T</sup> / Σ e<sup>z<sub>j</sub>/T</sup></b></p>' +
+      '<p>Puanlar hep [2, 1, 0]. Değişen tek şey T:</p>' +
+      '<p><b>T = 0.5:</b> [86.7%, 11.7%, 1.6%] · model kararlı<br>' +
+      '<b>T = 1:</b> [66.5%, 24.5%, 9.0%] · normal<br>' +
+      '<b>T = 2:</b> [50.6%, 30.7%, 18.6%] · kararsız<br>' +
+      '<b>T = 5:</b> [40.2%, 32.9%, 26.9%] · neredeyse eşit</p>' +
+      '<p>T büyüdükçe dağılım düzleşir, T küçüldükçe en yükseğe yığılır. ' +
+      'Sıralama hiç değişmez, sadece <b>kararlılık</b> değişir.</p>',
+    learned:'<b>Sıcaklık, modelin ne söylediğini değil ne kadar emin göründüğünü değiştirir.</b><br><br>' +
+      'Aynı [2, 1, 0] puanları T=0.5\'te %86.7, T=5\'te %40.2 veriyor. Sıralama sabit.<br><br>' +
+      'Bu yüzden dil modellerinde sıcaklık yaratıcılık ayarı gibi kullanılır (örnekleme dersi), ' +
+      've bilgi damıtmada öğretmen modelin "yumuşak" cevaplarını almak için T büyütülür.',
+    xp:35,
   },
 ]};

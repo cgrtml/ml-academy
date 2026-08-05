@@ -817,6 +817,113 @@ VIZ.hiperArama = s => {
       750, cvs.height - 26, rastgeleMi ? K.green : K.orange, 26);
 };
 
+
+/* ═══════════ SOFTMAX ve ÇAPRAZ ENTROPİ ═══════════
+   Üç sınıf. Model ham puan (logit) üretir, softmax bunları olasılığa çevirir,
+   çapraz entropi doğru sınıfa verilen olasılığı cezalandırır.
+   Ayrıca: neden MSE değil? Cevap kayıp değerinde değil, GRADYANDA. */
+const SMX = { ad: ['kedi', 'köpek', 'kuş'], renk: [K.green, K.orange, K.blue] };
+function smSoftmax(z, T){
+  const t = T || 1, m = Math.max(...z);
+  const e = z.map(v => Math.exp((v - m) / t));
+  const s = e.reduce((a, b) => a + b, 0);
+  return e.map(v => v / s);
+}
+const smCE = (p, y) => -Math.log(Math.max(1e-12, p[y]));
+const smGradCE = (z, y) => smSoftmax(z).map((v, i) => v - (i === y ? 1 : 0));
+function smGradMSE(z, y){
+  const p = smSoftmax(z), K2 = z.length;
+  return z.map((_, j) => { let g = 0;
+    for (let i = 0; i < K2; i++){
+      const d = (i === j ? 1 : 0);
+      g += 2 * (p[i] - (i === y ? 1 : 0)) / K2 * p[i] * (d - p[j]);
+    }
+    return g; });
+}
+/* p(doğru sınıf) verilip logit üretmek: iki yanlış sınıf eşit paylaşsın */
+function smLogit(p0){
+  const o = (1 - p0) / 2;
+  return [Math.log(Math.max(1e-12, p0)), Math.log(Math.max(1e-12, o)), Math.log(Math.max(1e-12, o))];
+}
+
+VIZ.softmaxCE = s => {
+  clear();
+  const z = [s.z0 === undefined ? 2 : s.z0, s.z1 === undefined ? 1 : s.z1, s.z2 === undefined ? 0 : s.z2];
+  const T = s.T === undefined ? 1 : s.T;
+  const y = 0;
+  const p = smSoftmax(z, T);
+  const kayip = smCE(p, y);
+  baslikSerit('SOFTMAX ve ÇAPRAZ ENTROPİ',
+    'Ham puanlar olasılığa dönüşür, kayıp yalnızca DOĞRU sınıfa verilen olasılığa bakar.', []);
+
+  /* sol: logit → softmax */
+  const bx = 170, bw = 235, y0 = 150, bh = 46, ara = 26;
+  txt('HAM PUAN (logit)', bx + bw / 2, y0 - 22, K.mut, 19);
+  z.forEach((v, i) => {
+    const yy = y0 + i * (bh + ara);
+    const orta = bx + bw / 2, ol = Math.abs(v) / 6 * (bw / 2 - 10);
+    box(bx, yy, bw, bh, 'rgba(255,255,255,.03)', i === y ? K.green : null, i === y ? 2 : 0);
+    box(v > 0 ? orta : orta - ol, yy + 8, ol, bh - 16, SMX.renk[i] + 'cc', null, 0);
+    cx.strokeStyle = K.axis; cx.lineWidth = 1;
+    cx.beginPath(); cx.moveTo(orta, yy + 4); cx.lineTo(orta, yy + bh - 4); cx.stroke();
+    txt(v.toFixed(1), bx + bw - 14, yy + 31, K.txt, 21, 'right');
+    txt(SMX.ad[i] + (i === y ? '  ✓' : ''), bx - 14, yy + 31, i === y ? K.green : K.mut, 20, 'right');
+  });
+  arw(bx + bw + 18, y0 + 100, bx + bw + 78, y0 + 100, K.mut, 3);
+  txt('softmax', bx + bw + 48, y0 + 80, K.mut, 17);
+
+  const cx2 = bx + bw + 100, cw = 250;
+  txt('OLASILIK (softmax)', cx2 + cw / 2, y0 - 22, K.mut, 19);
+  p.forEach((v, i) => {
+    const yy = y0 + i * (bh + ara);
+    box(cx2, yy, cw, bh, 'rgba(255,255,255,.03)', i === y ? K.green : null, i === y ? 2 : 0);
+    box(cx2 + 4, yy + 8, (cw - 8) * v, bh - 16, SMX.renk[i] + 'cc', null, 0);
+    txt((100 * v).toFixed(1) + '%', cx2 + cw - 14, yy + 31, K.txt, 21, 'right');
+  });
+  txt('toplam = 1.000', cx2 + cw / 2, y0 + 3 * (bh + ara) + 4, K.mut, 17);
+
+  /* kayıp kutusu */
+  box(bx, 400, cx2 + cw - bx, 110, 'rgba(7,10,15,.7)', K.axis, 2);
+  txt('ÇAPRAZ ENTROPİ  = −log( p(doğru) )', (bx + cx2 + cw) / 2, 432, K.mut, 19);
+  txt('−log(' + p[y].toFixed(3) + ') = ' + kayip.toFixed(4),
+      (bx + cx2 + cw) / 2, 484, kayip < 0.4 ? K.green : kayip > 2 ? K.red : K.orange, 36);
+
+  /* sağ üst: −log eğrisi */
+  const P = plot(rect(830, 130, 560, 225), 0, 1, 0, 7);
+  frame(P, 'doğru sınıfa verilen olasılık', 'kayıp', [0, 0.25, 0.5, 0.75, 1], [0, 2, 4, 6]);
+  cx.strokeStyle = K.pink; cx.lineWidth = 3;
+  cx.beginPath();
+  for (let i = 1; i <= 200; i++){
+    const pp = i / 200, X = P.sx(pp), Y = P.sy(Math.min(7, -Math.log(pp)));
+    i === 1 ? cx.moveTo(X, Y) : cx.lineTo(X, Y);
+  }
+  cx.stroke();
+  dot(P.sx(p[y]), P.sy(Math.min(7, kayip)), 8, K.yellow);
+  txt('emin ve yanlış → ceza patlar', P.R.x + 16, P.R.y + 26, K.mut, 17, 'left');
+
+  /* sağ alt: CE ve MSE gradyanı */
+  const Q = plot(rect(830, 430, 560, 200), 0, 1, 0, 1.05);
+  frame(Q, 'doğru sınıfa verilen olasılık', '|gradyan|', [0, 0.25, 0.5, 0.75, 1], [0, 0.5, 1]);
+  [['CE', K.green, zz => Math.abs(smGradCE(zz, 0)[0])],
+   ['MSE', K.red, zz => Math.abs(smGradMSE(zz, 0)[0])]].forEach(([ad, renk, fn]) => {
+    cx.strokeStyle = renk; cx.lineWidth = 3;
+    cx.beginPath();
+    for (let i = 1; i <= 100; i++){
+      const pp = i / 101, X = Q.sx(pp), Y = Q.sy(Math.min(1.05, fn(smLogit(pp))));
+      i === 1 ? cx.moveTo(X, Y) : cx.lineTo(X, Y);
+    }
+    cx.stroke();
+  });
+  txt('■ çapraz entropi', Q.R.x + 16, Q.R.y + Q.R.h - 34, K.green, 18, 'left');
+  txt('■ MSE', Q.R.x + 16, Q.R.y + Q.R.h - 12, K.red, 18, 'left');
+  txt('model en çok yanıldığında MSE en az öğrenir', Q.R.x + Q.R.w - 14, Q.R.y + 26, K.mut, 17, 'right');
+  dot(Q.sx(p[y]), Q.sy(Math.min(1.05, Math.abs(smGradCE(z, 0)[0]))), 7, K.green);
+  dot(Q.sx(p[y]), Q.sy(Math.min(1.05, Math.abs(smGradMSE(z, 0)[0]))), 7, K.red);
+
+  if (T !== 1) txt('sıcaklık T = ' + T.toFixed(1), 750, cvs.height - 26,
+                   T > 1 ? K.blue : K.orange, 26);
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
