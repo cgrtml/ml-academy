@@ -534,6 +534,49 @@ console.log('═══ A* ARAMASI ═══');
         asOptimal()-1 >= Math.abs(AS.hedef[0]-AS.bas[0]) + Math.abs(AS.hedef[1]-AS.bas[1]));
 }
 
+
+console.log('═══ TAYLOR ve NEWTON ═══');
+{
+  iddia('başlangıç f', 0.0384, TY.f(TY.x0), 4);
+  iddia('başlangıç türev', -2.2960, TY.g(TY.x0), 4);
+  iddia('başlangıç ikinci türev', 6.6800, TY.h(TY.x0), 4);
+  const A = lr => tyAdimlar(lr);
+  iddia('adım 0.02 gerçek', -0.0601, A(0.02).gercek, 4);
+  iddia('adım 0.02 doğrusal hata', 0.0069, Math.abs(A(0.02).gercek - A(0.02).dogrusal), 4);
+  iddia('adım 0.02 ikinci derece hata', 0.0002, Math.abs(A(0.02).gercek - A(0.02).ikinci), 4);
+  iddia('adım 0.1 doğrusal hata', 0.1574, Math.abs(A(0.1).gercek - A(0.1).dogrusal), 4);
+  iddia('adım 0.1 ikinci derece hata', 0.0187, Math.abs(A(0.1).gercek - A(0.1).ikinci), 4);
+  iddia('adım 0.3 doğrusal hata', 1.1180, Math.abs(A(0.3).gercek - A(0.3).dogrusal), 4);
+  iddia('adım 0.5 doğrusal hata', 2.4153, Math.abs(A(0.5).gercek - A(0.5).dogrusal), 4);
+  iddia('adım 0.5 doğrusal tahmin', -2.5974, A(0.5).dogrusal, 4);
+  iddia('adım 0.5 gerçek', -0.1821, A(0.5).gercek, 4);
+  iddia('adım 0.5 ikinci derece tahmin', 1.8044, A(0.5).ikinci, 4);
+  /* hata adimin karesiyle buyuyor mu: 0.1 -> 0.2 iken yaklasik 4 kat */
+  const h1 = Math.abs(A(0.1).gercek - A(0.1).dogrusal), h2 = Math.abs(A(0.2).gercek - A(0.2).dogrusal);
+  iddia('adımı 2 katlayınca hata ~4 kat', true, h2/h1 > 3 && h2/h1 < 4.2);
+  /* ikinci derece her adimda daha iyi */
+  iddia('ikinci derece hep daha az hatalı', true,
+        [0.02,0.05,0.1,0.2,0.3].every(l =>
+          Math.abs(A(l).gercek - A(l).ikinci) < Math.abs(A(l).gercek - A(l).dogrusal)));
+  /* Newton yakinsama */
+  iddia('minimum x', -1.0880339, TY.min.x, 7);
+  iddia('minimum f', -0.4591595, TY.min.f, 7);
+  const nHata = t => Math.abs(tyNewton(t) - TY.min.x);
+  iddia('Newton 3 adım hata', 9.05e-4, nHata(3), 6);
+  iddia('Newton 4 adım hata', 1.05e-6, nHata(4), 8);
+  iddia('Newton karesel yakınsıyor', true, nHata(4) < nHata(3)*nHata(3)*100);
+  let gA = -1, nA = -1;
+  for (let t = 1; t <= 400; t++){
+    if (gA < 0 && Math.abs(tyInis(0.1,t) - TY.min.x) < 1e-6) gA = t;
+    if (nA < 0 && nHata(t) < 1e-6) nA = t;
+  }
+  iddia('gradyan 1e-6 için adım', 43, gA, 0);
+  iddia('Newton 1e-6 için adım', 5, nA, 0);
+  iddia('Newton kaç kat az adım', 8.6, gA/nA, 1);
+  /* cok buyuk adim yanlis kuyuya goturuyor */
+  iddia('lr=0.8 yanlış kuyuya kaçıyor', true, tyInis(0.8, 30) > 0);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

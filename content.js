@@ -61,7 +61,7 @@ const ROTALAR = [
     {id:'a-yildiz',       ad:'A* araması: sezgiyle akıllıca yol bulmak',       sure:16, durum:'hazir'},
     {id:'kisit',          ad:'Kısıt tatmin problemleri: değişken ve kural oyunu',  sure:12, durum:'planli'},
     {id:'hessian',        ad:'Hessian: eğrinin eğriliğini ölçmek',             sure:12, durum:'planli'},
-    {id:'taylor',         ad:'Taylor serisi: karmaşığı yerel olarak basitleştirmek',  sure:12, durum:'planli'},
+    {id:'taylor',         ad:'Taylor serisi: karmaşığı yerel olarak basitleştirmek',  sure:15, durum:'hazir'},
   ],
 },
 {
@@ -6223,6 +6223,138 @@ DERSLER['a-yildiz'] = {
       'Teorik garanti: bulunan yol en kısa yoldan en fazla <b>w kat</b> uzundur. ' +
       'Bu yüzden oyunlarda ve robotikte w genellikle 1.2 ile 2 arasında seçilir: ' +
       'kayıp gözle görülmez, kazanç ölçülebilir.',
+    xp:55,
+  },
+]};
+
+/* ─────────────── TAYLOR ve NEWTON ─────────────── */
+DERSLER['taylor'] = {
+  ad:'Taylor serisi: karmaşığı yerel olarak basitleştirmek',
+  alt:'Gradyan inişi aslında "buradan sonrası düz" varsayar. Bu varsayımın tam olarak nerede çöktüğünü ölçeceğiz.',
+  kaynaklar:[
+    {y:'Nocedal, J. & Wright, S. J.', t:'2006', b:'Numerical Optimization, 2. baskı, Bölüm 2 ve 3', n:'Springer'},
+    {y:'Goodfellow, Bengio, Courville', t:'2016', b:'Deep Learning, Bölüm 4.3', n:'MIT Press', u:'https://www.deeplearningbook.org/'},
+    {y:'Boyd, S. & Vandenberghe, L.', t:'2004', b:'Convex Optimization, Bölüm 9.5', n:'Cambridge University Press'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Gradyan inişi gizli bir varsayım yapıyor',
+    goal:'Bir adım atarken modelin aslında neye güvendiğini göreceksin.',
+    todo:'Adım boyunu küçük tut. Turuncu teğet doğrusu ile mavi eğri ne kadar örtüşüyor?',
+    kind:'controls', viz:'taylorAdim', h:720,
+    controls:[{k:'lr', lb:'ADIM BOYU', min:0.01, max:0.5, step:0.01, val:0.05, fmt:v => v.toFixed(2)}],
+    state:{derece:1},
+    live:s => { const A = tyAdimlar(s.lr);
+      return [['GERÇEK f', A.gercek.toFixed(4), K.green], ['TAHMİN', A.dogrusal.toFixed(4), K.orange],
+              ['HATA', Math.abs(A.gercek-A.dogrusal).toFixed(4)]]; },
+    body:'<p>Gradyan inişinin adımı şu: <b>x ← x − η·f\'(x)</b>. Bu kuralın arkasında sessiz bir varsayım var.</p>' +
+      '<p>Taylor açılımının birinci derece hâli şunu söyler:</p>' +
+      '<p style="text-align:center"><b>f(x + d) ≈ f(x) + f\'(x)·d</b></p>' +
+      '<p>Yani "yeterince küçük bir d için fonksiyon düz sayılabilir". Gradyan inişi bu doğrunun ' +
+      'eğimine bakıp aşağı doğru bir adım atar.</p>' +
+      '<p>Turuncu kesikli çizgi tam olarak bu doğru. Adım küçükken (0.02) tahmin −0.0670, ' +
+      'gerçek −0.0601. Hata sadece <b>0.0069</b>. Varsayım geçerli.</p>',
+    learned:'<b>Gradyan inişi, fonksiyonun yerel olarak düz olduğunu varsayar.</b><br><br>' +
+      'Bu varsayım küçük adımlarda çok iyi çalışır: 0.02 boyunda bir adımda doğrusal tahminin ' +
+      'hatası 0.0069.<br><br>' +
+      'Öğrenme hızı dediğimiz şey aslında bir <b>güven yarıçapı</b>: bu yaklaşıma ne kadar uzağa ' +
+      'kadar güveniyorsun?',
+    xp:25,
+  },
+  {
+    t:'Adım büyüyünce yaklaşım çöküyor',
+    goal:'Öğrenme hızının neden bir üst sınırı olduğunu, sayıyla göreceksin.',
+    todo:'Adım boyunu 0.5\'e kadar aç. Tahmin ile gerçek arasındaki fark nereye gidiyor?',
+    kind:'controls', viz:'taylorAdim', h:720,
+    controls:[{k:'lr', lb:'ADIM BOYU', min:0.01, max:0.5, step:0.01, val:0.05, fmt:v => v.toFixed(2)}],
+    state:{derece:1},
+    derive:s => { const A = tyAdimlar(s.lr); return {ht: Math.abs(A.gercek - A.dogrusal)}; },
+    live:s => { const A = tyAdimlar(s.lr);
+      return [['GERÇEK f', A.gercek.toFixed(4), K.green], ['TAHMİN', A.dogrusal.toFixed(4), K.orange],
+              ['HATA', s.ht.toFixed(4), s.ht > 1 ? K.red : K.txt], ['HEDEF', 'hata > 1']]; },
+    unlock:s => s.ht > 1,
+    unlockMsg:'Doğrusal yaklaşımın hatasını 1\'in üstüne çıkar',
+    body:'<p>Adım büyüdükçe teğet doğrusu eğriden kopuyor:</p>' +
+      '<p><b>0.02:</b> hata 0.0069 &nbsp;·&nbsp; <b>0.1:</b> 0.1574 &nbsp;·&nbsp; ' +
+      '<b>0.3:</b> 1.1180 &nbsp;·&nbsp; <b>0.5:</b> <b>2.4153</b></p>' +
+      '<p>Asıl tehlikeli olan şu: doğrusal tahmin adım 0.5\'te f\'in <b>−2.5974</b>\'e ineceğini söylüyor. ' +
+      'Gerçekte f <b>−0.1821</b>. Yani model "harika bir adım attım" sanıyor ama aslında ' +
+      'kuyudan çıkmış, yokuş yukarı tırmanmış.</p>' +
+      '<p>Öğrenme hızı çok büyük olduğunda eğitimin patlamasının sebebi tam olarak budur: ' +
+      'doğrusal yaklaşım geçersiz bölgeye adım atılıyor.</p>',
+    learned:'<b>Öğrenme hızının üst sınırını belirleyen şey, doğrusal yaklaşımın geçerlilik yarıçapıdır.</b><br><br>' +
+      'Adım 0.02\'de hata 0.0069, adım 0.5\'te <b>2.4153</b>. Tahmin −2.5974 diyor, gerçek −0.1821.<br><br>' +
+      'Hata kabaca adımın <b>karesiyle</b> büyür, çünkü Taylor serisinin atılan ilk terimi ' +
+      '½·f\'\'(x)·d² terimidir. Adımı ikiye katlarsan hata dörde katlanır.',
+    xp:45,
+  },
+  {
+    t:'Bir terim daha ekle: eğrilik',
+    goal:'İkinci dereceden yaklaşımın neden çok daha uzağa kadar geçerli kaldığını göreceksin.',
+    todo:'DERECE\'yi 2 yap ve aynı adım boylarını tekrar dene. Hata ne oldu?',
+    kind:'controls', viz:'taylorAdim', h:720,
+    controls:[
+      {k:'lr', lb:'ADIM BOYU', min:0.01, max:0.5, step:0.01, val:0.10, fmt:v => v.toFixed(2)},
+      {k:'derece', lb:'YAKLAŞIM DERECESİ', min:1, max:2, step:1, val:1,
+       fmt:v => v === 1 ? '1 · doğrusal' : '2 · parabol'},
+    ],
+    derive:s => { const A = tyAdimlar(s.lr);
+      return {h2: Math.abs(A.gercek - (s.derece === 1 ? A.dogrusal : A.ikinci))}; },
+    live:s => { const A = tyAdimlar(s.lr);
+      return [['DOĞRUSAL HATA', Math.abs(A.gercek-A.dogrusal).toFixed(4), K.orange],
+              ['İKİNCİ DERECE HATA', Math.abs(A.gercek-A.ikinci).toFixed(4), K.purple],
+              ['HEDEF', 'ikinci derece hata < 0.02']]; },
+    unlock:s => Math.abs(tyAdimlar(s.lr).gercek - tyAdimlar(s.lr).ikinci) < 0.02 && s.derece === 2,
+    unlockMsg:'Derece 2 seçip ikinci dereceden hatayı 0.02\'nin altına indir',
+    body:'<p>Taylor serisine bir terim daha eklersek:</p>' +
+      '<p style="text-align:center"><b>f(x + d) ≈ f(x) + f\'(x)·d + ½·f\'\'(x)·d²</b></p>' +
+      '<p>Artık doğru değil bir <b>parabol</b> uyduruyoruz. İkinci türev f\'\'(x), eğriliği söylüyor: ' +
+      'yüzey ne kadar hızlı bükülüyor.</p>' +
+      '<p>Adım 0.1\'de: doğrusal hata 0.1574, ikinci dereceden hata sadece <b>0.0187</b>. ' +
+      'Sekiz kattan fazla iyi.</p>' +
+      '<p>Adım 0.02\'de: doğrusal 0.0069, ikinci dereceden <b>0.0002</b>.</p>' +
+      '<p>Ama parabol de sonsuza kadar geçerli değil. Adım 0.5\'te ikinci dereceden tahmin 1.8044, ' +
+      'gerçek −0.1821. O da çöküyor, sadece daha geç.</p>',
+    learned:'<b>Eğriliği hesaba katmak yaklaşımın geçerli olduğu bölgeyi genişletir.</b><br><br>' +
+      'Adım 0.1\'de doğrusal hata 0.1574, ikinci dereceden hata 0.0187.<br><br>' +
+      'Sebep yine Taylor: doğrusal yaklaşımın hatası d² ile, ikinci dereceden yaklaşımın hatası ' +
+      'd³ ile büyür. Küçük d için d³ çok daha küçüktür.',
+    xp:45,
+  },
+  {
+    t:'Newton: adımın boyunu da hesapla',
+    goal:'Eğriliği bilen bir yöntemin neden çok daha az adımda yakınsadığını göreceksin.',
+    todo:'Adım sayısını artır. Newton kaçıncı adımda hedefe oturuyor, gradyan kaçıncıda?',
+    kind:'controls', viz:'newtonKarsi', h:720,
+    controls:[{k:'adim', lb:'ADIM SAYISI', min:1, max:60, step:1, val:1, fmt:v => v+' adım'}],
+    state:{lr:0.1},
+    derive:s => ({fark: Math.abs(tyNewton(s.adim) - TY.min.x)}),
+    live:s => [['NEWTON x', tyNewton(s.adim).toFixed(8), K.green],
+               ['GRADYAN x', tyInis(0.1, s.adim).toFixed(8), K.orange],
+               ['HEDEF x', TY.min.x.toFixed(8), K.blue]],
+    unlock:s => s.fark < 1e-6,
+    unlockMsg:'Newton\'u hedefe 1e-6 yakınlığa getir',
+    body:'<p>Eğer parabol yaklaşımı iyi ise, o parabolün <b>tepe noktasına doğrudan atlayabiliriz</b>. ' +
+      'Parabolün minimumu türevi sıfırlayan yerdedir ve cebiri tek satırdır:</p>' +
+      '<p style="text-align:center"><b>d = − f\'(x) / f\'\'(x)</b></p>' +
+      '<p>Bu Newton adımıdır. Dikkat: öğrenme hızı <b>yok</b>. Adımın boyunu eğriliğin kendisi belirliyor.</p>' +
+      '<p>Sonuç çarpıcı. Hedefe 10⁻⁶ yakınlığa ulaşmak için:</p>' +
+      '<p><b>gradyan inişi (η=0.1):</b> 43 adım &nbsp;·&nbsp; <b>Newton:</b> <b>5 adım</b></p>' +
+      '<p>Newton\'un hatası her adımda karesel küçülüyor: 9.05e-4 → 1.05e-6 → <b>1.40e-12</b>. ' +
+      'Doğru basamak sayısı her adımda ikiye katlanıyor.</p>',
+    quiz:{ q:'Newton bu kadar hızlıysa neden derin öğrenmede gradyan inişi kullanılıyor?',
+      opts:[
+        {t:'Newton sadece tek değişkenli fonksiyonlarda çalışır', why:'Çok değişkenlide de çalışır; f\'\'(x) yerine Hessian matrisi kullanılır. Sorun çalışmaması değil, maliyeti.'},
+        {t:'Hessian matrisi p×p boyutundadır ve tersini almak p³ işlem ister; milyarlarca parametrede imkânsız', why:'Doğru. 10 milyon parametreli bir ağda Hessian 10¹⁴ girdi tutar, sadece belleğe sığmaz. Bu yüzden pratikte köşegen yaklaşımlar (Adam gibi), sınırlı bellekli quasi-Newton yöntemleri (L-BFGS) veya Hessian ile çarpımı açıkça matris kurmadan hesaplayan teknikler kullanılır.'},
+        {t:'Newton yerel minimuma takılır, gradyan inişi takılmaz', why:'Tam tersine, Newton yerel yapıya gradyan inişinden daha çok bağlıdır ve eyer noktalarına çekilebilir. Ama asıl engel bu değil, hesaplama maliyeti.'},
+        {t:'Newton öğrenme hızı gerektirdiği için ayarlaması zordur', why:'Newton\'un cazibesi tam da öğrenme hızı gerektirmemesi. Adımın boyunu eğriliğin kendisi belirliyor.'},
+      ], correct:1 },
+    learned:'<b>Newton adımı, eğriliğin belirlediği adımdır: d = −f\'(x)/f\'\'(x).</b><br><br>' +
+      'Bu problemde hedefe 10⁻⁶ yakınlığa gradyan inişi 43 adımda, Newton 5 adımda ulaşıyor. ' +
+      'Newton karesel yakınsar: hata 9.05e-4 → 1.05e-6 → 1.40e-12.<br><br>' +
+      'Bedeli boyutla birlikte patlar. Bu yüzden derin öğrenmede tam Newton yerine ' +
+      'eğrilik bilgisini ucuza yaklaşan yöntemler (Adam, L-BFGS) kullanılır.',
     xp:55,
   },
 ]};

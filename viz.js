@@ -1835,6 +1835,152 @@ VIZ.aramaYildiz = s => {
        R.yol.length === opt ? 'garanti' : (R.yol.length - opt) + ' adım fazla');
 };
 
+
+/* ═══════════ TAYLOR · YEREL YAKLAŞIM ═══════════
+   f(x) = x⁴/4 − x²/2 + 0.2x  ·  çift kuyulu bir kayıp.
+   Gradyan inişi aslında "doğrusal yaklaşıma güvenip bir adım at" demektir.
+   Adım büyüdükçe o yaklaşım geçersizleşir; ikinci dereceden yaklaşım (Newton)
+   daha uzağa kadar geçerli kalır. */
+const TY = {
+  f:  x => x*x*x*x/4 - x*x/2 + 0.2*x,
+  g:  x => x*x*x - x + 0.2,
+  h:  x => 3*x*x - 1,
+  x0: -1.6,
+};
+TY.min = (() => {          /* kaba tarama, sonra Newton ile rafine: makine hassasiyetinde */
+  let en = { f: 1e9, x: 0 };
+  for (let x = -3; x <= 3; x += 1e-4){ const v = TY.f(x); if (v < en.f) en = { x, f: v }; }
+  let x = en.x;
+  for (let i = 0; i < 60; i++) x -= TY.g(x) / TY.h(x);
+  return { x, f: TY.f(x) };
+})();
+function tyAdimlar(lr){
+  const x0 = TY.x0, d = -lr * TY.g(x0);
+  return { d, hedef: x0 + d, gercek: TY.f(x0 + d),
+           dogrusal: TY.f(x0) + TY.g(x0) * d,
+           ikinci: TY.f(x0) + TY.g(x0) * d + 0.5 * TY.h(x0) * d * d };
+}
+function tyInis(lr, tur){ let x = TY.x0;
+  for (let t = 0; t < tur; t++){ x -= lr * TY.g(x); if (!isFinite(x)) return NaN; }
+  return x; }
+function tyNewton(tur){ let x = TY.x0;
+  for (let t = 0; t < tur; t++){ const h2 = TY.h(x); if (Math.abs(h2) < 1e-9) break; x -= TY.g(x) / h2; }
+  return x; }
+
+VIZ.taylorAdim = s => {
+  clear();
+  const lr = s.lr === undefined ? 0.05 : s.lr;
+  const derece = s.derece === undefined ? 1 : Math.round(s.derece);
+  const A = tyAdimlar(lr), x0 = TY.x0;
+  baslikSerit('YEREL YAKLAŞIM · TAYLOR',
+    'Gradyan inişi "buradan sonrası düz" varsayar. Adım büyüdükçe bu varsayım çöker.', []);
+
+  const P = plot(rect(100, 140, 720, 430), -2.1, 1.9, -1.4, 1.4);
+  frame(P, 'x', 'f(x)', [-2, -1, 0, 1], [-1, 0, 1]);
+  /* gerçek fonksiyon */
+  cx.strokeStyle = K.blue; cx.lineWidth = 3.4;
+  cx.beginPath();
+  for (let i = 0; i <= 300; i++){
+    const x = -2.1 + 4 * i / 300, Y = Math.max(-1.4, Math.min(1.4, TY.f(x)));
+    i ? cx.lineTo(P.sx(x), P.sy(Y)) : cx.moveTo(P.sx(x), P.sy(Y));
+  }
+  cx.stroke();
+  /* yaklaşım */
+  const yak = x => derece === 1
+    ? TY.f(x0) + TY.g(x0) * (x - x0)
+    : TY.f(x0) + TY.g(x0) * (x - x0) + 0.5 * TY.h(x0) * (x - x0) * (x - x0);
+  cx.strokeStyle = derece === 1 ? K.orange : K.purple; cx.lineWidth = 3;
+  cx.setLineDash([8, 5]);
+  cx.beginPath();
+  for (let i = 0; i <= 300; i++){
+    const x = -2.1 + 4 * i / 300, Y = Math.max(-1.4, Math.min(1.4, yak(x)));
+    i ? cx.lineTo(P.sx(x), P.sy(Y)) : cx.moveTo(P.sx(x), P.sy(Y));
+  }
+  cx.stroke(); cx.setLineDash([]);
+  /* noktalar */
+  dot(P.sx(x0), P.sy(TY.f(x0)), 9, K.yellow);
+  txt('buradayız', P.sx(x0), P.sy(TY.f(x0)) - 20, K.yellow, 18);
+  dot(P.sx(A.hedef), P.sy(Math.max(-1.4, Math.min(1.4, A.gercek))), 9, K.green);
+  txt('gerçek', P.sx(A.hedef), P.sy(Math.max(-1.4, Math.min(1.4, A.gercek))) + 30, K.green, 17);
+  const tahmin = derece === 1 ? A.dogrusal : A.ikinci;
+  dot(P.sx(A.hedef), P.sy(Math.max(-1.4, Math.min(1.4, tahmin))), 9,
+      derece === 1 ? K.orange : K.purple);
+  txt('tahmin', P.sx(A.hedef), P.sy(Math.max(-1.4, Math.min(1.4, tahmin))) - 18,
+      derece === 1 ? K.orange : K.purple, 17);
+  cx.setLineDash([3, 4]); cx.strokeStyle = K.mut; cx.lineWidth = 1.5;
+  cx.beginPath(); cx.moveTo(P.sx(A.hedef), P.sy(Math.max(-1.4, Math.min(1.4, A.gercek))));
+  cx.lineTo(P.sx(A.hedef), P.sy(Math.max(-1.4, Math.min(1.4, tahmin)))); cx.stroke();
+  cx.setLineDash([]);
+  txt(derece === 1 ? 'doğrusal yaklaşım (teğet)' : 'ikinci dereceden yaklaşım (parabol)',
+      P.R.x + 16, P.R.y + 26, derece === 1 ? K.orange : K.purple, 19, 'left');
+  txt('gerçek f(x)', P.R.x + 16, P.R.y + 50, K.blue, 19, 'left');
+
+  /* sağ kartlar */
+  const bx = 860, bw = 530;
+  const kart = (y, ad, deger, renk, alt) => {
+    box(bx, y, bw, 112, 'rgba(7,10,15,.7)', renk, 2);
+    txt(ad, bx + bw / 2, y + 31, K.mut, 17);
+    txt(deger, bx + bw / 2, y + 78, renk, 30);
+    if (alt) txt(alt, bx + bw / 2, y + 101, K.mut, 14);
+  };
+  const hata = Math.abs(A.gercek - tahmin);
+  kart(150, 'ADIMDAN SONRA GERÇEK f', A.gercek.toFixed(4), K.green,
+       'attığın adım: ' + A.d.toFixed(4));
+  kart(280, derece === 1 ? 'DOĞRUSAL YAKLAŞIMIN TAHMİNİ' : 'İKİNCİ DERECEDEN TAHMİN',
+       tahmin.toFixed(4), derece === 1 ? K.orange : K.purple);
+  kart(410, 'TAHMİN HATASI', hata.toFixed(4),
+       hata < 0.05 ? K.green : hata < 0.5 ? K.orange : K.red,
+       hata > 0.5 ? 'yaklaşım artık geçersiz' : 'yaklaşım hâlâ geçerli');
+  kart(540, 'GERÇEK EN KÜÇÜK NOKTA', TY.min.f.toFixed(4), K.blue,
+       'x = ' + TY.min.x.toFixed(4));
+};
+
+/* ── Newton ile gradyan inişini yan yana koy ── */
+VIZ.newtonKarsi = s => {
+  clear();
+  const adim = Math.max(1, Math.min(100, Math.round(s.adim === undefined ? 1 : s.adim)));
+  const lr = s.lr === undefined ? 0.1 : s.lr;
+  baslikSerit('EĞRİLİĞİ KULLANMAK · NEWTON',
+    'Gradyan sadece yönü bilir. Newton eğriliği de bilir ve adımın boyunu kendi hesaplar.', []);
+
+  const P = plot(rect(100, 140, 660, 430), 0, 30, -0.50, 0.10);
+  frame(P, 'adım sayısı', 'f(x)', [0, 10, 20, 30], [-0.4, -0.2, 0]);
+  cx.setLineDash([5, 5]); cx.strokeStyle = K.mut; cx.lineWidth = 2;
+  cx.beginPath(); cx.moveTo(P.sx(0), P.sy(TY.min.f)); cx.lineTo(P.sx(30), P.sy(TY.min.f)); cx.stroke();
+  cx.setLineDash([]);
+  txt('en küçük değer ' + TY.min.f.toFixed(4), P.R.x + P.R.w - 12, P.sy(TY.min.f) - 10, K.mut, 16, 'right');
+  [['gradyan inişi', K.orange, t => TY.f(tyInis(lr, t))],
+   ['Newton', K.green, t => TY.f(tyNewton(t))]].forEach(([ad, renk, fn]) => {
+    cx.strokeStyle = renk; cx.lineWidth = 3.2;
+    cx.beginPath();
+    for (let t = 0; t <= 30; t++){
+      const val = fn(t), Y = P.sy(Math.max(-0.50, Math.min(0.10, isFinite(val) ? val : 0.10)));
+      t ? cx.lineTo(P.sx(t), Y) : cx.moveTo(P.sx(t), Y);
+    }
+    cx.stroke();
+  });
+  [['gradyan inişi', K.orange], ['Newton', K.green]].forEach(([ad, renk], i) =>
+    txt('■ ' + ad, P.R.x + 16, P.R.y + 26 + i * 24, renk, 19, 'left'));
+  const gx2 = tyInis(lr, adim), nx = tyNewton(adim);
+  dot(P.sx(Math.min(30, adim)), P.sy(Math.max(-0.5, Math.min(0.1, TY.f(gx2)))), 7, K.yellow);
+  dot(P.sx(Math.min(30, adim)), P.sy(Math.max(-0.5, Math.min(0.1, TY.f(nx)))), 7, K.yellow);
+
+  const bx = 800, bw = 590;
+  const kart = (y, ad, deger, renk, alt) => {
+    box(bx, y, bw, 112, 'rgba(7,10,15,.7)', renk, 2);
+    txt(ad, bx + bw / 2, y + 31, K.mut, 17);
+    txt(deger, bx + bw / 2, y + 78, renk, 28);
+    if (alt) txt(alt, bx + bw / 2, y + 101, K.mut, 14);
+  };
+  kart(150, adim + ' ADIM SONRA · GRADYAN', isFinite(gx2) ? TY.f(gx2).toFixed(6) : 'ıraksadı',
+       isFinite(gx2) ? K.orange : K.red, isFinite(gx2) ? 'x = ' + gx2.toFixed(6) : 'öğrenme hızı çok büyük');
+  kart(280, adim + ' ADIM SONRA · NEWTON', TY.f(nx).toFixed(6), K.green, 'x = ' + nx.toFixed(6));
+  kart(410, 'HEDEF', TY.min.f.toFixed(6), K.blue, 'x = ' + TY.min.x.toFixed(6));
+  const yak = Math.abs(TY.f(nx) - TY.min.f) < 1e-6;
+  kart(540, 'NEWTON YAKINSADI MI', yak ? 'EVET' : 'henüz değil', yak ? K.green : K.mut,
+       yak ? '5 adımda ulaşıyor' : '');
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
