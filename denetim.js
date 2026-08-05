@@ -360,6 +360,27 @@ console.log('═══ ÖZELLİK ÖNEMİ ═══');
         [3,4,5].every(j => Math.abs(R.tek[j]) < 0.1 && Math.abs(A.tek[j]) < 0.1));
 }
 
+
+console.log('═══ FISHER LDA ═══');
+{
+  const f = FL.enIyi.fisher, p = FL.enIyi.pca, der = t => t*180/Math.PI;
+  iddia('Fisher yönü derece', 44.5, der(f), 1);
+  iddia('PCA yönü derece', 136.3, der(p), 1);
+  iddia('aradaki açı', 91.8, Math.abs(der(f)-der(p)), 1);
+  iddia('Fisher J', 0.0394, flJ(f), 4);
+  iddia('PCA yönünde J', 0.0001, flJ(p), 4);
+  iddia('J oranı', 573, flJ(f)/flJ(p), 0);
+  iddia('Fisher doğruluğu %', 97.8, 100*flDogruluk(f), 1);
+  iddia('PCA doğruluğu %', 54.5, 100*flDogruluk(p), 1);
+  iddia('PCA yayılımı', 6.200, flVar(p), 3);
+  iddia('Fisher yayılımı', 0.758, flVar(f), 3);
+  iddia('PCA en yüksek yayılımı seçiyor', true,
+        [0,30,60,90,120,150].every(g => flVar(g*Math.PI/180) <= flVar(p) + 1e-9));
+  iddia('Fisher en yüksek J yi seçiyor', true,
+        [0,30,60,90,120,150].every(g => flJ(g*Math.PI/180) <= flJ(f) + 1e-9));
+  iddia('Fisher yayılımı PCA nin sekizde biri', 8.2, flVar(p)/flVar(f), 1);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

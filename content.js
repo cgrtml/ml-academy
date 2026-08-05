@@ -51,7 +51,7 @@ const ROTALAR = [
     {id:'hiper-arama',    ad:'Hiperparametre arama: ızgara, rastgele, eleme',  sure:16, durum:'hazir'},
     {id:'gauss-surec',    ad:'Gaussian Process: belirsizliğini söyleyen model',  sure:16, durum:'planli'},
     {id:'bayes-reg',      ad:'Bayesçi bakış: Occam\'ın usturası hesaplanabilir mi',  sure:16, durum:'planli'},
-    {id:'fisher-lda',     ad:'Fisher\'ın fikri: sınıfları ayıran en iyi yön',   sure:12, durum:'planli'},
+    {id:'fisher-lda',     ad:'Fisher\'ın fikri: sınıfları ayıran en iyi yön',   sure:14, durum:'hazir'},
     {id:'uretici-ayirici',  ad:'Sınırı mı çizersin, veriyi mi üretirsin',        sure:12, durum:'planli'},
     {id:'spline',         ad:'Spline: eğriyi parça parça bükmek',              sure:12, durum:'planli'},
     {id:'gam',            ad:'Toplamsal modeller: her özelliğin kendi eğrisi',  sure:12, durum:'planli'},
@@ -5499,5 +5499,115 @@ DERSLER['ozellik-onemi'] = {
       'Üç pratik kural: ölçüyü hangi modelle hesapladığını söyle, korele özellikleri grup olarak ölç, ' +
       've nedensel iddia edeceksen ayrı bir çalışma yap.',
     xp:50,
+  },
+]};
+
+/* ─────────────── FISHER'IN DOĞRUSAL AYIRICISI ─────────────── */
+DERSLER['fisher-lda'] = {
+  ad:'Fisher\'ın fikri: sınıfları ayıran en iyi yön',
+  alt:'PCA en çok yayılan yönü seçiyor ve bu veride %54.5 doğruluk veriyor. Fisher etiketlere bakıyor ve %97.8 alıyor. İki yön neredeyse dik.',
+  kaynaklar:[
+    {y:'Fisher, R. A.', t:'1936', b:'The Use of Multiple Measurements in Taxonomic Problems', n:'Annals of Eugenics, 7(2)'},
+    {y:'Bishop, C. M.', t:'2006', b:'Pattern Recognition and Machine Learning, Bölüm 4.1.4', n:'Springer'},
+    {y:'Hastie, Tibshirani, Friedman', t:'2009', b:'The Elements of Statistical Learning, Bölüm 4.3', n:'Springer'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Veriyi tek bir yöne indirmek',
+    goal:'İki boyutlu veriyi bir doğru üstüne yansıtmanın ne anlama geldiğini göreceksin.',
+    todo:'Açıyı çevir. Sağ üstteki iki histogram birbirinden ne kadar ayrılıyor?',
+    kind:'controls', viz:'fisherLDA', h:700,
+    controls:[{k:'aci', lb:'İZDÜŞÜM YÖNÜ', min:0, max:179, step:1, val:0, fmt:v => v+'°'}],
+    live:s => { const t = s.aci*Math.PI/180;
+      return [['J ÖLÇÜSÜ', flJ(t).toFixed(4)], ['DOĞRULUK', '%'+(100*flDogruluk(t)).toFixed(1)],
+              ['YAYILIM', flVar(t).toFixed(2)]]; },
+    body:'<p>İki sınıf var, her biri 200 nokta. Bulut belirgin biçimde uzun ve eğik.</p>' +
+      '<p>Sarı doğru bir <b>yön</b> seçiyor. Her nokta bu doğruya dik olarak yansıtılıyor, ' +
+      'yani iki sayı tek sayıya iniyor. Sağ üstteki histogramlar bu tek sayının dağılımı: ' +
+      'mavi bir sınıf, turuncu diğeri.</p>' +
+      '<p>İyi bir yön, iki histogramı birbirinden ayırır. Kötü bir yön üst üste bindirir. ' +
+      'Açıyı çevirirken buna dikkat et.</p>',
+    learned:'<b>Boyut indirgeme bir yön seçme problemidir.</b> Aynı veri, farklı yön, tamamen farklı sonuç.<br><br>' +
+      'Soru şu: yönü neye göre seçeceğiz? İki farklı cevap var ve bu derste ikisini de deneyeceksin.',
+    xp:20,
+  },
+  {
+    t:'PCA yönü: en çok yayılan taraf',
+    goal:'Etiketlere bakmayan bir yöntemin neden yanlış yönü seçebileceğini göreceksin.',
+    todo:'Açıyı 136°\'ye getir. Mor kesikli çizgi PCA\'nın seçtiği yön. Histogramlara bak.',
+    kind:'controls', viz:'fisherLDA', h:700,
+    controls:[{k:'aci', lb:'İZDÜŞÜM YÖNÜ', min:0, max:179, step:1, val:0, fmt:v => v+'°'}],
+    derive:s => { const t = s.aci*Math.PI/180; return {dg: flDogruluk(t), vr: flVar(t)}; },
+    live:s => [['YAYILIM', s.vr.toFixed(2), K.purple], ['DOĞRULUK', '%'+(100*s.dg).toFixed(1),
+                s.dg < 0.6 ? K.red : K.txt], ['HEDEF', 'yayılım > 6']],
+    unlock:s => s.vr > 6,
+    unlockMsg:'Yayılımı 6\'nın üstüne çıkar (PCA yönü, 136° civarı)',
+    body:'<p>PCA tek bir şey sorar: <b>veri hangi yönde en çok yayılıyor?</b> Etiketlere hiç bakmaz, ' +
+      'zaten gözetimsiz bir yöntemdir.</p>' +
+      '<p>Bu veride cevabı <b>136.3°</b>. O yönde yayılım 6.200, diğer bütün yönlerden büyük. ' +
+      'PCA açısından bu yön mükemmel: en çok bilgiyi koruyor.</p>' +
+      '<p>Ama histogramlara bak. İki sınıf tamamen üst üste. O yönde bir eşik koyup sınıflandırma ' +
+      'yaparsan doğruluk <b>%54.5</b> çıkıyor, yani neredeyse yazı tura.</p>' +
+      '<p>Fisher ölçüsü J bu yönde <b>0.0001</b>. Neredeyse sıfır.</p>',
+    learned:'<b>En çok yayılan yön, en iyi ayıran yön değildir.</b> PCA bu veride 136.3°\'yi seçiyor: ' +
+      'yayılım 6.200 ile en yüksek, ama doğruluk <b>%54.5</b>.<br><br>' +
+      'Sebep basit: bulutun uzunluğu sınıf farkından değil, sınıf İÇİ gürültüden geliyor. ' +
+      'PCA bu ikisini ayırt edemez çünkü etiketleri hiç görmez.',
+    xp:40,
+  },
+  {
+    t:'Fisher yönü: farkı yayılıma böl',
+    goal:'Etiketleri kullanan bir ölçünün nasıl kurulduğunu ve neden işe yaradığını göreceksin.',
+    todo:'Açıyı 44°-45° civarına getir. Yeşil kesikli çizgi Fisher\'ın seçtiği yön.',
+    kind:'controls', viz:'fisherLDA', h:700,
+    controls:[{k:'aci', lb:'İZDÜŞÜM YÖNÜ', min:0, max:179, step:1, val:0, fmt:v => v+'°'}],
+    derive:s => ({dg2: flDogruluk(s.aci*Math.PI/180)}),
+    live:s => { const t = s.aci*Math.PI/180;
+      return [['J ÖLÇÜSÜ', flJ(t).toFixed(4), K.green], ['DOĞRULUK', '%'+(100*s.dg2).toFixed(1)],
+              ['YAYILIM', flVar(t).toFixed(2), K.purple], ['HEDEF', '> %95']]; },
+    unlock:s => s.dg2 > 0.95,
+    unlockMsg:'Doğruluğu %95\'in üstüne çıkar',
+    body:'<p>Fisher başka bir soru sorar: <b>sınıf ortalamaları ne kadar uzak, sınıf içi yayılım ne kadar dar?</b></p>' +
+      '<p style="text-align:center"><b>J = (m₁ − m₂)² / (s₁² + s₂²)</b></p>' +
+      '<p>Pay, iki sınıfın ortalamalarının farkı: büyük olsun isteriz. ' +
+      'Payda, sınıfların kendi içindeki yayılım: küçük olsun isteriz. ' +
+      'Yani "ortalamalar ayrık ama bulutlar dar" olan yön kazanır.</p>' +
+      '<p>Bu veride cevap <b>44.5°</b>: J = 0.0394, doğruluk <b>%97.8</b>. ' +
+      'Yayılım ise sadece 0.758, PCA yönünün sekizde biri. Fisher en dar yönü seçti ve kazandı.</p>' +
+      '<p>İki yön arasındaki açı <b>91.8°</b>. Neredeyse birbirine dik.</p>',
+    learned:'<b>Fisher, farkı yayılıma bölerek etiketleri işin içine katar.</b> ' +
+      'J = (m₁ − m₂)² / (s₁² + s₂²).<br><br>' +
+      'Bu veride Fisher yönü 44.5°, doğruluk %97.8, J = 0.0394. PCA yönünde J = 0.0001. ' +
+      'Aradaki oran <b>573 kat</b>.<br><br>' +
+      'Kapalı çözümü de vardır: w ∝ S<sub>W</sub><sup>−1</sup>(m₁ − m₂), yani sınıf içi ' +
+      'saçılım matrisinin tersi çarpı ortalama farkı.',
+    xp:50,
+  },
+  {
+    t:'Hangisini ne zaman?',
+    goal:'Gözetimli ve gözetimsiz boyut indirgeme arasında doğru seçimi yapacaksın.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'fisherLDA', h:700, state:{aci:45},
+    body:'<p>İkisi farklı işler için var:</p>' +
+      '<p><b>PCA</b> gözetimsizdir, etiket gerektirmez. Veriyi sıkıştırmak, gürültü azaltmak, ' +
+      'görselleştirmek ya da etiketin olmadığı durumlar için uygundur.</p>' +
+      '<p><b>Fisher / LDA</b> gözetimlidir, etiket ister. Sınıflandırma öncesi boyut indirgemede ' +
+      'genellikle daha iyidir çünkü doğrudan ayırt ediciliği hedefler.</p>' +
+      '<p>Bir sınır: LDA en fazla <b>sınıf sayısı eksi bir</b> boyut üretebilir. İki sınıfın varsa ' +
+      'sadece tek bir yön alırsın. PCA\'da böyle bir kısıt yok.</p>',
+    quiz:{ q:'10.000 boyutlu metin verisiyle 2 sınıflı bir sınıflandırma yapacaksın ve önce boyut indirmek istiyorsun. Ne yaparsın?',
+      opts:[
+        {t:'Doğrudan LDA, çünkü sınıflandırma yapacağım', why:'Tek başına LDA burada iki yerden sıkışır. İki sınıf varsa LDA sana yalnızca 1 boyut verir, 10.000 boyuttan 1 boyuta inmek çok fazla bilgi atar. Ayrıca 10.000 boyutta sınıf içi saçılım matrisi tekildir ve tersi alınamaz.'},
+        {t:'Önce PCA ile makul bir boyuta in, sonra gerekirse LDA uygula', why:'Doğru. Standart uygulama budur ve adı PCA+LDA. PCA saçılım matrisini tersi alınabilir hale getirecek kadar boyut düşürür, LDA da kalan boyutlarda ayırt edici yönü bulur. Fisher\'ın kendi 1936 makalesinden beri bilinen bu sıkışma, pratikte böyle çözülür.'},
+        {t:'Boyut indirmeden doğrudan lojistik regresyon', why:'Çalışabilir, hatta ceza terimiyle iyi de çalışır. Ama soru boyut indirmeyi zaten şart koşuyor; ayrıca 10.000 boyutta boyut laneti dersinde gördüğün sorunlar başlar.'},
+        {t:'LDA ile 2 boyuta inmek', why:'İki sınıflı bir problemde LDA en fazla 1 boyut üretebilir, 2 boyut matematiksel olarak mümkün değil. Sınır sınıf sayısı eksi birdir.'},
+      ], correct:1 },
+    learned:'<b>PCA etiketi görmez, LDA görür; ikisi farklı soruların cevabıdır.</b><br><br>' +
+      'Sıkıştırma, gürültü azaltma, görselleştirme → PCA.<br>' +
+      'Sınıflandırma öncesi ayırt edici indirgeme → LDA.<br><br>' +
+      'İki pratik sınır: LDA en fazla (sınıf sayısı − 1) boyut verir, ve çok yüksek boyutta ' +
+      'sınıf içi saçılım matrisi tekilleşir. Her ikisinin standart çözümü önce PCA uygulamaktır.',
+    xp:45,
   },
 ]};

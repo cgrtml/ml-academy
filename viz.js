@@ -1115,6 +1115,123 @@ VIZ.ozellikOnemi = s => {
       1230, oy + 78, O.cift > O.tek[0] + O.tek[1] ? K.green : K.mut, 22, 'right');
 };
 
+
+/* ═══════════ FISHER'IN DOĞRUSAL AYIRICISI ═══════════
+   İki sınıf, ortak kovaryans. Bulutun uzun ekseni sınıfları AYIRMAYAN yönde.
+   PCA en çok yayılan yönü seçer ve sınıfları birbirine karıştırır.
+   Fisher, sınıf ortalamalarının farkını sınıf içi yayılıma bölerek seçer. */
+const FL = {};
+FL.veri = (() => {
+  const r = rng(41), n = 200;
+  const g = () => { let u = 0, w = 0; while (!u) u = r(); while (!w) w = r();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); };
+  const X = [], y = [], mer = [[-0.55, -0.55], [0.55, 0.55]];
+  const th = -Math.PI / 4, ca = Math.cos(th), sa = Math.sin(th);
+  for (let c = 0; c < 2; c++) for (let i = 0; i < n; i++){
+    const a = 2.4 * g(), b = 0.42 * g();
+    X.push([mer[c][0] + a * ca - b * sa, mer[c][1] + a * sa + b * ca]);
+    y.push(c);
+  }
+  return { X, y };
+})();
+const flIz = th => FL.veri.X.map(p => p[0] * Math.cos(th) + p[1] * Math.sin(th));
+function flJ(th){
+  const z = flIz(th), Y = FL.veri.y;
+  const g0 = z.filter((_, i) => Y[i] === 0), g1 = z.filter((_, i) => Y[i] === 1);
+  const m = a => a.reduce((s, v) => s + v, 0) / a.length;
+  const sc = a => { const mm = m(a); return a.reduce((s, v) => s + (v - mm) ** 2, 0); };
+  return (m(g0) - m(g1)) ** 2 / (sc(g0) + sc(g1));
+}
+function flVar(th){
+  const z = flIz(th), m = z.reduce((s, v) => s + v, 0) / z.length;
+  return z.reduce((s, v) => s + (v - m) ** 2, 0) / z.length;
+}
+function flDogruluk(th){
+  const z = flIz(th), Y = FL.veri.y;
+  const g0 = z.filter((_, i) => Y[i] === 0), g1 = z.filter((_, i) => Y[i] === 1);
+  const m = a => a.reduce((s, v) => s + v, 0) / a.length;
+  const esik = (m(g0) + m(g1)) / 2, yon = m(g1) > m(g0) ? 1 : -1;
+  return z.filter((v, i) => ((yon * (v - esik)) > 0 ? 1 : 0) === Y[i]).length / z.length;
+}
+FL.enIyi = (() => {
+  let bj = { j: -1 }, bv = { v: -1 };
+  for (let i = 0; i < 720; i++){
+    const th = i / 720 * Math.PI, j = flJ(th), vv = flVar(th);
+    if (j > bj.j) bj = { th, j };
+    if (vv > bv.v) bv = { th, v: vv };
+  }
+  return { fisher: bj.th, pca: bv.th };
+})();
+
+VIZ.fisherLDA = s => {
+  clear();
+  const th = s.aci === undefined ? 0 : s.aci * Math.PI / 180;
+  const D = FL.veri, z = flIz(th);
+  baslikSerit('FISHER: SINIFLARI AYIRAN YÖN',
+    'Veriyi tek bir yöne indireceğiz. Hangi yön? En çok yayılan mı, en iyi ayıran mı?', []);
+
+  /* sol: 2B saçılım + izdüşüm doğrusu */
+  const P = plot(rect(100, 130, 560, 460), -5, 5, -5, 5);
+  frame(P, 'x₁', 'x₂', [-4, -2, 0, 2, 4], [-4, -2, 0, 2, 4]);
+  D.X.forEach((p, i) => dot(P.sx(p[0]), P.sy(p[1]), 3.6, D.y[i] ? K.orange : K.blue));
+  const L = 6.5, ca = Math.cos(th), sa = Math.sin(th);
+  cx.strokeStyle = K.yellow; cx.lineWidth = 3;
+  cx.beginPath(); cx.moveTo(P.sx(-L * ca), P.sy(-L * sa)); cx.lineTo(P.sx(L * ca), P.sy(L * sa)); cx.stroke();
+  /* izdüşüm ayakları */
+  cx.strokeStyle = 'rgba(250,204,21,.18)'; cx.lineWidth = 1;
+  D.X.forEach((p, i) => { const t = z[i];
+    cx.beginPath(); cx.moveTo(P.sx(p[0]), P.sy(p[1])); cx.lineTo(P.sx(t * ca), P.sy(t * sa)); cx.stroke(); });
+  txt('yön: ' + (th * 180 / Math.PI).toFixed(1) + '°', P.R.x + P.R.w - 14, P.R.y + 28, K.yellow, 24, 'right');
+
+  /* sağ üst: 1B izdüşüm histogramları */
+  const Q = plot(rect(730, 130, 660, 215), -7, 7, 0, 1);
+  frame(Q, 'yön üstündeki konum', 'sayı', [-6, -3, 0, 3, 6], []);
+  const kova = 48, h0 = new Array(kova).fill(0), h1 = new Array(kova).fill(0);
+  z.forEach((v, i) => { const b = Math.max(0, Math.min(kova - 1, Math.floor((v + 7) / 14 * kova)));
+    (D.y[i] ? h1 : h0)[b]++; });
+  const enH = Math.max(...h0, ...h1);
+  for (let i = 0; i < kova; i++){
+    const x0 = Q.sx(-7 + i / kova * 14), x1 = Q.sx(-7 + (i + 1) / kova * 14);
+    [[h0[i], 'rgba(76,196,255,.62)'], [h1[i], 'rgba(251,146,60,.62)']].forEach(([c, renk]) => {
+      if (!c) return;
+      const hh = c / enH * Q.R.h * 0.92;
+      cx.fillStyle = renk; cx.fillRect(x0 + 1, Q.R.y + Q.R.h - hh, x1 - x0 - 2, hh);
+    });
+  }
+  txt('■ sınıf A', Q.R.x + 16, Q.R.y + 26, K.blue, 19, 'left');
+  txt('■ sınıf B', Q.R.x + 16, Q.R.y + 50, K.orange, 19, 'left');
+
+  /* sağ alt: ölçüler */
+  const bx = 730, bw = 660;
+  box(bx, 400, bw, 108, 'rgba(7,10,15,.7)', K.axis, 2);
+  txt('FISHER ÖLÇÜSÜ J', bx + 165, 432, K.mut, 18);
+  txt(flJ(th).toFixed(4), bx + 165, 485, flJ(th) > 0.03 ? K.green : K.orange, 32);
+  txt('BU YÖNDE DOĞRULUK', bx + 495, 432, K.mut, 18);
+  txt('%' + (100 * flDogruluk(th)).toFixed(1), bx + 495, 485,
+      flDogruluk(th) > 0.9 ? K.green : K.red, 32);
+
+  /* J ve varyans eğrileri */
+  const R2 = plot(rect(730, 535, 660, 105), 0, 180, 0, 1);
+  frame(R2, 'yön (derece)', 'ölçekli', [0, 45, 90, 135, 180], []);
+  const enJ = flJ(FL.enIyi.fisher), enV = flVar(FL.enIyi.pca);
+  [['J', K.green, t => flJ(t) / enJ], ['varyans', K.purple, t => flVar(t) / enV]].forEach(([ad, renk, fn]) => {
+    cx.strokeStyle = renk; cx.lineWidth = 2.6;
+    cx.beginPath();
+    for (let i = 0; i <= 180; i++){ const t = i * Math.PI / 180;
+      const X = R2.sx(i), Y = R2.sy(Math.min(1, fn(t)));
+      i ? cx.lineTo(X, Y) : cx.moveTo(X, Y); }
+    cx.stroke();
+  });
+  [[FL.enIyi.fisher, K.green, 'Fisher'], [FL.enIyi.pca, K.purple, 'PCA']].forEach(([t, renk, ad]) => {
+    const g = t * 180 / Math.PI;
+    cx.setLineDash([4, 4]); cx.strokeStyle = renk; cx.lineWidth = 1.8;
+    cx.beginPath(); cx.moveTo(R2.sx(g), R2.R.y); cx.lineTo(R2.sx(g), R2.R.y + R2.R.h); cx.stroke();
+    cx.setLineDash([]);
+    txt(ad + ' ' + g.toFixed(0) + '°', R2.sx(g), R2.R.y - 8, renk, 16);
+  });
+  dot(R2.sx(th * 180 / Math.PI), R2.sy(Math.min(1, flJ(th) / enJ)), 6, K.yellow);
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
