@@ -58,7 +58,7 @@ const KITAP_KAYNAK = {
   {
    "k": "Aston Zhang, Zachary C. Lipton, Mu Li, Alexander J. Smola (2022) · Derin Öğrenmeye Dalış (Dive into Deep Learning)",
    "s": "46, 173-174, 188",
-   "p": 0.658
+   "p": 0.659
   }
  ],
  "nasil-ogrenir:1": [
@@ -103,7 +103,7 @@ const KITAP_KAYNAK = {
   {
    "k": "Aston Zhang, Zachary C. Lipton, Mu Li, Alexander J. Smola (2022) · Derin Öğrenmeye Dalış (Dive into Deep Learning)",
    "s": "116, 128, 480, 502",
-   "p": 0.668
+   "p": 0.669
   },
   {
    "k": "François Fleuret · The Little Book of Deep Learning",
@@ -298,19 +298,19 @@ const KITAP_KAYNAK = {
   {
    "k": "Alammar, J. & Grootendorst, M. (2024) · Hands-On Large Language Models",
    "s": "35-37, 135-136",
-   "p": 0.684
+   "p": 0.685
   },
   {
    "k": "Aston Zhang, Zachary C. Lipton, Mu Li, Alexander J. Smola (2022) · Derin Öğrenmeye Dalış (Dive into Deep Learning)",
    "s": "437, 769-775",
-   "p": 0.632
+   "p": 0.63
   }
  ],
  "attention:2": [
   {
    "k": "Sebastian Raschka (2024) · Build a Large Language Model (From Scratch)",
    "s": "87-94",
-   "p": 0.721
+   "p": 0.722
   },
   {
    "k": "François Fleuret · The Little Book of Deep Learning",
@@ -347,7 +347,7 @@ const KITAP_KAYNAK = {
  "cnn:1": [
   {
    "k": "Aston Zhang, Zachary C. Lipton, Mu Li, Alexander J. Smola (2022) · Derin Öğrenmeye Dalış (Dive into Deep Learning)",
-   "s": "253-258, 664",
+   "s": "253-259, 664",
    "p": 0.728
   }
  ],
@@ -739,12 +739,12 @@ const KITAP_KAYNAK = {
   {
    "k": "Huyen, C. (2024) · AI Engineering: Building Applications with Foundation Models",
    "s": "115-116",
-   "p": 0.73
+   "p": 0.731
   },
   {
    "k": "Sebastian Raschka (2024) · Build a Large Language Model (From Scratch)",
    "s": "176-177",
-   "p": 0.665
+   "p": 0.666
   }
  ],
  "sampling:2": [
@@ -921,7 +921,7 @@ const KITAP_KAYNAK = {
   {
    "k": "Huyen, C. (2024) · AI Engineering: Building Applications with Foundation Models",
    "s": "11, 233, 277, 299",
-   "p": 0.553
+   "p": 0.552
   },
   {
    "k": "Aston Zhang, Zachary C. Lipton, Mu Li, Alexander J. Smola (2022) · Derin Öğrenmeye Dalış (Dive into Deep Learning)",
@@ -972,6 +972,114 @@ const KITAP_KAYNAK = {
    "k": "Huyen, C. (2024) · AI Engineering: Building Applications with Foundation Models",
    "s": "272-274",
    "p": 0.625
+  }
+ ],
+ "ridge:1": [
+  {
+   "k": "Aston Zhang, Zachary C. Lipton, Mu Li, Alexander J. Smola (2022) · Derin Öğrenmeye Dalış (Dive into Deep Learning)",
+   "s": "115, 219, 954",
+   "p": 0.571
+  },
+  {
+   "k": "Andreas C. Müller, Sarah Guido (2017) · Introduction to Machine Learning with Python: A Guide for Data Scientists",
+   "s": "62-67, 74",
+   "p": 0.522
+  }
+ ],
+ "ridge:2": [
+  {
+   "k": "Aston Zhang, Zachary C. Lipton, Mu Li, Alexander J. Smola (2022) · Derin Öğrenmeye Dalış (Dive into Deep Learning)",
+   "s": "115, 181",
+   "p": 0.63
+  },
+  {
+   "k": "Larry Wasserman · Statistical Methods for Machine Learning (Lecture Notes)",
+   "s": "112-113",
+   "p": 0.591
+  }
+ ],
+ "ridge:3": [
+  {
+   "k": "Andreas C. Müller, Sarah Guido (2017) · Introduction to Machine Learning with Python: A Guide for Data Scientists",
+   "s": "63-64",
+   "p": 0.641
+  },
+  {
+   "k": "Aston Zhang, Zachary C. Lipton, Mu Li, Alexander J. Smola (2022) · Derin Öğrenmeye Dalış (Dive into Deep Learning)",
+   "s": "219-222",
+   "p": 0.594
+  }
+ ],
+ "ridge:4": [
+  {
+   "k": "Aston Zhang, Zachary C. Lipton, Mu Li, Alexander J. Smola (2022) · Derin Öğrenmeye Dalış (Dive into Deep Learning)",
+   "s": "220-222",
+   "p": 0.591
+  },
+  {
+   "k": "Larry Wasserman · Statistical Methods for Machine Learning (Lecture Notes)",
+   "s": "36, 112, 126, 142",
+   "p": 0.544
+  }
+ ],
+ "lasso:1": [
+  {
+   "k": "Larry Wasserman · Statistical Methods for Machine Learning (Lecture Notes)",
+   "s": "112-117, 128",
+   "p": 0.612
+  },
+  {
+   "k": "Andreas C. Müller, Sarah Guido (2017) · Introduction to Machine Learning with Python: A Guide for Data Scientists",
+   "s": "63-67",
+   "p": 0.606
+  }
+ ],
+ "lasso:2": [
+  {
+   "k": "Andreas C. Müller, Sarah Guido (2017) · Introduction to Machine Learning with Python: A Guide for Data Scientists",
+   "s": "67-69",
+   "p": 0.62
+  },
+  {
+   "k": "Larry Wasserman · Statistical Methods for Machine Learning (Lecture Notes)",
+   "s": "111-115",
+   "p": 0.577
+  }
+ ],
+ "lasso:3": [
+  {
+   "k": "Andreas C. Müller, Sarah Guido (2017) · Introduction to Machine Learning with Python: A Guide for Data Scientists",
+   "s": "63-69",
+   "p": 0.693
+  },
+  {
+   "k": "Larry Wasserman · Statistical Methods for Machine Learning (Lecture Notes)",
+   "s": "94, 112-115",
+   "p": 0.641
+  }
+ ],
+ "norm-l1l2:1": [
+  {
+   "k": "Larry Wasserman · Statistical Methods for Machine Learning (Lecture Notes)",
+   "s": "113, 125-128",
+   "p": 0.673
+  },
+  {
+   "k": "Aston Zhang, Zachary C. Lipton, Mu Li, Alexander J. Smola (2022) · Derin Öğrenmeye Dalış (Dive into Deep Learning)",
+   "s": "181",
+   "p": 0.6
+  }
+ ],
+ "norm-l1l2:3": [
+  {
+   "k": "Larry Wasserman · Statistical Methods for Machine Learning (Lecture Notes)",
+   "s": "94, 111-115",
+   "p": 0.665
+  },
+  {
+   "k": "Aston Zhang, Zachary C. Lipton, Mu Li, Alexander J. Smola (2022) · Derin Öğrenmeye Dalış (Dive into Deep Learning)",
+   "s": "181",
+   "p": 0.662
   }
  ]
 };
