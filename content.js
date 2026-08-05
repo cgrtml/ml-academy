@@ -57,7 +57,7 @@ const ROTALAR = [
     {id:'gam',            ad:'Toplamsal modeller: her özelliğin kendi eğrisi',  sure:12, durum:'planli'},
     {id:'ozellik-onemi',  ad:'Özellik önemi: model hangi değişkene bakıyor',   sure:15, durum:'hazir'},
     {id:'ozellik-muh',    ad:'Özellik mühendisliği: veriden yeni bilgi çıkarmak',  sure:14, durum:'planli'},
-    {id:'pekistirmeli',   ad:'Pekiştirmeli öğrenme: ödülle öğrenmek',          sure:16, durum:'planli'},
+    {id:'pekistirmeli',   ad:'Pekiştirmeli öğrenme: ödülle öğrenmek',          sure:18, durum:'hazir'},
     {id:'a-yildiz',       ad:'A* araması: sezgiyle akıllıca yol bulmak',       sure:14, durum:'planli'},
     {id:'kisit',          ad:'Kısıt tatmin problemleri: değişken ve kural oyunu',  sure:12, durum:'planli'},
     {id:'hessian',        ad:'Hessian: eğrinin eğriliğini ölçmek',             sure:12, durum:'planli'},
@@ -5954,5 +5954,142 @@ DERSLER['spline'] = {
       'Düzgünleştirici spline bu seçimi başka türlü yapar: her noktaya düğüm koyar ama eğrilik cezası ' +
       'uygular. Ceza katsayısı λ, ridge dersindeki λ ile tam olarak aynı rolü oynar.',
     xp:50,
+  },
+]};
+
+/* ─────────────── PEKİŞTİRMELİ ÖĞRENME ─────────────── */
+DERSLER['pekistirmeli'] = {
+  ad:'Pekiştirmeli öğrenme: ödülle öğrenmek',
+  alt:'Etiket yok, doğru cevap yok. Sadece hedefe varınca +1, çukura düşünce −1. Ajan bunu 400 denemede tek başına çözüyor.',
+  kaynaklar:[
+    {y:'Sutton, R. S. & Barto, A. G.', t:'2018', b:'Reinforcement Learning: An Introduction, 2. baskı, Bölüm 6.5', n:'MIT Press', u:'http://incompleteideas.net/book/the-book.html'},
+    {y:'Watkins, C. J. C. H. & Dayan, P.', t:'1992', b:'Q-learning', n:'Machine Learning, 8(3-4)'},
+    {y:'Mnih, V. ve ark.', t:'2015', b:'Human-level Control through Deep Reinforcement Learning', n:'Nature, 518'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Öğretmen yok, sadece ödül var',
+    goal:'Gözetimli öğrenmeden temelde farklı bir öğrenme biçimini tanıyacaksın.',
+    todo:'Izgaraya bak. Yeşil oklar ajanın öğrendiği hamleler, sarı çizgi izlediği yol.',
+    kind:'controls', viz:'qOgrenme', h:720,
+    controls:[{k:'bolum', lb:'KAÇ BÖLÜM EĞİTİLDİ', min:20, max:400, step:20, val:400, fmt:v => v+' bölüm'}],
+    state:{eps:0.15, gamma:0.95},
+    live:s => { const R = rlOgren(0.15, 0.95, s.bolum, 17), P = rlPolitika(R.Q);
+      return [['POLİTİKA', P.basarili ? P.adim+' adım' : 'başarısız', P.basarili ? K.green : K.red],
+              ['ULAŞAN HÜCRE', rlUlasan(R.Q)+' / 31']]; },
+    body:'<p>Şimdiye kadarki bütün derslerde bir <b>doğru cevap</b> vardı: her x için bir y. ' +
+      'Burada yok.</p>' +
+      '<p>Ajan sol alttaki S hücresinde başlıyor. Dört hamlesi var. Hedefe (+1) varana ya da ' +
+      'çukura (−1) düşene kadar <b>hiçbir geri bildirim almıyor</b>: ara adımların ödülü sıfır.</p>' +
+      '<p>Kimse ona "yukarı git" demiyor. Sadece deniyor, sonucu görüyor ve her hücre-hamle çiftine ' +
+      'bir <b>değer</b> atıyor. Q-öğrenmenin güncelleme kuralı tek satır:</p>' +
+      '<p style="text-align:center"><b>Q(s,a) ← Q(s,a) + α · [ r + γ·max<sub>a\'</sub>Q(s\',a\') − Q(s,a) ]</b></p>' +
+      '<p>Köşedeki sayılar öğrenilen değerler. Ödülün hedeften geriye doğru nasıl sızdığına dikkat et.</p>',
+    learned:'<b>Pekiştirmeli öğrenmede etiket yoktur, gecikmeli ödül vardır.</b><br><br>' +
+      'Ajan hangi hamlenin doğru olduğunu kimseden öğrenmez; sonucu görüp geriye doğru değer yayar. ' +
+      'Buna <b>kredi atama problemi</b> denir: on hamle sonra gelen bir ödülü hangi hamleye yazacaksın?<br><br>' +
+      'Q-öğrenmenin cevabı: her hamleye, kendisinden sonraki en iyi hamlenin değerini indirimli olarak yaz.',
+    xp:25,
+  },
+  {
+    t:'Keşif olmadan hiçbir şey öğrenilmiyor',
+    goal:'Sadece en iyi bilineni yapmanın neden hiç öğrenmemek anlamına geldiğini göreceksin.',
+    todo:'Keşif oranını 0\'a indir. Sonra yavaşça artır. Ne zaman hedefi bulmaya başlıyor?',
+    kind:'controls', viz:'qOgrenme', h:720,
+    controls:[{k:'eps', lb:'KEŞİF ORANI ε', min:0, max:0.9, step:0.05, val:0, fmt:v => 'ε = '+v.toFixed(2)}],
+    state:{gamma:0.95, bolum:400},
+    derive:s => { const R = rlOgren(s.eps, 0.95, 400, 17); const P = rlPolitika(R.Q);
+      return {bas: P.basarili, adim: P.adim, ulasan: rlUlasan(R.Q)}; },
+    live:s => [['POLİTİKA', s.bas ? s.adim+' adım' : 'BAŞARISIZ', s.bas ? K.green : K.red],
+               ['ULAŞAN HÜCRE', s.ulasan+' / 31'], ['HEDEF', 'hedefi bul']],
+    unlock:s => s.bas,
+    unlockMsg:'Hedefe varan bir politika öğret (keşif oranını artır)',
+    body:'<p>Ajan başlangıçta bütün değerleri sıfır sanıyor. Eğer <b>hep en iyi bildiğini</b> yaparsa ' +
+      '(ε = 0), eşitliği bozmak için ilk hamleyi seçer ve sonsuza kadar aynı şeyi yapar. ' +
+      'Hedefi hiç görmez, dolayısıyla hiçbir değer güncellenmez.</p>' +
+      '<p><b>ε = 0:</b> politika başarısız, ödül sinyali <b>0 hücreye</b> ulaştı. Ajan hiçbir şey öğrenmedi.</p>' +
+      '<p>ε kadarlık bir olasılıkla rastgele hamle yapmak bu kısır döngüyü kırar. ' +
+      '<b>ε = 0.05</b>\'te ajan 10 adımlık en kısa yolu buluyor ve eğitim sırasında bölümlerin ' +
+      '%96\'sını kazanıyor.</p>',
+    learned:'<b>Keşif olmadan öğrenme yok.</b> ε = 0 iken ödül sinyali hiçbir hücreye ulaşmıyor, ' +
+      'ajan sıfır bilgiyle kalıyor.<br><br>' +
+      'Buna <b>keşif-sömürü ikilemi</b> denir: bildiğin en iyi şeyi mi yapacaksın, yoksa daha iyisi ' +
+      'var mı diye mi bakacaksın? İkisini birden yapamazsın.<br><br>' +
+      'ε-açgözlü, bu ikilemin en basit çözümü: ε olasılıkla rastgele dene, kalanında en iyisini yap.',
+    xp:45,
+  },
+  {
+    t:'Çok keşif de bedava değil',
+    goal:'Keşfin maliyetinin nerede göründüğünü ve neden yine de politikanın öğrenildiğini anlayacaksın.',
+    todo:'ε\'yi 0.9\'a çıkar. Politika hâlâ öğreniliyor mu? Peki eğitim sırasındaki başarı ne oldu?',
+    kind:'controls', viz:'qOgrenme', h:720,
+    controls:[{k:'eps', lb:'KEŞİF ORANI ε', min:0, max:0.9, step:0.05, val:0.15, fmt:v => 'ε = '+v.toFixed(2)}],
+    state:{gamma:0.95, bolum:400},
+    derive:s => { const R = rlOgren(s.eps, 0.95, 400, 17);
+      return {son50: R.basari.slice(-50).reduce((a,b)=>a+b,0)/50, ul: rlUlasan(R.Q),
+              bs: rlPolitika(R.Q).basarili}; },
+    live:s => [['EĞİTİMDE BAŞARI', '%'+(100*s.son50).toFixed(1), s.son50 < 0.2 ? K.red : K.green],
+               ['ULAŞAN HÜCRE', s.ul+' / 31'],
+               ['POLİTİKA', s.bs ? 'çalışıyor' : 'çalışmıyor', s.bs ? K.green : K.red],
+               ['HEDEF', 'eğitim başarısı < %10']],
+    unlock:s => s.son50 < 0.10 && s.bs,
+    unlockMsg:'Eğitim başarısını %10\'un altına düşür ama politikayı bozma (ε = 0.9)',
+    body:'<p>ε büyüdükçe ajan eğitim sırasında daha çok hata yapar. Son 50 bölümdeki başarı:</p>' +
+      '<p><b>ε=0.05:</b> %96.0 &nbsp;·&nbsp; <b>ε=0.15:</b> %92.0 &nbsp;·&nbsp; ' +
+      '<b>ε=0.5:</b> %42.0 &nbsp;·&nbsp; <b>ε=0.9:</b> <b>%6.0</b></p>' +
+      '<p>Ama şuna dikkat et: ε=0.9\'da ajan bölümlerin sadece %6\'sını kazanıyor, ' +
+      'buna rağmen <b>öğrendiği politika hâlâ 10 adımlık en kısa yol</b>. Üstelik 31 hücrenin ' +
+      'hepsine ödül sinyali ulaşmış, ε=0.05\'te bu sayı 18.</p>' +
+      '<p>Sebebi Q-öğrenmenin <b>politika dışı</b> (off-policy) olması: güncelleme kuralında ' +
+      'gerçekte yapılan hamle değil, <b>max</b> yani en iyi hamle kullanılıyor. ' +
+      'Yani ajan sarhoş gibi yürürken ayık bir politika öğrenebiliyor.</p>',
+    learned:'<b>Q-öğrenme politika dışıdır: davrandığından farklı bir politikayı öğrenir.</b><br><br>' +
+      'ε=0.9\'da ajan eğitim bölümlerinin sadece %6\'sını kazanıyor ama öğrendiği politika yine ' +
+      '10 adımlık en kısa yol.<br><br>' +
+      'Keşfin bedeli öğrenilen politikada değil, <b>öğrenirken ödenen faturada</b>. ' +
+      'Gerçek bir robotta ya da canlı bir öneri sisteminde bu fatura gerçek paradır, ' +
+      'bu yüzden ε genellikle zamanla azaltılır.',
+    xp:50,
+  },
+  {
+    t:'İndirim çarpanı: ödül ne kadar uzağa ulaşır',
+    goal:'γ\'nın neden sadece bir ayar değil, ajanın ufkunu belirleyen şey olduğunu göreceksin.',
+    todo:'γ\'yı 0.5\'e indir. Başlangıç hücresindeki değere ve kaç hücreye sinyal ulaştığına bak.',
+    kind:'controls', viz:'qOgrenme', h:720,
+    controls:[{k:'gamma', lb:'İNDİRİM ÇARPANI γ', min:0.5, max:1, step:0.05, val:0.95, fmt:v => 'γ = '+v.toFixed(2)}],
+    state:{eps:0.15, bolum:400},
+    derive:s => { const R = rlOgren(0.15, s.gamma, 400, 17);
+      return {q0: Math.max(...R.Q[RL.bas[0]][RL.bas[1]]), ul: rlUlasan(R.Q)}; },
+    live:s => [['Q(başlangıç)', s.q0.toFixed(4), K.blue],
+               ['TEORİK γ¹⁰', Math.pow(s.gamma,10).toFixed(4)],
+               ['ULAŞAN HÜCRE', s.ul+' / 31'], ['HEDEF', 'Q < 0.01']],
+    unlock:s => s.q0 < 0.01,
+    unlockMsg:'Başlangıçtaki değeri 0.01\'in altına düşür (γ = 0.5)',
+    body:'<p>γ, gelecekteki ödülün bugünkü değerini belirler. Hedef 10 adım uzaktaysa ' +
+      'başlangıç hücresinin değeri kabaca <b>γ¹⁰</b> olur.</p>' +
+      '<p><b>γ=0.5:</b> Q(başlangıç) = 0.0020, teorik γ¹⁰ = 0.0010 &nbsp;·&nbsp; sinyal 11 hücreye ulaşmış<br>' +
+      '<b>γ=0.9:</b> 0.3874, teorik 0.3487 &nbsp;·&nbsp; 19 hücre<br>' +
+      '<b>γ=0.95:</b> 0.6302, teorik 0.5987 &nbsp;·&nbsp; 19 hücre<br>' +
+      '<b>γ=1:</b> 1.0000, teorik 1.0000 &nbsp;·&nbsp; 19 hücre</p>' +
+      '<p>γ=0.5\'te ödül başlangıç noktasından <b>görünmez</b> hale geliyor. Daha büyük bir labirentte ' +
+      'sinyal yolda tamamen kaybolur ve ajan asla öğrenemez.</p>' +
+      '<p>Küçük bir dürüstlük notu: ölçülen değerler teorik γ¹⁰\'dan biraz yüksek çıkıyor. ' +
+      'Bunun adı <b>maksimizasyon yanlılığı</b>: güncelleme kuralındaki max, gürültülü tahminlerin ' +
+      'en büyüğünü seçtiği için sistematik olarak yukarı sapar.</p>',
+    quiz:{ q:'Bir satranç ajanı eğitiyorsun. Ödül sadece oyun sonunda geliyor ve tipik bir oyun 80 hamle sürüyor. γ = 0.9 seçersen ne olur?',
+      opts:[
+        {t:'İyi olur, 0.9 standart bir değerdir', why:'Standart olması bu probleme uygun olduğu anlamına gelmez. γ, ufku problemin uzunluğuna göre seçilir; 80 hamlelik bir oyun için 0.9 çok kısa bir ufuktur.'},
+        {t:'İlk hamlelerin değeri neredeyse sıfır olur, ajan açılışı öğrenemez', why:'Doğru. 0.9^80 yaklaşık 0.0002. Yani oyunu kazanmanın değeri ilk hamleye ulaştığında pratikte yok olur. Bu derste γ=0.5 ile 10 adımda aynı şeyi gördün: Q(başlangıç) 0.0020\'ye düşüyor ve sinyal 11 hücreye hapsoluyor. Uzun ufuklu problemlerde γ 0.99 ya da üstü seçilir.'},
+        {t:'Ajan çok uzağı düşünür, kısa vadeli hamleleri kaçırır', why:'Bu, γ\'nın büyük olmasının riski. 0.9 ise tersine küçük bir değerdir ve ajanı fazla kısa görüşlü yapar.'},
+        {t:'γ öğrenme hızını etkiler, ufku değil', why:'Öğrenme hızı α\'dır, farklı bir parametredir. γ ise gelecekteki ödülün bugünkü değerini, yani ufku belirler.'},
+      ], correct:1 },
+    learned:'<b>γ ajanın ne kadar uzağı görebildiğini belirler.</b> Hedef k adım uzaktaysa ' +
+      'başlangıcın değeri kabaca γ<sup>k</sup>\'dır.<br><br>' +
+      'γ=0.5 ile 10 adım uzaktaki ödül 0.0020\'ye iniyor ve sinyal 11 hücreye hapsoluyor; ' +
+      'γ=0.95 ile 0.6302 ve 19 hücre.<br><br>' +
+      'Uzun ufuklu problemlerde (satranç, robot yürüyüşü) γ 0.99 ve üstü seçilir. ' +
+      'Kısa ufuklularda (reklam tıklaması) 0.9 bile fazla olabilir.',
+    xp:55,
   },
 ]};

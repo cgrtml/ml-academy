@@ -466,6 +466,45 @@ console.log('═══ SPLINE ═══');
         (() => { const d = spDugumler(4); return Math.abs((d[1]-d[0]) - (d[2]-d[1])) < 1e-9; })());
 }
 
+
+console.log('═══ PEKİŞTİRMELİ ÖĞRENME ═══');
+{
+  const E = (e, g) => rlOgren(e, g === undefined ? 0.95 : g, 400, 17);
+  const son50 = R => R.basari.slice(-50).reduce((a,b)=>a+b,0)/50;
+  /* kesif olmadan hicbir sey ogrenilmiyor */
+  const R0 = E(0);
+  iddia('ε=0 politika başarısız', false, rlPolitika(R0.Q).basarili);
+  iddia('ε=0 ulaşan hücre', 0, rlUlasan(R0.Q), 0);
+  iddia('ε=0 eğitim başarısı', 0, 100*son50(R0), 0);
+  /* az kesif yeter */
+  const R5 = E(0.05);
+  iddia('ε=0.05 politika adım', 10, rlPolitika(R5.Q).adim, 0);
+  iddia('ε=0.05 eğitim başarısı %', 96.0, 100*son50(R5), 1);
+  iddia('ε=0.05 ulaşan hücre', 18, rlUlasan(R5.Q), 0);
+  /* cok kesif: egitimde kotu, politika yine iyi (politika disi ogrenme) */
+  const R9 = E(0.9);
+  iddia('ε=0.9 eğitim başarısı %', 6.0, 100*son50(R9), 1);
+  iddia('ε=0.9 politika yine en kısa yol', 10, rlPolitika(R9.Q).adim, 0);
+  iddia('ε=0.9 bütün hücrelere ulaşıyor', 31, rlUlasan(R9.Q), 0);
+  iddia('ε=0.15 eğitim başarısı %', 92.0, 100*son50(E(0.15)), 1);
+  iddia('ε=0.5 eğitim başarısı %', 42.0, 100*son50(E(0.5)), 1);
+  iddia('keşif arttıkça eğitim başarısı düşüyor', true,
+        [0.05,0.15,0.5,0.9].every((e,i,a) => i===0 || son50(E(e)) < son50(E(a[i-1]))));
+  /* gamma: ufuk */
+  const q0 = g => Math.max(...E(0.15, g).Q[RL.bas[0]][RL.bas[1]]);
+  iddia('γ=0.5 başlangıç değeri', 0.0020, q0(0.5), 4);
+  iddia('γ=0.9 başlangıç değeri', 0.3874, q0(0.9), 4);
+  iddia('γ=0.95 başlangıç değeri', 0.6302, q0(0.95), 4);
+  iddia('γ=1 başlangıç değeri', 1.0000, q0(1), 4);
+  iddia('γ=0.5 ulaşan hücre', 11, rlUlasan(E(0.15, 0.5).Q), 0);
+  iddia('γ=0.95 ulaşan hücre', 19, rlUlasan(E(0.15, 0.95).Q), 0);
+  iddia('teorik 0.9^10', 0.3487, Math.pow(0.9,10), 4);
+  iddia('teorik 0.95^10', 0.5987, Math.pow(0.95,10), 4);
+  iddia('ölçülen değer teoriden yüksek (maksimizasyon yanlılığı)', true,
+        [0.9,0.95].every(g => q0(g) > Math.pow(g,10)));
+  iddia('en kısa yol 10 adım', 10, Math.abs(RL.hedef[0]-RL.bas[0]) + Math.abs(RL.hedef[1]-RL.bas[1]), 0);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

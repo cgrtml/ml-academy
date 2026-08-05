@@ -1588,6 +1588,141 @@ VIZ.spline = s => {
        F.enUc < 0.1 ? K.green : K.red, 'polinom ' + dg.enUc.toFixed(3) + '   ·   spline ' + sg.enUc.toFixed(3));
 };
 
+
+/* ═══════════ PEKİŞTİRMELİ ÖĞRENME · Q-ÖĞRENME ═══════════
+   6×6 ızgara. Başlangıç sol alt, hedef sağ üst (+1), dört çukur (−1).
+   Ara adımların ödülü SIFIR: yani ajan hedefi bulana kadar hiçbir sinyal almaz.
+   Bu, açgözlü davranışın neden hiç işe yaramadığını görünür kılar. */
+const RL = { W: 6, H: 6, cukur: [[2,4],[3,2],[1,1],[4,3]], hedef: [5,0], bas: [0,5],
+             aks: [[0,-1],[0,1],[-1,0],[1,0]], aksAd: ['↑','↓','←','→'], alfa: 0.35 };
+const rlCukur = (x, y) => RL.cukur.some(c => c[0] === x && c[1] === y);
+const rlHedef = (x, y) => x === RL.hedef[0] && y === RL.hedef[1];
+function rlAdim(x, y, a){
+  let nx = x + RL.aks[a][0], ny = y + RL.aks[a][1];
+  if (nx < 0 || nx >= RL.W || ny < 0 || ny >= RL.H){ nx = x; ny = y; }
+  if (rlHedef(nx, ny)) return { x: nx, y: ny, r: 1, son: true };
+  if (rlCukur(nx, ny)) return { x: nx, y: ny, r: -1, son: true };
+  return { x: nx, y: ny, r: 0, son: false };
+}
+const _rlCache = {};
+function rlOgren(eps, gamma, bolum, tohum){
+  const anahtar = [eps, gamma, bolum, tohum || 17].join(':');
+  if (_rlCache[anahtar]) return _rlCache[anahtar];
+  const r = rng(tohum || 17);
+  const Q = Array.from({ length: RL.W }, () => Array.from({ length: RL.H }, () => [0, 0, 0, 0]));
+  const basari = [], izler = [];
+  for (let b = 0; b < bolum; b++){
+    let x = RL.bas[0], y = RL.bas[1], n = 0, kazandi = false;
+    const iz = [[x, y]];
+    while (n < 120){
+      let a;
+      if (r() < eps) a = Math.floor(r() * 4);
+      else { const q = Q[x][y]; a = q.indexOf(Math.max(...q)); }
+      const s = rlAdim(x, y, a);
+      const enIyi = s.son ? 0 : Math.max(...Q[s.x][s.y]);
+      Q[x][y][a] += RL.alfa * (s.r + gamma * enIyi - Q[x][y][a]);
+      x = s.x; y = s.y; n++;
+      iz.push([x, y]);
+      if (s.son){ kazandi = s.r > 0; break; }
+    }
+    basari.push(kazandi ? 1 : 0);
+    if (b < 60 || b % 20 === 0) izler.push({ b, iz, kazandi });
+  }
+  return (_rlCache[anahtar] = { Q, basari, izler });
+}
+function rlPolitika(Q){
+  let x = RL.bas[0], y = RL.bas[1];
+  const iz = [[x, y]];
+  for (let t = 0; t < 60; t++){
+    const q = Q[x][y], a = q.indexOf(Math.max(...q));
+    const s = rlAdim(x, y, a);
+    x = s.x; y = s.y; iz.push([x, y]);
+    if (s.son) return { basarili: s.r > 0, adim: t + 1, iz };
+  }
+  return { basarili: false, adim: 60, iz };
+}
+function rlUlasan(Q){
+  let c = 0;
+  for (let x = 0; x < RL.W; x++) for (let y = 0; y < RL.H; y++){
+    if (rlHedef(x, y) || rlCukur(x, y)) continue;
+    if (Math.max(...Q[x][y]) > 0.01) c++;
+  }
+  return c;
+}
+
+VIZ.qOgrenme = s => {
+  clear();
+  const eps = s.eps === undefined ? 0.15 : s.eps;
+  const gamma = s.gamma === undefined ? 0.95 : s.gamma;
+  const bolum = s.bolum === undefined ? 400 : s.bolum;
+  const R = rlOgren(eps, gamma, bolum, 17);
+  const P = rlPolitika(R.Q);
+  baslikSerit('Q-ÖĞRENME · ÖDÜLLE ÖĞRENMEK',
+    'Etiket yok. Ajan sadece hedefe varınca +1, çukura düşünce −1 alıyor.', []);
+
+  /* sol: ızgara */
+  const hg = 68, gx = 140, gy = 150;
+  for (let x = 0; x < RL.W; x++) for (let y = 0; y < RL.H; y++){
+    const X = gx + x * hg, Y = gy + y * hg;
+    const enQ = Math.max(...R.Q[x][y]);
+    let dolgu = 'rgba(255,255,255,.03)';
+    if (rlHedef(x, y)) dolgu = 'rgba(34,211,160,.55)';
+    else if (rlCukur(x, y)) dolgu = 'rgba(248,113,113,.45)';
+    else if (enQ > 0.001) dolgu = 'rgba(34,211,160,' + Math.min(0.5, enQ * 0.55) + ')';
+    box(X, Y, hg - 5, hg - 5, dolgu, K.axis, 1.5);
+    if (rlHedef(x, y)) txt('+1', X + hg / 2 - 3, Y + hg / 2 + 4, K.txt, 22);
+    else if (rlCukur(x, y)) txt('−1', X + hg / 2 - 3, Y + hg / 2 + 4, K.txt, 22);
+    else {
+      if (enQ > 0.001){
+        const a = R.Q[x][y].indexOf(enQ);
+        txt(RL.aksAd[a], X + hg / 2 - 3, Y + hg / 2 - 2, K.green, 26);
+        txt(enQ.toFixed(2), X + hg / 2 - 3, Y + hg - 16, K.mut, 13);
+      }
+    }
+  }
+  txt('S', gx + RL.bas[0] * hg + hg / 2 - 3, gy + RL.bas[1] * hg + 22, K.yellow, 20);
+  /* öğrenilen politikanın izi */
+  if (P.basarili){
+    cx.strokeStyle = K.yellow; cx.lineWidth = 3.5;
+    cx.beginPath();
+    P.iz.forEach(([x, y], i) => { const X = gx + x * hg + hg / 2 - 3, Y = gy + y * hg + hg / 2 - 3;
+      i ? cx.lineTo(X, Y) : cx.moveTo(X, Y); });
+    cx.stroke();
+  }
+
+  /* sağ üst: bölüm bölüm başarı */
+  const Q2 = plot(rect(660, 150, 730, 190), 0, bolum, 0, 1);
+  frame(Q2, 'bölüm', 'başarı oranı (50 bölümlük pencere)', [0, bolum / 2, bolum], [0, 0.5, 1]);
+  cx.strokeStyle = K.blue; cx.lineWidth = 2.6;
+  cx.beginPath();
+  for (let i = 50; i < R.basari.length; i += 5){
+    const o = R.basari.slice(i - 50, i).reduce((a, b) => a + b, 0) / 50;
+    const X = Q2.sx(i), Y = Q2.sy(o);
+    i === 50 ? cx.moveTo(X, Y) : cx.lineTo(X, Y);
+  }
+  cx.stroke();
+  const son50 = R.basari.slice(-50).reduce((a, b) => a + b, 0) / 50;
+
+  /* sağ alt: kartlar */
+  const bx = 660, bw = 730;
+  const kart = (x, y, w, ad, deger, renk, alt) => {
+    box(x, y, w, 118, 'rgba(7,10,15,.7)', renk, 2);
+    txt(ad, x + w / 2, y + 32, K.mut, 17);
+    txt(deger, x + w / 2, y + 82, renk, 32);
+    if (alt) txt(alt, x + w / 2, y + 106, K.mut, 14);
+  };
+  kart(bx, 400, 355, 'ÖĞRENİLEN POLİTİKA',
+       P.basarili ? P.adim + ' adımda hedef' : 'hedefe varamıyor',
+       P.basarili ? K.green : K.red, P.basarili ? 'en kısa yol 10 adım' : 'açgözlü sıkıştı');
+  kart(bx + 375, 400, 355, 'EĞİTİMDE SON 50 BÖLÜM', '%' + (100 * son50).toFixed(1),
+       son50 > 0.6 ? K.green : son50 > 0.2 ? K.orange : K.red, 'öğrenirken kaç kez kazandı');
+  kart(bx, 535, 355, 'ÖDÜL SİNYALİ ULAŞAN HÜCRE', rlUlasan(R.Q) + ' / 31',
+       rlUlasan(R.Q) > 15 ? K.green : K.orange, 'maxQ > 0.01 olan hücreler');
+  kart(bx + 375, 535, 355, 'BAŞLANGIÇTAKİ DEĞER',
+       Math.max(...R.Q[RL.bas[0]][RL.bas[1]]).toFixed(4),
+       K.blue, 'teorik γ¹⁰ = ' + Math.pow(gamma, 10).toFixed(4));
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
