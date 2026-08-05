@@ -577,6 +577,35 @@ console.log('═══ TAYLOR ve NEWTON ═══');
   iddia('lr=0.8 yanlış kuyuya kaçıyor', true, tyInis(0.8, 30) > 0);
 }
 
+
+console.log('═══ HESSIAN · KOŞUL SAYISI ═══');
+{
+  const ad = k => hsAdim(k, 1, hsOptLr(k, 1), 1e-3);
+  iddia('κ=1 adım', 1, ad(1), 0);
+  iddia('κ=2 adım', 7, ad(2), 0);
+  iddia('κ=5 adım', 18, ad(5), 0);
+  iddia('κ=20 adım', 73, ad(20), 0);
+  iddia('κ=50 adım', 182, ad(50), 0);
+  iddia('κ=100 adım', 363, ad(100), 0);
+  iddia('adım sayısı κ ile artıyor', true,
+        HS.kapsam.every((k, i, a2) => i === 0 || ad(k) > ad(a2[i-1])));
+  /* adim/κ orani kabaca sabit: dogru orantili */
+  iddia('adım ≈ 3.6 κ (κ=100)', 3.6, ad(100)/100, 1);
+  iddia('adım ≈ 3.6 κ (κ=50)', 3.6, ad(50)/50, 1);
+  /* kararlilik siniri tam 2/a */
+  iddia('κ=20 kararlılık sınırı', 0.1000, hsMaxLr(20), 4);
+  iddia('sınırın altında yakınsıyor', false, hsInis(20, 1, 0.95*hsMaxLr(20), 60).sapti);
+  iddia('sınırın üstünde ıraksıyor', true, hsInis(20, 1, 1.05*hsMaxLr(20), 200).sapti);
+  /* tam sinirda sabit genlikte salinim: |x| sabit 1 kaliyor */
+  {
+    const R = hsInis(20, 1, hsMaxLr(20), 60);
+    const son = R.iz[R.iz.length-1];
+    iddia('tam sınırda genlik sabit', 1.0, Math.abs(son[0]), 3);
+  }
+  iddia('optimal η = 2/(a+b)', 0.0952, hsOptLr(20, 1), 4);
+  iddia('κ=1 optimal η', 1.0000, hsOptLr(1, 1), 4);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

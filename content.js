@@ -60,7 +60,7 @@ const ROTALAR = [
     {id:'pekistirmeli',   ad:'Pekiştirmeli öğrenme: ödülle öğrenmek',          sure:18, durum:'hazir'},
     {id:'a-yildiz',       ad:'A* araması: sezgiyle akıllıca yol bulmak',       sure:16, durum:'hazir'},
     {id:'kisit',          ad:'Kısıt tatmin problemleri: değişken ve kural oyunu',  sure:12, durum:'planli'},
-    {id:'hessian',        ad:'Hessian: eğrinin eğriliğini ölçmek',             sure:12, durum:'planli'},
+    {id:'hessian',        ad:'Hessian: eğrinin eğriliğini ölçmek',             sure:15, durum:'hazir'},
     {id:'taylor',         ad:'Taylor serisi: karmaşığı yerel olarak basitleştirmek',  sure:15, durum:'hazir'},
   ],
 },
@@ -6356,5 +6356,129 @@ DERSLER['taylor'] = {
       'Bedeli boyutla birlikte patlar. Bu yüzden derin öğrenmede tam Newton yerine ' +
       'eğrilik bilgisini ucuza yaklaşan yöntemler (Adam, L-BFGS) kullanılır.',
     xp:55,
+  },
+]};
+
+/* ─────────────── HESSIAN · VADİNİN ŞEKLİ ─────────────── */
+DERSLER['hessian'] = {
+  ad:'Hessian: eğrinin eğriliğini ölçmek',
+  alt:'Aynı kayıp, aynı öğrenme hızı kuralı. Vadi yuvarlakken tek adımda bitiyor, dar bir kanyona dönünce 363 adım sürüyor.',
+  kaynaklar:[
+    {y:'Nocedal, J. & Wright, S. J.', t:'2006', b:'Numerical Optimization, Bölüm 3.3', n:'Springer'},
+    {y:'LeCun, Y. ve ark.', t:'1998', b:'Efficient BackProp', n:'Neural Networks: Tricks of the Trade, Springer'},
+    {y:'Goodfellow, Bengio, Courville', t:'2016', b:'Deep Learning, Bölüm 4.3.1 ve 8.2', n:'MIT Press', u:'https://www.deeplearningbook.org/'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'İki yön, iki farklı eğrilik',
+    goal:'Çok değişkenli bir kayıpta eğriliğin tek bir sayı olmadığını göreceksin.',
+    todo:'Koşul sayısını artır. Eş yükselti eğrileri ve sarı iz nasıl değişiyor?',
+    kind:'controls', viz:'hessianVadi', h:720,
+    controls:[{k:'ki', lb:'KOŞUL SAYISI κ', min:0, max:5, step:1, val:0, fmt:v => 'κ = '+HS.kapsam[v]}],
+    state:{carpan:1},
+    live:s => { const k = HS.kapsam[s.ki];
+      return [['κ', String(k)], ['ADIM', String(hsAdim(k,1,hsOptLr(k,1),1e-3))],
+              ['η', hsOptLr(k,1).toFixed(4)]]; },
+    body:'<p>Taylor dersinde eğrilik tek bir sayıydı: f\'\'(x). İki değişkende artık bir <b>matris</b>: ' +
+      'Hessian. Köşegenindeki sayılar her yöndeki eğriliği söylüyor.</p>' +
+      '<p>Burada f(x,y) = ½(a·x² + y²). Yani x yönünde eğrilik a, y yönünde 1. ' +
+      'Bu ikisinin oranına <b>koşul sayısı</b> denir: κ = a / 1.</p>' +
+      '<p>κ = 1 iken eş yükselti eğrileri <b>çember</b>. Her yön eşit, gradyan doğrudan hedefi gösteriyor.</p>' +
+      '<p>κ büyüdükçe çemberler <b>elips</b>e, sonra dar bir kanyona dönüşüyor. ' +
+      'Gradyan artık hedefi göstermiyor: dik yamaca doğru bakıyor, hedef ise kanyonun boyunca uzakta.</p>',
+    learned:'<b>Çok değişkenli eğrilik bir matristir: Hessian.</b> Koşul sayısı κ, en büyük eğriliğin ' +
+      'en küçüğüne oranıdır.<br><br>' +
+      'κ = 1 çember, κ büyük dar kanyon demektir. Gradyan her zaman en dik yönü gösterir, ' +
+      'ama en dik yön kanyonlarda hedefin yönü değildir.',
+    xp:30,
+  },
+  {
+    t:'Zikzak: κ arttıkça adım sayısı da artıyor',
+    goal:'Yakınsama hızının doğrudan koşul sayısına bağlı olduğunu ölçeceksin.',
+    todo:'κ\'yı 100\'e çıkar. Adım sayısına bak.',
+    kind:'controls', viz:'hessianVadi', h:720,
+    controls:[{k:'ki', lb:'KOŞUL SAYISI κ', min:0, max:5, step:1, val:0, fmt:v => 'κ = '+HS.kapsam[v]}],
+    state:{carpan:1},
+    derive:s => { const k = HS.kapsam[s.ki]; return {ad: hsAdim(k,1,hsOptLr(k,1),1e-3)}; },
+    live:s => [['κ', String(HS.kapsam[s.ki])], ['ADIM', String(s.ad), s.ad > 200 ? K.red : K.txt],
+               ['HEDEF', '> 300 adım']],
+    unlock:s => s.ad > 300,
+    unlockMsg:'Adım sayısını 300\'ün üstüne çıkar',
+    body:'<p>Her κ için en iyi öğrenme hızını kullanıyoruz (η = 2/(a+b)), yani bu ayarın en iyisi. ' +
+      'Buna rağmen:</p>' +
+      '<p><b>κ=1:</b> 1 adım &nbsp;·&nbsp; <b>κ=2:</b> 7 &nbsp;·&nbsp; <b>κ=5:</b> 18 &nbsp;·&nbsp; ' +
+      '<b>κ=20:</b> 73 &nbsp;·&nbsp; <b>κ=50:</b> 182 &nbsp;·&nbsp; <b>κ=100:</b> <b>363</b></p>' +
+      '<p>Adım sayısı κ ile <b>doğru orantılı</b> büyüyor. κ=1 iken tek adımda bitiyor, ' +
+      'çünkü çemberde gradyan doğrudan merkezi gösteriyor ve doğru adım boyu tam olarak oraya götürüyor.</p>' +
+      '<p>Sarı ize bak: κ büyükken yol düz değil, kanyonun duvarları arasında zikzak çiziyor. ' +
+      'Her adımın büyük kısmı boşa gidiyor.</p>',
+    learned:'<b>Gradyan inişinin adım sayısı koşul sayısıyla doğru orantılıdır.</b><br><br>' +
+      'κ=1\'de 1 adım, κ=100\'de <b>363</b> adım. Aradaki fark modelin zorluğundan değil, ' +
+      'kayıp yüzeyinin <b>şeklinden</b> geliyor.<br><br>' +
+      'Bu, özelliklerin ölçeklenmesi gerektiğinin asıl sebebidir: bir özellik metre diğeri kilometre ' +
+      'birimindeyse Hessian çarpık olur ve κ patlar.',
+    xp:45,
+  },
+  {
+    t:'Kararlılık sınırı: η = 2/a',
+    goal:'Öğrenme hızının üst sınırının tam olarak nerede olduğunu göreceksin.',
+    todo:'κ=20\'de öğrenme hızı çarpanını 1.0\'ın üstüne çıkar. Ne oluyor?',
+    kind:'controls', viz:'hessianVadi', h:720,
+    controls:[
+      {k:'ki', lb:'KOŞUL SAYISI κ', min:0, max:5, step:1, val:3, fmt:v => 'κ = '+HS.kapsam[v]},
+      {k:'carpan', lb:'η ÇARPANI', min:0.2, max:2.2, step:0.05, val:1,
+       fmt:v => v.toFixed(2)+' × optimal'},
+    ],
+    derive:s => { const k = HS.kapsam[s.ki], lr = s.carpan*hsOptLr(k,1);
+      return {sap: hsInis(k,1,lr,60).sapti, lr}; },
+    live:s => { const k = HS.kapsam[s.ki];
+      return [['η', s.lr.toFixed(4)], ['SINIR (2/a)', hsMaxLr(k).toFixed(4)],
+              ['DURUM', s.sap ? 'IRAKSADI' : 'yakınsıyor', s.sap ? K.red : K.green],
+              ['HEDEF', 'ıraksat']]; },
+    unlock:s => s.sap,
+    unlockMsg:'Öğrenme hızını ıraksayacak kadar büyüt',
+    body:'<p>Bu kayıpta gradyan inişinin x yönündeki güncellemesi şudur: <b>x ← (1 − η·a)·x</b>.</p>' +
+      '<p>Yani her adımda x, (1 − η·a) çarpanıyla küçülüyor. Yakınsamak için bu çarpanın ' +
+      'mutlak değeri 1\'den küçük olmalı, bu da tek bir koşul veriyor:</p>' +
+      '<p style="text-align:center"><b>η &lt; 2 / a</b></p>' +
+      '<p>κ=20, yani a=20 için sınır tam olarak 0.1000. Deneyle:</p>' +
+      '<p><b>η = 0.0950:</b> 60 adım sonra |x| = 1.80e-3, yakınsıyor<br>' +
+      '<b>η = 0.1000:</b> |x| = 1.00, sonsuza kadar aynı genlikte salınıyor<br>' +
+      '<b>η = 0.1050:</b> |x| = 3.04e+2, patlıyor</p>' +
+      '<p>Dikkat: sınırı belirleyen <b>en büyük</b> eğrilik. Yani en dar yön, bütün eğitimin ' +
+      'hızına tavan koyuyor.</p>',
+    learned:'<b>Öğrenme hızının üst sınırı en büyük eğriliğe bağlıdır: η &lt; 2/a.</b><br><br>' +
+      'κ=20 için sınır 0.1000. 0.0950\'de yakınsıyor, 0.1000\'de sabit genlikle salınıyor, ' +
+      '0.1050\'de ıraksıyor.<br><br>' +
+      'İşin acı tarafı burada: en dar yön η\'yi yukarıdan sınırlıyor, en geniş yön ise yakınsamayı ' +
+      'yavaşlatıyor. κ büyükse iki taraftan birden sıkışıyorsun.',
+    xp:50,
+  },
+  {
+    t:'Peki ne yapılır?',
+    goal:'Kötü koşullu bir yüzeyle başa çıkmanın yollarını ayırt edeceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'hessianVadi', h:720, state:{ki:5, carpan:1},
+    body:'<p>Üç ana yol var:</p>' +
+      '<p><b>1 · Yüzeyi düzelt.</b> Özellikleri ölçekle (ortalama 0, standart sapma 1). ' +
+      'Bu, Hessian\'ın köşegenini eşitler ve κ\'yı düşürür. Batch norm da benzer işi katman içinde yapar.</p>' +
+      '<p><b>2 · Momentum ekle.</b> Zikzak yönlerdeki hareketler birbirini götürür, kanyon boyunca ' +
+      'olan hareket ise birikir. Gereken adım sayısı κ yerine <b>√κ</b> ile büyür.</p>' +
+      '<p><b>3 · Her yöne ayrı adım boyu ver.</b> Adam ve RMSProp tam olarak bunu yapar: ' +
+      'gradyanın karesinin ortalamasını tutup her parametreyi kendi ölçeğine böler. ' +
+      'Bu, Hessian\'ın köşegenine ucuz bir yaklaşımdır.</p>',
+    quiz:{ q:'Bir modelde iki özellik var: "yaş" (18-80) ve "gelir" (20.000-500.000). Ölçekleme yapmadan eğitiyorsun ve kayıp çok yavaş düşüyor. Asıl sebep nedir?',
+      opts:[
+        {t:'Gelir değerleri büyük olduğu için sayısal taşma oluyor', why:'500.000 mertebesi kayan noktalı sayılar için hiç büyük değil. Sorun taşma değil, yüzeyin şekli.'},
+        {t:'İki özelliğin ölçeği çok farklı olduğu için Hessian kötü koşullu; en büyük eğrilik öğrenme hızına tavan koyarken en küçüğü yakınsamayı yavaşlatıyor', why:'Doğru. Gelir ekseni yaş ekseninden binlerce kat geniş olduğu için kayıp yüzeyi dar bir kanyona dönüşüyor. Bu derste κ=100\'de adım sayısının 363\'e çıktığını ölçtün; gerçek veride κ çok daha büyük olabilir. Çözüm modeli değiştirmek değil, özellikleri ölçeklemek.'},
+        {t:'Model gelir özelliğine aşırı uyum yapıyor', why:'Aşırı uyum eğitim ile test hatası arasında uçurum olarak görünür. Burada tarif edilen şey eğitimin yavaşlığı, farklı bir problem.'},
+        {t:'Öğrenme hızı çok küçük seçilmiş, büyütmek yeter', why:'Büyütemezsin, çünkü sınırı en büyük eğrilik belirliyor: η < 2/a. Ölçeklemeden büyütürsen yakınsamak yerine ıraksarsın.'},
+      ], correct:1 },
+    learned:'<b>Kötü koşullu yüzeyle üç şekilde başa çıkılır: yüzeyi düzelt, momentum ekle, yönlere ayrı adım ver.</b><br><br>' +
+      'Ölçekleme κ\'yı doğrudan düşürür ve bu derste κ=1\'de yakınsama <b>tek adım</b> sürüyor.<br><br>' +
+      'Momentum gereken adım sayısını κ yerine √κ ile büyütür; κ=100 için bu 363 yerine kabaca 36 demektir. ' +
+      'Adam ise Hessian köşegenine ucuz bir yaklaşım kurarak aynı işi yapar.',
+    xp:50,
   },
 ]};

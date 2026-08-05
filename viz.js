@@ -1981,6 +1981,99 @@ VIZ.newtonKarsi = s => {
        yak ? '5 adımda ulaşıyor' : '');
 };
 
+
+/* ═══════════ HESSIAN · VADİNİN ŞEKLİ ═══════════
+   f(x,y) = ½(a·x² + b·y²). Hessian = diag(a,b), koşul sayısı κ = a/b.
+   Gradyan inişi bu vadide zikzak çizer ve gereken adım sayısı κ ile büyür.
+   Kararlılık sınırı tam olarak η = 2/a. */
+const HS = { kapsam: [1, 2, 5, 20, 50, 100] };
+function hsInis(a, b, lr, tur){
+  let x = 1, y = 1; const iz = [[x, y]];
+  for (let t = 0; t < tur; t++){
+    x -= lr * a * x; y -= lr * b * y;
+    if (!isFinite(x) || !isFinite(y) || Math.abs(x) > 1e4 || Math.abs(y) > 1e4){
+      iz.push([x, y]); return { iz, sapti: true };
+    }
+    iz.push([x, y]);
+  }
+  return { iz, sapti: false };
+}
+function hsAdim(a, b, lr, esik){
+  let x = 1, y = 1;
+  for (let t = 1; t <= 20000; t++){
+    x -= lr * a * x; y -= lr * b * y;
+    if (Math.hypot(x, y) < (esik || 1e-3)) return t;
+    if (!isFinite(x) || Math.abs(x) > 1e6) return -1;
+  }
+  return -1;
+}
+const hsOptLr = (a, b) => 2 / (a + b);
+const hsMaxLr = a => 2 / a;
+
+VIZ.hessianVadi = s => {
+  clear();
+  const k = HS.kapsam[Math.max(0, Math.min(5, Math.round(s.ki === undefined ? 0 : s.ki)))];
+  const a = k, b = 1;
+  const carpan = s.carpan === undefined ? 1 : s.carpan;   /* lr = carpan * optimal */
+  const lr = carpan * hsOptLr(a, b);
+  const R = hsInis(a, b, lr, 60);
+  baslikSerit('HESSIAN · VADİNİN ŞEKLİ',
+    'İki yön, iki farklı eğrilik. Gradyan inişi dar yönde titrerken geniş yönde sürünüyor.', []);
+
+  /* sol: eş yükselti + iz */
+  const P = plot(rect(100, 140, 620, 430), -1.35, 1.35, -1.35, 1.35);
+  frame(P, 'x  (eğrilik a = ' + a + ')', 'y  (eğrilik b = 1)', [-1, 0, 1], [-1, 0, 1]);
+  [0.02, 0.08, 0.2, 0.4, 0.7, 1.05].forEach((lv, i) => {
+    cx.strokeStyle = 'rgba(132,148,168,' + (0.45 - i * 0.05) + ')'; cx.lineWidth = 1.6;
+    cx.beginPath();
+    for (let j = 0; j <= 120; j++){
+      const th = j / 120 * 2 * Math.PI;
+      const rx = Math.sqrt(2 * lv / a) * Math.cos(th), ry = Math.sqrt(2 * lv / b) * Math.sin(th);
+      j ? cx.lineTo(P.sx(rx), P.sy(ry)) : cx.moveTo(P.sx(rx), P.sy(ry));
+    }
+    cx.closePath(); cx.stroke();
+  });
+  cx.strokeStyle = R.sapti ? K.red : K.yellow; cx.lineWidth = 2.4;
+  cx.beginPath();
+  R.iz.forEach(([x, y], i) => {
+    const X = P.sx(Math.max(-1.35, Math.min(1.35, x))), Y = P.sy(Math.max(-1.35, Math.min(1.35, y)));
+    i ? cx.lineTo(X, Y) : cx.moveTo(X, Y);
+  });
+  cx.stroke();
+  R.iz.slice(0, 30).forEach(([x, y]) => {
+    if (Math.abs(x) <= 1.35 && Math.abs(y) <= 1.35)
+      dot(P.sx(x), P.sy(y), 3.4, R.sapti ? K.red : K.yellow);
+  });
+  dot(P.sx(0), P.sy(0), 8, K.green);
+  txt('hedef', P.sx(0) + 14, P.sy(0) + 6, K.green, 17, 'left');
+  txt('κ = ' + k, P.R.x + P.R.w - 14, P.R.y + 28, K.blue, 24, 'right');
+  if (R.sapti) txt('IRAKSADI', P.R.x + P.R.w - 14, P.R.y + 56, K.red, 22, 'right');
+
+  /* sağ: Hessian matrisi + kartlar */
+  const bx = 780, bw = 610;
+  txt('HESSIAN', bx + bw / 2, 168, K.mut, 20);
+  [[a, 0], [0, b]].forEach((satir, i) => satir.forEach((val, j) => {
+    const x0 = bx + 150 + j * 160, y0 = 188 + i * 70;
+    box(x0, y0, 145, 58, 'rgba(255,255,255,.04)', K.axis, 1.5);
+    txt(String(val), x0 + 72, y0 + 38, val ? K.txt : K.dim, 24);
+  }));
+  const kart = (x, y, w, ad, deger, renk, alt) => {
+    box(x, y, w, 112, 'rgba(7,10,15,.7)', renk, 2);
+    txt(ad, x + w / 2, y + 31, K.mut, 17);
+    txt(deger, x + w / 2, y + 78, renk, 30);
+    if (alt) txt(alt, x + w / 2, y + 101, K.mut, 14);
+  };
+  const n = hsAdim(a, b, lr, 1e-3);
+  kart(bx, 340, 295, 'KOŞUL SAYISI κ', String(k), k > 20 ? K.red : k > 5 ? K.orange : K.green,
+       'en büyük / en küçük eğrilik');
+  kart(bx + 315, 340, 295, 'ADIM SAYISI', n < 0 ? 'ıraksadı' : String(n),
+       n < 0 ? K.red : n > 100 ? K.orange : K.green, n < 0 ? '' : '|x| < 0.001 için');
+  kart(bx, 470, 295, 'KULLANILAN η', lr.toFixed(4), K.yellow,
+       'optimalin ' + carpan.toFixed(2) + ' katı');
+  kart(bx + 315, 470, 295, 'KARARLILIK SINIRI', hsMaxLr(a).toFixed(4),
+       lr >= hsMaxLr(a) ? K.red : K.green, 'η = 2 / a');
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
