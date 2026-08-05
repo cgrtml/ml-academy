@@ -2332,6 +2332,312 @@ VIZ.modelKaniti = s => {
        (byKanit(d).k - byKanit(2).k).toFixed(2), K.purple, 'log biriminde');
 };
 
+
+/* ═══════════ ÖZELLİK MÜHENDİSLİĞİ ═══════════
+   Aynı veri, farklı özellikler. Model hiç değişmiyor, sonuç değişiyor.
+   Üç sahne: etkileşim, döngüsel kodlama, ölçek. Dördüncüsü karşı argüman. */
+const OM = {};
+function omEkk(X, y){
+  const p = X[0].length, A = Array.from({ length: p }, () => new Array(p + 1).fill(0));
+  for (let i = 0; i < p; i++){
+    for (let j = 0; j < p; j++){ let s = 0;
+      for (let k = 0; k < X.length; k++) s += X[k][i] * X[k][j];
+      A[i][j] = s + (i === j ? 1e-8 : 0); }
+    let s = 0; for (let k = 0; k < X.length; k++) s += X[k][i] * y[k];
+    A[i][p] = s;
+  }
+  for (let c = 0; c < p; c++){
+    let pv = c;
+    for (let r2 = c + 1; r2 < p; r2++) if (Math.abs(A[r2][c]) > Math.abs(A[pv][c])) pv = r2;
+    const t = A[c]; A[c] = A[pv]; A[pv] = t;
+    const d = A[c][c];
+    for (let j = c; j <= p; j++) A[c][j] /= d;
+    for (let r2 = 0; r2 < p; r2++){ if (r2 === c) continue;
+      const f = A[r2][c];
+      for (let j = c; j <= p; j++) A[r2][j] -= f * A[c][j]; }
+  }
+  return A.map(r2 => r2[p]);
+}
+const omNormal = r => { let u = 0, w = 0; while (!u) u = r(); while (!w) w = r();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); };
+
+/* ── sahne 1 ve 4: oda · y = 2.5 · en · boy ── */
+OM.oda = (() => {
+  const r = rng(7), N = 90, P = [], Y = [];
+  for (let i = 0; i < N; i++){ const w = 1 + 5 * r(), h = 1 + 5 * r();
+    P.push([w, h]); Y.push(2.5 * w * h + 1.5 * omNormal(r)); }
+  const TR = [], TE = [];
+  for (let i = 0; i < N; i++) (i % 3 === 2 ? TE : TR).push(i);
+  return { P, Y, TR, TE, N };
+})();
+const omR2 = (idx, tah) => { const D = OM.oda;
+  const m = idx.reduce((s, i) => s + D.Y[i], 0) / idx.length;
+  const ss = idx.reduce((s, i) => s + (D.Y[i] - m) ** 2, 0);
+  const sr = idx.reduce((s, i) => s + (D.Y[i] - tah(i)) ** 2, 0);
+  return 1 - sr / ss; };
+const omRmse = (idx, tah) => { const D = OM.oda;
+  return Math.sqrt(idx.reduce((s, i) => s + (D.Y[i] - tah(i)) ** 2, 0) / idx.length); };
+/* etkilesim: 0 = ham (en, boy) · 1 = ham + en·boy */
+function omDogrusal(etkilesim){
+  const D = OM.oda;
+  const oz = p => etkilesim ? [1, p[0], p[1], p[0] * p[1]] : [1, p[0], p[1]];
+  const b = omEkk(D.TR.map(i => oz(D.P[i])), D.TR.map(i => D.Y[i]));
+  const f = i => oz(D.P[i]).reduce((s, v2, k) => s + v2 * b[k], 0);
+  f.b = b; return f;
+}
+/* regresyon agaci · ayni veri, ayni bolunme */
+function omAgac(derinlik){
+  const D = OM.oda;
+  const kur = (idx, d) => {
+    const ort = idx.reduce((s, i) => s + D.Y[i], 0) / idx.length;
+    if (d === 0 || idx.length < 4) return { yaprak: ort };
+    let en = { sse: 1e18 };
+    for (let f = 0; f < 2; f++){
+      const dv = [...new Set(idx.map(i => D.P[i][f]))].sort((a, b2) => a - b2);
+      for (let t = 1; t < dv.length; t++){ const esik = (dv[t-1] + dv[t]) / 2;
+        const L = idx.filter(i => D.P[i][f] <= esik), R = idx.filter(i => D.P[i][f] > esik);
+        if (!L.length || !R.length) continue;
+        const sse = [L, R].reduce((s, G) => { const m = G.reduce((a, i) => a + D.Y[i], 0) / G.length;
+          return s + G.reduce((a, i) => a + (D.Y[i] - m) ** 2, 0); }, 0);
+        if (sse < en.sse) en = { sse, f, esik, L, R }; }
+    }
+    if (en.sse === 1e18) return { yaprak: ort };
+    return { f: en.f, esik: en.esik, sol: kur(en.L, d - 1), sag: kur(en.R, d - 1) };
+  };
+  const T = kur(D.TR, derinlik);
+  const tah = (t, p) => t.yaprak !== undefined ? t.yaprak : tah(p[t.f] <= t.esik ? t.sol : t.sag, p);
+  const f = i => tah(T, D.P[i]);
+  f.yaprak = (function say(t){ return t.yaprak !== undefined ? 1 : say(t.sol) + say(t.sag); })(T);
+  return f;
+}
+/* agac olcege duyarsiz mi: ikinci ekseni carpanla buyut, yeniden kur */
+function omAgacOlcekli(derinlik, carpan){
+  const D = OM.oda, P2 = D.P.map(p => [p[0], p[1] * carpan]);
+  const kur = (idx, d) => {
+    const ort = idx.reduce((s, i) => s + D.Y[i], 0) / idx.length;
+    if (d === 0 || idx.length < 4) return { yaprak: ort };
+    let en = { sse: 1e18 };
+    for (let f = 0; f < 2; f++){
+      const dv = [...new Set(idx.map(i => P2[i][f]))].sort((a, b2) => a - b2);
+      for (let t = 1; t < dv.length; t++){ const esik = (dv[t-1] + dv[t]) / 2;
+        const L = idx.filter(i => P2[i][f] <= esik), R = idx.filter(i => P2[i][f] > esik);
+        if (!L.length || !R.length) continue;
+        const sse = [L, R].reduce((s, G) => { const m = G.reduce((a, i) => a + D.Y[i], 0) / G.length;
+          return s + G.reduce((a, i) => a + (D.Y[i] - m) ** 2, 0); }, 0);
+        if (sse < en.sse) en = { sse, f, esik, L, R }; }
+    }
+    if (en.sse === 1e18) return { yaprak: ort };
+    return { f: en.f, esik: en.esik, sol: kur(en.L, d - 1), sag: kur(en.R, d - 1) };
+  };
+  const T = kur(D.TR, derinlik);
+  const tah = (t, p) => t.yaprak !== undefined ? t.yaprak : tah(p[t.f] <= t.esik ? t.sol : t.sag, p);
+  return i => tah(T, P2[i]);
+}
+
+/* ── sahne 2: saat · gece yarisi zirvesi ── */
+OM.saat = (() => {
+  const r = rng(13), N = 72, S = [], Y = [];
+  for (let i = 0; i < N; i++){ const s = Math.floor(24 * r());
+    S.push(s); Y.push(60 + 40 * Math.cos(2 * Math.PI * s / 24) + 4 * omNormal(r)); }
+  const TR = [], TE = [];
+  for (let i = 0; i < N; i++) (i % 3 === 2 ? TE : TR).push(i);
+  return { S, Y, TR, TE, N, f0: s => 60 + 40 * Math.cos(2 * Math.PI * s / 24) };
+})();
+/* kodlama: 0 = ham saat · 1 = saat + saat² · 2 = sin/cos */
+const omKodla = (kod, s) => kod === 0 ? [1, s]
+  : kod === 1 ? [1, s, s * s]
+  : [1, Math.sin(2 * Math.PI * s / 24), Math.cos(2 * Math.PI * s / 24)];
+function omSaatModel(kod){
+  const D = OM.saat;
+  const b = omEkk(D.TR.map(i => omKodla(kod, D.S[i])), D.TR.map(i => D.Y[i]));
+  const f = s => omKodla(kod, s).reduce((a, v2, k) => a + v2 * b[k], 0);
+  f.r2 = (() => { const idx = D.TE;
+    const m = idx.reduce((a, i) => a + D.Y[i], 0) / idx.length;
+    const ss = idx.reduce((a, i) => a + (D.Y[i] - m) ** 2, 0);
+    const sr = idx.reduce((a, i) => a + (D.Y[i] - f(D.S[i])) ** 2, 0);
+    return 1 - sr / ss; })();
+  f.sicrama = Math.abs(f(23) - f(0));
+  return f;
+}
+
+/* ── sahne 3: olcek · kNN ── */
+OM.olcek = (() => {
+  const r = rng(23), N = 200, P = [], L = [];
+  for (let i = 0; i < N; i++){
+    const cocuk = Math.floor(5 * r());
+    const gelir = 20000 + 60000 * r();
+    const z = (cocuk - 2) / 2 + (gelir - 50000) / 30000;
+    P.push([cocuk, gelir]); L.push(z > 0 ? 1 : 0);
+  }
+  return { P, L, N };
+})();
+function omKnn(olcekli, k){
+  const D = OM.olcek, N = D.N, mu = [0, 0], sd = [1, 1];
+  if (olcekli) for (let j = 0; j < 2; j++){
+    mu[j] = D.P.reduce((s, p) => s + p[j], 0) / N;
+    sd[j] = Math.sqrt(D.P.reduce((s, p) => s + (p[j] - mu[j]) ** 2, 0) / N); }
+  const q = p => [(p[0] - mu[0]) / sd[0], (p[1] - mu[1]) / sd[1]];
+  let dogru = 0; const yanlis = [];
+  for (let i = 0; i < N; i++){
+    const a = q(D.P[i]);
+    const kom = D.P.map((p, j) => ({ j, d: j === i ? 1e9 : Math.hypot(...q(p).map((v2, t) => v2 - a[t])) }))
+                   .sort((x, y2) => x.d - y2.d).slice(0, k);
+    const oy = kom.reduce((s, e) => s + D.L[e.j], 0);
+    if ((oy > k / 2 ? 1 : 0) === D.L[i]) dogru++; else yanlis.push(i);
+  }
+  return { dogruluk: dogru / N, yanlis };
+}
+const omStd = j => { const D = OM.olcek;
+  const m = D.P.reduce((s, p) => s + p[j], 0) / D.N;
+  return Math.sqrt(D.P.reduce((s, p) => s + (p[j] - m) ** 2, 0) / D.N); };
+
+VIZ.ozellikMuh = s => {
+  clear();
+  const sahne = s.sahne || 'etkilesim';
+  const kart = (x, y, w, ad, deger, renk, alt) => {
+    box(x, y, w, 110, 'rgba(7,10,15,.7)', renk, 2);
+    txt(ad, x + w / 2, y + 30, K.mut, 16);
+    txt(deger, x + w / 2, y + 76, renk, 30);
+    if (alt) txt(alt, x + w / 2, y + 98, K.mut, 14);
+  };
+
+  if (sahne === 'etkilesim'){
+    const e = s.etk ? 1 : 0, D = OM.oda, f = omDogrusal(e);
+    baslikSerit('ÖZELLİK MÜHENDİSLİĞİ · ETKİLEŞİM',
+      'Model aynı doğrusal model. Değişen tek şey ona verdiğin sütunlar.', []);
+    const P = plot(rect(110, 175, 560, 440), 0, 90, 0, 90);
+    frame(P, 'gerçek maliyet', 'tahmin', [0, 30, 60, 90], [0, 30, 60, 90]);
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.sx(0), P.sy(0)); cx.lineTo(P.sx(90), P.sy(90)); cx.stroke();
+    cx.setLineDash([]);
+    /* her nokta ile kosegen arasindaki dikey parca = o odanin hatasi */
+    cx.strokeStyle = (e ? K.green : K.orange) + '77'; cx.lineWidth = 2;
+    D.TE.forEach(i => { const yh = Math.max(0, Math.min(90, f(i)));
+      cx.beginPath(); cx.moveTo(P.sx(D.Y[i]), P.sy(D.Y[i]));
+      cx.lineTo(P.sx(D.Y[i]), P.sy(yh)); cx.stroke(); });
+    D.TE.forEach(i => dot(P.sx(D.Y[i]), P.sy(Math.max(0, Math.min(90, f(i)))), 6,
+                          e ? K.green : K.orange));
+    txt('test kümesi · ' + D.TE.length + ' oda', P.R.x + 16, P.R.y + 28, K.mut, 18, 'left');
+    txt('dikey çizgi: o odanın hatası', P.R.x + 16, P.R.y + 52, K.mut, 17, 'left');
+    /* sag: sutun listesi + kartlar */
+    const bx = 730;
+    txt('MODELE VERİLEN SÜTUNLAR', bx, 210, K.mut, 18, 'left');
+    const sut = e ? ['en', 'boy', 'en × boy'] : ['en', 'boy'];
+    sut.forEach((n, i) => {
+      box(bx, 230 + i * 54, 300, 44, 'rgba(7,10,15,.7)', i === 2 ? K.green : K.axis, 2);
+      txt(n, bx + 150, 259 + i * 54, i === 2 ? K.green : K.txt, 21);
+    });
+    if (!e){ txt('en × boy sütunu yok', bx, 372, K.orange, 19, 'left');
+      txt('model çarpımı kendi kuramaz', bx, 398, K.mut, 17, 'left'); }
+    else { txt('katsayı: ' + f.b[3].toFixed(3), bx, 420, K.green, 19, 'left');
+      txt('gerçek çarpan 2.5', bx, 446, K.mut, 17, 'left'); }
+    kart(bx, 480, 300, 'TEST R²', omR2(D.TE, f).toFixed(4), e ? K.green : K.orange);
+    kart(bx + 320, 480, 300, 'TEST RMSE', omRmse(D.TE, f).toFixed(3), e ? K.green : K.orange,
+         'oda başına hata');
+    kart(bx + 320, 210, 300, 'PARAMETRE', String(e ? 4 : 3), K.blue, 'sayı olarak model boyu');
+    kart(bx + 320, 340, 300, 'GERÇEK KURAL', '2.5 · en · boy', K.purple, 'çarpım, toplam değil');
+  }
+
+  else if (sahne === 'dongusel'){
+    const kod = s.kod === undefined ? 0 : s.kod, D = OM.saat, f = omSaatModel(kod);
+    const ad = ['ham saat (0..23)', 'saat + saat²', 'sin/cos çifti'][kod];
+    baslikSerit('ÖZELLİK MÜHENDİSLİĞİ · DÖNGÜSEL ZAMAN',
+      'Saat 23 ile saat 0 arasında bir saat var. Ham sayıda 23 birim.', []);
+    const P = plot(rect(110, 175, 700, 440), -0.6, 23.6, 0, 120);
+    frame(P, 'saat', 'talep', [0, 6, 12, 18, 23], [0, 40, 80, 120]);
+    cx.setLineDash([7, 6]); cx.strokeStyle = K.mut; cx.lineWidth = 2;
+    cx.beginPath();
+    for (let i = 0; i <= 120; i++){ const x = -0.6 + 24.2 * i / 120;
+      i ? cx.lineTo(P.sx(x), P.sy(D.f0(x))) : cx.moveTo(P.sx(x), P.sy(D.f0(x))); }
+    cx.stroke(); cx.setLineDash([]);
+    cx.strokeStyle = kod === 2 ? K.green : K.orange; cx.lineWidth = 3.4;
+    cx.beginPath();
+    for (let i = 0; i <= 120; i++){ const x = -0.6 + 24.2 * i / 120;
+      const y = Math.max(0, Math.min(120, f(x)));
+      i ? cx.lineTo(P.sx(x), P.sy(y)) : cx.moveTo(P.sx(x), P.sy(y)); }
+    cx.stroke();
+    D.TE.forEach(i => dot(P.sx(D.S[i]), P.sy(D.Y[i]), 5, K.blue));
+    txt('gerçek talep eğrisi', P.R.x + 16, P.R.y + P.R.h - 76, K.mut, 18, 'left');
+    txt('modelin öğrendiği', P.R.x + 16, P.R.y + P.R.h - 52, kod === 2 ? K.green : K.orange, 18, 'left');
+    txt('test noktaları', P.R.x + 16, P.R.y + P.R.h - 28, K.blue, 18, 'left');
+    const bx = 870;
+    txt('KODLAMA', bx, 210, K.mut, 18, 'left');
+    box(bx, 226, 480, 48, 'rgba(7,10,15,.7)', kod === 2 ? K.green : K.orange, 2);
+    txt(ad, bx + 240, 257, kod === 2 ? K.green : K.orange, 22);
+    kart(bx, 300, 230, 'TEST R²', f.r2.toFixed(4), kod === 2 ? K.green : K.orange);
+    kart(bx + 250, 300, 230, '23 → 0 SIÇRAMASI', f.sicrama.toFixed(1), K.purple,
+         'gerçekte sadece 1.4');
+    txt('SAAT UZAYINDA MESAFE', bx, 460, K.mut, 18, 'left');
+    const m1 = 23, m2 = Math.hypot(Math.sin(2*Math.PI*23/24), Math.cos(2*Math.PI*23/24) - 1);
+    const m3 = 2;
+    box(bx, 478, 480, 130, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('ham sayıda  |23 − 0| = ' + m1, bx + 20, 512, K.orange, 20, 'left');
+    txt('sin/cos ile 23 ↔ 0  = ' + m2.toFixed(3), bx + 20, 546, K.green, 20, 'left');
+    txt('sin/cos ile 12 ↔ 0  = ' + m3.toFixed(3), bx + 20, 580, K.mut, 20, 'left');
+  }
+
+  else if (sahne === 'olcek'){
+    const ol = s.olcekli ? 1 : 0, D = OM.olcek, R = omKnn(ol, 7);
+    baslikSerit('ÖZELLİK MÜHENDİSLİĞİ · ÖLÇEK',
+      'kNN mesafeye bakar. Mesafeyi büyük sayılı sütun yönetir.', []);
+    const P = plot(rect(110, 175, 620, 440), -0.6, 4.6, 15000, 85000);
+    frame(P, 'çocuk sayısı', 'gelir', [0, 1, 2, 3, 4], [20000, 40000, 60000, 80000]);
+    const yanlisKume = new Set(R.yanlis);
+    D.P.forEach((p, i) => {
+      const c = D.L[i] ? K.green : K.blue;
+      dot(P.sx(p[0] + (i % 7 - 3) * 0.05), P.sy(p[1]), 5, yanlisKume.has(i) ? K.red : c);
+    });
+    txt('yeşil / mavi: iki sınıf', P.R.x + 16, P.R.y + 28, K.mut, 18, 'left');
+    txt('kırmızı: kNN yanlış bildi', P.R.x + 16, P.R.y + 52, K.red, 18, 'left');
+    const bx = 790;
+    box(bx, 200, 600, 130, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('SÜTUNLARIN STANDART SAPMASI', bx + 300, 232, K.mut, 18);
+    txt('çocuk sayısı: ' + omStd(0).toFixed(2), bx + 20, 274, K.txt, 21, 'left');
+    txt('gelir: ' + omStd(1).toFixed(0), bx + 580, 274, K.txt, 21, 'right');
+    txt('oran ' + (omStd(1) / omStd(0)).toFixed(0) + ' kat · mesafeyi tek başına gelir belirliyor',
+        bx + 300, 310, K.orange, 18);
+    kart(bx, 360, 290, 'kNN DOĞRULUĞU', (100 * R.dogruluk).toFixed(1) + '%',
+         ol ? K.green : K.red, 'k = 7, dışarıda bırakmalı');
+    kart(bx + 310, 360, 290, 'YANLIŞ SAYISI', String(R.yanlis.length), ol ? K.green : K.red,
+         D.N + ' örnekten');
+    kart(bx, 490, 290, 'DURUM', ol ? 'ölçekli' : 'ham', ol ? K.green : K.orange);
+    kart(bx + 310, 490, 290, 'ÖLÇEKLİ HALİ', (100 * omKnn(1, 7).dogruluk).toFixed(1) + '%',
+         K.mut, 'karşılaştırma');
+  }
+
+  else { /* agac: karsi argüman */
+    const d = Math.max(2, Math.min(8, s.derinlik === undefined ? 2 : s.derinlik));
+    const D = OM.oda, A = omAgac(d), L = omDogrusal(1);
+    baslikSerit('ÖZELLİK MÜHENDİSLİĞİ · MODEL KENDİ ÖĞRENİR Mİ',
+      'Ağaç etkileşimi kendi keşfedebilir. Sorusu kaç bölünme karşılığında.', []);
+    const P = plot(rect(110, 175, 620, 440), 1.5, 8.5, 0.6, 1.02);
+    frame(P, 'ağaç derinliği', 'test R²', [2, 4, 6, 8], [0.6, 0.8, 1.0]);
+    /* dogrusal + etkilesim: yatay referans */
+    const lr = omR2(D.TE, L);
+    cx.strokeStyle = K.green; cx.lineWidth = 3; cx.setLineDash([8, 6]);
+    cx.beginPath(); cx.moveTo(P.sx(1.5), P.sy(lr)); cx.lineTo(P.sx(8.5), P.sy(lr)); cx.stroke();
+    cx.setLineDash([]);
+    cx.strokeStyle = K.orange; cx.lineWidth = 3.2; cx.beginPath();
+    [2,3,4,5,6,7,8].forEach((k, i) => { const y = P.sy(Math.max(0.6, omR2(D.TE, omAgac(k))));
+      i ? cx.lineTo(P.sx(k), y) : cx.moveTo(P.sx(k), y); });
+    cx.stroke();
+    [2,3,4,5,6,7,8].forEach(k => dot(P.sx(k), P.sy(Math.max(0.6, omR2(D.TE, omAgac(k)))), 5, K.orange));
+    dot(P.sx(d), P.sy(Math.max(0.6, omR2(D.TE, A))), 9, K.yellow);
+    txt('doğrusal + en×boy (4 parametre)', P.R.x + P.R.w - 16, P.R.y + P.R.h - 52, K.green, 18, 'right');
+    txt('ağaç (derinlik arttıkça)', P.R.x + P.R.w - 16, P.R.y + P.R.h - 28, K.orange, 18, 'right');
+    const bx = 790;
+    kart(bx, 200, 290, 'AĞAÇ TEST R²', omR2(D.TE, A).toFixed(4), K.orange);
+    kart(bx + 310, 200, 290, 'AĞACIN YAPRAĞI', String(A.yaprak), K.orange, 'kaç ayrı bölge');
+    kart(bx, 330, 290, 'DOĞRUSAL + EN×BOY', lr.toFixed(4), K.green, '4 parametre');
+    kart(bx + 310, 330, 290, 'AĞAÇ RMSE', omRmse(D.TE, A).toFixed(3), K.orange);
+    box(bx, 470, 600, 140, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('AĞAÇ ÖLÇEKTEN ETKİLENİR Mİ', bx + 300, 502, K.mut, 18);
+    txt('boy ekseni 1000 kat büyütülünce test R²:', bx + 20, 542, K.txt, 19, 'left');
+    txt(omR2(D.TE, omAgacOlcekli(d, 1000)).toFixed(4), bx + 580, 542, K.blue, 22, 'right');
+    txt('aynı sayı. Bölünme eşik arar, mesafe değil.', bx + 20, 580, K.mut, 18, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

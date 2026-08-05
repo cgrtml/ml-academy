@@ -56,7 +56,7 @@ const ROTALAR = [
     {id:'spline',         ad:'Spline: eğriyi parça parça bükmek',              sure:13, durum:'hazir'},
     {id:'gam',            ad:'Toplamsal modeller: her özelliğin kendi eğrisi',  sure:12, durum:'planli'},
     {id:'ozellik-onemi',  ad:'Özellik önemi: model hangi değişkene bakıyor',   sure:15, durum:'hazir'},
-    {id:'ozellik-muh',    ad:'Özellik mühendisliği: veriden yeni bilgi çıkarmak',  sure:14, durum:'planli'},
+    {id:'ozellik-muh',    ad:'Özellik mühendisliği: veriden yeni bilgi çıkarmak',  sure:18, durum:'hazir'},
     {id:'pekistirmeli',   ad:'Pekiştirmeli öğrenme: ödülle öğrenmek',          sure:18, durum:'hazir'},
     {id:'a-yildiz',       ad:'A* araması: sezgiyle akıllıca yol bulmak',       sure:16, durum:'hazir'},
     {id:'kisit',          ad:'Kısıt tatmin problemleri: değişken ve kural oyunu',  sure:12, durum:'planli'},
@@ -6742,6 +6742,147 @@ DERSLER['bayes-reg'] = {
       'Çapraz doğrulama varsayımsızdır ama veriyi böler ve tekrar tekrar eğitir.<br><br>' +
       'Az veri ya da pahalı eğitim varsa kanıt; ön dağılıma güven yoksa ya da olabilirlik ' +
       'hesaplanamıyorsa çapraz doğrulama. Ve <b>ikisi de sadece verdiğin adaylar arasında seçer</b>.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── ÖZELLİK MÜHENDİSLİĞİ ─────────────── */
+DERSLER['ozellik-muh'] = {
+  ad:'Özellik mühendisliği: modeli değiştirmeden sonucu değiştirmek',
+  alt:'Aynı veri, aynı model, farklı sütunlar. Bazen bir sütun, yirmi kat daha büyük bir modelden fazla iş görür.',
+  kaynaklar:[
+    {y:'Zheng, A. & Casari, A.', t:'2018', b:'Feature Engineering for Machine Learning', n:'O’Reilly'},
+    {y:'Hastie, T., Tibshirani, R. & Friedman, J.', t:'2009', b:'The Elements of Statistical Learning, Bölüm 5.1', n:'Springer', u:'https://hastie.su.domains/ElemStatLearn/'},
+    {y:'Kuhn, M. & Johnson, K.', t:'2019', b:'Feature Engineering and Selection', n:'CRC Press', u:'http://www.feat.engineering/'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Modelin kuramadığı sütun',
+    goal:'Doğrusal bir modelin neden çarpımı kendi başına bulamadığını göreceksin.',
+    todo:'Etkileşim sütununu aç ve kapat. Test RMSE kaça düşüyor?',
+    kind:'controls', viz:'ozellikMuh', h:700, state:{sahne:'etkilesim'},
+    controls:[{k:'etk', lb:'en × boy SÜTUNU', min:0, max:1, step:1, val:0, fmt:v => v ? 'açık' : 'kapalı'}],
+    derive:s => ({rmse: omRmse(OM.oda.TE, omDogrusal(s.etk ? 1 : 0))}),
+    live:s => [['TEST R²', omR2(OM.oda.TE, omDogrusal(s.etk?1:0)).toFixed(4)],
+               ['TEST RMSE', s.rmse.toFixed(3), s.etk ? K.green : K.orange],
+               ['HEDEF', 'RMSE < 2.0']],
+    unlock:s => s.rmse < 2.0,
+    unlockMsg:'Test RMSE değerini 2.0 altına indir',
+    body:'<p>90 oda var. Her oda için en ve boy ölçülmüş, ısıtma maliyeti kaydedilmiş. ' +
+      'Gerçek kural basit: maliyet <b>2.5 × en × boy</b>, yani alanla orantılı. Verinin üçte biri ' +
+      'test için ayrıldı.</p>' +
+      '<p>Modele sadece <b>en</b> ve <b>boy</b> sütunlarını verirsek, doğrusal model şunu kurabilir: ' +
+      'a·en + b·boy + c. Toplam. Ama gereken şey <b>çarpım</b>.</p>' +
+      '<p>Sonuç: test R² <b>0.8854</b>. Kulağa fena gelmiyor, ama RMSE <b>5.439</b>. ' +
+      'Oda başına ortalama 5.4 birim yanılıyor.</p>' +
+      '<p>Şimdi tek bir sütun ekleyelim: <b>en × boy</b>. Model hâlâ aynı doğrusal model, ' +
+      'sadece bir sütun daha görüyor. Test R² <b>0.9886</b>, RMSE <b>1.713</b>. ' +
+      'Hata <b>3.2 kat</b> azaldı ve model sadece bir parametre büyüdü.</p>' +
+      '<p>Modelin bulduğu katsayı <b>2.588</b>, gerçek çarpan 2.5. Kuralı neredeyse birebir çıkardı.</p>',
+    learned:'<b>Doğrusal model sadece verdiğin sütunların doğrusal birleşimlerini kurabilir.</b><br><br>' +
+      'Çarpım, oran, karekök: bunların hiçbirini kendi türetemez. Sen sütun olarak vermezsen ' +
+      'o ilişki modelin erişemeyeceği yerdedir.<br><br>' +
+      'Test RMSE <b>5.439 → 1.713</b>, tek bir sütunla ve tek bir parametre karşılığında.',
+    xp:25,
+  },
+  {
+    t:'Saat 23 ile saat 0 arası bir saattir',
+    goal:'Sayı gibi görünen bir özelliğin neden sayı olarak kodlanmaması gerektiğini göreceksin.',
+    todo:'Üç kodlamayı sırayla dene. Test R² ve 23 → 0 sıçraması nasıl değişiyor?',
+    kind:'controls', viz:'ozellikMuh', h:700, state:{sahne:'dongusel'},
+    controls:[{k:'kod', lb:'KODLAMA', min:0, max:2, step:1, val:0,
+               fmt:v => ['ham saat','saat + saat²','sin/cos'][v]}],
+    derive:s => { const f = omSaatModel(s.kod); return {r2: f.r2, sic: f.sicrama}; },
+    live:s => [['TEST R²', s.r2.toFixed(4), s.r2 > 0.95 ? K.green : K.orange],
+               ['23→0 SIÇRAMA', s.sic.toFixed(1)], ['GERÇEKTE', '1.4'], ['HEDEF', 'R² > 0.95']],
+    unlock:s => s.r2 > 0.95,
+    unlockMsg:'Test R² değerini 0.95 üstüne çıkaran kodlamayı bul',
+    body:'<p>Bir sistemin saatlik talebi ölçülmüş. Talep gece yarısı zirve yapıyor, öğlen dibe ' +
+      'vuruyor. Saat sütunu 0 ile 23 arasında bir tam sayı.</p>' +
+      '<p><b>Ham saat.</b> Model saati bir sayı sanır ve düz bir doğru uydurur. Test R² ' +
+      '<b>&minus;0.0650</b>. Negatif. Yani bu model, her şey için ortalamayı söylemekten bile ' +
+      'kötü. Sütun bilgi taşıyor ama bu kodlamada model onu göremiyor.</p>' +
+      '<p><b>saat + saat².</b> Parabol bir tepe ya da bir çukur kurabilir. Test R² <b>0.9328</b>. ' +
+      'Epey iyi. Ama bir sorun var: parabolün iki ucu birbirinden habersiz. Model saat 23 için ' +
+      'bir şey, saat 0 için bambaşka bir şey söylüyor, aradaki sıçrama <b>16.7</b> birim. ' +
+      'Gerçekte fark sadece <b>1.4</b>.</p>' +
+      '<p><b>sin/cos.</b> Saati bir çember üzerinde iki sayıyla kodluyoruz: ' +
+      'sin(2&pi;·saat/24) ve cos(2&pi;·saat/24). Test R² <b>0.9750</b>, 23 → 0 sıçraması <b>1.0</b>.</p>' +
+      '<p>Asıl fark mesafede. Ham sayıda 23 ile 0 arasındaki uzaklık <b>23</b>, yani ölçeğin ' +
+      'en büyük değeri. Çemberde <b>0.261</b>. Karşılaştır: çemberde 12 ile 0 arası <b>2.000</b>. ' +
+      'Yani doğru kodlamada gece yarısı komşuları birbirine <b>7.7 kat</b> daha yakın.</p>',
+    learned:'<b>Sayı gibi görünen her şey sayı değildir.</b><br><br>' +
+      'Saat, ay, haftanın günü, açı, rüzgâr yönü: hepsi döngüseldir. Ham kodlarsan modele ' +
+      '"23 ile 0 birbirinden çok uzak" demiş olursun ve bu yanlıştır.<br><br>' +
+      'Ham saat test R² <b>&minus;0.0650</b>, sin/cos <b>0.9750</b>. Aynı veri, aynı model, ' +
+      'sadece iki sütun farkı.',
+    xp:50,
+  },
+  {
+    t:'Mesafeye bakan model, birimlere de bakar',
+    goal:'Ölçeklemenin hangi modellerde zorunlu olduğunu ölçeceksin.',
+    todo:'Ölçeklemeyi aç. kNN doğruluğu kaça çıkıyor?',
+    kind:'controls', viz:'ozellikMuh', h:700, state:{sahne:'olcek'},
+    controls:[{k:'olcekli', lb:'STANDARTLAŞTIRMA', min:0, max:1, step:1, val:0,
+               fmt:v => v ? 'açık' : 'kapalı'}],
+    derive:s => ({dg: omKnn(s.olcekli ? 1 : 0, 7).dogruluk}),
+    live:s => [['kNN DOĞRULUĞU', (100*s.dg).toFixed(1)+'%', s.dg > 0.9 ? K.green : K.red],
+               ['YANLIŞ', String(omKnn(s.olcekli?1:0,7).yanlis.length)],
+               ['HEDEF', '> %90']],
+    unlock:s => s.dg > 0.90,
+    unlockMsg:'kNN doğruluğunu %90 üstüne çıkar',
+    body:'<p>200 hane. İki sütun var: <b>çocuk sayısı</b> (0-4) ve <b>gelir</b> (20.000-80.000). ' +
+      'Sınıf ikisine de eşit ölçüde bağlı.</p>' +
+      '<p>kNN mesafeye bakar. Mesafe hesabında iki sütunun katkısı standart sapmalarıyla orantılıdır:</p>' +
+      '<p>çocuk sayısı: <b>1.43</b> &nbsp;·&nbsp; gelir: <b>17.135</b> &nbsp;·&nbsp; ' +
+      'oran <b>11.955 kat</b></p>' +
+      '<p>Yani ham hâlde çocuk sayısı sütunu mesafeye hiç katkı yapmıyor. İki sütun verdik, ' +
+      'model tek sütun görüyor. Doğruluk <b>%62.0</b>, 200 örnekten 76 tanesi yanlış.</p>' +
+      '<p>Standartlaştırma her sütunu ortalaması 0, standart sapması 1 olacak şekilde kaydırıp ' +
+      'bölmekten ibaret. Doğruluk <b>%97.5</b>. Yanlış sayısı 76’dan <b>5</b>’e iniyor.</p>' +
+      '<p>Bunu bir "iyileştirme" gibi görme. Ölçeklemeden kNN yanlış bir soruyu doğru cevaplıyordu: ' +
+      '"gelirce en yakın komşu kim" sorusunu.</p>',
+    learned:'<b>Mesafeye ya da ceza terimine bakan her model ölçeğe duyarlıdır.</b><br><br>' +
+      'kNN, k-ortalamalar, SVM, PCA, ridge ve lasso: hepsi ölçeklenmiş girdi ister. ' +
+      'Ridge dersindeki &lambda;·&Sigma;w² terimi de sütun birimlerine göre ceza dağıtır.<br><br>' +
+      'Burada doğruluk <b>%62.0 → %97.5</b>, sadece iki bölme işlemiyle.',
+    xp:50,
+  },
+  {
+    t:'Model kendi öğrenemez mi?',
+    goal:'Özellik mühendisliğinin ne zaman gereksiz, ne zaman vazgeçilmez olduğunu göreceksin.',
+    todo:'Ağacın derinliğini artır. Yeşil çizgiyi yakalayabiliyor mu?',
+    kind:'controls', viz:'ozellikMuh', h:700, state:{sahne:'agac'},
+    controls:[{k:'derinlik', lb:'AĞAÇ DERİNLİĞİ', min:2, max:8, step:1, val:2,
+               fmt:v => 'derinlik '+v}],
+    live:s => [['AĞAÇ TEST R²', omR2(OM.oda.TE, omAgac(s.derinlik)).toFixed(4), K.orange],
+               ['YAPRAK', String(omAgac(s.derinlik).yaprak)],
+               ['DOĞRUSAL + en×boy', omR2(OM.oda.TE, omDogrusal(1)).toFixed(4), K.green]],
+    body:'<p>Haklı bir itiraz: ağaçlar ve gradyan artırma etkileşimleri kendi keşfedebiliyor. ' +
+      'O zaman neden uğraşalım? Ölçelim. Aynı oda verisi, aynı test kümesi.</p>' +
+      '<p>Ağaç derinlik 2’de test R² <b>0.6703</b>, 4 yaprak. Derinlik 4’te <b>0.8580</b>, ' +
+      '14 yaprak. Derinlik 6’da <b>0.9002</b>, 26 yaprak. Derinlik 8’de <b>0.9001</b>, ' +
+      '28 yaprak: artık ilerlemiyor.</p>' +
+      '<p>Doğrusal model, tek bir en×boy sütunuyla: <b>0.9886</b>. Dört parametre.</p>' +
+      '<p>Ağaç bunu neden yakalayamıyor: bölünmeler eksenlere diktir. Bir çarpım yüzeyini ' +
+      'dikdörtgen basamaklarla yaklaşıklar. 28 basamak, tek bir çarpım sütununun yaptığı işi ' +
+      'yapmıyor. Karar sınırları dersindeki eksene dik bölünme kısıtının bedeli bu.</p>' +
+      '<p>Öbür yönde ağaç kazanıyor. Boy eksenini <b>1000 kat</b> büyütüp ağacı yeniden ' +
+      'kuruyoruz: test R² <b>tıpatıp aynı</b> kalıyor. Bölünme bir eşik arar, mesafe hesaplamaz. ' +
+      'Yani ağaç için ölçekleme tamamen gereksiz bir adımdır.</p>',
+    quiz:{ q:'Bir e-ticaret sitesinde iade tahmini yapıyorsun. Elinde ürün fiyatı ve müşterinin geçmiş harcaması var. Alan uzmanı diyor ki: "Asıl önemli olan bu ürünün müşterinin normal harcamasına oranı." Gradyan artırma kullanıyorsun. Ne yaparsın?',
+      opts:[
+        {t:'Oran sütununu ekler, katkısını ölçer ve sonucu ona göre tutarım', why:'Doğru. Ağaç tabanlı modeller eksene dik bölünmeler yapar, dolayısıyla bir oranı ancak basamaklarla yaklaşıklayabilir: bu derste 28 yapraklı ağacın tek bir çarpım sütununu yakalayamamasının sebebi tam olarak buydu. Oranı sütun olarak vermek modele o ekseni doğrudan açar. Ölçmek şart, çünkü uzmanın haklı olduğunu veri söylemeli.'},
+        {t:'Gerek yok, gradyan artırma etkileşimleri zaten öğrenir', why:'Kısmen doğru ama pahalı. Öğrenir, evet: bu derste ağaç derinlik 6’da 0.9002’ye çıktı. Ama 26 yaprak harcayarak, ve dört parametreli doğrusal modelin 0.9886’sına hiç ulaşamadan. "Öğrenebiliyor" ile "aynı verimle öğreniyor" farklı şeyler.'},
+        {t:'Önce iki sütunu da standartlaştırırım', why:'Ağaç için ölçeklemenin hiçbir etkisi yok: bu derste boy eksenini 1000 kat büyüttük ve test R² dört basamağa kadar aynı kaldı. Bölünme eşik arar, mesafe hesaplamaz. Zararsız ama sorunu çözmüyor.'},
+        {t:'Uzmanın sezgisi ölçülebilir değil, veriye bakmak yeterli', why:'Alan bilgisi tam olarak modelin veriden ucuza çıkaramadığı şeydir. Zaten öneri ölçülebilir: sütunu ekle, test hatasına bak. Reddetmek yerine sınamak hem daha ucuz hem daha dürüst.'},
+      ], correct:0 },
+    learned:'<b>Esnek model, doğru özelliğin yerini tutmaz. Pahalı bir yaklaşığını kurar.</b><br><br>' +
+      'Ağaç 28 yaprakla <b>0.9001</b>’e ulaşıyor, doğrusal model tek çarpım sütunu ve ' +
+      '<b>4 parametre</b> ile <b>0.9886</b>’ya.<br><br>' +
+      'Buna karşılık ağaç ölçekten hiç etkilenmiyor: boy ekseni 1000 kat büyüdüğünde test R² ' +
+      'aynı kalıyor. <b>Hangi ön işlemenin gerektiği modele bağlıdır</b>, evrensel bir liste yok.',
     xp:50,
   },
 ]};

@@ -699,6 +699,71 @@ console.log('═══ BAYESÇİ MODEL KANITI ═══');
   iddia('derece 3 için en iyi α < 1 (ağırlıklara yer açılıyor)', true, byKanit(3).alfa < 1);
 }
 
+console.log('═══ ÖZELLİK MÜHENDİSLİĞİ ═══');
+{
+  const D = OM.oda, ham = omDogrusal(0), etk = omDogrusal(1);
+  /* etkilesim */
+  iddia('ham (en,boy) test R²', 0.8854, omR2(D.TE, ham), 4);
+  iddia('ham test RMSE', 5.439, omRmse(D.TE, ham), 3);
+  iddia('+en×boy test R²', 0.9886, omR2(D.TE, etk), 4);
+  iddia('+en×boy test RMSE', 1.713, omRmse(D.TE, etk), 3);
+  iddia('RMSE kaç kat düştü', 3.2, omRmse(D.TE, ham)/omRmse(D.TE, etk), 1);
+  iddia('öğrenilen çarpım katsayısı (gerçek 2.5)', 2.588, etk.b[3], 3);
+  iddia('etkileşim sadece 1 parametre ekliyor', 1, etk.b.length - ham.b.length, 0);
+  iddia('eğitim ve test ayrık', 90, D.TR.length + D.TE.length, 0);
+  iddia('test kümesi boyu', 30, D.TE.length, 0);
+  /* dongusel */
+  const k0 = omSaatModel(0), k1 = omSaatModel(1), k2 = omSaatModel(2);
+  iddia('ham saat test R²', -0.0650, k0.r2, 4);
+  iddia('ham saat ortalamadan bile kötü', true, k0.r2 < 0);
+  iddia('saat+saat² test R²', 0.9328, k1.r2, 4);
+  iddia('sin/cos test R²', 0.9750, k2.r2, 4);
+  iddia('sin/cos en iyi kodlama', true, k2.r2 > k1.r2 && k2.r2 > k0.r2);
+  /* gece yarisi sinirinda sicrama */
+  iddia('gerçek 23→0 farkı', 1.4, Math.abs(OM.saat.f0(23) - OM.saat.f0(0)), 1);
+  iddia('parabolün 23→0 sıçraması', 16.7, k1.sicrama, 1);
+  iddia('sin/cos 23→0 sıçraması', 1.0, k2.sicrama, 1);
+  iddia('parabol gerçek farkın 10 katından fazla sıçrıyor', true,
+        k1.sicrama > 10 * Math.abs(OM.saat.f0(23) - OM.saat.f0(0)));
+  /* cember uzerinde mesafe */
+  {
+    const m = (a, b) => Math.hypot(Math.sin(2*Math.PI*a/24) - Math.sin(2*Math.PI*b/24),
+                                   Math.cos(2*Math.PI*a/24) - Math.cos(2*Math.PI*b/24));
+    iddia('çemberde 23↔0 mesafesi', 0.261, m(23, 0), 3);
+    iddia('çemberde 12↔0 mesafesi', 2.000, m(12, 0), 3);
+    iddia('gece yarısı komşuları kaç kat yakın', 7.7, m(12,0)/m(23,0), 1);
+  }
+  /* olcek */
+  iddia('kNN ham doğruluk', 0.620, omKnn(0, 7).dogruluk, 3);
+  iddia('kNN ölçekli doğruluk', 0.975, omKnn(1, 7).dogruluk, 3);
+  iddia('ham hâlde yanlış sayısı', 76, omKnn(0, 7).yanlis.length, 0);
+  iddia('ölçekli hâlde yanlış sayısı', 5, omKnn(1, 7).yanlis.length, 0);
+  iddia('çocuk sayısı std', 1.43, omStd(0), 2);
+  iddia('gelir std', 17135, omStd(1), 0);
+  iddia('std oranı', 11955, omStd(1)/omStd(0), 0);
+  /* agac karsi argümani */
+  iddia('ağaç derinlik 2 test R²', 0.6703, omR2(D.TE, omAgac(2)), 4);
+  iddia('ağaç derinlik 4 test R²', 0.8580, omR2(D.TE, omAgac(4)), 4);
+  iddia('ağaç derinlik 6 test R²', 0.9002, omR2(D.TE, omAgac(6)), 4);
+  iddia('ağaç derinlik 8 test R²', 0.9001, omR2(D.TE, omAgac(8)), 4);
+  iddia('ağaç derinlik 4 yaprak sayısı', 14, omAgac(4).yaprak, 0);
+  iddia('ağaç derinlik 6 yaprak sayısı', 26, omAgac(6).yaprak, 0);
+  iddia('ağaç derinlik 8 yaprak sayısı', 28, omAgac(8).yaprak, 0);
+  /* asil iddia: agac hicbir derinlikte 4 parametreli modeli gecemiyor */
+  {
+    let enIyi = -1e9;
+    for (let d2 = 2; d2 <= 10; d2++) enIyi = Math.max(enIyi, omR2(D.TE, omAgac(d2)));
+    iddia('ağacın en iyi test R² değeri', 0.9020, enIyi, 4);
+    iddia('ağaç hiçbir derinlikte doğrusal+en×boy modelini geçemiyor',
+          true, enIyi < omR2(D.TE, etk));
+  }
+  /* ama agac olcege tamamen duyarsiz · dersin karsi yonlu iddiasi */
+  iddia('ağaç 1000× ölçekte aynı sonucu veriyor (d=4)',
+        omR2(D.TE, omAgac(4)), omR2(D.TE, omAgacOlcekli(4, 1000)), 6);
+  iddia('ağaç 1000× ölçekte aynı sonucu veriyor (d=8)',
+        omR2(D.TE, omAgac(8)), omR2(D.TE, omAgacOlcekli(8, 1000)), 6);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
