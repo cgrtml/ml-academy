@@ -1232,6 +1232,136 @@ VIZ.fisherLDA = s => {
   dot(R2.sx(th * 180 / Math.PI), R2.sy(Math.min(1, flJ(th) / enJ)), 6, K.yellow);
 };
 
+
+/* ═══════════ ÜRETİCİ ve AYIRICI ═══════════
+   Aynı veri, iki felsefe.
+   Üretici (Gaussian naive Bayes): her sınıfın verisini nasıl ürettiğini modelle,
+     sonra Bayes ile ters çevir. Güçlü varsayım yapar, az veriyle hızlı öğrenir,
+     varsayım yanlışsa bir tavana takılır.
+   Ayırıcı (lojistik regresyon): veriyi üretmeyi hiç dert etme, sadece SINIRI öğren.
+     Varsayımı zayıf, çok veriyle daha yükseğe çıkar.
+   Ng & Jordan 2001'in kesişme eğrisi. */
+const UD = { p: 8, N: [16, 25, 40, 60, 100, 200, 400, 1000], T: 15, TUR: 1500 };
+function udVeri(n, tohum){
+  const r = rng(tohum);
+  const g = () => { let u = 0, w = 0; while (!u) u = r(); while (!w) w = r();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); };
+  const X = [], y = [];
+  for (let i = 0; i < n; i++){
+    const c = r() < 0.5 ? 0 : 1;
+    const ortak = 0.55 * g();          /* sınıf içi ortak faktör: bağımsızlık varsayımını bozar */
+    const x = [];
+    for (let j = 0; j < UD.p; j++) x.push((c ? 0.62 : -0.62) * (j < 4 ? 1 : 0.35) + ortak + 0.85 * g());
+    X.push(x); y.push(c);
+  }
+  return { X, y, p: UD.p };
+}
+function udNBEgit(D){
+  return [0, 1].map(c => {
+    const alt = D.X.filter((_, i) => D.y[i] === c), m = [], s = [];
+    for (let j = 0; j < D.p; j++){
+      const v = alt.map(x => x[j]);
+      const mm = v.reduce((a, b) => a + b, 0) / Math.max(1, v.length);
+      const ss = Math.sqrt(v.reduce((a, b) => a + (b - mm) ** 2, 0) / Math.max(1, v.length - 1)) || 1;
+      m.push(mm); s.push(ss);
+    }
+    return { m, s, onsel: alt.length / D.X.length || 0.5 };
+  });
+}
+function udNBTahmin(M, x){
+  const lp = M.map(c => { let l = Math.log(Math.max(1e-9, c.onsel));
+    x.forEach((v, j) => { l += -Math.log(c.s[j]) - (v - c.m[j]) ** 2 / (2 * c.s[j] ** 2); });
+    return l; });
+  return lp[1] > lp[0] ? 1 : 0;
+}
+function udLREgit(D, tur){
+  let w = new Array(D.p).fill(0), b = 0;
+  const sig = z => 1 / (1 + Math.exp(-z));
+  for (let t = 0; t < (tur || UD.TUR); t++){
+    const gw = new Array(D.p).fill(0); let gb = 0;
+    D.X.forEach((x, i) => { let z = b;
+      for (let j = 0; j < D.p; j++) z += w[j] * x[j];
+      const e = sig(z) - D.y[i];
+      for (let j = 0; j < D.p; j++) gw[j] += e * x[j];
+      gb += e; });
+    const n = D.X.length, lr = 0.5;
+    for (let j = 0; j < D.p; j++) w[j] -= lr * gw[j] / n;
+    b -= lr * gb / n;
+  }
+  return { w, b };
+}
+const udLRTahmin = (M, x) => { let z = M.b;
+  for (let j = 0; j < x.length; j++) z += M.w[j] * x[j];
+  return z > 0 ? 1 : 0; };
+
+const _udCache = {};
+function udEgri(){
+  if (_udCache.egri) return _udCache.egri;
+  const TEST = udVeri(2000, 999);
+  const dog = (tah, M) => TEST.X.filter((x, i) => tah(M, x) === TEST.y[i]).length / TEST.X.length;
+  const R = UD.N.map(n => {
+    let a = 0, b = 0;
+    for (let t = 0; t < UD.T; t++){
+      const D = udVeri(n, 1000 + t * 7);
+      a += dog(udNBTahmin, udNBEgit(D));
+      b += dog(udLRTahmin, udLREgit(D));
+    }
+    return { n, nb: a / UD.T, lr: b / UD.T };
+  });
+  return (_udCache.egri = R);
+}
+const udNoktasi = n => udEgri().find(x => x.n === n) || udEgri()[0];
+
+VIZ.ureticiAyirici = s => {
+  clear();
+  const R = udEgri();
+  const n = UD.N[Math.max(0, Math.min(UD.N.length - 1, Math.round(s.ni === undefined ? 0 : s.ni)))];
+  const Q2 = udNoktasi(n);
+  baslikSerit('ÜRETİCİ ve AYIRICI',
+    'Aynı veri, iki felsefe. Hangisi kazanır? Cevap elindeki veri miktarına bağlı.', []);
+
+  /* sol: öğrenme eğrisi */
+  const P = plot(rect(100, 140, 700, 420), -0.05, 1.87, 60, 90);
+  frame(P, 'eğitim örneği (log ölçek)', 'test doğruluğu %', [], [60, 70, 80, 90]);
+  const lg = v => Math.log10(v) - 1.2;
+  [['naive Bayes · üretici', K.purple, x => x.nb],
+   ['lojistik regresyon · ayırıcı', K.green, x => x.lr]].forEach(([ad, renk, fn]) => {
+    cx.strokeStyle = renk; cx.lineWidth = 3.4;
+    cx.beginPath();
+    R.forEach((x, i) => { const X = P.sx(lg(x.n)), Y = P.sy(100 * fn(x));
+      i ? cx.lineTo(X, Y) : cx.moveTo(X, Y); });
+    cx.stroke();
+    R.forEach(x => dot(P.sx(lg(x.n)), P.sy(100 * fn(x)), 5, renk));
+  });
+  /* eksende gerçek n değerleri */
+  R.forEach(x => txt(String(x.n), P.sx(lg(x.n)), P.R.y + P.R.h + 24, K.mut, 15));
+  cx.setLineDash([5, 5]); cx.strokeStyle = K.yellow; cx.lineWidth = 2.2;
+  cx.beginPath(); cx.moveTo(P.sx(lg(n)), P.R.y); cx.lineTo(P.sx(lg(n)), P.R.y + P.R.h); cx.stroke();
+  cx.setLineDash([]);
+  txt('■ naive Bayes · üretici', P.R.x + 18, P.R.y + 26, K.purple, 19, 'left');
+  txt('■ lojistik regresyon · ayırıcı', P.R.x + 18, P.R.y + 50, K.green, 19, 'left');
+  const tavan = R[R.length - 1];
+  txt('naive Bayes tavanı %' + (100 * tavan.nb).toFixed(1),
+      P.R.x + P.R.w - 14, P.sy(100 * tavan.nb) - 10, K.purple, 17, 'right');
+
+  /* sağ: sayı kartları */
+  const bx = 840, bw = 550;
+  box(bx, 150, bw, 150, 'rgba(7,10,15,.7)', K.axis, 2);
+  txt('EĞİTİM ÖRNEĞİ', bx + bw / 2, 184, K.mut, 19);
+  txt(String(n), bx + bw / 2, 246, K.yellow, 52);
+  const kart = (y, ad, deger, renk) => {
+    box(bx, y, bw, 130, 'rgba(7,10,15,.7)', renk, 2);
+    txt(ad, bx + bw / 2, y + 34, K.mut, 18);
+    txt('%' + (100 * deger).toFixed(1), bx + bw / 2, y + 92, renk, 40);
+  };
+  kart(320, 'NAIVE BAYES · üretici', Q2.nb, K.purple);
+  kart(470, 'LOJİSTİK REGRESYON · ayırıcı', Q2.lr, K.green);
+  const fark = 100 * (Q2.lr - Q2.nb);
+  txt(fark > 0.3 ? 'ayırıcı önde  +' + fark.toFixed(1) + ' puan'
+    : fark < -0.3 ? 'üretici önde  +' + (-fark).toFixed(1) + ' puan'
+    : 'başa baş', bx + bw / 2, 636, Math.abs(fark) < 0.3 ? K.yellow : (fark > 0 ? K.green : K.purple), 26);
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

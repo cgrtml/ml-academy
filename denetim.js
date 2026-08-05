@@ -381,6 +381,29 @@ console.log('═══ FISHER LDA ═══');
   iddia('Fisher yayılımı PCA nin sekizde biri', 8.2, flVar(p)/flVar(f), 1);
 }
 
+
+console.log('═══ ÜRETİCİ ve AYIRICI ═══');
+{
+  const R = udEgri(), nk = n => R.find(x => x.n === n);
+  iddia('n=16 naive Bayes %', 73.3, 100*nk(16).nb, 1);
+  iddia('n=16 lojistik %', 71.1, 100*nk(16).lr, 1);
+  iddia('n=40 naive Bayes %', 77.4, 100*nk(40).nb, 1);
+  iddia('n=40 lojistik %', 77.4, 100*nk(40).lr, 1);
+  iddia('n=100 naive Bayes %', 79.6, 100*nk(100).nb, 1);
+  iddia('n=100 lojistik %', 81.6, 100*nk(100).lr, 1);
+  iddia('n=1000 naive Bayes %', 79.8, 100*nk(1000).nb, 1);
+  iddia('n=1000 lojistik %', 84.1, 100*nk(1000).lr, 1);
+  iddia('n=1000 fark puan', 4.3, 100*(nk(1000).lr - nk(1000).nb), 1);
+  /* dersin iki temel iddiasi */
+  iddia('az veride üretici önde', true, nk(16).nb > nk(16).lr);
+  iddia('çok veride ayırıcı önde', true, nk(1000).lr > nk(1000).nb + 0.03);
+  iddia('naive Bayes 200 sonrası tıkanıyor', true,
+        Math.abs(nk(1000).nb - nk(200).nb) < 0.005);
+  iddia('lojistik 200 sonrası yükselmeye devam', true,
+        nk(1000).lr > nk(200).lr + 0.008);
+  iddia('kesişme 40 örnekte', 40, (R.find((x,i) => i>0 && x.lr >= x.nb) || {}).n, 0);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

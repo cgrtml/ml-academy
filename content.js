@@ -52,7 +52,7 @@ const ROTALAR = [
     {id:'gauss-surec',    ad:'Gaussian Process: belirsizliğini söyleyen model',  sure:16, durum:'planli'},
     {id:'bayes-reg',      ad:'Bayesçi bakış: Occam\'ın usturası hesaplanabilir mi',  sure:16, durum:'planli'},
     {id:'fisher-lda',     ad:'Fisher\'ın fikri: sınıfları ayıran en iyi yön',   sure:14, durum:'hazir'},
-    {id:'uretici-ayirici',  ad:'Sınırı mı çizersin, veriyi mi üretirsin',        sure:12, durum:'planli'},
+    {id:'uretici-ayirici',  ad:'Sınırı mı çizersin, veriyi mi üretirsin',        sure:14, durum:'hazir'},
     {id:'spline',         ad:'Spline: eğriyi parça parça bükmek',              sure:12, durum:'planli'},
     {id:'gam',            ad:'Toplamsal modeller: her özelliğin kendi eğrisi',  sure:12, durum:'planli'},
     {id:'ozellik-onemi',  ad:'Özellik önemi: model hangi değişkene bakıyor',   sure:15, durum:'hazir'},
@@ -5609,5 +5609,121 @@ DERSLER['fisher-lda'] = {
       'İki pratik sınır: LDA en fazla (sınıf sayısı − 1) boyut verir, ve çok yüksek boyutta ' +
       'sınıf içi saçılım matrisi tekilleşir. Her ikisinin standart çözümü önce PCA uygulamaktır.',
     xp:45,
+  },
+]};
+
+/* ─────────────── ÜRETİCİ ve AYIRICI ─────────────── */
+DERSLER['uretici-ayirici'] = {
+  ad:'Sınırı mı çizersin, veriyi mi üretirsin',
+  alt:'İki felsefe yarışıyor. 16 örnekte üretici model önde, 1000 örnekte ayırıcı model 4.3 puan önde. Kesişme noktası bir tercihi zorunlu kılıyor.',
+  kaynaklar:[
+    {y:'Ng, A. Y. & Jordan, M. I.', t:'2001', b:'On Discriminative vs. Generative Classifiers: A Comparison of Logistic Regression and Naive Bayes', n:'NeurIPS 2001'},
+    {y:'Bishop, C. M.', t:'2006', b:'Pattern Recognition and Machine Learning, Bölüm 4.3 ve 1.5.4', n:'Springer'},
+    {y:'Hastie, Tibshirani, Friedman', t:'2009', b:'The Elements of Statistical Learning, Bölüm 4.4.5', n:'Springer'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'İki farklı soru sormak',
+    goal:'Aynı sınıflandırma problemine bakmanın iki temelde farklı yolunu ayırt edeceksin.',
+    todo:'Örnek sayısını en düşük değerde bırak. Hangi model önde?',
+    kind:'controls', viz:'ureticiAyirici', h:700,
+    controls:[{k:'ni', lb:'EĞİTİM ÖRNEĞİ', min:0, max:7, step:1, val:0, fmt:v => UD.N[v]+' örnek'}],
+    live:s => { const q = udNoktasi(UD.N[s.ni]);
+      return [['naive Bayes', '%'+(100*q.nb).toFixed(1), K.purple],
+              ['lojistik reg.', '%'+(100*q.lr).toFixed(1), K.green],
+              ['FARK', (100*(q.lr-q.nb)).toFixed(1)+' puan']]; },
+    body:'<p><b>Ayırıcı yaklaşım</b> tek bir şey sorar: sınıfları ayıran sınır nerede? ' +
+      'Lojistik regresyon P(sınıf | veri) fonksiyonunu doğrudan öğrenir. ' +
+      'Verinin nereden geldiğiyle hiç ilgilenmez.</p>' +
+      '<p><b>Üretici yaklaşım</b> daha büyük bir soru sorar: her sınıf verisini nasıl üretiyor? ' +
+      'Naive Bayes her sınıf için her özelliğin ortalamasını ve yayılımını öğrenir, ' +
+      'sonra Bayes kuralıyla ters çevirip sınıflandırma yapar.</p>' +
+      '<p>Üretici yaklaşım daha çok şey öğrenmeye çalışıyor gibi görünüyor ve bu bir dezavantaj sanılabilir. ' +
+      '16 örnekte sonuç: naive Bayes <b>%73.3</b>, lojistik regresyon <b>%71.1</b>.</p>',
+    learned:'<b>Ayırıcı model sınırı öğrenir, üretici model veriyi öğrenir.</b><br><br>' +
+      'Lojistik regresyon doğrudan P(sınıf | veri) tahmin eder.<br>' +
+      'Naive Bayes önce P(veri | sınıf) ve P(sınıf) öğrenir, sonra Bayes ile çevirir.<br><br>' +
+      'Az veride üretici model önde: 16 örnekte %73.3\'e karşı %71.1.',
+    xp:25,
+  },
+  {
+    t:'Veriyi artır, sıralama değişsin',
+    goal:'Veri miktarı arttıkça kazananın neden değiştiğini göreceksin.',
+    todo:'Örnek sayısını 1000\'e kadar çıkar. İki eğri nerede kesişiyor?',
+    kind:'controls', viz:'ureticiAyirici', h:700,
+    controls:[{k:'ni', lb:'EĞİTİM ÖRNEĞİ', min:0, max:7, step:1, val:0, fmt:v => UD.N[v]+' örnek'}],
+    derive:s => { const q = udNoktasi(UD.N[s.ni]); return {fk: q.lr - q.nb}; },
+    live:s => { const q = udNoktasi(UD.N[s.ni]);
+      return [['naive Bayes', '%'+(100*q.nb).toFixed(1), K.purple],
+              ['lojistik reg.', '%'+(100*q.lr).toFixed(1), K.green],
+              ['FARK', (100*s.fk).toFixed(1)+' puan', s.fk > 0 ? K.green : K.purple],
+              ['HEDEF', '> 3 puan']]; },
+    unlock:s => s.fk > 0.03,
+    unlockMsg:'Ayırıcı modelin farkını 3 puanın üstüne çıkar',
+    body:'<p>Eğriler şöyle ilerliyor:</p>' +
+      '<p><b>16 örnek:</b> NB %73.3 · LR %71.1 &nbsp;→&nbsp; üretici önde<br>' +
+      '<b>40 örnek:</b> NB %77.4 · LR %77.4 &nbsp;→&nbsp; <b>kesişme</b><br>' +
+      '<b>100 örnek:</b> NB %79.6 · LR %81.6 &nbsp;→&nbsp; ayırıcı önde<br>' +
+      '<b>1000 örnek:</b> NB %79.8 · LR %84.1 &nbsp;→&nbsp; ayırıcı 4.3 puan önde</p>' +
+      '<p>Dikkat edilecek asıl şey naive Bayes\'in <b>tıkanması</b>. 200 örnekten sonra %79.8\'de duruyor, ' +
+      'veri eklemek hiçbir şey değiştirmiyor. Lojistik regresyon ise yükselmeye devam ediyor.</p>',
+    learned:'<b>Kesişme yaklaşık 40 örnekte.</b> Altında üretici, üstünde ayırıcı model kazanıyor.<br><br>' +
+      'Ng ve Jordan 2001\'de bunu genel bir sonuç olarak gösterdi: üretici model daha hızlı yakınsar ' +
+      'ama daha yüksek bir hata seviyesine yakınsar; ayırıcı model yavaş başlar ama daha aşağı iner.',
+    xp:45,
+  },
+  {
+    t:'Naive Bayes neden tıkanıyor?',
+    goal:'Bir modelin veri eklemekle düzelmeyen hatasının nereden geldiğini anlayacaksın.',
+    todo:'Örnek sayısını 200\'den 1000\'e çıkar. Mor eğri kıpırdıyor mu?',
+    kind:'controls', viz:'ureticiAyirici', h:700,
+    controls:[{k:'ni', lb:'EĞİTİM ÖRNEĞİ', min:0, max:7, step:1, val:0, fmt:v => UD.N[v]+' örnek'}],
+    derive:s => ({nbv: udNoktasi(UD.N[s.ni]).nb}),
+    live:s => [['naive Bayes', '%'+(100*s.nbv).toFixed(1), K.purple],
+               ['200 ÖRNEKTE', '%79.8'], ['1000 ÖRNEKTE', '%79.8'],
+               ['HEDEF', 'tavanı gör']],
+    unlock:s => s.nbv > 0.795,
+    unlockMsg:'Naive Bayes tavanına çık (200 örnek ve üstü)',
+    body:'<p>Naive Bayes\'in adındaki "naive", tek ve çok güçlü bir varsayımdan gelir: ' +
+      '<b>bir sınıf verildiğinde özellikler birbirinden bağımsızdır.</b></p>' +
+      '<p>Bu veride o varsayım <b>yanlış</b>. Veriyi üretirken her örneğe sınıf içi ortak bir faktör ekledim, ' +
+      'yani 8 özellik birbiriyle korele. Naive Bayes bunu göremiyor ve göremediği için ' +
+      'ne kadar veri verirsen ver aynı yanlış modeli daha kesin öğreniyor.</p>' +
+      '<p>Sonuç: 200 örnekte %79.8, 400 örnekte %79.8, 1000 örnekte %79.8. Tavan.</p>' +
+      '<p>Lojistik regresyonun böyle bir varsayımı yok; sadece "sınır doğrusaldır" diyor ve ' +
+      'bu çok daha zayıf bir iddia. O yüzden veriyle birlikte yükselmeye devam ediyor.</p>',
+    learned:'<b>Güçlü varsayım hızlı öğretir ama bir tavan koyar.</b><br><br>' +
+      'Naive Bayes\'in bağımsızlık varsayımı bu veride yanlış olduğu için model %79.8\'de tıkanıyor; ' +
+      'veri eklemek yanlılığı düzeltmiyor, sadece yanlış modeli daha kesin hale getiriyor.<br><br>' +
+      'Bu, yanlılık-varyans dersinin başka bir yüzü: naive Bayes düşük varyanslı ve yüksek yanlılıklı, ' +
+      'lojistik regresyon yüksek varyanslı ve düşük yanlılıklı.',
+    xp:45,
+  },
+  {
+    t:'Hangisini ne zaman seçersin?',
+    goal:'Bu ayrımı bir karar kuralına çevireceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'ureticiAyirici', h:700, state:{ni:7},
+    body:'<p>Üretici modelin, doğruluk dışında verdiği şeyler var:</p>' +
+      '<p><b>Yeni veri üretebilir.</b> P(veri | sınıf) modellendiği için örnekleme yapılabilir. ' +
+      'Ayırıcı model bunu yapamaz, elinde sadece sınır vardır.</p>' +
+      '<p><b>Eksik değerle baş edebilir.</b> Bir özellik yoksa üretici model onu marjinalleştirip devam eder.</p>' +
+      '<p><b>Aykırı değeri fark eder.</b> P(veri) düşükse "bu örnek benim gördüğüm dünyaya benzemiyor" diyebilir. ' +
+      'Bu, dağılım kayması dersindeki izleme problemine doğrudan bağlanır.</p>' +
+      '<p><b>Sınıf başına eğitilebilir.</b> Yeni bir sınıf eklendiğinde sadece o sınıfın modelini kurarsın, ' +
+      'diğerlerine dokunmazsın.</p>',
+    quiz:{ q:'Bir tıbbi teşhis sistemi kuruyorsun: 40 hastalık türü var, bazılarından sadece 20-30 örnek var, ve sisteme sürekli yeni hastalık türleri ekleniyor. Hangi yaklaşım?',
+      opts:[
+        {t:'Ayırıcı model, çünkü asimptotik olarak daha düşük hata verir', why:'Asimptot burada geçerli değil. Bazı sınıflarda 20-30 örnek var, yani bu derste ölçtüğün kesişme noktasının çok altındasın. Ayrıca her yeni hastalık eklendiğinde ayırıcı modelin tamamını yeniden eğitmen gerekir.'},
+        {t:'Üretici model, çünkü az örnekle daha iyi çalışır ve yeni sınıf eklemek diğerlerini bozmaz', why:'Doğru. Üç sebep birden: 20-30 örnek kesişme noktasının altında, üretici model her sınıfı bağımsız modellediği için yeni hastalık eklemek eskileri etkilemez, ve P(veri) düşük çıktığında "bu hiçbir bildiğim hastalığa benzemiyor" diyebilir, ki tıpta bu uyarı hayati.'},
+        {t:'İkisini de eğitip oylatmak', why:'Topluluk yöntemi genelde iyi bir fikirdir ama sorudaki asıl kısıtları çözmez: yeni sınıf eklendiğinde ayırıcı bileşeni yine baştan eğitmen gerekir ve az örnekli sınıflarda ayırıcı bileşen zaten zayıf kalır.'},
+        {t:'Derin öğrenme, çünkü tıbbi veri karmaşıktır', why:'Karmaşıklık tek başına gerekçe değil. 20-30 örnekli sınıflarda derin ağ, bu derste gördüğün varyans probleminin en ağır hâlini yaşar.'},
+      ], correct:1 },
+    learned:'<b>Az veri, sık değişen sınıf listesi, aykırı değer tespiti, eksik özellik → üretici.</b><br><br>' +
+      '<b>Çok veri ve tek hedef en yüksek doğruluk → ayırıcı.</b><br><br>' +
+      'Bu derste ölçülen kesişme yaklaşık 40 örnekte; ayırıcı model 1000 örnekte 4.3 puan önde bitiriyor. ' +
+      'Ama üretici modelin verdiği şey sadece doğruluk değil.',
+    xp:50,
   },
 ]};
