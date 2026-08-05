@@ -1362,6 +1362,110 @@ VIZ.ureticiAyirici = s => {
     : 'başa baş', bx + bw / 2, 636, Math.abs(fark) < 0.3 ? K.yellow : (fark > 0 ? K.green : K.purple), 26);
 };
 
+
+/* ═══════════ EN KÜÇÜK KARELER · NORMAL DENKLEM ═══════════
+   w = (XᵀX)⁻¹Xᵀy tek adımda çözer. Ama XᵀX'in tersi her zaman
+   güvenilir değildir: özellikler birbirine yaklaştıkça determinant
+   sıfıra, koşul sayısı sonsuza gider ve katsayılar savrulur. */
+const EK = { n: 100, gercek: [2, -1] };
+const _ekCache = {};
+function ekVeri(r, tohum){
+  const anahtar = r.toFixed(4) + ':' + tohum;
+  if (_ekCache[anahtar]) return _ekCache[anahtar];
+  const rr = rng(tohum);
+  const g = () => { let u = 0, w = 0; while (!u) u = rr(); while (!w) w = rr();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); };
+  const X = [], y = [];
+  for (let i = 0; i < EK.n; i++){
+    const a = g(), b = r * a + Math.sqrt(Math.max(0, 1 - r * r)) * g();
+    X.push([a, b]);
+    y.push(EK.gercek[0] * a + EK.gercek[1] * b + 0.4 * g());
+  }
+  return (_ekCache[anahtar] = { X, y });
+}
+function ekXtX(D){
+  let a = 0, b = 0, c = 0;
+  D.X.forEach(x => { a += x[0] * x[0]; b += x[0] * x[1]; c += x[1] * x[1]; });
+  return [a, b, c];
+}
+function ekCoz(D, lam){
+  const [a, b, c] = ekXtX(D);
+  let by = 0, cy = 0;
+  D.X.forEach((x, i) => { by += x[0] * D.y[i]; cy += x[1] * D.y[i]; });
+  const A = a + (lam || 0), C = c + (lam || 0), det = A * C - b * b;
+  return { w: [(C * by - b * cy) / det, (A * cy - b * by) / det], det };
+}
+function ekKosul(D, lam){
+  const [a, b, c] = ekXtX(D);
+  const A = a + (lam || 0), C = c + (lam || 0);
+  const tr = A + C, det = A * C - b * b, kok = Math.sqrt(Math.max(0, tr * tr / 4 - det));
+  return (tr / 2 + kok) / Math.max(1e-12, tr / 2 - kok);
+}
+
+VIZ.enKucukKare = s => {
+  clear();
+  const R = [0, 0.5, 0.9, 0.99, 0.999, 0.9999];
+  const r = R[Math.max(0, Math.min(R.length - 1, Math.round(s.ri === undefined ? 0 : s.ri)))];
+  const lam = s.lam === undefined ? 0 : s.lam;
+  const D1 = ekVeri(r, 7), D2 = ekVeri(r, 8);
+  const s1 = ekCoz(D1, lam), s2 = ekCoz(D2, lam);
+  const [a, b, c] = ekXtX(D1);
+  baslikSerit('NORMAL DENKLEM  ·  w = (XᵀX)⁻¹Xᵀy',
+    'Tek adımda kapalı çözüm. Ama XᵀX tersi alınamaz hale gelirse ne olur?', []);
+
+  /* sol: iki özellik birbirine yapışıyor */
+  const P = plot(rect(100, 140, 460, 400), -3.4, 3.4, -3.4, 3.4);
+  frame(P, 'x₁', 'x₂', [-3, 0, 3], [-3, 0, 3]);
+  D1.X.forEach(x => dot(P.sx(x[0]), P.sy(x[1]), 4, K.blue));
+  txt('korelasyon ' + r, P.R.x + P.R.w - 14, P.R.y + 26, K.yellow, 22, 'right');
+  txt(r > 0.99 ? 'iki özellik neredeyse tek çizgi' : 'iki bağımsız yön',
+      P.R.x + P.R.w - 14, P.R.y + 50, r > 0.99 ? K.red : K.mut, 17, 'right');
+
+  /* orta: XᵀX matrisi + determinant + koşul */
+  const mx = 620, mw = 330;
+  txt('XᵀX' + (lam ? ' + λI' : ''), mx + mw / 2, 168, K.mut, 20);
+  const A = a + lam, C = c + lam;
+  [[A, b], [b, C]].forEach((satir, i) => satir.forEach((val, j) => {
+    const x0 = mx + 24 + j * 145, y0 = 190 + i * 74;
+    box(x0, y0, 130, 62, 'rgba(255,255,255,.04)', K.axis, 1.5);
+    txt(val.toFixed(1), x0 + 65, y0 + 40, K.txt, 24);
+  }));
+  const kart = (y, ad, deger, renk, alt) => {
+    box(mx, y, mw, 104, 'rgba(7,10,15,.7)', renk, 2);
+    txt(ad, mx + mw / 2, y + 30, K.mut, 17);
+    txt(deger, mx + mw / 2, y + 74, renk, 30);
+    if (alt) txt(alt, mx + mw / 2, y + 96, K.mut, 14);
+  };
+  const det = A * C - b * b, ks = ekKosul(D1, lam);
+  kart(350, 'DETERMİNANT', det.toFixed(1), det < 50 ? K.red : K.green);
+  kart(470, 'KOŞUL SAYISI', ks < 1e4 ? ks.toFixed(0) : ks.toExponential(1),
+       ks > 1000 ? K.red : ks > 100 ? K.orange : K.green,
+       ks > 1000 ? 'ters alma güvenilmez' : 'sağlıklı');
+
+  /* sağ: iki ayrı örneklemden çıkan katsayılar */
+  const bx = 1000, bw = 390;
+  txt('AYNI SÜREÇTEN İKİ AYRI ÖRNEKLEM', bx + bw / 2, 168, K.mut, 18);
+  [['örneklem A', s1.w, K.green], ['örneklem B', s2.w, K.orange]].forEach(([ad, w, renk], k) => {
+    const y0 = 190 + k * 128;
+    box(bx, y0, bw, 112, 'rgba(255,255,255,.03)', null, 0);
+    txt(ad, bx + 16, y0 + 26, renk, 18, 'left');
+    w.forEach((val, j) => {
+      const yy = y0 + 46 + j * 34, orta = bx + 190;
+      const ol = Math.min(1, Math.abs(val) / 3.5) * 150;
+      box(val > 0 ? orta : orta - ol, yy - 12, ol, 22, renk + 'aa', null, 0);
+      txt('w' + (j + 1), bx + 30, yy + 5, K.mut, 17, 'center');
+      txt(val.toFixed(2), bx + bw - 16, yy + 5, K.txt, 19, 'right');
+      cx.strokeStyle = K.axis; cx.lineWidth = 1;
+      cx.beginPath(); cx.moveTo(orta, yy - 14); cx.lineTo(orta, yy + 10); cx.stroke();
+    });
+  });
+  const sap = Math.abs(s1.w[0] - s2.w[0]);
+  box(bx, 460, bw, 108, 'rgba(7,10,15,.7)', sap > 0.3 ? K.red : K.green, 2);
+  txt('İKİ ÖRNEKLEM ARASI FARK (w₁)', bx + bw / 2, 492, K.mut, 17);
+  txt(sap.toFixed(2), bx + bw / 2, 542, sap > 0.3 ? K.red : K.green, 34);
+  txt('gerçek katsayılar: w₁ = 2.00, w₂ = −1.00', bx + bw / 2, 596, K.mut, 17);
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

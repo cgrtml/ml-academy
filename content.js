@@ -40,7 +40,7 @@ const ROTALAR = [
     {id:'svm',        ad:'SVM ve marj fikri',                     sure:14, durum:'hazir'},
     {id:'kumeleme',   ad:'k-means: etiketsiz öğrenme',            sure:12, durum:'hazir'},
     {id:'boyut',      ad:'PCA, t-SNE, UMAP',                      sure:14, durum:'hazir'},
-    {id:'regresyon',      ad:'Doğrusal regresyon ve en küçük kareler',         sure:12, durum:'planli'},
+    {id:'regresyon',      ad:'Doğrusal regresyon ve en küçük kareler',         sure:14, durum:'hazir'},
     {id:'ridge',          ad:'Ridge: katsayıları küçültmek',                   sure:14, durum:'hazir'},
     {id:'lasso',          ad:'Lasso: katsayıyı sıfıra sıkıştırmak',            sure:14, durum:'hazir'},
     {id:'norm-l1l2',      ad:'L1 ve L2: iki ceza, iki farklı dünya',           sure:12, durum:'hazir'},
@@ -5725,5 +5725,129 @@ DERSLER['uretici-ayirici'] = {
       'Bu derste ölçülen kesişme yaklaşık 40 örnekte; ayırıcı model 1000 örnekte 4.3 puan önde bitiriyor. ' +
       'Ama üretici modelin verdiği şey sadece doğruluk değil.',
     xp:50,
+  },
+]};
+
+/* ─────────────── DOĞRUSAL REGRESYON · NORMAL DENKLEM ─────────────── */
+DERSLER['regresyon'] = {
+  ad:'Doğrusal regresyon ve en küçük kareler',
+  alt:'Gradyan inişi 2142 adımda buldu. Aynı cevabı tek satırda bulan bir formül var. Ama o formülün de kırıldığı bir yer var.',
+  kaynaklar:[
+    {y:'Gauss, C. F.', t:'1809', b:'Theoria Motus Corporum Coelestium (en küçük kareler)', n:'Perthes & Besser'},
+    {y:'Bishop, C. M.', t:'2006', b:'Pattern Recognition and Machine Learning, Bölüm 3.1.1', n:'Springer'},
+    {y:'Hastie, Tibshirani, Friedman', t:'2009', b:'The Elements of Statistical Learning, Bölüm 3.2', n:'Springer'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Aramaya gerek yok, formülü var',
+    goal:'Gradyan inişinin adım adım aradığı çözümün kapalı bir formülü olduğunu göreceksin.',
+    todo:'Korelasyonu 0\'da bırak, sağdaki iki örneklemin katsayılarına bak. Birbirine yakın mı?',
+    kind:'controls', viz:'enKucukKare', h:700,
+    controls:[{k:'ri', lb:'ÖZELLİKLER ARASI KORELASYON', min:0, max:5, step:1, val:0,
+               fmt:v => [0,0.5,0.9,0.99,0.999,0.9999][v]}],
+    live:s => { const R=[0,0.5,0.9,0.99,0.999,0.9999], D=ekVeri(R[s.ri],7), E=ekVeri(R[s.ri],8);
+      return [['det(XᵀX)', ekCoz(D,0).det.toFixed(1)], ['KOŞUL', ekKosul(D,0).toFixed(0)],
+              ['A ile B farkı', Math.abs(ekCoz(D,0).w[0]-ekCoz(E,0).w[0]).toFixed(2)]]; },
+    body:'<p>"Bir model nasıl öğrenir" dersinde doğruyu gradyan inişiyle bulmuştuk: 2142 adım, ' +
+      'sonuçta w = 7.727 ve b = 20.80, hata 5.20.</p>' +
+      '<p>Aslında aramaya hiç gerek yoktu. Kare hatanın türevini sıfıra eşitleyip çözersen ' +
+      '<b>normal denklem</b> çıkar:</p>' +
+      '<p style="text-align:center"><b>w = (XᵀX)⁻¹ Xᵀy</b></p>' +
+      '<p>Aynı 10 öğrenci verisinde bu formül tek adımda w = 7.727, b = 20.80 ve hata 5.20 veriyor. ' +
+      'Gradyan inişinin 2142 adımda vardığı yerin tam olarak aynısı.</p>' +
+      '<p>Ekrandaki örnekte iki özellik ve iki katsayı var, gerçek değerleri w₁ = 2.00 ve w₂ = −1.00. ' +
+      'Korelasyon sıfırken iki ayrı örneklem neredeyse aynı cevabı veriyor.</p>',
+    learned:'<b>En küçük karelerin kapalı çözümü vardır: w = (XᵀX)⁻¹Xᵀy.</b><br><br>' +
+      'Gradyan inişi bu noktaya adım adım yaklaşır, normal denklem doğrudan oraya gider. ' +
+      '10 öğrenci verisinde ikisi de w = 7.727, b = 20.80, hata 5.20 buluyor.<br><br>' +
+      'Peki gradyan inişi neden hâlâ kullanılıyor? Çünkü XᵀX matrisi p×p boyutundadır ve ' +
+      'tersini almak p³ ile büyür. Bir milyon özellikte bu formül çalıştırılamaz.',
+    xp:25,
+  },
+  {
+    t:'Formül kırılıyor',
+    goal:'İki özellik birbirine yaklaştığında kapalı çözümün neden anlamsızlaştığını göreceksin.',
+    todo:'Korelasyonu 0.9999\'a kadar artır. Determinanta, koşul sayısına ve iki örneklemin katsayı farkına bak.',
+    kind:'controls', viz:'enKucukKare', h:700,
+    controls:[{k:'ri', lb:'ÖZELLİKLER ARASI KORELASYON', min:0, max:5, step:1, val:0,
+               fmt:v => [0,0.5,0.9,0.99,0.999,0.9999][v]}],
+    derive:s => { const R=[0,0.5,0.9,0.99,0.999,0.9999], D=ekVeri(R[s.ri],7), E=ekVeri(R[s.ri],8);
+      return {ks: ekKosul(D,0), sap: Math.abs(ekCoz(D,0).w[0]-ekCoz(E,0).w[0])}; },
+    live:s => [['KOŞUL SAYISI', s.ks.toFixed(0), s.ks > 1000 ? K.red : K.txt],
+               ['İKİ ÖRNEKLEM FARKI', s.sap.toFixed(2), s.sap > 0.3 ? K.red : K.txt],
+               ['HEDEF', 'fark > 0.5']],
+    unlock:s => s.sap > 0.5,
+    unlockMsg:'İki örneklem arasındaki katsayı farkını 0.5\'in üstüne çıkar',
+    body:'<p>İki özellik birbirinin kopyasına yaklaştıkça XᵀX matrisi tekilleşmeye başlar. ' +
+      'Determinant sıfıra iner, tersi almak bir sıfıra bölmeye dönüşür.</p>' +
+      '<p><b>korelasyon 0:</b> determinant 10560.1, koşul sayısı 1<br>' +
+      '<b>0.99:</b> determinant 210.1, koşul 233<br>' +
+      '<b>0.999:</b> determinant 21.1, koşul 2361<br>' +
+      '<b>0.9999:</b> determinant 2.1, koşul <b>23669</b></p>' +
+      '<p>Sonucu sağdaki iki örneklemde gör. Aynı süreçten çekilmiş iki veri kümesi, ' +
+      'korelasyon 0 iken [2.03, −1.00] ve [2.00, −1.01] veriyor. Korelasyon 0.9999 iken ' +
+      '[2.04, −1.00] ve <b>[2.94, −1.94]</b>. Gerçek değer 2.00 iken biri 2.04, diğeri 2.94 diyor.</p>',
+    learned:'<b>Kapalı çözüm hep vardır ama her zaman anlamlı değildir.</b> ' +
+      'Korelasyon 0.9999\'da koşul sayısı 23669\'a çıkıyor ve iki örneklem arasındaki katsayı farkı ' +
+      '0.03\'ten <b>0.90</b>\'a fırlıyor.<br><br>' +
+      'Koşul sayısı, girdideki küçük bir değişikliğin çıktıda kaç kat büyüyeceğini söyler. ' +
+      'Ridge dersindeki "korele özellikler cezasız regresyonu kararsız yapar" cümlesinin sayısal karşılığı budur.',
+    xp:45,
+  },
+  {
+    t:'λ eklemek matrisi kurtarıyor',
+    goal:'Ridge cezasının neden sadece bir düzenlileştirme değil aynı zamanda bir sayısal onarım olduğunu göreceksin.',
+    todo:'Korelasyonu 0.999\'da tut ve λ\'yı artır. Koşul sayısı ne yapıyor?',
+    kind:'controls', viz:'enKucukKare', h:700,
+    controls:[
+      {k:'ri', lb:'KORELASYON', min:0, max:5, step:1, val:4, fmt:v => [0,0.5,0.9,0.99,0.999,0.9999][v]},
+      {k:'lam', lb:'CEZA λ', min:0, max:20, step:0.5, val:0, fmt:v => 'λ = '+v.toFixed(1)},
+    ],
+    derive:s => { const R=[0,0.5,0.9,0.99,0.999,0.9999];
+      return {k2: ekKosul(ekVeri(R[s.ri],7), s.lam)}; },
+    live:s => [['KOŞUL SAYISI', s.k2.toFixed(0), s.k2 > 500 ? K.red : K.green],
+               ['λ=0 İKEN', '2361'], ['HEDEF', '< 100']],
+    unlock:s => s.k2 < 100,
+    unlockMsg:'Koşul sayısını 100\'ün altına indir',
+    body:'<p>Ridge\'in formülü hatırla: <b>w = (XᵀX + λI)⁻¹Xᵀy</b>. Tek fark köşegene λ eklenmesi.</p>' +
+      '<p>Bu ekleme matrisi tekil olmaktan çıkarır. Korelasyon 0.999\'da:</p>' +
+      '<p><b>λ = 0:</b> koşul 2361 &nbsp;·&nbsp; <b>λ = 0.1:</b> 1148 &nbsp;·&nbsp; ' +
+      '<b>λ = 1:</b> 205 &nbsp;·&nbsp; <b>λ = 10:</b> <b>23</b></p>' +
+      '<p>Yani ridge iki işi birden yapıyor: istatistiksel olarak varyansı düşürüyor, ' +
+      'sayısal olarak da tersi alınabilir bir matris üretiyor.</p>' +
+      '<p>Hoerl ve Kennard\'ın 1970\'teki makalesinin adı bunu zaten söylüyor: ' +
+      '"Dikgen olmayan problemler için yanlı tahmin".</p>',
+    learned:'<b>λI eklemek matrisi onarır.</b> Korelasyon 0.999\'da koşul sayısı λ=0\'da 2361, ' +
+      'λ=10\'da <b>23</b>.<br><br>' +
+      'Bu yüzden ridge, özellik sayısı örnek sayısından fazla olduğunda bile çalışır: ' +
+      'XᵀX o durumda kesinlikle tekildir, ama XᵀX + λI değildir.<br><br>' +
+      'Aynı sebeple pratikte kapalı çözüm hesaplanırken matris tersi hiç alınmaz; ' +
+      'QR ya da SVD ayrıştırması kullanılır, çünkü onlar kötü koşullu matrislerde daha kararlıdır.',
+    xp:50,
+  },
+  {
+    t:'Ne zaman formül, ne zaman gradyan?',
+    goal:'İki çözüm yolu arasında doğru seçimi yapacaksın.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'enKucukKare', h:700, state:{ri:0, lam:0},
+    body:'<p><b>Normal denklem:</b> tek adım, öğrenme hızı gibi bir ayar yok, tam çözüm. ' +
+      'Ama XᵀX matrisini kurmak n·p² işlem, tersini almak p³ işlem. Özellik sayısı büyükse ölçeklenmez.</p>' +
+      '<p><b>Gradyan inişi:</b> her adım n·p işlem, bellekte tüm veriyi tutmak zorunda değil ' +
+      '(mini yığınlarla çalışır), doğrusal olmayan modellerde de çalışır. ' +
+      'Ama öğrenme hızı seçmek gerekir ve yakınsama garantisi ayar ister.</p>',
+    quiz:{ q:'500.000 özellikli seyrek bir metin verisinde doğrusal regresyon eğiteceksin. Hangi yol?',
+      opts:[
+        {t:'Normal denklem, çünkü tek adımda tam çözüm verir', why:'XᵀX matrisi 500.000 × 500.000 olur. Sadece onu bellekte tutmak çift duyarlıkla iki terabayttan fazla yer ister, tersini almak ise p³, yani 10¹⁷ mertebesinde işlem demektir. Pratikte imkânsız.'},
+        {t:'Gradyan inişi ya da türevi, çünkü her adım özellik sayısıyla doğrusal ölçeklenir ve seyrekliği kullanabilir', why:'Doğru. Gradyan inişinin her adımı n·p işlemdir ve seyrek veride sadece sıfır olmayan girdiler dolaşılır. Ayrıca XᵀX matrisini hiç kurmaz, bellekte tutmaz. Büyük ölçekli doğrusal modeller bu yüzden neredeyse her zaman yinelemeli yöntemlerle eğitilir.'},
+        {t:'Önce PCA ile boyut indirip sonra normal denklem', why:'Makul görünse de PCA\'nın kendisi 500.000 boyutta kovaryans matrisi ya da SVD gerektirir, yani aynı ölçek duvarına baştan çarparsın. Seyrek veride kısmi SVD mümkündür ama gereksiz bir dolambaçtır.'},
+        {t:'Fark etmez, ikisi de aynı cevabı verir', why:'Matematiksel olarak aynı noktaya giderler, bu doğru. Ama soru hangisinin çalışabileceği. Bu boyutta normal denklem hesaplanamaz, dolayısıyla "aynı cevap" teorik bir teselli olur.'},
+      ], correct:1 },
+    learned:'<b>Az özellik → normal denklem. Çok özellik, seyrek veri, doğrusal olmayan model → gradyan.</b><br><br>' +
+      'Kabaca eşik birkaç bin özelliktir: altında kapalı çözüm hem hızlı hem ayarsızdır, ' +
+      'üstünde p³ maliyeti duvara çarpar.<br><br>' +
+      'Ve her iki yolda da korele özellikler sorun çıkarır. Gradyan inişinde bu yavaş yakınsama ' +
+      'olarak, normal denklemde kötü koşul sayısı olarak görünür. İkisinin de ilacı aynı: ceza terimi.',
+    xp:45,
   },
 ]};

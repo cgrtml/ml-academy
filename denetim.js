@@ -404,6 +404,45 @@ console.log('═══ ÜRETİCİ ve AYIRICI ═══');
   iddia('kesişme 40 örnekte', 40, (R.find((x,i) => i>0 && x.lr >= x.nb) || {}).n, 0);
 }
 
+
+console.log('═══ NORMAL DENKLEM ═══');
+{
+  /* 10 ogrenci verisinde kapali cozum, mufredattaki gradyan sonucuyla ayni mi? */
+  const S = DATA.study;
+  let sx=0, sy=0, sxx=0, sxy=0;
+  S.X.forEach((x,i) => { sx+=x; sy+=S.Y[i]; sxx+=x*x; sxy+=x*S.Y[i]; });
+  const n = S.X.length;
+  const wKapali = (n*sxy - sx*sy)/(n*sxx - sx*sx);
+  const bKapali = (sy - wKapali*sx)/n;
+  iddia('kapalı çözüm w', 7.727, wKapali, 3);
+  iddia('kapalı çözüm b', 20.80, bKapali, 2);
+  iddia('kapalı çözüm = gradyan sonucu (w)', S.wStar, wKapali, 3);
+  iddia('kapalı çözüm = gradyan sonucu (b)', S.bStar, bKapali, 2);
+  iddia('kapalı çözüm MSE', 5.20, S.X.reduce((s,x,i)=>s+(wKapali*x+bKapali-S.Y[i])**2,0)/n, 2);
+
+  /* kosul sayisi ve kararsizlik */
+  const D = r => ekVeri(r, 7), E = r => ekVeri(r, 8);
+  iddia('r=0 determinant', 10560.1, ekCoz(D(0),0).det, 1);
+  iddia('r=0 koşul sayısı', 1, ekKosul(D(0),0), 0);
+  iddia('r=0.99 koşul sayısı', 233, ekKosul(D(0.99),0), 0);
+  iddia('r=0.999 koşul sayısı', 2361, ekKosul(D(0.999),0), 0);
+  iddia('r=0.9999 koşul sayısı', 23669, ekKosul(D(0.9999),0), 0);
+  iddia('r=0.9999 determinant', 2.1, ekCoz(D(0.9999),0).det, 1);
+  const fark = r => Math.abs(ekCoz(D(r),0).w[0] - ekCoz(E(r),0).w[0]);
+  iddia('r=0 iki örneklem farkı', 0.03, fark(0), 2);
+  iddia('r=0.9999 iki örneklem farkı', 0.90, fark(0.9999), 2);
+  iddia('korelasyon arttıkça koşul büyüyor', true,
+        [0,0.5,0.9,0.99,0.999,0.9999].every((r,i,a) => i===0 || ekKosul(D(r),0) > ekKosul(D(a[i-1]),0)));
+  iddia('r=0.9999 örneklem B katsayısı gerçekten sapıyor', 2.94, ekCoz(E(0.9999),0).w[0], 2);
+
+  /* lambda onariyor */
+  iddia('r=0.999 λ=0 koşul', 2361, ekKosul(D(0.999), 0), 0);
+  iddia('r=0.999 λ=1 koşul', 205, ekKosul(D(0.999), 1), 0);
+  iddia('r=0.999 λ=10 koşul', 23, ekKosul(D(0.999), 10), 0);
+  iddia('λ büyüdükçe koşul düşüyor', true,
+        [0,0.1,1,10].every((l,i,a) => i===0 || ekKosul(D(0.999), l) < ekKosul(D(0.999), a[i-1])));
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
