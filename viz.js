@@ -522,6 +522,301 @@ VIZ.cezaGeo = s => {
         sifirMi ? K.green : K.mut);
 };
 
+
+/* ═══════════ YANLILIK ve VARYANS AYRIŞIMI ═══════════
+   Aynı süreçten M=200 eğitim kümesi çekilir, her birine derece d polinomu
+   uydurulur. Sabit bir x ızgarasında:
+     yanlılık² = (ortalama tahmin − gerçek)²        modelin sistematik hatası
+     varyans   = tahminlerin kendi arasındaki yayılımı
+     gürültü   = σ², hiçbir modelin inemeyeceği taban
+   Beklenen test hatası bu üçünün toplamıdır. */
+const YV = { f0: x => Math.sin(2 * Math.PI * x), sig: 0.35, M: 200, n: 20, dmax: 9 };
+YV.grid = Array.from({ length: 41 }, (_, i) => i / 40);
+
+const _yvCache = {};
+function yvHesap(){
+  if (_yvCache.hepsi) return _yvCache.hepsi;
+  const r = rng(11);
+  const gauss = () => { let u = 0, w = 0; while (!u) u = r(); while (!w) w = r();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); };
+  const out = [];
+  for (let d = 0; d <= YV.dmax; d++){
+    const tah = [], ornek = [];
+    for (let m = 0; m < YV.M; m++){
+      const xs = [], ys = [];
+      for (let i = 0; i < YV.n; i++){ const x = r(); xs.push(x); ys.push(YV.f0(x) + YV.sig * gauss()); }
+      const c = polyfit(xs, ys, d);
+      tah.push(YV.grid.map(x => c.reduce((s, cc, k) => s + cc * Math.pow(x, k), 0)));
+      if (m < 30) ornek.push({ xs, ys, c });
+    }
+    let b2 = 0, va = 0;
+    const ort = [];
+    YV.grid.forEach((x, gi) => {
+      const mu = tah.reduce((s, t) => s + t[gi], 0) / YV.M;
+      ort.push(mu);
+      b2 += (mu - YV.f0(x)) ** 2;
+      va += tah.reduce((s, t) => s + (t[gi] - mu) ** 2, 0) / YV.M;
+    });
+    b2 /= YV.grid.length; va /= YV.grid.length;
+    out.push({ d, b2, va, gur: YV.sig * YV.sig, top: b2 + va + YV.sig * YV.sig, ort, ornek });
+  }
+  return (_yvCache.hepsi = out);
+}
+const yvDerece = d => yvHesap()[Math.max(0, Math.min(YV.dmax, Math.round(d)))];
+
+VIZ.yanlilikVaryans = s => {
+  clear();
+  const d = Math.max(0, Math.min(YV.dmax, Math.round(s.derece === undefined ? 3 : s.derece)));
+  const H = yvHesap(), Q = H[d];
+  baslikSerit('YANLILIK ve VARYANS',
+    'Aynı süreçten 200 eğitim kümesi çekildi. Her ince çizgi bir kümeden çıkan model.', []);
+
+  /* sol: 30 model + ortalama + gerçek */
+  const P = plot(rect(100, 120, 620, 400), 0, 1, -2.2, 2.2);
+  frame(P, 'x', 'y', [0, 0.25, 0.5, 0.75, 1], [-2, -1, 0, 1, 2]);
+  Q.ornek.forEach(o => {
+    cx.strokeStyle = 'rgba(76,196,255,.22)'; cx.lineWidth = 1.4;
+    cx.beginPath();
+    YV.grid.forEach((x, i) => {
+      const y = o.c.reduce((a, cc, k) => a + cc * Math.pow(x, k), 0);
+      const X = P.sx(x), Y = P.sy(Math.max(-2.2, Math.min(2.2, y)));
+      i ? cx.lineTo(X, Y) : cx.moveTo(X, Y);
+    });
+    cx.stroke();
+  });
+  cx.setLineDash([7, 6]); cx.strokeStyle = K.mut; cx.lineWidth = 2.6;
+  cx.beginPath();
+  YV.grid.forEach((x, i) => { const X = P.sx(x), Y = P.sy(YV.f0(x)); i ? cx.lineTo(X, Y) : cx.moveTo(X, Y); });
+  cx.stroke(); cx.setLineDash([]);
+  cx.strokeStyle = K.green; cx.lineWidth = 4;
+  cx.beginPath();
+  YV.grid.forEach((x, i) => { const X = P.sx(x), Y = P.sy(Math.max(-2.2, Math.min(2.2, Q.ort[i])));
+    i ? cx.lineTo(X, Y) : cx.moveTo(X, Y); });
+  cx.stroke();
+  txt('gerçek fonksiyon', P.R.x + 14, P.R.y + 26, K.mut, 18, 'left');
+  txt('200 modelin ortalaması', P.R.x + 14, P.R.y + 50, K.green, 18, 'left');
+  txt('tek tek modeller', P.R.x + 14, P.R.y + 74, K.blue, 18, 'left');
+  txt('derece ' + d, P.R.x + P.R.w - 14, P.R.y + 26, K.yellow, 24, 'right');
+
+  /* sağ: ayrışım çubukları */
+  const bx = 790, bw = 600, by = 130, yuk = 300;
+  const enB = 3.2;
+  const B = plot(rect(bx, by, bw, yuk), -0.5, YV.dmax + 0.5, 0, enB);
+  frame(B, 'polinom derecesi', 'hata bileşeni', [0, 3, 6, 9], [0, 1, 2, 3]);
+  H.forEach(q => {
+    const gen = bw / (YV.dmax + 1) * 0.62;
+    const cxp = B.sx(q.d) - gen / 2;
+    let alt = B.sy(0);
+    const kat = [[q.gur, K.dim], [q.b2, K.orange], [q.va, K.purple]];
+    kat.forEach(([val, renk]) => {
+      const h = Math.min(alt - B.R.y, B.sy(0) - B.sy(val));
+      if (h > 0){ box(cxp, alt - h, gen, h, renk + 'cc', null, 0); alt -= h; }
+    });
+    if (q.top > enB) txt('↑', B.sx(q.d), B.R.y - 6, K.purple, 20);   // eksene sığmıyor
+    if (q.d === d) box(cxp - 3, B.R.y, gen + 6, B.R.h, null, K.yellow, 2.5);
+  });
+  txt('■ varyans', bx + bw - 16, by + 26, K.purple, 18, 'right');
+  txt('■ yanlılık²', bx + bw - 16, by + 50, K.orange, 18, 'right');
+  txt('■ gürültü σ² = 0.1225', bx + bw - 16, by + 74, K.dim, 18, 'right');
+
+  /* sağ alt: sayılar */
+  const oy = by + yuk + 74;
+  box(bx, oy, bw, 118, 'rgba(7,10,15,.7)', K.axis, 2);
+  const s3 = (v2) => v2.toFixed(4);
+  txt('YANLILIK²', bx + 105, oy + 34, K.mut, 17);
+  txt(s3(Q.b2), bx + 105, oy + 78, K.orange, 32);
+  txt('VARYANS', bx + 300, oy + 34, K.mut, 17);
+  txt(s3(Q.va), bx + 300, oy + 78, K.purple, 32);
+  txt('TOPLAM', bx + 495, oy + 34, K.mut, 17);
+  txt(s3(Q.top), bx + 495, oy + 78, Q.top < 0.2 ? K.green : K.pink, 32);
+
+  const en = H.reduce((a, b) => b.top < a.top ? b : a);
+  txt(d < en.d ? 'yetersiz uyum: yanlılık büyük, modeller birbirine benziyor'
+    : d > en.d ? 'aşırı uyum: yanlılık küçük ama modeller birbirinden çok farklı'
+    : 'denge noktası: toplam hata en küçük',
+    750, cvs.height - 26, d === en.d ? K.green : K.orange, 26);
+};
+
+
+/* ═══════════ BOYUT LANETİ ═══════════
+   Birim küpte n=500 rastgele nokta, rastgele bir sorgu noktası.
+   Boyut arttıkça en yakın ile en uzak komşu arasındaki fark erir,
+   "yakınlık" kavramı anlamını kaybeder. */
+const BL = { n: 500, tekrar: 60, boyutlar: [1, 2, 3, 5, 8, 12, 20, 35, 50, 75, 100] };
+const _blCache = {};
+function blDeney(d){
+  if (_blCache[d]) return _blCache[d];
+  const r = rng(23 + d * 7);
+  let ykT = 0, uzT = 0, oranT = 0;
+  let hist = null;
+  for (let t = 0; t < BL.tekrar; t++){
+    const q = Array.from({ length: d }, () => r());
+    let yk = 1e9, uz = 0;
+    const mes = [];
+    for (let i = 0; i < BL.n; i++){
+      let s = 0;
+      for (let j = 0; j < d; j++){ const val = r() - q[j]; s += val * val; }
+      const dd = Math.sqrt(s);
+      mes.push(dd);
+      if (dd < yk) yk = dd;
+      if (dd > uz) uz = dd;
+    }
+    ykT += yk; uzT += uz; oranT += (uz - yk) / yk;
+    if (t === 0) hist = mes;
+  }
+  return (_blCache[d] = { d, yakin: ykT / BL.tekrar, uzak: uzT / BL.tekrar,
+                          oran: oranT / BL.tekrar, mes: hist });
+}
+/* hacmin %f'ini kapsayan küp kenarı  ·  dış kabuktaki hacim oranı */
+const blKenar = (d, f) => Math.pow(f, 1 / d);
+const blKabuk = (d, k) => 1 - Math.pow(1 - 2 * k, d);
+
+VIZ.boyutLaneti = s => {
+  clear();
+  const bl = BL.boyutlar;
+  const d = bl[Math.max(0, Math.min(bl.length - 1, Math.round(s.bi === undefined ? 0 : s.bi)))];
+  const E = blDeney(d);
+  baslikSerit('BOYUT LANETİ',
+    'Birim küpte 500 nokta. Boyut arttıkça "en yakın komşu" fikri anlamını yitiriyor.', []);
+
+  /* sol: mesafe dağılımı */
+  const enMes = Math.max(1.2, E.uzak * 1.12);
+  const P = plot(rect(100, 130, 620, 320), 0, enMes, 0, 1);
+  frame(P, 'sorgu noktasına uzaklık', 'yoğunluk',
+    [0, enMes / 4, enMes / 2, 3 * enMes / 4, enMes].map(x => +x.toFixed(1)), []);
+  const kova = 40, sayim = new Array(kova).fill(0);
+  E.mes.forEach(m => { const i = Math.min(kova - 1, Math.floor(m / enMes * kova)); sayim[i]++; });
+  const enS = Math.max(...sayim);
+  sayim.forEach((c, i) => {
+    if (!c) return;
+    const x0 = P.sx(i / kova * enMes), x1 = P.sx((i + 1) / kova * enMes);
+    const h = c / enS * P.R.h * 0.88;
+    box(x0 + 1, P.R.y + P.R.h - h, x1 - x0 - 2, h, 'rgba(76,196,255,.45)', null, 0);
+  });
+  [['en yakın', E.yakin, K.green], ['en uzak', E.uzak, K.orange]].forEach(([ad, val, renk]) => {
+    cx.strokeStyle = renk; cx.lineWidth = 3; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.sx(val), P.R.y); cx.lineTo(P.sx(val), P.R.y + P.R.h); cx.stroke();
+    cx.setLineDash([]);
+    txt(ad + ' ' + val.toFixed(2), P.sx(val), P.R.y - 10, renk, 18);
+  });
+  txt('boyut = ' + d, P.R.x + P.R.w - 14, P.R.y + 28, K.yellow, 26, 'right');
+
+  /* sol alt: kontrast oranı eğrisi */
+  const Q = plot(rect(100, 545, 620, 125), 0, 100, 0, 20);
+  frame(Q, 'boyut', '(uzak−yakın)/yakın', [0, 25, 50, 75, 100], [0, 10, 20]);
+  cx.strokeStyle = K.pink; cx.lineWidth = 3;
+  cx.beginPath();
+  bl.filter(x => x >= 2).forEach((dd, i) => {
+    const X = Q.sx(dd), Y = Q.sy(Math.min(20, blDeney(dd).oran));
+    i ? cx.lineTo(X, Y) : cx.moveTo(X, Y);
+  });
+  cx.stroke();
+  if (d >= 2) dot(Q.sx(d), Q.sy(Math.min(20, E.oran)), 7, K.yellow);
+  txt('boyut 1 ekseni aşıyor (' + blDeney(1).oran.toFixed(0) + ')', Q.R.x + Q.R.w - 12, Q.R.y + 22, K.mut, 16, 'right');
+
+  /* sağ: iki sonuç kartı */
+  const bx = 790, bw = 600;
+  const kart = (y, baslik, deger, altyazi, renk) => {
+    box(bx, y, bw, 150, 'rgba(7,10,15,.7)', K.axis, 2);
+    txt(baslik, bx + bw / 2, y + 34, K.mut, 19);
+    txt(deger, bx + bw / 2, y + 92, renk, 46);
+    txt(altyazi, bx + bw / 2, y + 126, K.mut, 17);
+  };
+  kart(130, 'VERİNİN %10\'UNU KAPSAYAN KÜP KENARI',
+    blKenar(d, 0.1).toFixed(3), 'her eksenin %' + (100 * blKenar(d, 0.1)).toFixed(1) + '\'i · "yerel" komşuluk',
+    blKenar(d, 0.1) > 0.5 ? K.red : K.green);
+  kart(305, 'DIŞ %1 KABUKTA KALAN HACİM',
+    '%' + (100 * blKabuk(d, 0.01)).toFixed(1), 'noktaların bu kadarı kenara yapışık',
+    blKabuk(d, 0.01) > 0.5 ? K.red : K.green);
+  kart(480, 'EN UZAK KOMŞU, EN YAKININDAN KAÇ KAT UZAK',
+    (E.uzak / E.yakin).toFixed(2) + '×', 'bu sayı 1\'e inerse "yakın" kelimesi anlamsızlaşır',
+    E.uzak / E.yakin < 2 ? K.red : K.green);
+};
+
+
+/* ═══════════ HİPERPARAMETRE ARAMASI ═══════════
+   İki hiperparametreli bir skor yüzeyi, ama sadece BİRİ önemli.
+   Izgara araması n denemede o önemli eksende sadece √n farklı değer dener;
+   rastgele arama n farklı değer dener. Bergstra & Bengio 2012'nin fikri. */
+function haSkor(a, b){ return Math.exp(-((a - 0.32) ** 2) / 0.02) * (1 + 0.06 * Math.sin(9 * b)); }
+function haIzgara(k){ const p = [];
+  for (let i = 0; i < k; i++) for (let j = 0; j < k; j++) p.push({ a: (i + 0.5) / k, b: (j + 0.5) / k });
+  return p; }
+function haRastgele(n, tohum){ const r = rng(tohum); const p = [];
+  for (let i = 0; i < n; i++) p.push({ a: r(), b: r() });
+  return p; }
+const haEnIyi = ps => ps.reduce((m, p) => Math.max(m, haSkor(p.a, p.b)), 0);
+function haOrtalama(n, tekrar){ let s = 0;
+  for (let t = 0; t < (tekrar || 50); t++) s += haEnIyi(haRastgele(n, 100 + t));
+  return s / (tekrar || 50); }
+
+VIZ.hiperArama = s => {
+  clear();
+  const k = Math.max(2, Math.min(8, Math.round(s.k === undefined ? 3 : s.k)));
+  const n = k * k;
+  const rastgeleMi = !!s.rast;
+  const nokta = rastgeleMi ? haRastgele(n, 100) : haIzgara(k);
+  const en = nokta.reduce((m, p) => haSkor(p.a, p.b) > haSkor(m.a, m.b) ? p : m, nokta[0]);
+  baslikSerit('HİPERPARAMETRE ARAMASI',
+    'İki ayar var ama sadece biri sonucu belirliyor. Bütçeni nasıl harcarsın?', []);
+
+  /* sol: skor yüzeyi + denenen noktalar */
+  const P = plot(rect(100, 130, 600, 400), 0, 1, 0, 1);
+  for (let i = 0; i < 60; i++){
+    const a = (i + 0.5) / 60;
+    const sk = haSkor(a, 0.5);
+    cx.fillStyle = 'rgba(34,211,160,' + (0.06 + 0.5 * sk) + ')';
+    cx.fillRect(P.sx(i / 60), P.R.y, P.R.w / 60 + 1, P.R.h);
+  }
+  frame(P, 'ÖNEMLİ ayar', 'önemsiz ayar', [0, 0.25, 0.5, 0.75, 1], [0, 0.5, 1]);
+  cx.setLineDash([5, 5]); cx.strokeStyle = K.green; cx.lineWidth = 2;
+  cx.beginPath(); cx.moveTo(P.sx(0.32), P.R.y); cx.lineTo(P.sx(0.32), P.R.y + P.R.h); cx.stroke();
+  cx.setLineDash([]);
+  txt('en iyi bölge', P.sx(0.32), P.R.y - 10, K.green, 18);
+  nokta.forEach(p => dot(P.sx(p.a), P.sy(p.b), 6, rastgeleMi ? K.purple : K.blue));
+  dot(P.sx(en.a), P.sy(en.b), 13, null, K.yellow, 3.5);   // en iyisi: sarı halka
+  dot(P.sx(en.a), P.sy(en.b), 6, K.yellow);
+
+  /* önemli eksende kaç FARKLI değer denendi */
+  const farkli = new Set(nokta.map(p => p.a.toFixed(4))).size;
+  txt((rastgeleMi ? 'RASTGELE' : 'IZGARA') + ' · ' + n + ' deneme',
+      P.R.x + P.R.w - 14, P.R.y + 28, rastgeleMi ? K.purple : K.blue, 24, 'right');
+
+  /* sağ: bütçeye göre en iyi skor */
+  const bx = 770, bw = 620;
+  const Q = plot(rect(bx, 150, bw, 280), 0, 70, 0, 1.15);
+  frame(Q, 'deneme bütçesi', 'bulunan en iyi skor', [4, 16, 36, 64], [0, 0.5, 1]);
+  cx.strokeStyle = K.green; cx.lineWidth = 2; cx.setLineDash([5, 5]);
+  cx.beginPath(); cx.moveTo(Q.sx(0), Q.sy(1.06)); cx.lineTo(Q.sx(70), Q.sy(1.06)); cx.stroke();
+  cx.setLineDash([]);
+  txt('ulaşılabilir en yüksek 1.06', Q.R.x + Q.R.w - 12, Q.sy(1.06) - 10, K.green, 16, 'right');
+  const butce = [2, 3, 4, 5, 6, 7, 8];
+  [['izgara', K.blue, kk => haEnIyi(haIzgara(kk))],
+   ['rastgele', K.purple, kk => haOrtalama(kk * kk, 50)]].forEach(([ad, renk, fn]) => {
+    cx.strokeStyle = renk; cx.lineWidth = 3.2;
+    cx.beginPath();
+    butce.forEach((kk, i) => { const X = Q.sx(kk * kk), Y = Q.sy(fn(kk)); i ? cx.lineTo(X, Y) : cx.moveTo(X, Y); });
+    cx.stroke();
+    butce.forEach(kk => dot(Q.sx(kk * kk), Q.sy(fn(kk)), 5, renk));
+  });
+  txt('■ ızgara', bx + 18, Q.R.y + Q.R.h - 34, K.blue, 18, 'left');
+  txt('■ rastgele · 50 denemenin ortalaması', bx + 18, Q.R.y + Q.R.h - 12, K.purple, 18, 'left');
+  dot(Q.sx(n), Q.sy(rastgeleMi ? haOrtalama(n, 50) : haEnIyi(haIzgara(k))), 9, K.yellow);
+
+  /* sağ alt: sayı kartı */
+  const oy = 500;
+  box(bx, oy, bw, 130, 'rgba(7,10,15,.7)', K.axis, 2);
+  txt('BULUNAN EN İYİ SKOR', bx + 160, oy + 32, K.mut, 17);
+  txt(haSkor(en.a, en.b).toFixed(4), bx + 160, oy + 84, haSkor(en.a, en.b) > 1 ? K.green : K.orange, 38);
+  txt('ÖNEMLİ AYARDA KAÇ FARKLI DEĞER', bx + 440, oy + 32, K.mut, 17);
+  txt(String(farkli), bx + 440, oy + 84, farkli >= n ? K.green : K.red, 38);
+
+  txt(rastgeleMi
+      ? n + ' deneme, önemli ayarda ' + farkli + ' farklı değer'
+      : n + ' deneme ama önemli ayarda sadece ' + farkli + ' farklı değer',
+      750, cvs.height - 26, rastgeleMi ? K.green : K.orange, 26);
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

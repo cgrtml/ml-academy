@@ -209,6 +209,75 @@ console.log('═══ CEZALI REGRESYON (ridge / lasso) ═══');
   }
 }
 
+
+console.log('═══ YANLILIK / VARYANS ═══');
+{
+  const H = yvHesap();
+  iddia('derece 0 yanlılık²', 0.4878, H[0].b2, 4);
+  iddia('derece 0 varyans', 0.0281, H[0].va, 4);
+  iddia('derece 0 toplam', 0.6384, H[0].top, 4);
+  iddia('derece 3 yanlılık²', 0.0070, H[3].b2, 4);
+  iddia('derece 3 varyans', 0.0491, H[3].va, 4);
+  iddia('derece 3 toplam', 0.1786, H[3].top, 4);
+  iddia('derece 9 varyans', 5.8916, H[9].va, 4);
+  iddia('derece 9 toplam', 6.1109, H[9].top, 4);
+  iddia('gürültü tabanı σ²', 0.1225, 0.35*0.35, 4);
+  const en = H.reduce((a,b)=>b.top<a.top?b:a);
+  iddia('en iyi derece', 3, en.d, 0);
+  iddia('gürültünün en iyi hatadaki payı %', 68.6, 100*0.1225/en.top, 1);
+  iddia('varyans derece 3→9 kaç kat', 120.0, H[9].va/H[3].va, 1);
+  /* dersin iddiasi: esneklik yanliligi dusurur, varyansi yukseltir */
+  iddia('yanlılık derece 0 > derece 3', true, H[0].b2 > H[3].b2);
+  iddia('varyans derece 9 > derece 3', true, H[9].va > H[3].va);
+  iddia('toplam hata U çiziyor', true, H[0].top > en.top && H[9].top > en.top);
+}
+
+
+console.log('═══ BOYUT LANETİ ═══');
+{
+  const e1 = blDeney(1), e3 = blDeney(3), e10 = blDeney(10), e100 = blDeney(100);
+  iddia('boyut 1 en yakın', 0.001, e1.yakin, 3);
+  iddia('boyut 1 en uzak', 0.735, e1.uzak, 3);
+  iddia('boyut 1 kaç kat', 781.2, e1.uzak/e1.yakin, 1);
+  iddia('boyut 10 kaç kat', 3.34, e10.uzak/e10.yakin, 2);
+  iddia('boyut 100 en yakın', 3.373, e100.yakin, 3);
+  iddia('boyut 100 en uzak', 4.731, e100.uzak, 3);
+  iddia('boyut 100 kaç kat', 1.40, e100.uzak/e100.yakin, 2);
+  iddia('kontrast boyutla azalıyor', true, e3.oran > e10.oran && e10.oran > e100.oran);
+  iddia('%10 kenar · boyut 1', 0.100, blKenar(1,0.1), 3);
+  iddia('%10 kenar · boyut 10', 0.794, blKenar(10,0.1), 3);
+  iddia('%10 kenar · boyut 100', 0.977, blKenar(100,0.1), 3);
+  iddia('dış %1 kabuk · boyut 1', 2.0, 100*blKabuk(1,0.01), 1);
+  iddia('dış %1 kabuk · boyut 10', 18.3, 100*blKabuk(10,0.01), 1);
+  iddia('dış %1 kabuk · boyut 100', 86.7, 100*blKabuk(100,0.01), 1);
+  iddia('dış %1 kabuk · boyut 200', 98.2, 100*blKabuk(200,0.01), 1);
+}
+
+
+console.log('═══ HİPERPARAMETRE ARAMASI ═══');
+{
+  iddia('ızgara 3×3 skor', 0.3271, haEnIyi(haIzgara(3)), 4);
+  iddia('rastgele 9 ortalama', 0.8261, haOrtalama(9, 50), 4);
+  iddia('rastgele/ızgara oranı (9 deneme)', 2.5, haOrtalama(9,50)/haEnIyi(haIzgara(3)), 1);
+  iddia('ızgara 5×5 skor', 1.0372, haEnIyi(haIzgara(5)), 4);
+  iddia('ızgara 6×6 skor', 0.8260, haEnIyi(haIzgara(6)), 4);
+  iddia('ızgara: 36 deneme 25 denemeden KÖTÜ', true, haEnIyi(haIzgara(6)) < haEnIyi(haIzgara(5)));
+  /* rastgele monoton yükseliyor mu? dersin iddiası bu */
+  let mono = true;
+  for (let k = 2; k < 8; k++) if (haOrtalama((k+1)*(k+1),50) <= haOrtalama(k*k,50)) mono = false;
+  iddia('rastgele bütçeyle monoton yükseliyor', true, mono);
+  iddia('rastgele 4 deneme', 0.6297, haOrtalama(4,50), 4);
+  iddia('rastgele 64 deneme', 1.0277, haOrtalama(64,50), 4);
+  iddia('ulaşılabilir tavan', 1.0600, haSkor(0.32, Math.PI/18), 4);
+  /* önemli ayarda kaç farklı değer: ızgara k, rastgele k² */
+  iddia('ızgara 6×6 farklı a değeri', 6, new Set(haIzgara(6).map(p=>p.a.toFixed(4))).size, 0);
+  iddia('rastgele 36 farklı a değeri', 36, new Set(haRastgele(36,100).map(p=>p.a.toFixed(4))).size, 0);
+  /* 5x5 izgarada 0.3 deneniyor, 6x6 izgarada 0.32 yakininda deger yok */
+  iddia('5×5 ızgara 0.3 deniyor', true, haIzgara(5).some(p => Math.abs(p.a-0.3) < 1e-9));
+  iddia('6×6 ızgara 0.32 yakınını hiç denemiyor', true,
+        !haIzgara(6).some(p => Math.abs(p.a-0.32) < 0.05));
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

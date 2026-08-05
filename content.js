@@ -44,11 +44,11 @@ const ROTALAR = [
     {id:'ridge',          ad:'Ridge: katsayıları küçültmek',                   sure:14, durum:'hazir'},
     {id:'lasso',          ad:'Lasso: katsayıyı sıfıra sıkıştırmak',            sure:14, durum:'hazir'},
     {id:'norm-l1l2',      ad:'L1 ve L2: iki ceza, iki farklı dünya',           sure:12, durum:'hazir'},
-    {id:'yanlilik',       ad:'Yanlılık ve varyans: modelin iki tür hatası',    sure:14, durum:'planli'},
-    {id:'boyut-laneti',   ad:'Boyut laneti: komşular neden uzaklaşır',         sure:12, durum:'planli'},
+    {id:'yanlilik',       ad:'Yanlılık ve varyans: modelin iki tür hatası',    sure:16, durum:'hazir'},
+    {id:'boyut-laneti',   ad:'Boyut laneti: komşular neden uzaklaşır',         sure:16, durum:'hazir'},
     {id:'softmax',        ad:'Softmax ve çapraz entropi',                      sure:12, durum:'planli'},
     {id:'dagilim-kaymasi',  ad:'Zemin kayınca: dağılım kayması',                 sure:12, durum:'planli'},
-    {id:'hiper-arama',    ad:'Hiperparametre arama: ızgara, rastgele, eleme',  sure:14, durum:'planli'},
+    {id:'hiper-arama',    ad:'Hiperparametre arama: ızgara, rastgele, eleme',  sure:16, durum:'hazir'},
     {id:'gauss-surec',    ad:'Gaussian Process: belirsizliğini söyleyen model',  sure:16, durum:'planli'},
     {id:'bayes-reg',      ad:'Bayesçi bakış: Occam\'ın usturası hesaplanabilir mi',  sure:16, durum:'planli'},
     {id:'fisher-lda',     ad:'Fisher\'ın fikri: sınıfları ayıran en iyi yön',   sure:12, durum:'planli'},
@@ -4798,5 +4798,346 @@ DERSLER['norm-l1l2'] = {
       'Bütün özellikler biraz katkı veriyorsa ve tek derdin tahminse ridge.<br><br>' +
       'İkisi de gerekiyorsa elastic net var: λ₁·Σ|β| + λ₂·Σβ². Korele grubu birlikte seçer, gürültüyü de atar.',
     xp:40,
+  },
+]};
+
+/* ─────────────── YANLILIK ve VARYANS ─────────────── */
+DERSLER['yanlilik'] = {
+  ad:'Yanlılık ve varyans: modelin iki tür hatası',
+  alt:'Bir model iki ayrı sebepten yanılır ve bu iki sebep birbirinin düşmanıdır. Birini azaltırken diğerini büyütürsün.',
+  kaynaklar:[
+    {y:'Geman, S., Bienenstock, E. & Doursat, R.', t:'1992', b:'Neural Networks and the Bias/Variance Dilemma', n:'Neural Computation, 4(1)'},
+    {y:'Hastie, Tibshirani, Friedman', t:'2009', b:'The Elements of Statistical Learning, Bölüm 7.3', n:'Springer'},
+    {y:'Bishop, C. M.', t:'2006', b:'Pattern Recognition and Machine Learning, Bölüm 3.2', n:'Springer'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Aynı süreçten 200 farklı eğitim kümesi',
+    goal:'Bir modelin hatasının, tek bir eğitim kümesine bakarak göremeyeceğin bir yanı olduğunu göreceksin.',
+    todo:'Dereceyi 0\'da bırak, soldaki ince mavi çizgilere bak. 200 farklı eğitim kümesinden çıkan 30 model bunlar.',
+    kind:'controls', viz:'yanlilikVaryans', h:700,
+    controls:[{k:'derece', lb:'POLİNOM DERECESİ', min:0, max:9, step:1, val:0, fmt:v => 'derece '+v}],
+    live:s => { const q = yvDerece(s.derece);
+      return [['YANLILIK²', q.b2.toFixed(4), K.orange], ['VARYANS', q.va.toFixed(4), K.purple],
+              ['TOPLAM', q.top.toFixed(4), K.pink]]; },
+    body:'<p>Şimdiye kadar hep tek bir eğitim kümen oldu. Ama o küme rastgele bir örneklemdi; ' +
+      'başka bir gün başka 20 öğrenci gelseydi elinde başka bir veri olacaktı.</p>' +
+      '<p>Burada aynı süreçten <b>200 ayrı eğitim kümesi</b> çektim, her birine ayrı model uydurdum. ' +
+      'Sorulacak soru şu: bu 200 model birbirine ne kadar benziyor, ve ortalamaları gerçeğe ne kadar yakın?</p>' +
+      '<p>Derece 0\'da model sadece bir yatay çizgi çizebiliyor. 200 çizgi neredeyse üst üste, ' +
+      'yani modeller birbirine çok benziyor. Ama hiçbiri gerçek eğriye benzemiyor.</p>',
+    learned:'<b>Hatanın iki kaynağı var ve ikisi farklı sorulara cevap veriyor.</b><br><br>' +
+      '<b>Yanlılık:</b> modellerin ORTALAMASI gerçekten ne kadar uzak? Yani model ailesi bu işi yapabilecek ' +
+      'kadar esnek mi?<br>' +
+      '<b>Varyans:</b> modeller BİRBİRİNDEN ne kadar farklı? Yani sonuç, eline hangi verinin geçtiğine ne kadar bağlı?<br><br>' +
+      'Derece 0\'da yanlılık² <b>0.4878</b>, varyans sadece <b>0.0281</b>. Kararlı ama yanlış.',
+    xp:20,
+  },
+  {
+    t:'Esnekliği artır, iki sayı ters yöne gitsin',
+    goal:'Model karmaşıklığını artırırken yanlılığın düştüğünü, varyansın patladığını kendi elinle göreceksin.',
+    todo:'Dereceyi 9\'a kadar çıkar. Sağdaki turuncu ve mor katmanlara bak: hangisi büyüyor, hangisi küçülüyor?',
+    kind:'controls', viz:'yanlilikVaryans', h:700,
+    controls:[{k:'derece', lb:'POLİNOM DERECESİ', min:0, max:9, step:1, val:0, fmt:v => 'derece '+v}],
+    derive:s => { const q = yvDerece(s.derece); return {va: q.va, b2: q.b2}; },
+    live:s => [['YANLILIK²', s.b2.toFixed(4), K.orange], ['VARYANS', s.va.toFixed(4), K.purple],
+               ['HEDEF', 'varyans > 2']],
+    unlock:s => s.va > 2,
+    unlockMsg:'Varyansı 2\'nin üstüne çıkar (derece 7 ve sonrası)',
+    body:'<p>Derece arttıkça model ailesi genişliyor. Artık gerçek eğriyi taklit edebiliyor, ' +
+      'bu yüzden <b>yanlılık düşüyor</b>: derece 0\'da 0.4878, derece 3\'te 0.0070.</p>' +
+      '<p>Ama bir bedeli var. Esnek model, eline geçen 20 noktanın gürültüsüne de uyuyor. ' +
+      'Başka bir 20 nokta gelse bambaşka bir eğri çizecek. Solda ince çizgilerin nasıl dağıldığına bak.</p>' +
+      '<p><b>Varyans</b> derece 3\'te 0.0491, derece 9\'da <b>5.8916</b>. Yüz katından fazla.</p>',
+    learned:'<b>Esneklik yanlılığı düşürür, varyansı yükseltir.</b> Bu bir tercih değil, matematiksel bir takas.<br><br>' +
+      'Derece 0 → 3: yanlılık² 0.4878\'den 0.0070\'e iniyor.<br>' +
+      'Derece 3 → 9: varyans 0.0491\'den 5.8916\'ya çıkıyor.<br><br>' +
+      'İkisini aynı anda küçültemezsin. Yapabileceğin tek şey toplamı en küçük yapan noktayı bulmak.',
+    xp:40,
+  },
+  {
+    t:'Toplam hata ve inilemeyen taban',
+    goal:'Üç bileşenin toplamının neden bir U çizdiğini ve neden sıfıra inemediğini göreceksin.',
+    todo:'Toplam hatayı en küçük yapan dereceyi bul.',
+    kind:'controls', viz:'yanlilikVaryans', h:700,
+    controls:[{k:'derece', lb:'POLİNOM DERECESİ', min:0, max:9, step:1, val:9, fmt:v => 'derece '+v}],
+    derive:s => ({tp: yvDerece(s.derece).top}),
+    live:s => [['TOPLAM HATA', s.tp.toFixed(4), K.pink], ['GÜRÜLTÜ TABANI', '0.1225', K.dim],
+               ['HEDEF', '< 0.20']],
+    unlock:s => s.tp < 0.20,
+    unlockMsg:'Toplam hatayı 0.20\'nin altına indir',
+    body:'<p>Beklenen test hatası tam olarak üç parçadan oluşur:</p>' +
+      '<p style="text-align:center"><b>hata = yanlılık² + varyans + gürültü</b></p>' +
+      '<p>İlk ikisi senin kontrolünde, üçüncüsü değil. Bu veride gürültünün standart sapması 0.35, ' +
+      'yani gürültü terimi <b>0.35² = 0.1225</b>. Hangi modeli kurarsan kur, bu tabanın altına inemezsin.</p>' +
+      '<p>En iyi derece <b>3</b>: toplam hata <b>0.1786</b>. Bunun <b>0.1225</b>\'i, yani <b>%68.6</b>\'sı gürültü. ' +
+      'Geriye kalan 0.0561 senin modelinin payı.</p>',
+    learned:'<b>Hata sıfıra inmez, gürültü tabanında durur.</b> Burada taban 0.1225 ve ulaşılabilen en iyi ' +
+      'toplam 0.1786.<br><br>' +
+      'Bu, bir projede "modelimi daha iyi yapabilir miyim" sorusunun cevabını verir: eğer hatan zaten ' +
+      'gürültü tabanına yakınsa, daha iyi model değil <b>daha iyi ölçüm</b> veya <b>daha çok veri</b> lazımdır.',
+    xp:40,
+  },
+  {
+    t:'Peki bunu gerçek veride nasıl bileceksin?',
+    goal:'Bu ayrışımın neden bir teşhis aracı olduğunu, ama doğrudan ölçülemeyeceğini anlayacaksın.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'yanlilikVaryans', h:700, state:{derece:3},
+    body:'<p>Yukarıdaki ayrışımı yapabildim çünkü <b>gerçek fonksiyonu biliyordum</b> ve aynı süreçten ' +
+      'istediğim kadar eğitim kümesi çekebiliyordum. Gerçek hayatta ikisi de yok.</p>' +
+      '<p>Ama belirtilerinden teşhis koyabilirsin:</p>' +
+      '<p><b>Yüksek yanlılık:</b> eğitim hatası da test hatası da yüksek ve birbirine yakın. ' +
+      'Model veriyi zaten öğrenemiyor.<br>' +
+      '<b>Yüksek varyans:</b> eğitim hatası düşük, test hatası yüksek. Arada büyük bir uçurum var.</p>',
+    quiz:{ q:'Bir modelin eğitim hatası %2, test hatası %23. Hangisi doğru teşhis ve doğru tedavi?',
+      opts:[
+        {t:'Yüksek yanlılık, model daha karmaşık olmalı', why:'Hayır. Yüksek yanlılıkta eğitim hatası da yüksek olurdu; burada model eğitim verisini %98 doğrulukla biliyor. Daha karmaşık bir model uçurumu büyütür.'},
+        {t:'Yüksek varyans, daha çok veri veya düzenlileştirme gerekli', why:'Doğru. Eğitim ile test arasındaki uçurum varyansın imzasıdır. Üç tedavi işe yarar: daha çok eğitim verisi, ceza terimi (ridge ya da lasso), veya daha basit bir model.'},
+        {t:'Gürültü tabanına ulaşılmış, yapacak bir şey yok', why:'Hayır. Gürültü tabanına ulaşıldığında eğitim ve test hatası birbirine yakınsar. %2 ile %23 arasındaki fark gürültüyle açıklanamaz.'},
+        {t:'Veri sızıntısı var', why:'Sızıntı genellikle ters belirti verir: test hatası şüpheli derecede DÜŞÜK çıkar. Burada test hatası yüksek, bu klasik aşırı uyum tablosu.'},
+      ], correct:1 },
+    learned:'<b>Eğitim ve test hatası arasındaki fark, varyansın ölçülebilen izidir.</b><br><br>' +
+      'İkisi de yüksek ve birbirine yakın → yanlılık problemi: daha esnek model, daha iyi özellikler.<br>' +
+      'Eğitim düşük, test yüksek → varyans problemi: daha çok veri, ceza terimi, daha basit model.<br><br>' +
+      'Ridge ve lasso dersleri tam olarak bu ikinci hastalığın ilacıydı: biraz yanlılık ekleyip çok varyans siliyorlar.',
+    xp:40,
+  },
+]};
+
+/* ─────────────── BOYUT LANETİ ─────────────── */
+DERSLER['boyut-laneti'] = {
+  ad:'Boyut laneti: komşular neden uzaklaşır',
+  alt:'k-NN dersinde "en yakın komşuya sor" demiştik. 100 boyutta en yakın komşu, en uzak komşudan sadece %40 daha yakın. O zaman kime soracaksın?',
+  kaynaklar:[
+    {y:'Bellman, R.', t:'1961', b:'Adaptive Control Processes: A Guided Tour', n:'Princeton University Press'},
+    {y:'Beyer, K. ve ark.', t:'1999', b:'When Is Nearest Neighbor Meaningful?', n:'ICDT 1999, 217-235'},
+    {y:'Hastie, Tibshirani, Friedman', t:'2009', b:'The Elements of Statistical Learning, Bölüm 2.5', n:'Springer'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Uzaklıklar bir yere toplanıyor',
+    goal:'Boyut arttıkça bütün noktaların birbirine aynı uzaklıkta görünmeye başladığını göreceksin.',
+    todo:'Boyutu 1\'den 100\'e doğru artır. Mavi histogramın genişliğine ve yeşil ile turuncu çizgi arasındaki mesafeye bak.',
+    kind:'controls', viz:'boyutLaneti', h:700,
+    controls:[{k:'bi', lb:'BOYUT', min:0, max:10, step:1, val:0, fmt:v => 'boyut '+BL.boyutlar[v]}],
+    derive:s => { const e = blDeney(BL.boyutlar[s.bi]); return {kat: e.uzak/e.yakin}; },
+    live:s => { const e = blDeney(BL.boyutlar[s.bi]);
+      return [['EN YAKIN', e.yakin.toFixed(3), K.green], ['EN UZAK', e.uzak.toFixed(3), K.orange],
+              ['KAÇ KAT', s.kat.toFixed(2)+'×', s.kat < 2 ? K.red : K.txt]]; },
+    unlock:s => s.kat < 2,
+    unlockMsg:'En uzak komşuyu, en yakının 2 katından daha yakına getir',
+    body:'<p>Birim küpe 500 rastgele nokta serptim ve rastgele bir sorgu noktası seçtim. ' +
+      'Histogram, sorgu noktasının bütün 500 noktaya olan uzaklıklarını gösteriyor.</p>' +
+      '<p><b>1 boyutta</b> en yakın komşu 0.001 uzaklıkta, en uzak 0.735. Aralarında 780 kat var. ' +
+      '"En yakın" gerçekten yakın.</p>' +
+      '<p><b>100 boyutta</b> en yakın 3.373, en uzak 4.731. Sadece <b>1.40 kat</b>. ' +
+      'Histogram dar bir tepeye sıkışıyor: bütün noktalar sorgu noktasına neredeyse aynı uzaklıkta.</p>',
+    learned:'<b>Yüksek boyutta uzaklıklar birbirine yakınsar.</b> En uzak komşunun en yakına oranı ' +
+      '1 boyutta 780×, 10 boyutta 3.34×, 100 boyutta <b>1.40×</b>.<br><br>' +
+      'Bu k-NN için doğrudan bir tehdittir: eğer herkes aynı uzaklıktaysa "en yakın k komşu" ' +
+      'neredeyse rastgele k nokta demektir. Beyer ve arkadaşları 1999\'da bunu kanıtladı.',
+    xp:35,
+  },
+  {
+    t:'"Yerel" komşuluk yerel olmaktan çıkıyor',
+    goal:'Verinin küçük bir kısmını yakalamak için ne kadar geniş bir bölge taramak gerektiğini göreceksin.',
+    todo:'Boyutu artır ve sağ üstteki kutuya bak: verinin %10\'unu kapsamak için küpün kenarının ne kadarı gerekiyor?',
+    kind:'controls', viz:'boyutLaneti', h:700,
+    controls:[{k:'bi', lb:'BOYUT', min:0, max:10, step:1, val:0, fmt:v => 'boyut '+BL.boyutlar[v]}],
+    derive:s => ({kn: blKenar(BL.boyutlar[s.bi], 0.1)}),
+    live:s => [['KENAR UZUNLUĞU', s.kn.toFixed(3), s.kn > 0.9 ? K.red : K.txt],
+               ['EKSENİN YÜZDESİ', '%'+(100*s.kn).toFixed(1)],
+               ['HEDEF', '> 0.90']],
+    unlock:s => s.kn > 0.90,
+    unlockMsg:'Kenar uzunluğunu 0.90\'ın üstüne çıkar',
+    body:'<p>k-NN gibi yöntemler "yakındaki noktalara bak" mantığıyla çalışır. Peki "yakın" bir bölge ' +
+      'ne kadar büyük olmalı ki verinin %10\'unu içine alsın?</p>' +
+      '<p>Cevap basit bir formül: kenar uzunluğu = 0.1<sup>1/d</sup>.</p>' +
+      '<p><b>1 boyutta</b> 0.100, yani eksenin sadece %10\'u. Gerçekten yerel.<br>' +
+      '<b>10 boyutta</b> 0.794, yani her eksenin %79.4\'ü.<br>' +
+      '<b>100 boyutta</b> 0.977. Her eksenin neredeyse tamamı.</p>' +
+      '<p>Yani 100 boyutta "en yakın %10" demek, aslında neredeyse bütün uzayı taramak demek. ' +
+      'Yerellik diye bir şey kalmıyor.</p>',
+    learned:'<b>Yüksek boyutta yerel komşuluk diye bir şey yok.</b> Verinin %10\'unu yakalamak için ' +
+      'gereken kenar 1 boyutta 0.100 iken 100 boyutta <b>0.977</b>.<br><br>' +
+      'Bunun pratik sonucu: yerel yöntemler (k-NN, çekirdek düzgünleştirme, karar ağacının derin dalları) ' +
+      'boyut arttıkça yerelliğini kaybeder ve yanlılıkları büyür.',
+    xp:40,
+  },
+  {
+    t:'Herkes kenarda oturuyor',
+    goal:'Yüksek boyutlu bir hacmin neredeyse tamamının yüzeyine yakın olduğunu göreceksin.',
+    todo:'Boyutu artır, ortadaki kutuya bak: dış %1\'lik kabukta hacmin ne kadarı var?',
+    kind:'controls', viz:'boyutLaneti', h:700,
+    controls:[{k:'bi', lb:'BOYUT', min:0, max:10, step:1, val:0, fmt:v => 'boyut '+BL.boyutlar[v]}],
+    derive:s => ({kb: blKabuk(BL.boyutlar[s.bi], 0.01)}),
+    live:s => [['DIŞ %1 KABUK', '%'+(100*s.kb).toFixed(1), s.kb > 0.5 ? K.red : K.txt],
+               ['İÇ ÇEKİRDEK', '%'+(100*(1-s.kb)).toFixed(1)],
+               ['HEDEF', '> %60']],
+    unlock:s => s.kb > 0.60,
+    unlockMsg:'Kabuktaki hacmi %60\'ın üstüne çıkar',
+    body:'<p>Küpün her kenarından %1 içeri girip bir "iç çekirdek" tanımlayalım. ' +
+      'Çekirdeğin hacmi 0.98<sup>d</sup>, kabuğun hacmi ise 1 − 0.98<sup>d</sup>.</p>' +
+      '<p><b>1 boyutta</b> kabuk hacmin %2\'si. <b>10 boyutta</b> %18.3. ' +
+      '<b>100 boyutta</b> <b>%86.7</b>. <b>200 boyutta</b> %98.2.</p>' +
+      '<p>Yani yüksek boyutlu bir veri kümesinde neredeyse her nokta, en az bir eksende uç değerde. ' +
+      '"Ortalama bir örnek" diye bir şey pratikte yok.</p>',
+    learned:'<b>Yüksek boyutta hacim yüzeye kaçar.</b> Dış %1 kabuk 100 boyutta hacmin <b>%86.7</b>\'sini tutuyor.<br><br>' +
+      'Sonuç: her yeni örnek büyük ihtimalle eğitim verisinin dışına düşer, yani model sürekli ' +
+      '<b>iç değerleme değil dış değerleme</b> yapmak zorunda kalır. Dış değerleme her zaman daha risklidir.',
+    xp:40,
+  },
+  {
+    t:'Peki ne yapacağız?',
+    goal:'Lanetin neden her zaman felaket olmadığını ve pratikte nasıl kırıldığını öğreneceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'boyutLaneti', h:700, state:{bi:10},
+    body:'<p>Bütün bunlar doğru ama makine öğrenmesi yine de 1000 boyutlu verilerle çalışıyor. Nasıl?</p>' +
+      '<p>Çünkü gerçek veri küpün içine <b>düzgün dağılmaz</b>. 784 pikselli el yazısı rakam görüntüleri ' +
+      '784 boyutlu uzayın her yerinde değil, çok daha düşük boyutlu bir yüzeyin üstünde toplanır. ' +
+      'Buna <b>manifold varsayımı</b> denir.</p>' +
+      '<p>Yukarıdaki deneyde noktaları kasten düzgün dağıttım, yani laneti en ağır hâliyle gösterdim.</p>',
+    quiz:{ q:'1000 özellikli bir veride k-NN kötü sonuç veriyor. Hangi yaklaşım bu problemin köküne iner?',
+      opts:[
+        {t:'k değerini büyütmek', why:'Hayır. Problem kaç komşuya baktığın değil, komşuluk kavramının anlamını yitirmesi. Uzaklıklar birbirine yakınsamışsa 5 komşu da 50 komşu da aynı derecede rastgeledir.'},
+        {t:'Boyut indirgeme (PCA, gömme) ya da özellik seçimi ile gerçek boyutu düşürmek', why:'Doğru. Lanet ölçülen boyuttan değil, verinin GERÇEKTEN yayıldığı boyuttan kaynaklanır. PCA, otokodlayıcı veya lasso ile seyrekleştirme, veriyi asıl yaşadığı düşük boyutlu yüzeye indirir ve uzaklıklar tekrar anlam kazanır.'},
+        {t:'Öklid uzaklığı yerine Manhattan uzaklığı kullanmak', why:'Kısmi bir iyileştirme sağlar, Manhattan yüksek boyutta Öklid\'den biraz daha iyi ayrışma verir, ama problemi çözmez. Kabuk etkisi ve hacim büyümesi ölçüden bağımsızdır.'},
+        {t:'Daha çok veri toplamak', why:'Teoride işe yarar ama ölçek imkânsızdır. Aynı yoğunluğu korumak için gereken örnek sayısı boyutla üstel büyür: 10 boyutta yeterli olan 1000 örnek, 20 boyutta 1000² örnek ister.'},
+      ], correct:1 },
+    learned:'<b>Lanet, ölçülen boyutun değil gerçek boyutun lanetidir.</b><br><br>' +
+      'Gerçek veri genellikle düşük boyutlu bir manifold üzerinde yaşar. İş, o manifoldu bulmaktır: ' +
+      'PCA, t-SNE, UMAP, otokodlayıcı, ya da lasso ile özellik seçimi.<br><br>' +
+      'Ve şunu unutma: daha çok veri toplamak burada çare değil, çünkü aynı yoğunluk için gereken ' +
+      'örnek sayısı boyutla üstel artar.',
+    xp:45,
+  },
+]};
+
+/* ─────────────── HİPERPARAMETRE ARAMASI ─────────────── */
+DERSLER['hiper-arama'] = {
+  ad:'Hiperparametre arama: ızgara, rastgele, eleme',
+  alt:'Aynı bütçeyle ızgara araması 0.33 bulurken rastgele arama 0.83 buluyor. Sebebi şans değil, geometri.',
+  kaynaklar:[
+    {y:'Bergstra, J. & Bengio, Y.', t:'2012', b:'Random Search for Hyper-Parameter Optimization', n:'JMLR, 13, 281-305'},
+    {y:'Li, L. ve ark.', t:'2018', b:'Hyperband: A Novel Bandit-Based Approach to Hyperparameter Optimization', n:'JMLR, 18(185)'},
+    {y:'Hutter, F., Kotthoff, L. & Vanschoren, J.', t:'2019', b:'Automated Machine Learning: Methods, Systems, Challenges', n:'Springer'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'İki ayar var ama biri hiç önemli değil',
+    goal:'Gerçek hayattaki hiperparametre yüzeylerinin neye benzediğini göreceksin.',
+    todo:'Izgarayı büyütüp küçült. Mavi noktalar denenen ayar çiftleri, sarı nokta en iyisi.',
+    kind:'controls', viz:'hiperArama', h:700,
+    controls:[{k:'k', lb:'IZGARA', min:2, max:8, step:1, val:3, fmt:v => v+'×'+v+' = '+(v*v)+' deneme'}],
+    state:{rast:0},
+    live:s => [['DENEME', (s.k*s.k)], ['EN İYİ SKOR', haEnIyi(haIzgara(s.k)).toFixed(4), K.orange],
+               ['ÖNEMLİ AYARDA FARKLI DEĞER', String(s.k), K.red]],
+    body:'<p>Bir modelin iki hiperparametresi var. Ama gerçek şu: <b>sonucu neredeyse tamamen birincisi belirliyor.</b> ' +
+      'Yeşil şerit, birinci ayarın iyi olduğu dar bölge. İkinci ayar skoru %6 civarında oynatıyor, o kadar.</p>' +
+      '<p>Bu uydurma bir kurgu değil. Bergstra ve Bengio 2012\'de tam olarak bunu gösterdi: ' +
+      'sinir ağlarında öğrenme hızı sonucu belirlerken, başka birçok ayarın etkisi ihmal edilebilir.</p>' +
+      '<p>Izgara araması k×k noktayı düzgün yerleştirir. Ama dikkat: <b>k² deneme yapmasına rağmen ' +
+      'önemli ayarda sadece k farklı değer denemiş olur.</b> Kalan denemeler aynı değerin tekrarı.</p>',
+    learned:'<b>Izgara araması bütçesini israf eder.</b> k×k = k² deneme yaparsın ama önemli ayarda ' +
+      'sadece <b>k</b> farklı değer görürsün.<br><br>' +
+      '3×3 ızgara 9 model eğitir, önemli ayarda 3 değer dener. 8×8 ızgara 64 model eğitir, sadece 8 değer dener. ' +
+      'Gerisi, önemsiz ayarın tekrar tekrar denenmesidir.',
+    xp:30,
+  },
+  {
+    t:'Aynı bütçe, rastgele dağıt',
+    goal:'Rastgele aramanın neden aynı bütçeyle daha iyi sonuç verdiğini göreceksin.',
+    todo:'YÖNTEM kaydırıcısını RASTGELE\'ye çek. Sağ alttaki "farklı değer" sayısına bak.',
+    kind:'controls', viz:'hiperArama', h:700,
+    controls:[
+      {k:'k', lb:'BÜTÇE', min:2, max:8, step:1, val:3, fmt:v => (v*v)+' deneme'},
+      {k:'rast', lb:'YÖNTEM', min:0, max:1, step:1, val:0, fmt:v => v ? 'RASTGELE' : 'IZGARA'},
+    ],
+    derive:s => { const n = s.k*s.k;
+      return {skor: s.rast ? haEnIyi(haRastgele(n,100)) : haEnIyi(haIzgara(s.k)),
+              farkli: s.rast ? n : s.k}; },
+    live:s => [['YÖNTEM', s.rast ? 'rastgele' : 'ızgara', s.rast ? K.purple : K.blue],
+               ['EN İYİ SKOR', s.skor.toFixed(4), s.skor > 0.8 ? K.green : K.orange],
+               ['FARKLI DEĞER', String(s.farkli), s.farkli >= s.k*s.k ? K.green : K.red]],
+    unlock:s => s.rast === 1 && s.k === 3,
+    unlockMsg:'Bütçeyi 9 denemede tut ve yöntemi RASTGELE yap',
+    body:'<p>Rastgele arama aynı sayıda model eğitir ama noktaları ızgaraya hapsetmez. ' +
+      'Sonuç: <b>n deneme, önemli ayarda n farklı değer.</b></p>' +
+      '<p>9 denemelik bütçede fark çarpıcı:</p>' +
+      '<p><b>Izgara 3×3:</b> skor <b>0.3271</b>. Önemli ayarda denediği üç değer (0.167, 0.5, 0.833) ' +
+      'iyi bölgenin (0.32) yanından geçiyor ama üstüne basmıyor.<br>' +
+      '<b>Rastgele 9:</b> ortalama skor <b>0.8261</b>. Dokuz farklı değer denediği için iyi bölgeye ' +
+      'düşme şansı çok daha yüksek.</p>' +
+      '<p>Aynı hesaplama, iki buçuk kat daha iyi sonuç.</p>',
+    learned:'<b>Aynı bütçede rastgele arama, önemli ayarda ızgaradan k kat daha çok değer dener.</b><br><br>' +
+      '9 denemede ızgara 0.3271, rastgele ortalama 0.8261 buluyor.<br><br>' +
+      'Fikrin özü şu: hangi ayarın önemli olduğunu <b>önceden bilmiyorsun</b>. Izgara, bilmediğin halde ' +
+      'bütün ayarlara eşit çözünürlük ayırır. Rastgele arama bu kararı vermek zorunda kalmaz.',
+    xp:45,
+  },
+  {
+    t:'Izgarada daha çok bütçe daha iyi sonuç demek değil',
+    goal:'Izgara aramasının neden güvenilmez olduğunu, sadece yavaş olmadığını göreceksin.',
+    todo:'Izgara modunda bütçeyi 25\'ten 36\'ya çıkar. Skora ne oluyor?',
+    kind:'controls', viz:'hiperArama', h:700,
+    controls:[
+      {k:'k', lb:'BÜTÇE', min:2, max:8, step:1, val:5, fmt:v => (v*v)+' deneme'},
+      {k:'rast', lb:'YÖNTEM', min:0, max:1, step:1, val:0, fmt:v => v ? 'RASTGELE' : 'IZGARA'},
+    ],
+    derive:s => ({sk: s.rast ? haOrtalama(s.k*s.k, 50) : haEnIyi(haIzgara(s.k))}),
+    live:s => [['BÜTÇE', (s.k*s.k)], ['SKOR', s.sk.toFixed(4)],
+               ['IZGARA 25', '1.0372', K.blue], ['IZGARA 36', '0.8260', K.red]],
+    body:'<p>Sağdaki grafiğe bak. Mor çizgi (rastgele) düzgün yükseliyor: ' +
+      '0.6297 → 0.8261 → 0.9342 → 0.9822 → 1.0033 → 1.0196 → 1.0277.</p>' +
+      '<p>Mavi çizgi (ızgara) zıplıyor. <b>25 denemede 1.0372, ama 36 denemede 0.8260.</b> ' +
+      'Daha çok hesap harcayıp daha kötü sonuç aldın.</p>' +
+      '<p>Sebep: 5×5 ızgarada önemli ayarın denenen değerlerinden biri 0.3, iyi bölge olan 0.32\'ye çok yakın. ' +
+      '6×6 ızgarada denenen değerler 0.083, 0.25, 0.417 ... ve hiçbiri 0.32\'ye yakın değil. ' +
+      'Izgaranın performansı <b>hizalama şansına</b> bağlı.</p>',
+    quiz:{ q:'Ekibin "ızgara aramasını 4×4\'ten 6×6\'ya çıkaralım, daha iyi sonuç alırız" diyor. En doğru itiraz hangisi?',
+      opts:[
+        {t:'Doğru düşünce, daha çok deneme her zaman daha iyi sonuç verir', why:'Bu veride tam tersi oldu: 25 denemede 1.0372, 36 denemede 0.8260. Izgarada bütçe artışı sonucu garanti etmez, çünkü yeni ızgara eski ızgaranın iyi noktalarını içermeyebilir.'},
+        {t:'Bütçe 16\'dan 36\'ya çıkıyor ama önemli ayarda denenen değer sadece 4\'ten 6\'ya çıkıyor; aynı bütçeyi rastgele dağıtmak 36 farklı değer dener', why:'Doğru. Asıl mesele deneme sayısı değil, ÖNEMLİ ayarda kaç farklı değer görüldüğü. Izgarada bu sayı √n ile büyür, rastgelede n ile.'},
+        {t:'Izgara araması paralelleştirilemez', why:'Yanlış. Izgara araması mükemmel paralelleşir, her nokta bağımsızdır. Rastgele arama da öyle. Paralellik burada ayırt edici değil.'},
+        {t:'6×6 ızgara aşırı uyuma yol açar', why:'Aşırı uyum riski deneme sayısıyla artar ama bu ızgaraya özgü değil; rastgele aramada da aynı risk vardır. Doğru koruma, hiperparametre seçimini çapraz doğrulama ile yapıp teste sadece bir kez bakmaktır.'},
+      ], correct:1 },
+    learned:'<b>Izgara aramasının performansı hizalama şansına bağlıdır, bütçeye değil.</b> ' +
+      'Bu yüzden 25 deneme 1.0372, 36 deneme 0.8260 verebiliyor.<br><br>' +
+      'Rastgele arama böyle bir şansa bağlı değil, bu yüzden eğrisi düzgün yükseliyor. ' +
+      'Bergstra ve Bengio 2012\'nin pratik tavsiyesi tam olarak budur: ' +
+      '<b>ızgara yerine rastgele.</b>',
+    xp:50,
+  },
+  {
+    t:'Bütçeyi daha da akıllı harcamak',
+    goal:'Her denemeye eşit kaynak vermenin de bir israf olduğunu ve nasıl kırıldığını öğreneceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'hiperArama', h:700, state:{k:5, rast:1},
+    body:'<p>Rastgele arama noktaları iyi seçer ama hâlâ bir israfı var: ' +
+      '<b>her denemeye eşit kaynak veriyor.</b> Kötü bir öğrenme hızını 100 epok boyunca eğitmek anlamsız, ' +
+      '5 epokta zaten belli oluyor.</p>' +
+      '<p><b>Ardışık eleme (successive halving):</b> 64 adayı 1 epok eğit, en iyi yarısını tut, ' +
+      'kalan 32\'yi 2 epok eğit, en iyi yarısını tut... Böylece toplam bütçe aynı kalırken ' +
+      'iyi adaylara çok daha fazla kaynak ayrılır.</p>' +
+      '<p><b>Hyperband</b> bu fikri, "ne kadar erken elemeli" sorusunu da kendisi arayarak genelleştirir. ' +
+      '<b>Bayesçi optimizasyon</b> ise farklı bir yol tutar: denenen noktalardan bir yüzey modeli kurup ' +
+      'bir sonraki denemeyi en bilgilendirici yere koyar.</p>',
+    quiz:{ q:'Ardışık eleme hangi durumda kötü sonuç verir?',
+      opts:[
+        {t:'Aday sayısı çok olduğunda', why:'Tam tersi. Ardışık eleme asıl faydasını çok adayla gösterir, çünkü kötü adayları erkenden eleyip bütçeyi iyilere aktarır.'},
+        {t:'Erken performans, geç performansı yanlış tahmin ettiğinde', why:'Doğru. Yöntemin tek varsayımı budur: 1 epokta iyi görünen, 100 epokta da iyi olur. Bu varsayım bozulursa, örneğin düşük öğrenme hızı yavaş başlayıp sonunda kazanıyorsa, doğru aday erkenden elenir.'},
+        {t:'Hiperparametre sayısı fazla olduğunda', why:'Boyut sayısı ardışık elemenin doğrudan problemi değil, aday seçme stratejisinin problemidir. Ardışık eleme, adayları nasıl seçtiğinden bağımsız çalışır.'},
+        {t:'Model eğitimi hızlı olduğunda', why:'Eğitim hızlıysa ardışık elemenin kazancı azalır, çünkü zaten her adayı sonuna kadar eğitebilirsin. Ama bu kötü sonuç vermesi değil, gereksizleşmesi demektir.'},
+      ], correct:1 },
+    learned:'<b>Üç kademe var: nereye bakacağını seç, ne kadar bakacağını seç, öğrendiklerini kullan.</b><br><br>' +
+      '<b>Rastgele arama</b> nereye bakacağını çözer.<br>' +
+      '<b>Ardışık eleme ve Hyperband</b> her adaya ne kadar kaynak vereceğini çözer. Varsayımı: ' +
+      'erken performans geç performansı doğru tahmin eder.<br>' +
+      '<b>Bayesçi optimizasyon</b> önceki denemelerden bir model kurup bir sonraki noktayı seçer.<br><br>' +
+      'Hepsinin ortak şartı aynı: seçim çapraz doğrulama ile yapılmalı, test kümesine sadece en sonda bakılmalı.',
+    xp:45,
   },
 ]};
