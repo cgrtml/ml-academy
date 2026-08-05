@@ -2638,6 +2638,247 @@ VIZ.ozellikMuh = s => {
   }
 };
 
+
+/* ═══════════ TOPLAMSAL MODELLER (GAM) ═══════════
+   y = a0 + f1(x1) + f2(x2) + ...  Her özelliğin kendi eğrisi var,
+   ama eğriler birbirine karışmıyor. Geri-uydurma ile kuruluyor. */
+const GM = {};
+GM.dugum = [-1.2, -0.4, 0.4, 1.2];
+GM.baz = x => [x, x*x, x*x*x, ...GM.dugum.map(k => x > k ? (x-k)**3 : 0)];
+GM.f1 = x => 1.6 * Math.sin(1.8 * x);
+GM.f2 = x => 0.7 * x * x - 0.93;
+/* toplamsal veri: y = 3 + f1(x1) + f2(x2) + gurultu */
+GM.top = (() => {
+  const r = rng(31), N = 180, X1 = [], X2 = [], Y = [];
+  for (let i = 0; i < N; i++){ const a = -2 + 4*r(), b = -2 + 4*r();
+    X1.push(a); X2.push(b); Y.push(3 + GM.f1(a) + GM.f2(b) + 0.4 * omNormal(r)); }
+  const TR = [], TE = [];
+  for (let i = 0; i < N; i++) (i % 3 === 2 ? TE : TR).push(i);
+  return { X1, X2, Y, TR, TE, N };
+})();
+/* etkilesimli veri: y = 2·x1·x2 + gurultu · toplamsal model bunu kuramaz */
+GM.etk = (() => {
+  const r = rng(41), N = 180, X1 = [], X2 = [], Y = [];
+  for (let i = 0; i < N; i++){ const a = -2 + 4*r(), b = -2 + 4*r();
+    X1.push(a); X2.push(b); Y.push(2 * a * b + 0.4 * omNormal(r)); }
+  const TR = [], TE = [];
+  for (let i = 0; i < N; i++) (i % 3 === 2 ? TE : TR).push(i);
+  return { X1, X2, Y, TR, TE, N };
+})();
+const gmR2 = (D, idx, tah) => {
+  const m = idx.reduce((s, i) => s + D.Y[i], 0) / idx.length;
+  const ss = idx.reduce((s, i) => s + (D.Y[i] - m) ** 2, 0);
+  const sr = idx.reduce((s, i) => s + (D.Y[i] - tah(i)) ** 2, 0);
+  return 1 - sr / ss;
+};
+/* GERİ-UYDURMA: her turda f_j, diğerlerinin kalıntısına uydurulur */
+const _gmCache = {};
+function gmGam(D, tur){
+  const anahtar = (D === GM.top ? 't' : 'e') + tur;
+  if (_gmCache[anahtar]) return _gmCache[anahtar];
+  const XS = [D.X1, D.X2], TR = D.TR;
+  const a0 = TR.reduce((s, i) => s + D.Y[i], 0) / TR.length;
+  const F = [TR.map(() => 0), TR.map(() => 0)];
+  const kat = [null, null], iz = [];
+  const egitimR2 = () => { const m = a0;
+    const ss = TR.reduce((s, i) => s + (D.Y[i] - m) ** 2, 0);
+    const sr = TR.reduce((s, i, q) => s + (D.Y[i] - (a0 + F[0][q] + F[1][q])) ** 2, 0);
+    return 1 - sr / ss; };
+  for (let t = 0; t < tur; t++){
+    for (let j = 0; j < 2; j++){
+      const kalinti = TR.map((i, q) => D.Y[i] - a0 - F[1-j][q]);
+      const B = TR.map(i => [1, ...GM.baz(XS[j][i])]);
+      const b = omEkk(B, kalinti);
+      let f = TR.map(i => [1, ...GM.baz(XS[j][i])].reduce((s, v2, k) => s + v2 * b[k], 0));
+      const mf = f.reduce((s, v2) => s + v2, 0) / f.length;   /* merkezle: a0 tek sahip */
+      f = f.map(v2 => v2 - mf); b[0] -= mf;
+      F[j] = f; kat[j] = b;
+    }
+    iz.push(egitimR2());
+  }
+  const fj = (j, x) => kat[j] ? [1, ...GM.baz(x)].reduce((s, v2, k) => s + v2 * kat[j][k], 0) : 0;
+  const G = { a0, iz, fj, pred: i => a0 + fj(0, D.X1[i]) + fj(1, D.X2[i]) };
+  return (_gmCache[anahtar] = G);
+}
+function gmDogrusal(D, etkilesim){
+  const oz = i => etkilesim ? [1, D.X1[i], D.X2[i], D.X1[i]*D.X2[i]] : [1, D.X1[i], D.X2[i]];
+  const b = omEkk(D.TR.map(oz), D.TR.map(i => D.Y[i]));
+  return i => oz(i).reduce((s, v2, k) => s + v2 * b[k], 0);
+}
+function gmAgac(D, derinlik){
+  const P = D.X1.map((a, i) => [a, D.X2[i]]);
+  const kur = (idx, d) => {
+    const ort = idx.reduce((s, i) => s + D.Y[i], 0) / idx.length;
+    if (d === 0 || idx.length < 5) return { yaprak: ort };
+    let en = { sse: 1e18 };
+    for (let f = 0; f < 2; f++){
+      const dv = [...new Set(idx.map(i => P[i][f]))].sort((a, b2) => a - b2);
+      for (let t = 1; t < dv.length; t++){ const esik = (dv[t-1] + dv[t]) / 2;
+        const L = idx.filter(i => P[i][f] <= esik), R = idx.filter(i => P[i][f] > esik);
+        if (L.length < 3 || R.length < 3) continue;
+        const sse = [L, R].reduce((s, G) => { const m = G.reduce((a, i) => a + D.Y[i], 0) / G.length;
+          return s + G.reduce((a, i) => a + (D.Y[i] - m) ** 2, 0); }, 0);
+        if (sse < en.sse) en = { sse, f, esik, L, R }; }
+    }
+    if (en.sse === 1e18) return { yaprak: ort };
+    return { f: en.f, esik: en.esik, sol: kur(en.L, d-1), sag: kur(en.R, d-1) };
+  };
+  const T = kur(D.TR, derinlik);
+  const t2 = (t, p) => t.yaprak !== undefined ? t.yaprak : t2(p[t.f] <= t.esik ? t.sol : t.sag, p);
+  return i => t2(T, P[i]);
+}
+/* GAM'in bulduğu eğri gerçeğinden ne kadar sapıyor */
+const gmSapma = (G, j) => {
+  const dg = j === 0 ? GM.f1 : GM.f2;
+  let s = 0, n = 0;
+  for (let x = -1.9; x <= 1.9; x += 0.05){ s += Math.abs(G.fj(j, x) - dg(x)); n++; }
+  return s / n;
+};
+
+VIZ.toplamsalModel = s => {
+  clear();
+  const sahne = s.sahne || 'uydurma';
+  const kart = (x, y, w, ad, deger, renk, alt) => {
+    box(x, y, w, 110, 'rgba(7,10,15,.7)', renk, 2);
+    txt(ad, x + w/2, y + 30, K.mut, 16);
+    txt(deger, x + w/2, y + 76, renk, 29);
+    if (alt) txt(alt, x + w/2, y + 98, K.mut, 14);
+  };
+
+  if (sahne === 'uydurma'){
+    const tur = Math.max(0, Math.min(6, s.tur === undefined ? 0 : s.tur));
+    const D = GM.top, G = gmGam(D, tur);
+    baslikSerit('TOPLAMSAL MODEL · GERİ-UYDURMA',
+      'y = a₀ + f₁(x₁) + f₂(x₂). Her eğri, diğerinin artığına uyduruluyor.', []);
+    const ciz = (P, j, renk) => {
+      const dg = j === 0 ? GM.f1 : GM.f2;
+      cx.setLineDash([7, 6]); cx.strokeStyle = K.mut; cx.lineWidth = 2.2;
+      cx.beginPath();
+      for (let i = 0; i <= 160; i++){ const x = -2 + 4*i/160;
+        i ? cx.lineTo(P.sx(x), P.sy(dg(x))) : cx.moveTo(P.sx(x), P.sy(dg(x))); }
+      cx.stroke(); cx.setLineDash([]);
+      if (tur > 0){
+        cx.strokeStyle = renk; cx.lineWidth = 3.4; cx.beginPath();
+        for (let i = 0; i <= 160; i++){ const x = -2 + 4*i/160;
+          const y = Math.max(-3.2, Math.min(3.2, G.fj(j, x)));
+          i ? cx.lineTo(P.sx(x), P.sy(y)) : cx.moveTo(P.sx(x), P.sy(y)); }
+        cx.stroke();
+      }
+    };
+    const P1 = plot(rect(110, 165, 480, 275), -2.1, 2.1, -3.2, 3.2);
+    frame(P1, 'x₁', 'f₁(x₁)', [-2, -1, 0, 1, 2], [-3, 0, 3]);
+    ciz(P1, 0, K.green);
+    const P2 = plot(rect(690, 165, 480, 275), -2.1, 2.1, -3.2, 3.2);
+    frame(P2, 'x₂', 'f₂(x₂)', [-2, -1, 0, 1, 2], [-3, 0, 3]);
+    ciz(P2, 1, K.purple);
+    txt('kesikli: gerçek şekil', P1.R.x + 14, P1.R.y + 26, K.mut, 17, 'left');
+    txt('düz: modelin bulduğu', P1.R.x + 14, P1.R.y + 50, K.green, 17, 'left');
+    /* tur tur egitim R2 */
+    const Q = plot(rect(110, 540, 480, 155), 0.5, 6.5, 0.9, 0.93);
+    frame(Q, 'geri-uydurma turu', 'eğitim R²', [1, 2, 3, 4, 5, 6], [0.90, 0.92]);
+    const G6 = gmGam(D, 6);
+    cx.strokeStyle = K.blue; cx.lineWidth = 3; cx.beginPath();
+    G6.iz.forEach((v2, i) => { const y = Q.sy(Math.max(0.9, v2));
+      i ? cx.lineTo(Q.sx(i+1), y) : cx.moveTo(Q.sx(i+1), y); });
+    cx.stroke();
+    G6.iz.forEach((v2, i) => dot(Q.sx(i+1), Q.sy(Math.max(0.9, v2)), 5, K.blue));
+    if (tur > 0) dot(Q.sx(tur), Q.sy(Math.max(0.9, G6.iz[tur-1])), 9, K.yellow);
+    /* kartlar */
+    const bx = 690;
+    kart(bx, 525, 230, 'TUR', String(tur), K.yellow, tur === 0 ? 'sadece ortalama' : '');
+    kart(bx + 250, 525, 230, 'TEST R²',
+         tur === 0 ? '0.0000' : gmR2(D, D.TE, G.pred).toFixed(4), K.green);
+    kart(bx, 650, 230, 'f₁ SAPMASI', tur === 0 ? '—' : gmSapma(G, 0).toFixed(4), K.mut,
+         'genlik 3.20');
+    kart(bx + 250, 650, 230, 'f₂ SAPMASI', tur === 0 ? '—' : gmSapma(G, 1).toFixed(4), K.mut,
+         'genlik 2.80');
+    kart(bx + 500, 525, 230, 'DOĞRUSAL MODEL',
+         gmR2(D, D.TE, gmDogrusal(D, 0)).toFixed(4), K.orange, 'aynı veri, test R²');
+    kart(bx + 500, 650, 230, 'PARAMETRE', '15', K.blue, '2 eğri × 7 + kesme');
+  }
+
+  else if (sahne === 'agac'){
+    const d = Math.max(3, Math.min(8, s.derinlik === undefined ? 3 : s.derinlik));
+    const D = GM.top, G = gmGam(D, 6), A = gmAgac(D, d), L = gmDogrusal(D, 0);
+    baslikSerit('TOPLAMSAL MODEL · ESNEKLİK KARŞILAŞTIRMASI',
+      'Veri gerçekten toplamsalsa, toplamsal varsayım bedava doğruluk demektir.', []);
+    const P = plot(rect(110, 185, 620, 430), 2.5, 8.5, 0, 1);
+    frame(P, 'ağaç derinliği', 'test R²', [3, 4, 5, 6, 7, 8], [0, 0.5, 1.0]);
+    const gr = gmR2(D, D.TE, G.pred), lr = gmR2(D, D.TE, L);
+    cx.strokeStyle = K.green; cx.lineWidth = 3; cx.setLineDash([8, 6]);
+    cx.beginPath(); cx.moveTo(P.sx(2.5), P.sy(gr)); cx.lineTo(P.sx(8.5), P.sy(gr)); cx.stroke();
+    cx.strokeStyle = K.orange;
+    cx.beginPath(); cx.moveTo(P.sx(2.5), P.sy(lr)); cx.lineTo(P.sx(8.5), P.sy(lr)); cx.stroke();
+    cx.setLineDash([]);
+    cx.strokeStyle = K.blue; cx.lineWidth = 3.2; cx.beginPath();
+    [3,4,5,6,7,8].forEach((k, i) => { const y = P.sy(Math.max(0, gmR2(D, D.TE, gmAgac(D, k))));
+      i ? cx.lineTo(P.sx(k), y) : cx.moveTo(P.sx(k), y); });
+    cx.stroke();
+    [3,4,5,6,7,8].forEach(k => dot(P.sx(k), P.sy(Math.max(0, gmR2(D, D.TE, gmAgac(D, k)))), 5, K.blue));
+    dot(P.sx(d), P.sy(Math.max(0, gmR2(D, D.TE, A))), 9, K.yellow);
+    /* her etiket kendi cizgisinin hemen ustunde · lejant kutusu cizgileri kesmesin */
+    txt('toplamsal model', P.R.x + P.R.w - 14, P.sy(gr) - 14, K.green, 18, 'right');
+    txt('doğrusal', P.R.x + P.R.w - 14, P.sy(lr) - 14, K.orange, 18, 'right');
+    txt('ağaç', P.sx(8) - 16, P.sy(gmR2(D, D.TE, gmAgac(D, 8))) - 16, K.blue, 18, 'right');
+    const bx = 790;
+    kart(bx, 200, 290, 'TOPLAMSAL MODEL', gr.toFixed(4), K.green, 'test R²');
+    kart(bx + 310, 200, 290, 'AĞAÇ (derinlik ' + d + ')',
+         gmR2(D, D.TE, A).toFixed(4), K.blue, 'test R²');
+    kart(bx, 330, 290, 'DOĞRUSAL', lr.toFixed(4), K.orange, 'test R²');
+    kart(bx + 310, 330, 290, 'ARADAKİ FARK',
+         (gr - gmR2(D, D.TE, A)).toFixed(4), K.purple, 'toplamsal eksi ağaç');
+    box(bx, 470, 600, 150, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('VERİ GERÇEKTEN TOPLAMSAL', bx + 300, 504, K.mut, 18);
+    txt('y = 3 + f₁(x₁) + f₂(x₂), etkileşim yok.', bx + 20, 546, K.txt, 19, 'left');
+    txt('Toplamsal model bunu bildiği için pürüzsüz eğri', bx + 20, 578, K.mut, 18, 'left');
+    txt('kurabiliyor. Ağaç aynı şeyi basamaklarla deniyor.', bx + 20, 606, K.mut, 18, 'left');
+  }
+
+  else { /* etkilesim: toplamsal varsayimin coktugu yer */
+    const D = GM.etk, G = gmGam(D, 6), A = gmAgac(D, s.derinlik || 8);
+    const L = gmDogrusal(D, 0), E = gmDogrusal(D, 1);
+    baslikSerit('TOPLAMSAL MODEL · VARSAYIMIN ÇÖKTÜĞÜ YER',
+      'y = 2·x₁·x₂. Hiçbir f₁(x₁) + f₂(x₂) bu yüzeyi kuramaz.', []);
+    /* sol: veri, y degerine gore renk · eyer sekli */
+    const P = plot(rect(110, 185, 460, 430), -2.1, 2.1, -2.1, 2.1);
+    frame(P, 'x₁', 'x₂', [-2, 0, 2], [-2, 0, 2]);
+    D.X1.forEach((a, i) => {
+      const t = Math.max(-1, Math.min(1, D.Y[i] / 8));
+      dot(P.sx(a), P.sy(D.X2[i]), 5, t > 0 ? K.green : K.orange);
+    });
+    /* sacilim tum alani kapliyor: lejanta zemin ver */
+    box(P.R.x + 8, P.R.y + 8, 300, 62, 'rgba(7,10,15,.88)', K.axis, 1);
+    txt('yeşil: y > 0   turuncu: y < 0', P.R.x + 20, P.R.y + 32, K.mut, 17, 'left');
+    txt('işaret dört bölgede dönüşümlü', P.R.x + 20, P.R.y + 58, K.mut, 17, 'left');
+    /* sag: cubuk grafik */
+    const yontem = [
+      ['toplamsal model', gmR2(D, D.TE, G.pred), K.red],
+      ['doğrusal', gmR2(D, D.TE, L), K.orange],
+      ['ağaç (derinlik 8)', gmR2(D, D.TE, A), K.blue],
+      ['doğrusal + x₁·x₂', gmR2(D, D.TE, E), K.green],
+    ];
+    const Q = plot(rect(700, 190, 690, 265), -0.55, 1.05, -0.5, 3.9);
+    frame(Q, 'test R²', '', [-0.5, 0, 0.5, 1.0], []);
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([5, 4]);
+    cx.beginPath(); cx.moveTo(Q.sx(0), Q.R.y); cx.lineTo(Q.sx(0), Q.R.y + Q.R.h); cx.stroke();
+    cx.setLineDash([]);
+    yontem.forEach(([ad, r2v, renk], i) => {
+      const y = Q.sy(3 - i), x0 = Q.sx(0), x1 = Q.sx(Math.max(-0.55, Math.min(1.05, r2v)));
+      cx.fillStyle = renk + '55'; cx.fillRect(Math.min(x0, x1), y - 22, Math.abs(x1 - x0), 44);
+      cx.strokeStyle = renk; cx.lineWidth = 2;
+      cx.strokeRect(Math.min(x0, x1), y - 22, Math.abs(x1 - x0), 44);
+      txt(ad, Q.R.x + 12, y - 28, K.mut, 17, 'left');
+      txt(r2v.toFixed(4), x1 + (r2v < 0 ? -12 : 12), y + 8, renk, 21, r2v < 0 ? 'right' : 'left');
+    });
+    box(700, 545, 690, 175, 'rgba(7,10,15,.55)', K.red, 2);
+    txt('TOPLAMSAL MODEL NEDEN SIFIRIN ALTINDA', 1045, 578, K.red, 19);
+    txt('x₁ tek başına bakıldığında y ortalaması sıfır. x₂ için de öyle.', 720, 618, K.txt, 19, 'left');
+    txt('Yani her iki kenar dağılımında da öğrenilecek hiçbir şey yok.', 720, 648, K.txt, 19, 'left');
+    txt('Model yine de esnek eğriler uyduruyor ve gürültüyü ezberliyor:', 720, 678, K.mut, 18, 'left');
+    txt('sonuç, her şeye ortalamayı söylemekten bile kötü.', 720, 706, K.mut, 18, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

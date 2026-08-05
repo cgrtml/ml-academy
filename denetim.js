@@ -764,6 +764,71 @@ console.log('═══ ÖZELLİK MÜHENDİSLİĞİ ═══');
         omR2(D.TE, omAgac(8)), omR2(D.TE, omAgacOlcekli(8, 1000)), 6);
 }
 
+console.log('═══ TOPLAMSAL MODELLER (GAM) ═══');
+{
+  const D = GM.top, E = GM.etk;
+  const G = gmGam(D, 6), L = gmDogrusal(D, 0);
+  /* geri-uydurma yakinsamasi */
+  iddia('geri-uydurma 1. tur eğitim R²', 0.915462, G.iz[0], 6);
+  iddia('geri-uydurma 2. tur eğitim R²', 0.922637, G.iz[1], 6);
+  iddia('geri-uydurma 3. tur eğitim R²', 0.922659, G.iz[2], 6);
+  /* "artik degismiyor" tam sifir degil: kalan degisim 7e-8, yani alti basamakta gorunmez */
+  iddia('3. turdan sonraki toplam değişim milyonda birin altında',
+        true, Math.abs(G.iz[5] - G.iz[2]) < 1e-6);
+  iddia('3. turdan sonra altı basamağa kadar aynı',
+        G.iz[2].toFixed(6), G.iz[5].toFixed(6), 0);
+  iddia('eğitim R² her turda artıyor', true,
+        G.iz.every((v, i, a2) => i === 0 || v >= a2[i-1] - 1e-12));
+  /* ders "test R2 hafifce dusuyor" diyor · dogrula */
+  iddia('1 tur test R²', 0.8935, gmR2(D, D.TE, gmGam(D, 1).pred), 4);
+  iddia('2 tur test R²', 0.8874, gmR2(D, D.TE, gmGam(D, 2).pred), 4);
+  iddia('3 tur test R²', 0.8866, gmR2(D, D.TE, gmGam(D, 3).pred), 4);
+  iddia('tur arttıkça test R² düşüyor (eğitimin tersine)', true,
+        gmR2(D, D.TE, gmGam(D,3).pred) < gmR2(D, D.TE, gmGam(D,1).pred));
+  iddia('ama fark üçüncü basamakta kalıyor', true,
+        gmR2(D, D.TE, gmGam(D,1).pred) - gmR2(D, D.TE, gmGam(D,3).pred) < 0.01);
+  /* sekil geri kazanimi */
+  iddia('f₁ ortalama sapması', 0.0980, gmSapma(G, 0), 4);
+  iddia('f₂ ortalama sapması', 0.0878, gmSapma(G, 1), 4);
+  iddia('f₁ genliği', 3.20, 2 * 1.6, 2);
+  iddia('f₁ sapması genliğin %5 inin altında', true, gmSapma(G, 0) / 3.20 < 0.05);
+  iddia('f₂ sapması genliğin %5 inin altında', true, gmSapma(G, 1) / 2.80 < 0.05);
+  /* toplamsal veride sıralama */
+  iddia('toplamsal veri · GAM test R²', 0.8866, gmR2(D, D.TE, G.pred), 4);
+  iddia('toplamsal veri · doğrusal test R²', 0.1145, gmR2(D, D.TE, L), 4);
+  iddia('toplamsal veri · ağaç d=3', 0.3057, gmR2(D, D.TE, gmAgac(D, 3)), 4);
+  iddia('toplamsal veri · ağaç d=5', 0.5989, gmR2(D, D.TE, gmAgac(D, 5)), 4);
+  iddia('toplamsal veri · ağaç d=8', 0.5872, gmR2(D, D.TE, gmAgac(D, 8)), 4);
+  /* asil iddia: agac hicbir derinlikte GAM i yakalayamiyor */
+  {
+    let enIyi = -1e9, enIyiD = -1;
+    for (let d2 = 3; d2 <= 10; d2++){ const v = gmR2(D, D.TE, gmAgac(D, d2));
+      if (v > enIyi){ enIyi = v; enIyiD = d2; } }
+    iddia('ağacın en iyi test R² değeri', 0.5989, enIyi, 4);
+    iddia('ağacın en iyi derinliği', 5, enIyiD, 0);
+    iddia('ağaç hiçbir derinlikte toplamsal modeli yakalayamıyor',
+          true, enIyi < gmR2(D, D.TE, G.pred));
+    iddia('aradaki fark', 0.2877, gmR2(D, D.TE, G.pred) - enIyi, 4);
+  }
+  /* etkilesimli veride SIRALAMA TERSINE DONUYOR · dersin asil iddiasi */
+  const GE = gmGam(E, 6);
+  iddia('etkileşim verisi · GAM test R²', -0.3989, gmR2(E, E.TE, GE.pred), 4);
+  iddia('etkileşim verisi · GAM ortalamadan bile kötü', true, gmR2(E, E.TE, GE.pred) < 0);
+  iddia('etkileşim verisi · doğrusal test R²', -0.0635, gmR2(E, E.TE, gmDogrusal(E, 0)), 4);
+  iddia('etkileşim verisi · ağaç d=8 test R²', 0.7342, gmR2(E, E.TE, gmAgac(E, 8)), 4);
+  iddia('etkileşim verisi · doğrusal + çarpım test R²', 0.9761, gmR2(E, E.TE, gmDogrusal(E, 1)), 4);
+  iddia('etkileşim verisinde ağaç GAM i geçiyor (sıra tersine döndü)',
+        true, gmR2(E, E.TE, gmAgac(E, 8)) > gmR2(E, E.TE, GE.pred));
+  iddia('toplamsal veride ise GAM ağacı geçiyor',
+        true, gmR2(D, D.TE, G.pred) > gmR2(D, D.TE, gmAgac(D, 8)));
+  /* GAM esnek egrilerle gurultuyu ezberliyor: egitimde iyi, testte negatif */
+  iddia('etkileşim verisinde GAM eğitim R² pozitif', true, GE.iz[GE.iz.length-1] > 0.1);
+  /* toplamsal modelin parametre sayisi */
+  iddia('bir eğrinin baz boyu', 7, GM.baz(0.5).length, 0);
+  iddia('toplam parametre (2 eğri × 7 + kesme)', 15, 2 * GM.baz(0.5).length + 1, 0);
+  iddia('eğitim ve test ayrık', 180, D.TR.length + D.TE.length, 0);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

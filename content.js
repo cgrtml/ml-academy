@@ -54,7 +54,7 @@ const ROTALAR = [
     {id:'fisher-lda',     ad:'Fisher\'ın fikri: sınıfları ayıran en iyi yön',   sure:14, durum:'hazir'},
     {id:'uretici-ayirici',  ad:'Sınırı mı çizersin, veriyi mi üretirsin',        sure:14, durum:'hazir'},
     {id:'spline',         ad:'Spline: eğriyi parça parça bükmek',              sure:13, durum:'hazir'},
-    {id:'gam',            ad:'Toplamsal modeller: her özelliğin kendi eğrisi',  sure:12, durum:'planli'},
+    {id:'gam',            ad:'Toplamsal modeller: her özelliğin kendi eğrisi',  sure:17, durum:'hazir'},
     {id:'ozellik-onemi',  ad:'Özellik önemi: model hangi değişkene bakıyor',   sure:15, durum:'hazir'},
     {id:'ozellik-muh',    ad:'Özellik mühendisliği: veriden yeni bilgi çıkarmak',  sure:18, durum:'hazir'},
     {id:'pekistirmeli',   ad:'Pekiştirmeli öğrenme: ödülle öğrenmek',          sure:18, durum:'hazir'},
@@ -6883,6 +6883,147 @@ DERSLER['ozellik-muh'] = {
       '<b>4 parametre</b> ile <b>0.9886</b>’ya.<br><br>' +
       'Buna karşılık ağaç ölçekten hiç etkilenmiyor: boy ekseni 1000 kat büyüdüğünde test R² ' +
       'aynı kalıyor. <b>Hangi ön işlemenin gerektiği modele bağlıdır</b>, evrensel bir liste yok.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── TOPLAMSAL MODELLER ─────────────── */
+DERSLER['gam'] = {
+  ad:'Toplamsal modeller: esneklik ve okunabilirlik aynı anda',
+  alt:'Her özelliğin kendi eğrisi var ama eğriler birbirine karışmıyor. Bu kısıt hem doğruluk kazandırıyor hem de modeli okunur bırakıyor.',
+  kaynaklar:[
+    {y:'Hastie, T. & Tibshirani, R.', t:'1990', b:'Generalized Additive Models', n:'Chapman & Hall'},
+    {y:'Hastie, T., Tibshirani, R. & Friedman, J.', t:'2009', b:'The Elements of Statistical Learning, Bölüm 9.1', n:'Springer', u:'https://hastie.su.domains/ElemStatLearn/'},
+    {y:'Wood, S. N.', t:'2017', b:'Generalized Additive Models: An Introduction with R, 2. baskı', n:'CRC Press'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Geri-uydurma: sırayla, artığa bakarak',
+    goal:'İki eğriyi aynı anda çözmek yerine sırayla çözmenin nasıl işlediğini göreceksin.',
+    todo:'Tur sayısını 0’dan artır. Eğriler kaçıncı turda yerine oturuyor?',
+    kind:'controls', viz:'toplamsalModel', h:770, state:{sahne:'uydurma'},
+    controls:[{k:'tur', lb:'GERİ-UYDURMA TURU', min:0, max:6, step:1, val:0,
+               fmt:v => v === 0 ? 'henüz yok' : v + '. tur'}],
+    derive:s => ({sp: s.tur ? gmSapma(gmGam(GM.top, s.tur), 0) : 9}),
+    live:s => [['f₁ SAPMASI', s.tur ? s.sp.toFixed(4) : '—'],
+               ['TEST R²', s.tur ? gmR2(GM.top, GM.top.TE, gmGam(GM.top, s.tur).pred).toFixed(4) : '0.0000'],
+               ['HEDEF', 'sapma < 0.12']],
+    unlock:s => s.sp < 0.12,
+    unlockMsg:'f₁ sapmasını 0.12 altına indir',
+    body:'<p>Model şu biçimde: <b>y = a₀ + f₁(x₁) + f₂(x₂)</b>. Her özelliğin kendi eğrisi var. ' +
+      'Doğrusal modelden esnek, çünkü eğriler düz olmak zorunda değil. Kara kutudan kısıtlı, ' +
+      'çünkü x₁ ile x₂ birbirine karışamıyor.</p>' +
+      '<p>İki eğriyi aynı anda çözmek zor. <b>Geri-uydurma</b> şu numarayı yapıyor: f₂’yi sabit ' +
+      'tut, y’den onu çıkar, kalana f₁’i uydur. Sonra f₁’i sabit tut, aynısını f₂ için yap. ' +
+      'Tekrarla.</p>' +
+      '<p>Her adımda tek bir eğri uyduruluyor, yani problem tek boyutlu bir uydurma işine ' +
+      'indirgeniyor. Eğitim R²: 1. turda <b>0.915462</b>, 2. turda <b>0.922637</b>, ' +
+      '3. turda <b>0.922659</b>. Dördüncü turdan sonra altı basamağa kadar hiçbir rakam ' +
+      'değişmiyor (kalan hareket milyonda birin altında).</p>' +
+      '<p>Yani <b>üç turda bitiyor</b>. Bu bir tesadüf değil: her tur kalan hatayı azaltmak ' +
+      'zorunda olduğu için süreç azalan bir diziye takılır.</p>' +
+      '<p>Küçük bir dürüstlük notu: eğitim R² her turda artarken test R² hafifçe düşüyor, ' +
+      '<b>0.8935 → 0.8874 → 0.8866</b>. Fark üçüncü basamakta ve önemsiz, ama yön ilginç: ' +
+      'daha çok tur her zaman daha iyi model demek değil.</p>',
+    learned:'<b>Geri-uydurma, çok boyutlu bir uydurma problemini tek boyutlu adımlara böler.</b><br><br>' +
+      'Her turda bir eğri, diğerlerinin bıraktığı artığa uydurulur. Burada üç turda ' +
+      'yakınsıyor: <b>0.915462 → 0.922637 → 0.922659</b>, sonrası sabit.<br><br>' +
+      'Bulunan f₁ eğrisinin gerçek şekilden ortalama sapması <b>0.0980</b>, eğrinin genliği ise 3.20. ' +
+      'Yani şekli yaklaşık <b>%3</b> hatayla çıkardı.',
+    xp:25,
+  },
+  {
+    t:'Modelin ne öğrendiğini okuyabilmek',
+    goal:'Toplamsal yapının neden yorumlanabilirlik anlamına geldiğini göreceksin.',
+    todo:'6 turda bak. İki eğri gerçek şekillerin üstüne oturuyor mu?',
+    kind:'controls', viz:'toplamsalModel', h:770, state:{sahne:'uydurma'},
+    controls:[{k:'tur', lb:'GERİ-UYDURMA TURU', min:1, max:6, step:1, val:6,
+               fmt:v => v + '. tur'}],
+    live:s => [['f₁ SAPMASI', gmSapma(gmGam(GM.top, s.tur), 0).toFixed(4), K.green],
+               ['f₂ SAPMASI', gmSapma(gmGam(GM.top, s.tur), 1).toFixed(4), K.purple],
+               ['DOĞRUSAL TEST R²', gmR2(GM.top, GM.top.TE, gmDogrusal(GM.top, 0)).toFixed(4), K.orange]],
+    body:'<p>Kesikli çizgiler verinin üretildiği gerçek şekiller. Düz çizgiler modelin ' +
+      'bulduğu. Model bunları hiç görmedi, sadece 120 eğitim noktası gördü.</p>' +
+      '<p>f₁ sapması <b>0.0980</b> (genlik 3.20), f₂ sapması <b>0.0878</b> (genlik 2.80).</p>' +
+      '<p>Asıl kazanç burada: <b>bu iki resim modelin tamamıdır</b>. Model x₁ hakkında ne ' +
+      'düşünüyor sorusunun cevabı soldaki eğri. Başka hiçbir yerde saklı bir davranışı yok, ' +
+      'çünkü toplamsal yapı x₁’in etkisinin x₂’den bağımsız olmasını garanti ediyor.</p>' +
+      '<p>Aynı veriye doğrusal model uydurursan test R² <b>0.1145</b>. Yani doğru cevap ' +
+      '"düz çizgi yeter" değil. Eğrilere ihtiyaç var, ama etkileşime yok.</p>' +
+      '<p>Toplam parametre sayısı <b>15</b>: iki eğri için yedişer katsayı ve bir kesme terimi. ' +
+      'Bir sinir ağının binlerce ağırlığıyla karşılaştır: burada her katsayı bir eğrinin bir ' +
+      'parçası ve eğri doğrudan çizilebiliyor.</p>',
+    learned:'<b>Toplamsal yapı, modelin tamamının iki grafikle gösterilebilmesi demektir.</b><br><br>' +
+      'x₁’in etkisi x₂’den bağımsız olduğu için "x₁ artınca ne olur" sorusunun tek bir ' +
+      'cevabı vardır ve o cevap çizilebilir.<br><br>' +
+      'Aynı veride doğrusal model <b>0.1145</b>, toplamsal model <b>0.8866</b>. ' +
+      'Kazanç eğrilerden geliyor, etkileşimden değil.',
+    xp:50,
+  },
+  {
+    t:'Doğru varsayım, bedava doğruluk',
+    goal:'Veri gerçekten toplamsalken esnek bir modelin neden geri kaldığını ölçeceksin.',
+    todo:'Ağacın derinliğini artır. Yeşil çizgiye yaklaşabiliyor mu?',
+    kind:'controls', viz:'toplamsalModel', h:700, state:{sahne:'agac'},
+    controls:[{k:'derinlik', lb:'AĞAÇ DERİNLİĞİ', min:3, max:8, step:1, val:3,
+               fmt:v => 'derinlik '+v}],
+    live:s => [['AĞAÇ TEST R²', gmR2(GM.top, GM.top.TE, gmAgac(GM.top, s.derinlik)).toFixed(4), K.blue],
+               ['TOPLAMSAL MODEL', gmR2(GM.top, GM.top.TE, gmGam(GM.top, 6).pred).toFixed(4), K.green],
+               ['DOĞRUSAL', gmR2(GM.top, GM.top.TE, gmDogrusal(GM.top, 0)).toFixed(4), K.orange]],
+    body:'<p>Ağaç toplamsal modelden daha esnek. İstediği her yüzeyi kurabilir, oysa toplamsal ' +
+      'model etkileşim kuramaz. Peki bu veride kim kazanıyor?</p>' +
+      '<p>Ağaç derinlik 3’te <b>0.3057</b>, derinlik 5’te <b>0.5989</b>, derinlik 8’de ' +
+      '<b>0.5872</b>. Beşten sonra iyileşmiyor, hatta hafifçe geriliyor.</p>' +
+      '<p>Toplamsal model: <b>0.8866</b>. Aradaki fark <b>0.29</b> ve ağaç bunu hiçbir ' +
+      'derinlikte kapatamıyor.</p>' +
+      '<p>Sebep şu: veri gerçekten toplamsal olarak üretildi. Toplamsal model bu doğru bilgiyi ' +
+      'baştan içinde taşıyor, dolayısıyla verisini pürüzsüz eğri kurmaya harcayabiliyor. ' +
+      'Ağaç ise aynı pürüzsüz eğriyi eksene dik basamaklarla kurmaya çalışıyor ve her basamak ' +
+      'için veri harcıyor.</p>' +
+      '<p>Bu, önyargı-varyans dersindeki dengenin bir başka yüzü. <b>Doğru bir kısıt, ' +
+      'varyansı bedavaya düşürür</b>, çünkü karşılığında ödenen önyargı sıfırdır.</p>',
+    learned:'<b>Doğru varsayım, esnekliğe bedelsiz üstünlük sağlar.</b><br><br>' +
+      'Toplamsal veride: toplamsal model <b>0.8866</b>, en iyi ağaç <b>0.5989</b>, ' +
+      'doğrusal <b>0.1145</b>.<br><br>' +
+      'Esneklik kendi başına bir erdem değildir. Modelin taşıdığı varsayım veriye uyuyorsa ' +
+      'kazanç, uymuyorsa kayıp getirir. Sıradaki adımda tersini ölçeceğiz.',
+    xp:50,
+  },
+  {
+    t:'Varsayımın çöktüğü yer',
+    goal:'Aynı modelin, varsayımı bozulduğunda ne kadar kötüleşebileceğini göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'toplamsalModel', h:770, state:{sahne:'etkilesim', derinlik:8},
+    body:'<p>Şimdi veriyi değiştiriyoruz: <b>y = 2 · x₁ · x₂</b>. Tam bir etkileşim, ' +
+      'toplamsal hiçbir parça yok.</p>' +
+      '<p>Soldaki resme bak: dört bölge var ve işaret dönüşümlü. x₁ pozitifken y’nin işareti ' +
+      'tamamen x₂’ye bağlı.</p>' +
+      '<p>Ölçümler:</p>' +
+      '<p><b>toplamsal model: &minus;0.3989</b> &nbsp;·&nbsp; doğrusal: &minus;0.0635 &nbsp;·&nbsp; ' +
+      'ağaç (derinlik 8): <b>0.7342</b> &nbsp;·&nbsp; doğrusal + x₁·x₂ sütunu: <b>0.9761</b></p>' +
+      '<p>Toplamsal model <b>sıfırın altında</b>. Yani her şeye ortalamayı söylemekten bile kötü. ' +
+      'Sebebi öğretici: x₁’e tek başına bakınca y’nin ortalaması sıfırdır, x₂ için de öyle. ' +
+      'İki kenar dağılımda da öğrenilecek hiçbir şey yok. Model yine de esnek eğriler uydurmak ' +
+      'zorunda ve elindeki tek malzeme gürültü. Ezberliyor.</p>' +
+      '<p>Bir önceki adımda tam tersi olmuştu. Aynı iki model, aynı sıra, ters sonuç. ' +
+      'Değişen tek şey verinin yapısıydı.</p>' +
+      '<p>Pratikte kullanılan yol arada bir yerde: seçilmiş birkaç etkileşim terimini modele ' +
+      'elle eklemek. Böylece okunabilirlik büyük ölçüde korunurken bilinen etkileşimler ' +
+      'yakalanır. Yukarıdaki <b>0.9761</b> tam olarak bunun sonucu.</p>',
+    quiz:{ q:'Bir kredi kurumunda risk modeli kuruyorsun. Düzenleyici, reddedilen her başvuruya gerekçe gösterilmesini şart koşuyor. Gradyan artırma modelin test AUC değeri 0.84, toplamsal modelin 0.82. Ne yaparsın?',
+      opts:[
+        {t:'Toplamsal modeli kurar, etkileşim şüphesi olan birkaç terimi ekleyip farkı yeniden ölçerim', why:'Doğru. 0.02’lik fark, gerekçe gösterememenin düzenleyici bedeliyle karşılaştırıldığında küçük. Toplamsal modelde her özelliğin katkısı tek bir eğridir ve bu eğri doğrudan gerekçe metnine dönüşür. Farkın kaynağı büyük olasılıkla birkaç etkileşimdir: bu derste doğrusal modele tek bir çarpım sütunu eklemek test R² değerini -0.0635’ten 0.9761’e çıkardı. Eklenen terimleri elle seçtiğin sürece model okunur kalır.'},
+        {t:'Gradyan artırmayı kullanır, açıklama için SHAP değerleri sunarım', why:'SHAP tek bir tahmin için katkı dağılımı verir ama bu, modelin kararının kendisi değil, karara dair bir yaklaşıklıktır. Düzenleyicinin istediği genelde modelin yapısal olarak denetlenebilir olmasıdır. Ayrıca ödün verilen doğruluk sadece 0.02.'},
+        {t:'0.84 daha yüksek, doğruluk her şeyden önce gelir', why:'Bu kısıt teknik değil hukuki. Gerekçe gösteremeyen bir model, doğruluğu ne olursa olsun kullanılamaz. Ayrıca fark 0.02: elde edilen kazanç, kaybedilen kullanılabilirliğin yanında küçük.'},
+        {t:'İki modeli birlikte çalıştırıp ortalamalarını alırım', why:'Topluluk oluşturmak doğruluğa yardımcı olabilir ama açıklanabilirlik sorununu çözmez: sonuç hâlâ açıklanamayan bir bileşen içeriyor. Kısıt, ortalamanın içinde kaybolmaz.'},
+      ], correct:0 },
+    learned:'<b>Toplamsal varsayım bozulduğunda model sadece geri kalmaz, ortalamanın altına düşer.</b><br><br>' +
+      'y = 2·x₁·x₂ verisinde: toplamsal model <b>&minus;0.3989</b>, ağaç <b>0.7342</b>. ' +
+      'Bir önceki adımdaki sıranın tam tersi.<br><br>' +
+      'Kenar dağılımlarda bilgi yokken esnek eğriler gürültüyü ezberler. Çözüm modeli ' +
+      'terk etmek değil: <b>seçilmiş etkileşim terimleri eklemek</b> okunabilirliği koruyarak ' +
+      'aynı veride 0.9761’e çıkarıyor.',
     xp:50,
   },
 ]};
