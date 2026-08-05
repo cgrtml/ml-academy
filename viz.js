@@ -240,6 +240,288 @@ VIZ.dogruUydur = s => {
   }
 };
 
+
+/* ═══════════ CEZALI REGRESYON · ridge & lasso ═══════════
+   40 örnek, 6 özellik. x0 ile x1 korelasyonu 0.986 (kasten).
+   Gerçek katsayılar [3, 0, -2, 0, 0, 0]: yani 1, 3, 4, 5 saf gürültü.
+   Ridge korele çifti paylaştırır, lasso birini seçip diğerini sıfırlar. */
+DATA.ceza = (() => {
+  const r = rng(7), n = 40, p = 6, nT = 400;
+  const gercek = [3.0, 0.0, -2.0, 0, 0, 0];
+  const gauss = () => { let u = 0, w = 0; while (!u) u = r(); while (!w) w = r();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); };
+  const uret = m => { const X = [], y = [];
+    for (let i = 0; i < m; i++){
+      const x0 = gauss();
+      const s = [x0, 0.97 * x0 + 0.24 * gauss(), gauss(), gauss(), gauss(), gauss()];
+      X.push(s); y.push(s.reduce((a, v, j) => a + v * gercek[j], 0) + 0.5 * gauss());
+    } return { X, y }; };
+  const E = uret(n), T = uret(nT);
+  for (let j = 0; j < p; j++){                       // merkezle + ölçekle
+    const m = E.X.reduce((s, q) => s + q[j], 0) / n;
+    const sd = Math.sqrt(E.X.reduce((s, q) => s + (q[j] - m) ** 2, 0) / n);
+    E.X.forEach(q => q[j] = (q[j] - m) / sd);
+  }
+  const my = E.y.reduce((a, b) => a + b, 0) / n;
+  const myT = T.y.reduce((a, b) => a + b, 0) / nT;
+  return { X: E.X, y: E.y.map(v2 => v2 - my), n, p, gercek,
+           XT: T.X, yT: T.y.map(v2 => v2 - myT), nT,
+           ad: ['x₀', 'x₁', 'x₂', 'x₃', 'x₄', 'x₅'] };
+})();
+
+/* Ridge kapalı çözüm: (XᵀX + λI)⁻¹ Xᵀy, Gauss eliminasyonuyla */
+function ridgeFit(lam){
+  const D = DATA.ceza, p = D.p, n = D.n;
+  const A = Array.from({ length: p }, () => new Array(p + 1).fill(0));
+  for (let i = 0; i < p; i++){
+    for (let j = 0; j < p; j++){
+      let s = 0; for (let k = 0; k < n; k++) s += D.X[k][i] * D.X[k][j];
+      A[i][j] = s + (i === j ? lam : 0);
+    }
+    let s = 0; for (let k = 0; k < n; k++) s += D.X[k][i] * D.y[k];
+    A[i][p] = s;
+  }
+  for (let c = 0; c < p; c++){
+    let piv = c;
+    for (let r2 = c + 1; r2 < p; r2++) if (Math.abs(A[r2][c]) > Math.abs(A[piv][c])) piv = r2;
+    const t = A[c]; A[c] = A[piv]; A[piv] = t;
+    const d = A[c][c];
+    for (let j = c; j <= p; j++) A[c][j] /= d;
+    for (let r2 = 0; r2 < p; r2++){
+      if (r2 === c) continue;
+      const f = A[r2][c];
+      for (let j = c; j <= p; j++) A[r2][j] -= f * A[c][j];
+    }
+  }
+  return A.map(r2 => r2[p]);
+}
+
+/* Lasso: koordinat inişi + yumuşak eşikleme (kapalı çözümü yok) */
+function lassoFit(lam, tur){
+  const D = DATA.ceza, p = D.p, n = D.n;
+  const w = new Array(p).fill(0);
+  const nrm = Array.from({ length: p }, (_, j) => {
+    let s = 0; for (let k = 0; k < n; k++) s += D.X[k][j] ** 2; return s; });
+  for (let it = 0; it < (tur || 300); it++){
+    for (let j = 0; j < p; j++){
+      let rho = 0;
+      for (let k = 0; k < n; k++){
+        let tah = 0;
+        for (let m = 0; m < p; m++) if (m !== j) tah += D.X[k][m] * w[m];
+        rho += D.X[k][j] * (D.y[k] - tah);
+      }
+      const g = lam / 2;
+      w[j] = Math.sign(rho) * Math.max(0, Math.abs(rho) - g) / nrm[j];
+    }
+  }
+  return w;
+}
+function cezaFit(yontem, lam){ return yontem === 'lasso' ? lassoFit(lam) : ridgeFit(lam); }
+function cezaRSS(w){
+  const D = DATA.ceza; let s = 0;
+  for (let k = 0; k < D.n; k++){ let t = 0; for (let j = 0; j < D.p; j++) t += D.X[k][j] * w[j];
+    s += (D.y[k] - t) ** 2; }
+  return s;
+}
+function cezaTest(w){
+  const D = DATA.ceza; let s = 0;
+  for (let k = 0; k < D.nT; k++){ let t = 0; for (let j = 0; j < D.p; j++) t += D.XT[k][j] * w[j];
+    s += (D.yT[k] - t) ** 2; }
+  return s / D.nT;
+}
+const cezaSifir = w => w.filter(v => Math.abs(v) < 1e-6).length;
+
+/* λ ekseni boyunca katsayı yolu (önbellekli, çizimde her karede yeniden fit etmeyelim) */
+const _yolCache = {};
+function cezaYol(yontem, lamMax, adet){
+  const anahtar = yontem + ':' + lamMax + ':' + adet;
+  if (_yolCache[anahtar]) return _yolCache[anahtar];
+  const out = [];
+  for (let i = 0; i <= adet; i++){
+    const lam = lamMax * i / adet;
+    const w = cezaFit(yontem, lam);
+    out.push({ lam, w, test: cezaTest(w), rss: cezaRSS(w) });
+  }
+  return (_yolCache[anahtar] = out);
+}
+
+
+/* ── katsayı yolu: λ büyüdükçe katsayılara ne oluyor ── */
+VIZ.cezaYolu = s => {
+  clear();
+  const yontem = s.yontem || 'ridge';
+  const lamMax = yontem === 'lasso' ? 120 : 60;
+  const yol = cezaYol(yontem, lamMax, 60);
+  const lam = Math.min(lamMax, s.lam === undefined ? 0 : s.lam);
+  const D = DATA.ceza;
+  const renk = [K.green, K.orange, K.blue, K.dim, K.dim, K.dim];
+  const w = cezaFit(yontem, lam);
+
+  baslikSerit(yontem === 'lasso' ? 'LASSO · L1 CEZASI' : 'RIDGE · L2 CEZASI',
+    yontem === 'lasso' ? 'Katsayılar sıfıra ÇARPILIR, model özellik seçer.'
+                       : 'Katsayılar sıfıra doğru ÇEKİLİR ama sıfır olmaz.',
+    []);
+
+  /* ── sol: katsayı yolu ── */
+  const P = plot(rect(105, 120, 610, 330), 0, lamMax, -0.6, 4.3);
+  frame(P, 'ceza gücü λ', 'katsayı değeri',
+    [0, lamMax / 4, lamMax / 2, 3 * lamMax / 4, lamMax], [0, 1, 2, 3, 4]);
+  cx.strokeStyle = K.axis; cx.lineWidth = 1.5;
+  cx.beginPath(); cx.moveTo(P.sx(0), P.sy(0)); cx.lineTo(P.sx(lamMax), P.sy(0)); cx.stroke();
+  for (let j = 0; j < D.p; j++){
+    cx.strokeStyle = renk[j]; cx.lineWidth = j < 3 ? 3.4 : 1.6;
+    cx.beginPath();
+    yol.forEach((q, i) => { const X = P.sx(q.lam), Y = P.sy(q.w[j]);
+      i ? cx.lineTo(X, Y) : cx.moveTo(X, Y); });
+    cx.stroke();
+  }
+  cx.setLineDash([6, 5]); cx.strokeStyle = K.yellow; cx.lineWidth = 2.4;
+  cx.beginPath(); cx.moveTo(P.sx(lam), P.R.y); cx.lineTo(P.sx(lam), P.R.y + P.R.h); cx.stroke();
+  cx.setLineDash([]);
+  for (let j = 0; j < D.p; j++){
+    dot(P.sx(lam), P.sy(w[j]), j < 3 ? 8 : 5, renk[j]);
+    if (Math.abs(w[j]) < 1e-6) dot(P.sx(lam), P.sy(0), 10, null, K.red, 2.5);
+  }
+  txt('λ = ' + lam.toFixed(0), P.sx(lam), P.R.y - 10, K.yellow, 20);
+
+  /* ── sol alt: eğitim ve test hatası ── */
+  const Q = plot(rect(105, 510, 610, 150), 0, lamMax, 0, 2.2);
+  frame(Q, 'ceza gücü λ', 'test MSE', [0, lamMax / 2, lamMax], [0, 1, 2]);
+  cx.strokeStyle = K.pink; cx.lineWidth = 3;
+  cx.beginPath();
+  yol.forEach((q, i) => { const X = Q.sx(q.lam), Y = Q.sy(Math.min(2.2, q.test));
+    i ? cx.lineTo(X, Y) : cx.moveTo(X, Y); });
+  cx.stroke();
+  const enIyi = yol.reduce((a, b) => b.test < a.test ? b : a);
+  dot(Q.sx(enIyi.lam), Q.sy(enIyi.test), 7, K.green);
+  txt('en iyi λ≈' + enIyi.lam.toFixed(0) + ' · ' + enIyi.test.toFixed(3),
+      Q.R.x + Q.R.w - 20, Q.R.y + 26, K.green, 17, 'right');
+  dot(Q.sx(lam), Q.sy(Math.min(2.2, cezaTest(w))), 7, K.yellow);
+
+  /* ── sağ: katsayı çubukları ── */
+  const bx = 790, bw = 590, bh = 34, by = 140, ara = 14;
+  txt('KATSAYILAR', bx + bw / 2, by - 20, K.mut, 20);
+  for (let j = 0; j < D.p; j++){
+    const y0 = by + j * (bh + ara);
+    const orta = bx + 330;          /* etiket sütunundan sonra başlasın */
+    const ol = Math.abs(w[j]) / 4.3 * 150;
+    box(bx, y0, bw, bh, 'rgba(255,255,255,.03)', null, 0);
+    txt(D.ad[j], bx + 28, y0 + 24, D.gercek[j] ? K.txt : K.mut, 22, 'center');
+    txt(D.gercek[j] ? 'gerçek ' + D.gercek[j] : 'gürültü', bx + 108, y0 + 23,
+        D.gercek[j] ? K.mut : K.dim, 15, 'center');
+    if (Math.abs(w[j]) > 1e-6){
+      box(w[j] > 0 ? orta : orta - ol, y0 + 7, ol, bh - 14, renk[j] + 'cc', null, 0);
+    } else {
+      txt('SIFIR', orta + 46, y0 + 23, K.red, 17, 'center', '800');
+    }
+    txt(w[j].toFixed(2), bx + bw - 20, y0 + 24, Math.abs(w[j]) < 1e-6 ? K.red : K.txt, 21, 'right');
+    cx.strokeStyle = K.axis; cx.lineWidth = 1;
+    cx.beginPath(); cx.moveTo(orta, y0 + 5); cx.lineTo(orta, y0 + bh - 5); cx.stroke();
+  }
+
+  /* ── sağ alt: özet kutusu ── */
+  const oy = by + 6 * (bh + ara) + 20;
+  box(bx, oy, bw, 96, 'rgba(7,10,15,.7)', K.axis, 2);
+  txt('EĞİTİM RSS', bx + 150, oy + 32, K.mut, 17);
+  txt(cezaRSS(w).toFixed(1), bx + 150, oy + 70, K.orange, 34);
+  txt('TEST MSE', bx + 430, oy + 32, K.mut, 17);
+  txt(cezaTest(w).toFixed(3), bx + 430, oy + 70, cezaTest(w) < 1.2 ? K.green : K.pink, 34);
+
+  txt('λ = ' + lam.toFixed(0) +
+      (yontem === 'lasso' ? '   ·   sıfırlanan ' + cezaSifir(w) + ' özellik'
+                          : '   ·   hiçbir katsayı sıfır değil'),
+      bx + bw / 2, oy + 148, cezaTest(w) < 1.2 ? K.green : K.orange, 26);
+};
+
+
+/* Kısıt sınırında RSS'i en küçükleyen nokta. Hem görsel hem ders kilidi
+   aynı fonksiyonu çağırsın diye dışarı alındı. */
+function cezaGeoCoz(yontem, t){
+  const R = 0.35 + t * 1.55;
+  const bOLS = [2.4, 1.5], A = 1.0, B = 0.72, C = 0.55;
+  const rssDeg = (a, b) => { const u = a - bOLS[0], w = b - bOLS[1];
+    return A * u * u + 2 * C * u * w + B * w * w; };
+  let en = null;
+  for (let k = 0; k <= 720; k++){
+    const th = k / 720 * 2 * Math.PI;
+    let a, b;
+    if (yontem === 'lasso'){
+      const ca = Math.cos(th), sa = Math.sin(th);
+      const sc = R / (Math.abs(ca) + Math.abs(sa));
+      a = sc * ca; b = sc * sa;
+    } else { a = R * Math.cos(th); b = R * Math.sin(th); }
+    const d = rssDeg(a, b);
+    if (!en || d < en.d) en = { a, b, d };
+  }
+  en.R = R; en.bOLS = bOLS; en.rssDeg = rssDeg;
+  en.kose = Math.abs(en.a) < 0.02 || Math.abs(en.b) < 0.02;
+  return en;
+}
+
+/* ── geometri: neden L1 köşeye değer, L2 değmez ── */
+VIZ.cezaGeo = s => {
+  clear();
+  const yontem = s.yontem || 'lasso';
+  const t = s.t === undefined ? 1 : s.t;      // kısıt topunun büyüklüğü 0..1
+  const P = plot(rect(430, 96, 640, 430), -1.6, 3.6, -1.6, 3.6);
+  frame(P, 'β₁', 'β₂', [-1, 0, 1, 2, 3], [-1, 0, 1, 2, 3]);
+
+  const bOLS = [2.4, 1.5];                    // cezasız çözüm
+  /* RSS eş yükselti eğrileri: eliptik, korelasyondan dolayı eğik */
+  const A = 1.0, B = 0.72, C = 0.55;          // (β-β*)ᵀ M (β-β*) biçimi
+  const rssDeg = (a, b) => { const u = a - bOLS[0], w2 = b - bOLS[1];
+    return A * u * u + 2 * C * u * w2 + B * w2 * w2; };
+  [0.15, 0.5, 1.1, 2.0, 3.2, 4.8].forEach((lv, i) => {
+    cx.strokeStyle = 'rgba(132,148,168,' + (0.5 - i * 0.06) + ')'; cx.lineWidth = 1.8;
+    cx.beginPath();
+    for (let k = 0; k <= 90; k++){
+      const th = k / 90 * 2 * Math.PI;
+      /* eş yükselti: parametrik çözüm, yön th boyunca yarıçapı bul */
+      const ca = Math.cos(th), sa = Math.sin(th);
+      const q = A * ca * ca + 2 * C * ca * sa + B * sa * sa;
+      const rr = Math.sqrt(lv / q);
+      const X = P.sx(bOLS[0] + rr * ca), Y = P.sy(bOLS[1] + rr * sa);
+      k ? cx.lineTo(X, Y) : cx.moveTo(X, Y);
+    }
+    cx.closePath(); cx.stroke();
+  });
+  dot(P.sx(bOLS[0]), P.sy(bOLS[1]), 9, K.mut);
+  txt('cezasız çözüm', P.sx(bOLS[0]) + 14, P.sy(bOLS[1]) - 14, K.mut, 18, 'left');
+
+  /* kısıt bölgesi */
+  const coz = cezaGeoCoz(yontem, t);
+  const R = coz.R;
+  cx.strokeStyle = yontem === 'lasso' ? K.orange : K.blue; cx.lineWidth = 3.2;
+  cx.fillStyle = (yontem === 'lasso' ? K.orange : K.blue) + '18';
+  cx.beginPath();
+  if (yontem === 'lasso'){
+    cx.moveTo(P.sx(R), P.sy(0)); cx.lineTo(P.sx(0), P.sy(R));
+    cx.lineTo(P.sx(-R), P.sy(0)); cx.lineTo(P.sx(0), P.sy(-R));
+  } else {
+    for (let k = 0; k <= 80; k++){ const th = k / 80 * 2 * Math.PI;
+      const X = P.sx(R * Math.cos(th)), Y = P.sy(R * Math.sin(th));
+      k ? cx.lineTo(X, Y) : cx.moveTo(X, Y); }
+  }
+  cx.closePath(); cx.fill(); cx.stroke();
+
+  /* değme noktası (yukarıdaki yardımcıdan) */
+  const en = coz;
+  dot(P.sx(en.a), P.sy(en.b), 11, yontem === 'lasso' ? K.orange : K.blue);
+  dot(P.sx(en.a), P.sy(en.b), 11, '#0b1119', null, 3);
+  const sifirMi = en.kose;
+  txt('β = (' + en.a.toFixed(2) + ', ' + en.b.toFixed(2) + ')',
+      P.sx(en.a) + 16, P.sy(en.b) + 30, K.txt, 20, 'left');
+
+  txt(yontem === 'lasso' ? 'L1: |β₁| + |β₂| ≤ t   →   ELMAS' : 'L2: β₁² + β₂² ≤ t   →   ÇEMBER',
+      750, 46, yontem === 'lasso' ? K.orange : K.blue, 26);
+  txt(sifirMi ? '✓ değme noktası KÖŞEDE, bir katsayı tam sıfır'
+              : (yontem === 'lasso' ? 'değme noktası kenarda, ikisi de sıfırdan farklı'
+                                    : 'çemberin köşesi yok, değme noktası hiç sıfır vermez'),
+      750, 74, sifirMi ? K.green : K.mut, 20);
+  durum('kısıt yarıçapı t = ' + R.toFixed(2) + (sifirMi ? '  ·  seyrek çözüm' : '  ·  yoğun çözüm'),
+        sifirMi ? K.green : K.mut);
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

@@ -41,9 +41,9 @@ const ROTALAR = [
     {id:'kumeleme',   ad:'k-means: etiketsiz öğrenme',            sure:12, durum:'hazir'},
     {id:'boyut',      ad:'PCA, t-SNE, UMAP',                      sure:14, durum:'hazir'},
     {id:'regresyon',      ad:'Doğrusal regresyon ve en küçük kareler',         sure:12, durum:'planli'},
-    {id:'ridge',          ad:'Ridge: katsayıları küçültmek',                   sure:12, durum:'planli'},
-    {id:'lasso',          ad:'Lasso: katsayıyı sıfıra sıkıştırmak',            sure:12, durum:'planli'},
-    {id:'norm-l1l2',      ad:'L1 ve L2: iki ceza, iki farklı dünya',           sure:10, durum:'planli'},
+    {id:'ridge',          ad:'Ridge: katsayıları küçültmek',                   sure:14, durum:'hazir'},
+    {id:'lasso',          ad:'Lasso: katsayıyı sıfıra sıkıştırmak',            sure:14, durum:'hazir'},
+    {id:'norm-l1l2',      ad:'L1 ve L2: iki ceza, iki farklı dünya',           sure:12, durum:'hazir'},
     {id:'yanlilik',       ad:'Yanlılık ve varyans: modelin iki tür hatası',    sure:14, durum:'planli'},
     {id:'boyut-laneti',   ad:'Boyut laneti: komşular neden uzaklaşır',         sure:12, durum:'planli'},
     {id:'softmax',        ad:'Softmax ve çapraz entropi',                      sure:12, durum:'planli'},
@@ -4512,5 +4512,291 @@ DERSLER['kirmizi'] = {
       'Filtreler ve çıktı doğrulama ek katmandır.<br><br>' +
       '<b>Kural:</b> modelin yapabileceği en kötü şeyi hesapla, enjeksiyon başarılı olursa olacak şey odur.',
     xp:65,
+  },
+]};
+
+/* ─────────────── RIDGE ─────────────── */
+DERSLER['ridge'] = {
+  ad:'Ridge: katsayıları küçültmek',
+  alt:'Modeli bilerek kötüleştirmek bazen tek doğru hamledir. Eğitim hatasını altı katına çıkarıp test hatasını yarıya indireceğiz.',
+  kaynaklar:[
+    {y:'Hoerl, A. E. & Kennard, R. W.', t:'1970', b:'Ridge Regression: Biased Estimation for Nonorthogonal Problems', n:'Technometrics, 12(1)'},
+    {y:'Bishop, C. M.', t:'2006', b:'Pattern Recognition and Machine Learning, Bölüm 3.1.4', n:'Springer'},
+    {y:'Hastie, Tibshirani, Friedman', t:'2009', b:'The Elements of Statistical Learning, Bölüm 3.4.1', n:'Springer'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'İki özellik aynı şeyi söylerse',
+    goal:'Birbirine çok benzeyen iki özellik varken cezasız regresyonun neden güvenilmez olduğunu göreceksin.',
+    todo:'Kaydırıcı λ=0 dururken sağdaki katsayı çubuklarına bak. x₀ ile x₁ neredeyse aynı sütun, ama katsayıları çok farklı.',
+    kind:'controls', viz:'cezaYolu', h:760,
+    controls:[{k:'lam', lb:'CEZA GÜCÜ λ', min:0, max:60, step:1, val:0, fmt:v => 'λ = '+v}],
+    state:{yontem:'ridge'},
+    live:s => { const w = ridgeFit(s.lam);
+      return [['x₀', w[0].toFixed(2), K.green], ['x₁', w[1].toFixed(2), K.orange],
+              ['EĞİTİM RSS', cezaRSS(w).toFixed(1)], ['TEST MSE', cezaTest(w).toFixed(3), K.pink]]; },
+    body:'<p>40 örnek, 6 özellik. Veriyi ben ürettim, o yüzden <b>gerçek katsayıları biliyorum</b>: ' +
+      'sadece x₀ (katsayı 3) ve x₂ (katsayı −2) anlamlı. x₁, x₃, x₄, x₅ hiçbir şey söylemiyor, gerçek katsayıları sıfır.</p>' +
+      '<p>Bir de tuzak var: <b>x₁, x₀\'ın neredeyse kopyası.</b> Aralarındaki korelasyon 0.986. ' +
+      'Gerçek hayatta bu çok olur, "aylık gelir" ile "yıllık gelir" aynı tabloda yan yana durur.</p>' +
+      '<p>λ=0\'da, yani cezasız en küçük karelerde model <b>x₀ = 3.87</b> diyor, gerçek değer 3.0. ' +
+      'x₁ için 0.15 diyor, gerçek değer 0. Model, ayırt edemediği iki sütuna ağırlığı keyfî dağıtıyor ' +
+      've bu dağıtım veri biraz değişse tamamen değişir.</p>',
+    learned:'<b>Korele özellikler cezasız regresyonu kararsız yapar.</b> Model neredeyse aynı olan iki sütun arasında ' +
+      'ağırlığı keyfî böler; küçük bir veri değişikliği katsayıları savurur.<br><br>' +
+      'Katsayılar büyüdükçe model gürültüye de uymaya başlıyor. Test hatası şu an <b>1.650</b>. Bunu düşüreceğiz.',
+    xp:15,
+  },
+  {
+    t:'Cezayı devreye sok',
+    goal:'Kayıp fonksiyonuna katsayıların karesini eklemenin ne yaptığını kendi elinle göreceksin.',
+    todo:'λ\'yı 0\'dan yukarı doğru yavaşça artır. x₀ ile x₁ çubuklarını izle: birbirlerine yaklaşıyorlar mı?',
+    kind:'controls', viz:'cezaYolu', h:760,
+    controls:[{k:'lam', lb:'CEZA GÜCÜ λ', min:0, max:60, step:1, val:0, fmt:v => 'λ = '+v}],
+    state:{yontem:'ridge'},
+    derive:s => { const w = ridgeFit(s.lam); return {fark: Math.abs(w[0]-w[1])}; },
+    live:s => { const w = ridgeFit(s.lam);
+      return [['x₀', w[0].toFixed(2), K.green], ['x₁', w[1].toFixed(2), K.orange],
+              ['|x₀ − x₁|', s.fark.toFixed(2), s.fark < 0.2 ? K.green : K.mut],
+              ['TEST MSE', cezaTest(w).toFixed(3), K.pink]]; },
+    unlock:s => s.fark < 0.2,
+    unlockMsg:'x₀ ile x₁ arasındaki farkı 0.20\'nin altına indir',
+    body:'<p>Ridge, en küçük karelerin amacını değiştirir:</p>' +
+      '<p style="text-align:center"><b>RSS + λ · (β₁² + β₂² + … + β₆²)</b></p>' +
+      '<p>Model artık sadece "hatayı küçült" demiyor, "hatayı küçült <b>ama katsayıları da büyütme</b>" diyor. ' +
+      'λ, bu iki isteğin arasındaki pazarlık gücü.</p>' +
+      '<p>Sonuç şu: iki özellik aynı bilgiyi taşıyorsa, ağırlığın tamamını birine yüklemek karelerini büyütür. ' +
+      '<b>3.9² = 15.21</b> ama aynı toplamı ikiye bölersen <b>1.95² + 1.95² = 7.605</b>, yani tam yarısı. ' +
+      'Ceza, ağırlığı ikisine <b>paylaştırmayı</b> tercih eder.</p>',
+    learned:'<b>Ridge korele özellikler arasında ağırlığı paylaştırır.</b> λ=20\'de x₀ = 1.69 ve x₁ = 1.59 oluyor, ' +
+      'ikisi neredeyse eşit.<br><br>Sebebi cebir: aynı toplamı iki sayıya bölmek karelerinin toplamını küçültür. ' +
+      'Ceza tam olarak bunu ödüllendiriyor.',
+    xp:35,
+  },
+  {
+    t:'Eğitimi kötüleştir, testi düzelt',
+    goal:'Bilerek daha kötü uyan bir modelin neden daha iyi tahmin ettiğini sayılarla göreceksin.',
+    todo:'λ\'yı gezdirirken sağ alttaki pembe test eğrisine bak. Nerede dibe iniyor?',
+    kind:'controls', viz:'cezaYolu', h:760,
+    controls:[{k:'lam', lb:'CEZA GÜCÜ λ', min:0, max:60, step:1, val:0, fmt:v => 'λ = '+v}],
+    state:{yontem:'ridge'},
+    derive:s => { const w = ridgeFit(s.lam); return {tst: cezaTest(w)}; },
+    live:s => { const w = ridgeFit(s.lam);
+      return [['EĞİTİM RSS', cezaRSS(w).toFixed(1), K.orange],
+              ['TEST MSE', s.tst.toFixed(3), K.pink],
+              ['HEDEF', '< 0.95']]; },
+    unlock:s => s.tst < 0.95,
+    unlockMsg:'Test MSE\'yi 0.95\'in altına indir',
+    body:'<p>İki eğri zıt yönlere gidiyor ve bu tesadüf değil.</p>' +
+      '<p><b>Eğitim RSS:</b> λ=0\'da 8.2. λ=20\'de <b>50.3</b>. Altı katına çıktı, model eğitim verisine bilerek daha kötü uyuyor.</p>' +
+      '<p><b>Test MSE:</b> λ=0\'da 1.650. λ=20\'de <b>0.901</b>. Neredeyse yarıya indi.</p>' +
+      '<p>λ\'yı daha da büyütürsen test hatası tekrar yükselir: λ=100\'de 3.321, λ=200\'de 6.042. ' +
+      'Çünkü artık gerçek sinyali de eziyorsun. Ortada bir tatlı nokta var.</p>',
+    learned:'<b>Ridge eğitim hatasını kasten yükseltip test hatasını düşürür.</b> Eğitim RSS 8.2\'den 50.3\'e çıkarken ' +
+      'test MSE 1.650\'den <b>0.901</b>\'e iniyor, yani <b>%45.4 iyileşme</b>.<br><br>' +
+      'Bu, "eğitim verisindeki başarı başarı değildir" fikrinin ölçülmüş hâli. λ çok büyürse iş tersine döner: ' +
+      'λ=200\'de test hatası 6.042, cezasız hâlinden bile kötü.',
+    xp:40,
+  },
+  {
+    t:'λ nasıl seçilir?',
+    goal:'Doğru λ değerini bulmanın tek meşru yolunu öğreneceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'cezaYolu', h:760, state:{yontem:'ridge', lam:20},
+    body:'<p>Yukarıdaki test eğrisini çizebilmek için ben test verisini kullandım. ' +
+      '<b>Gerçek hayatta bunu yapamazsın</b>, çünkü test verisine bir kere bakınca o veri test verisi olmaktan çıkar.</p>' +
+      '<p>Doğru yol: eğitim verisini k parçaya bölüp <b>çapraz doğrulama</b> ile her λ değerini ölçmek, ' +
+      'kazanan λ ile modeli tüm eğitim verisinde yeniden kurmak, teste sadece en sonda bir kez bakmak.</p>',
+    quiz:{ q:'Ridge\'de λ değerini neye göre seçmelisin?',
+      opts:[
+        {t:'Eğitim hatasını en küçük yapan λ', why:'Hayır. Eğitim hatası her zaman λ=0\'da en küçüktür, çünkü ceza yokken model eğitim verisine en iyi uyar. Bu ölçüt seni hep cezasız modele götürür ve ridge\'in bütün faydasını siler.'},
+        {t:'Çapraz doğrulama hatasını en küçük yapan λ', why:'Doğru. Eğitim verisini katlara bölüp her λ için görülmemiş katlardaki hatayı ölçersin. Test kümesine hiç dokunmadan λ seçmiş olursun.'},
+        {t:'Katsayıları en küçük yapan λ', why:'Hayır. Bu ölçüt λ büyüdükçe bütün katsayıları sıfıra götürür ve model hiçbir şey tahmin edemez hâle gelir. Burada λ=200\'de test hatası 6.042\'ye çıkıyor.'},
+        {t:'Her veri kümesi için sabit bir değer, örneğin λ=1', why:'Hayır. Doğru λ; örnek sayısına, özellik sayısına, gürültü seviyesine ve özelliklerin ölçeğine bağlıdır. Bu veride en iyi λ 20 çıktı, başka veride 0.01 olabilir.'},
+      ], correct:1 },
+    learned:'<b>λ bir hiperparametredir: veriden öğrenilmez, veriyle aranır.</b> Aracı çapraz doğrulamadır.<br><br>' +
+      'Bir şart daha var: ceza bütün katsayılara aynı büyüklükte uygulandığı için özellikler <b>önce ölçeklenmeli</b>. ' +
+      'Metre ile ölçülen bir özellikle kilometre ile ölçülen bir özellik aynı cezayı yiyemez.',
+    xp:35,
+  },
+]};
+
+/* ─────────────── LASSO ─────────────── */
+DERSLER['lasso'] = {
+  ad:'Lasso: katsayıyı sıfıra sıkıştırmak',
+  alt:'Ridge katsayıları küçültür ama hiçbirini yok etmez. Lasso yok eder, ve bunu yaparken hangi özelliğin gereksiz olduğunu sana söyler.',
+  kaynaklar:[
+    {y:'Tibshirani, R.', t:'1996', b:'Regression Shrinkage and Selection via the Lasso', n:'J. Royal Statistical Society B, 58(1)'},
+    {y:'Hastie, Tibshirani, Friedman', t:'2009', b:'The Elements of Statistical Learning, Bölüm 3.4.2', n:'Springer'},
+    {y:'Zou, H. & Hastie, T.', t:'2005', b:'Regularization and Variable Selection via the Elastic Net', n:'J. Royal Statistical Society B, 67(2)'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Tek şey değişti: kare yerine mutlak değer',
+    goal:'Cezanın biçimini değiştirmenin sonucu nasıl kökten değiştirdiğini göreceksin.',
+    todo:'λ\'yı artır ve katsayı yoluna bak. Ridge\'de çizgiler sıfıra <b>yaklaşıyordu</b>, burada ne oluyor?',
+    kind:'controls', viz:'cezaYolu', h:760,
+    controls:[{k:'lam', lb:'CEZA GÜCÜ λ', min:0, max:120, step:1, val:0, fmt:v => 'λ = '+v}],
+    state:{yontem:'lasso'},
+    derive:s => ({sifir: cezaSifir(lassoFit(s.lam))}),
+    live:s => { const w = lassoFit(s.lam);
+      return [['x₀', w[0].toFixed(2), K.green], ['x₁', w[1].toFixed(2), K.orange],
+              ['SIFIRLANAN', s.sifir + ' / 6', s.sifir ? K.red : K.mut],
+              ['TEST MSE', cezaTest(w).toFixed(3), K.pink]]; },
+    unlock:s => s.sifir >= 1,
+    unlockMsg:'En az bir katsayıyı tam sıfıra indir',
+    body:'<p>Aynı veri, aynı problem. Tek fark cezanın biçimi:</p>' +
+      '<p style="text-align:center">Ridge: RSS + λ·Σ<b>β²</b> &nbsp;&nbsp;·&nbsp;&nbsp; Lasso: RSS + λ·Σ<b>|β|</b></p>' +
+      '<p>Kare yerine mutlak değer. Küçük görünen bu değişiklik davranışı tamamen değiştiriyor.</p>' +
+      '<p>Ridge\'de bir katsayı 0.01\'e iner, 0.001\'e iner, ama <b>asla tam sıfır olmaz</b>. ' +
+      'Lasso\'da λ=1\'de ilk katsayı çat diye sıfırlanıyor ve orada kalıyor.</p>',
+    learned:'<b>L1 cezası katsayıları sıfıra çarpar, L2 sadece sıfıra doğru çeker.</b><br><br>' +
+      'Bu tesadüf değil, cezanın türevinden geliyor. β² fonksiyonunun türevi sıfırda 0\'dır, yani ceza sıfıra ' +
+      'yaklaşırken zayıflar. |β| fonksiyonunun türevi sıfırda 1\'dir, yani ceza son ana kadar aynı güçle iter.',
+    xp:35,
+  },
+  {
+    t:'Gürültüyü elemesini izle',
+    goal:'Lasso\'nun gerçekten hangi özellikleri attığını, doğru cevabı bilerek kontrol edeceksin.',
+    todo:'λ\'yı 15\'in üstüne çıkar. Sıfırlanan dört özelliğin hangileri olduğuna dikkat et.',
+    kind:'controls', viz:'cezaYolu', h:760,
+    controls:[{k:'lam', lb:'CEZA GÜCÜ λ', min:0, max:120, step:1, val:0, fmt:v => 'λ = '+v}],
+    state:{yontem:'lasso'},
+    derive:s => ({sf: cezaSifir(lassoFit(s.lam))}),
+    live:s => { const w = lassoFit(s.lam);
+      return [['SIFIRLANAN', s.sf + ' / 6', s.sf >= 4 ? K.green : K.mut],
+              ['AYAKTA KALAN', w.map((v,i)=>Math.abs(v)>1e-6?DATA.ceza.ad[i]:null).filter(Boolean).join(' ') || '—'],
+              ['TEST MSE', cezaTest(w).toFixed(3), K.pink]]; },
+    unlock:s => s.sf >= 4,
+    unlockMsg:'Dört özelliği birden sıfırla (λ ≈ 15)',
+    body:'<p>Hatırlatma: bu veriyi ben ürettim. Gerçek katsayılar <b>[3, 0, −2, 0, 0, 0]</b>. ' +
+      'Yani <b>x₁, x₃, x₄ ve x₅ saf gürültü</b>, modelin onları atması lazım.</p>' +
+      '<p>λ=15\'te lasso tam olarak dört katsayıyı sıfırlıyor. Hangileri? <b>x₁, x₃, x₄, x₅.</b> ' +
+      'Dördü de gürültü. Bir tanesini bile yanlış atmadı.</p>' +
+      '<p>x₁\'in atılması ayrıca ilginç: x₁, x₀\'ın kopyasıydı. Ridge ikisine ağırlığı paylaştırıyordu, ' +
+      'lasso ise <b>birini seçip diğerini çöpe atıyor</b>.</p>',
+    learned:'<b>Lasso sadece düzenlileştirme değil, aynı zamanda özellik seçimidir.</b> λ=15\'te bu veride ' +
+      'gürültü özelliklerinin dördünü de doğru buldu, ayakta x₀ ile x₂ kaldı.<br><br>' +
+      'Korele çiftte ridge paylaştırır, lasso seçer. Hangisini istediğin probleme bağlı: ' +
+      '"hangi değişken önemli" diye soruyorsan lasso, "en iyi tahmini ver" diyorsan çoğu zaman ridge.',
+    xp:40,
+  },
+  {
+    t:'Peki hangisi daha iyi tahmin ediyor?',
+    goal:'Seyrek modelin bedelini ve kazancını aynı ölçekte göreceksin.',
+    todo:'λ\'yı test hatasının dibe indiği yere getir, sonra soruyu cevapla.',
+    kind:'controls', viz:'cezaYolu', h:760,
+    controls:[{k:'lam', lb:'CEZA GÜCÜ λ', min:0, max:120, step:1, val:0, fmt:v => 'λ = '+v}],
+    state:{yontem:'lasso'},
+    derive:s => ({tt: cezaTest(lassoFit(s.lam))}),
+    live:s => [['TEST MSE', s.tt.toFixed(3), K.pink], ['CEZASIZ', '1.650'],
+               ['RIDGE EN İYİ', '0.901', K.blue], ['HEDEF', '< 1.05']],
+    unlock:s => s.tt < 1.05,
+    unlockMsg:'Test MSE\'yi 1.05\'in altına indir (λ ≈ 53)',
+    body:'<p>Üç modeli aynı test verisinde karşılaştıralım:</p>' +
+      '<p><b>Cezasız:</b> 1.650 &nbsp;·&nbsp; <b>Lasso (λ=53):</b> 1.003 &nbsp;·&nbsp; <b>Ridge (λ=20):</b> 0.901</p>' +
+      '<p>Lasso cezasız modelden <b>%39.2</b> daha iyi. Ridge ise <b>%45.4</b> daha iyi, yani bu veride ' +
+      'tahmin yarışını ridge kazanıyor.</p>' +
+      '<p>Ama lasso karşılığında başka bir şey veriyor: <b>iki özellikli bir model.</b> ' +
+      'Katsayıları [3.45, 0, −1.28, 0, 0, 0]. Gerçek değerler [3, 0, −2, 0, 0, 0]. ' +
+      'Ridge\'in cevabı ise [1.69, 1.59, −1.31, 0, −0.05, −0.01]: daha iyi tahmin ediyor ama ' +
+      'hangi değişkenin gerçekten önemli olduğunu söylemiyor.</p>',
+    quiz:{ q:'Bir bankada 200 özellikli kredi risk modeli kuruyorsun ve düzenleyici kurum "hangi değişkenlere göre karar verdiğinizi açıklayın" diyor. Hangisi?',
+      opts:[
+        {t:'Ridge, çünkü test hatası daha düşük', why:'Burada tahmin gücü tek ölçüt değil. Ridge 200 özelliğin 200\'üne de sıfırdan farklı katsayı verir; "hangi değişkenlere baktık" sorusuna 200 maddelik bir listeyle cevap veremezsin.'},
+        {t:'Lasso, çünkü çoğu katsayıyı sıfırlayıp kısa ve savunulabilir bir liste bırakır', why:'Doğru. Lasso\'nun asıl değeri burada. Biraz tahmin gücünden ödün verip (bu veride %39.2\'ye karşı %45.4) açıklanabilir bir model alıyorsun. Düzenleyici karşısında 12 değişkenli bir model, 200 değişkenli bir modelden savunulabilir.'},
+        {t:'Cezasız en küçük kareler, çünkü en yorumlanabilir olan odur', why:'Hayır. Cezasız model bütün katsayıları sıfırdan farklı bırakır ve korele değişkenlerde kararsızdır. Yorumlanabilirlik açısından en kötü seçenektir.'},
+        {t:'İkisi de olmaz, karar ağacı kullanılmalı', why:'Karar ağacı iyi bir seçenek olabilir ama soru ceza yöntemleri arasında seçim yapmakla ilgili. Ayrıca tek bir ağaç da korele değişkenlerde kararsızdır.'},
+      ], correct:1 },
+    learned:'<b>Lasso tahmin gücünden biraz ödün verip yorumlanabilirlik satın alır.</b> Bu veride cezasız modele göre ' +
+      '%39.2 iyileşme sağlıyor, ridge %45.4 sağlıyor; ama lasso 6 özellikten 2\'sini bırakıyor.<br><br>' +
+      'Karar ölçüte bağlı: sadece tahmin istiyorsan ridge, "hangi değişken" sorusunun cevabı da lazımsa lasso. ' +
+      'İkisini birleştiren elastic net de vardır: λ₁·Σ|β| + λ₂·Σβ².',
+    xp:45,
+  },
+]};
+
+/* ─────────────── L1 vs L2 GEOMETRİSİ ─────────────── */
+DERSLER['norm-l1l2'] = {
+  ad:'L1 ve L2: iki ceza, iki farklı dünya',
+  alt:'Lasso neden tam sıfır üretir de ridge üretmez? Cevap cebirde değil geometride: elmasın köşesi var, çemberin yok.',
+  kaynaklar:[
+    {y:'Tibshirani, R.', t:'1996', b:'Regression Shrinkage and Selection via the Lasso, Şekil 2', n:'J. Royal Statistical Society B, 58(1)'},
+    {y:'Hastie, Tibshirani, Friedman', t:'2009', b:'The Elements of Statistical Learning, Şekil 3.11', n:'Springer'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Cezayı bir bütçe gibi düşün',
+    goal:'Ceza terimini "kısıt bölgesi" olarak görmeyi öğreneceksin. Bundan sonrası tek bir resimden ibaret.',
+    todo:'İLERİ ile iki aşamayı geç, şeklin nasıl değiştiğine bak.',
+    kind:'phases', viz:'cezaGeo', h:660,
+    phases:[
+      {state:{yontem:'ridge', t:0.55}, body:
+        '<p>Cezalı regresyonun ikinci bir okunuşu var. "RSS + λ·Σβ² değerini küçült" demek yerine şöyle de diyebilirsin:</p>' +
+        '<p style="text-align:center"><b>RSS\'i küçült, ama Σβ² ≤ t olmak şartıyla.</b></p>' +
+        '<p>Yani katsayılara bir <b>bütçe</b> veriyorsun. Mavi bölge o bütçenin izin verdiği yer. ' +
+        'Gri elipsler ise sabit hata eğrileri, merkezleri cezasız çözüm.</p>'},
+      {state:{yontem:'lasso', t:0.55}, body:
+        '<p>Lasso\'da bütçe kuralı değişiyor: <b>|β₁| + |β₂| ≤ t.</b></p>' +
+        '<p>Aynı bütçe, farklı şekil. Kare yerine mutlak değer aldığın anda çember <b>elmasa</b> dönüşüyor.</p>' +
+        '<p>Çözüm her iki durumda da aynı yerde: elipslerin bütçe bölgesine <b>ilk değdiği nokta</b>. ' +
+        'Bütçeyi büyütüp küçültünce bu nokta gezer.</p>'},
+    ],
+    learned:'<b>Ceza terimi ile bütçe kısıtı aynı problemin iki yüzü.</b> Her λ değerine karşılık gelen bir t bütçesi var.<br><br>' +
+      'L2 bütçesi <b>çember</b>, L1 bütçesi <b>elmas</b>. Çözüm, sabit hata elipslerinin bu bölgeye ilk değdiği noktadır.',
+    xp:25,
+  },
+  {
+    t:'Köşeye değmek',
+    goal:'Elmasın köşesinin neden sıfır ürettiğini, çemberin neden üretmediğini kendi elinle göreceksin.',
+    todo:'Bütçeyi küçültüp büyüt. Elmasta değme noktası nereye oturuyor? Sonra yöntemi ridge yapıp aynı şeyi dene.',
+    kind:'controls', viz:'cezaGeo', h:660,
+    controls:[
+      {k:'t', lb:'BÜTÇE', min:0, max:1, step:0.02, val:0.55, fmt:v => 't = '+(0.35+v*1.55).toFixed(2)},
+      {k:'y2', lb:'YÖNTEM', min:0, max:1, step:1, val:1, fmt:v => v ? 'LASSO (L1)' : 'RIDGE (L2)'},
+    ],
+    derive:s => { const y = s.y2 ? 'lasso' : 'ridge'; const z = cezaGeoCoz(y, s.t);
+      return {yontem:y, kose:z.kose, b1:z.a, b2:z.b}; },
+    live:s => [['CEZA', s.y2 ? 'L1 · elmas' : 'L2 · çember', s.y2 ? K.orange : K.blue],
+               ['β₁', s.b1.toFixed(2)], ['β₂', s.b2.toFixed(2)],
+               ['TAM SIFIR VAR MI', s.kose ? 'VAR' : 'yok', s.kose ? K.green : K.mut]],
+    unlock:s => s.kose,
+    unlockMsg:'Bir katsayıyı tam sıfır yapan bir bütçe bul',
+    body:'<p>Elmasın köşeleri eksenlerin üstünde duruyor. Eksen üstünde olmak demek, <b>diğer katsayının tam sıfır olması</b> demek.</p>' +
+      '<p>Bir elips daralıp elmasa doğru gelirken büyük ihtimalle bir <b>köşeye</b> çarpar, kenara değil. ' +
+      'Köşe sivri olduğu için elipsin ona değmesi çok daha kolaydır.</p>' +
+      '<p>Çemberin köşesi yoktur. Elips çembere nereden değerse değsin, o nokta neredeyse hiçbir zaman eksen üstünde olmaz. ' +
+      'Ridge\'in katsayıları bu yüzden küçülür ama sıfırlanmaz.</p>',
+    learned:'<b>Sıfır üreten şey köşedir.</b> L1 bütçesinin köşeleri eksenler üstünde, o yüzden çözüm sık sık ' +
+      'bir katsayıyı tam sıfır yapar.<br><br>' +
+      'L2 bütçesi pürüzsüz, hiçbir yerde sivri değil, bu yüzden çözümü hiçbir zaman tam eksene oturmaz. ' +
+      'Boyut arttıkça fark büyür: 200 boyutta L1 bütçesinin 400 köşesi vardır ve hepsi bir eksen üstündedir.',
+    xp:40,
+  },
+  {
+    t:'Hangi cezayı ne zaman?',
+    goal:'Aradaki farkı bir karar kuralına çevireceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'cezaGeo', h:660, state:{yontem:'lasso', t:0.35},
+    body:'<p>Özet:</p>' +
+      '<p><b>L2 (ridge):</b> bütün katsayıları küçültür, hiçbirini atmaz. Korele özelliklere ağırlığı paylaştırır. ' +
+      'Kapalı çözümü vardır, hızlıdır. Özellik sayısı örnek sayısından fazla olsa bile çalışır.</p>' +
+      '<p><b>L1 (lasso):</b> katsayıları sıfırlar, özellik seçer. Korele grup içinden birini seçip diğerlerini atar. ' +
+      'Kapalı çözümü yoktur, koordinat inişi gibi bir algoritma gerekir.</p>',
+    quiz:{ q:'Genetik veriyle çalışıyorsun: 20.000 gen ifadesi var, sadece 80 hasta. Bu 20.000 genden birkaç tanesinin hastalıkla ilgili olduğunu düşünüyorsun. Hangi ceza?',
+      opts:[
+        {t:'L2, çünkü örnek sayısı az olduğunda ridge daha kararlıdır', why:'Ridge gerçekten kararlıdır ama 20.000 genin 20.000\'ine de sıfırdan farklı katsayı verir. "Hangi genler?" sorusuna cevap alamazsın, oysa problemin tamamı bu.'},
+        {t:'L1, çünkü çoğu katsayıyı sıfırlayıp az sayıda gen bırakır', why:'Doğru. Bu senaryonun adı p ≫ n ve seyreklik varsayımı: çok değişken, az örnek, az sayıda gerçek etken. Lasso tam bu durum için tasarlandı. Bir uyarı: lasso en fazla n tane, yani burada 80 tane sıfırdan farklı katsayı seçebilir.'},
+        {t:'Ceza kullanma, doğrudan en küçük kareler', why:'20.000 değişken ve 80 örnekle cezasız en küçük karelerin tek bir çözümü bile yoktur; sonsuz sayıda çözüm eğitim verisine kusursuz uyar. Ceza burada seçenek değil zorunluluktur.'},
+        {t:'Her genin katsayısını tek tek t-testiyle sınamak', why:'20.000 test yaparsan sadece şans eseri yüzlerce "anlamlı" sonuç çıkar. Ayrıca genler birbiriyle korelelidir, tek tek bakmak birlikte etkiyi kaçırır.'},
+      ], correct:1 },
+    learned:'<b>Seyreklik bekliyorsan L1, beklemiyorsan L2.</b><br><br>' +
+      'p ≫ n, yani özellik sayısı örnek sayısından çok fazlaysa ve "az sayıda gerçek etken var" varsayımı geçerliyse lasso. ' +
+      'Bütün özellikler biraz katkı veriyorsa ve tek derdin tahminse ridge.<br><br>' +
+      'İkisi de gerekiyorsa elastic net var: λ₁·Σ|β| + λ₂·Σβ². Korele grubu birlikte seçer, gürültüyü de atar.',
+    xp:40,
   },
 ]};

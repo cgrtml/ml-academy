@@ -145,6 +145,70 @@ iddia('RAG ile aylık $',1470,m2.aylik,0);
 iddia('çıktı/girdi fiyat oranı',3,FIYAT[1].cikti/FIYAT[1].girdi,0);
 
 console.log('');
+
+console.log('═══ CEZALI REGRESYON (ridge / lasso) ═══');
+{
+  const D = DATA.ceza;
+  let kor = 0; for (let k=0;k<D.n;k++) kor += D.X[k][0]*D.X[k][1];
+  iddia('x0-x1 korelasyonu', 0.986, kor/D.n, 3);
+  iddia('gerçek katsayı x0', 3, D.gercek[0], 0);
+  iddia('gerçek katsayı x2', -2, D.gercek[2], 0);
+  iddia('gürültü özellik sayısı', 4, D.gercek.filter(v=>v===0).length, 0);
+
+  const w0 = ridgeFit(0);
+  iddia('OLS x0 katsayısı', 3.87, w0[0], 2);
+  iddia('OLS x1 katsayısı', 0.15, w0[1], 2);
+  iddia('OLS eğitim RSS', 8.2, cezaRSS(w0), 1);
+  iddia('OLS test MSE', 1.650, cezaTest(w0), 3);
+
+  const w20 = ridgeFit(20);
+  iddia('ridge λ=20 x0', 1.69, w20[0], 2);
+  iddia('ridge λ=20 x1', 1.59, w20[1], 2);
+  iddia('ridge λ=20 x2', -1.31, w20[2], 2);
+  iddia('ridge λ=20 eğitim RSS', 50.3, cezaRSS(w20), 1);
+  iddia('ridge λ=20 test MSE', 0.901, cezaTest(w20), 3);
+  iddia('ridge |x0-x1| < 0.20', true, Math.abs(w20[0]-w20[1]) < 0.20);
+  iddia('ridge λ=100 test MSE', 3.321, cezaTest(ridgeFit(100)), 3);
+  iddia('ridge λ=200 test MSE', 6.042, cezaTest(ridgeFit(200)), 3);
+  iddia('ridge iyileşme %', 45.4, 100*(1 - cezaTest(w20)/cezaTest(w0)), 1);
+  iddia('ridge hiç sıfır üretmiyor', 0, cezaSifir(w20), 0);
+
+  const l53 = lassoFit(53), l15 = lassoFit(15);
+  iddia('lasso λ=53 test MSE', 1.003, cezaTest(l53), 3);
+  iddia('lasso λ=53 sıfır sayısı', 4, cezaSifir(l53), 0);
+  iddia('lasso λ=53 x0', 3.45, l53[0], 2);
+  iddia('lasso λ=53 x2', -1.28, l53[2], 2);
+  iddia('lasso iyileşme %', 39.2, 100*(1 - cezaTest(l53)/cezaTest(w0)), 1);
+  iddia('lasso λ=15 sıfır sayısı', 4, cezaSifir(l15), 0);
+  /* λ=15'te sıfırlananlar TAM OLARAK gürültü özellikleri mi? */
+  const sifirIdx = l15.map((v,i)=>Math.abs(v)<1e-6?i:-1).filter(i=>i>=0).join(',');
+  iddia('lasso λ=15 sıfırlananlar', '1,3,4,5', sifirIdx);
+  /* ilk sıfır λ=1'de mi? */
+  let ilk = -1; for (let l=0;l<=40;l++){ if (cezaSifir(lassoFit(l))>=1){ ilk = l; break; } }
+  iddia('lasso ilk sıfır λ', 1, ilk, 0);
+
+  /* yol önbelleği ile en iyi λ değerleri, derste yazan değerlerle aynı mı? */
+  const yr = cezaYol('ridge',60,60).reduce((a,b)=>b.test<a.test?b:a);
+  const yl = cezaYol('lasso',120,60).reduce((a,b)=>b.test<a.test?b:a);
+  iddia('yol: en iyi ridge λ', 20, yr.lam, 0);
+  iddia('yol: en iyi ridge test', 0.901, yr.test, 3);
+  iddia('yol: en iyi lasso test', 1.004, yl.test, 3);
+  /* ridge paylaştırma gerekçesi: aynı toplamı ikiye bölmek kareyi küçültür */
+  iddia('3.9² = 15.21', 15.21, 3.9*3.9, 2);
+  iddia('1.95²+1.95² = 7.605', 7.605, 2*1.95*1.95, 3);
+  iddia('bölmek kareyi yarıya indirir', 7.605, 15.21/2, 3);
+  /* geometri: elmas köşe verir, çember vermez */
+  {
+    let l = 0, r = 0;
+    for (let t = 0; t <= 1; t += 0.02){
+      if (cezaGeoCoz('lasso', t).kose) l++;
+      if (cezaGeoCoz('ridge', t).kose) r++;
+    }
+    iddia('L1 bütçesi köşe çözümü veriyor', true, l > 0);
+    iddia('L2 bütçesi hiç köşe vermiyor', 0, r, 0);
+  }
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
@@ -165,8 +229,13 @@ Object.entries(DERSLER).forEach(([id,d])=>{
       a.controls.forEach(c=>{ if(c.k in d){
         console.log('  ✗ '+id+'['+(i+1)+'] ANAHTAR ÇAKIŞMASI: control ve derive ikisi de "'+c.k+'" yazıyor'); yh++; }});
     }
+    /* Motor kilidi vizState() ile sinar: once derive calisir, sonra unlock.
+       Tarama da ayni sirayi izlemeli, yoksa derive'a bagli kilitler
+       'acilamiyor' gorunur. */
     if(a.unlock&&a.controls){let acik=false;
-      const kb=(ix,st)=>{if(acik)return; if(ix>=a.controls.length){try{if(a.unlock(st))acik=true;}catch(e){}return;}
+      const kb=(ix,st)=>{if(acik)return; if(ix>=a.controls.length){
+        let s2=st; if(a.derive){ try{ s2={...st, ...(a.derive(st)||{})}; }catch(e){} }
+        try{if(a.unlock(s2))acik=true;}catch(e){}return;}
         const c=a.controls[ix];
         for(let v2=c.min;v2<=c.max;v2+=Math.max(c.step,(c.max-c.min)/25)) kb(ix+1,{...st,[c.k]:v2});};
       kb(0,{...(a.state||{})});
