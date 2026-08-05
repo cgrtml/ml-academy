@@ -1466,6 +1466,128 @@ VIZ.enKucukKare = s => {
   txt('gerçek katsayılar: w₁ = 2.00, w₂ = −1.00', bx + bw / 2, 596, K.mut, 17);
 };
 
+
+/* ═══════════ SPLINE · PARÇA PARÇA EĞRİ ═══════════
+   Aynı parametre bütçesiyle iki esneklik biçimi:
+   global polinom (derece yükselterek) ve kübik spline (düğüm ekleyerek).
+   Polinomun bir katsayısı EĞRİNİN TAMAMINI etkiler, spline'ın düğümü
+   sadece kendi çevresini. */
+const SP = { f0: x => 1 / (1 + 25 * (2 * x - 1) * (2 * x - 1)), n: 40, gur: 0.05 };
+SP.veri = (() => {
+  const r = rng(3);
+  const g = () => { let u = 0, w = 0; while (!u) u = r(); while (!w) w = r();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); };
+  const x = [], y = [];
+  for (let i = 0; i < SP.n; i++){ const xx = i / (SP.n - 1); x.push(xx); y.push(SP.f0(xx) + SP.gur * g()); }
+  return { x, y };
+})();
+function spLS(x, y, taban){
+  const p = taban.length, n = x.length;
+  const A = Array.from({ length: p }, () => new Array(p + 1).fill(0));
+  for (let i = 0; i < p; i++){
+    for (let j = 0; j < p; j++){
+      let s = 0; for (let k = 0; k < n; k++) s += taban[i](x[k]) * taban[j](x[k]);
+      A[i][j] = s + (i === j ? 1e-9 : 0);
+    }
+    let s = 0; for (let k = 0; k < n; k++) s += taban[i](x[k]) * y[k];
+    A[i][p] = s;
+  }
+  for (let c = 0; c < p; c++){
+    let piv = c;
+    for (let r2 = c + 1; r2 < p; r2++) if (Math.abs(A[r2][c]) > Math.abs(A[piv][c])) piv = r2;
+    const t = A[c]; A[c] = A[piv]; A[piv] = t;
+    const d = A[c][c];
+    for (let j = c; j <= p; j++) A[c][j] /= d;
+    for (let r2 = 0; r2 < p; r2++){ if (r2 === c) continue;
+      const f = A[r2][c];
+      for (let j = c; j <= p; j++) A[r2][j] -= f * A[c][j]; }
+  }
+  const w = A.map(r2 => r2[p]);
+  return xx => taban.reduce((s, b, i) => s + w[i] * b(xx), 0);
+}
+const spPolTaban = d => Array.from({ length: d + 1 }, (_, k) => (x => Math.pow(x, k)));
+function spDugumler(k){ return Array.from({ length: k }, (_, i) => (i + 1) / (k + 1)); }
+function spSplTaban(k){
+  return [x => 1, x => x, x => x * x, x => x * x * x]
+    .concat(spDugumler(k).map(kn => (x => { const d = x - kn; return d > 0 ? d * d * d : 0; })));
+}
+const _spCache = {};
+function spUydur(spMi, param){
+  const anahtar = (spMi ? 's' : 'p') + param;
+  if (_spCache[anahtar]) return _spCache[anahtar];
+  const D = SP.veri;
+  const fn = spMi ? spLS(D.x, D.y, spSplTaban(param - 4)) : spLS(D.x, D.y, spPolTaban(param - 1));
+  const IZ = Array.from({ length: 301 }, (_, i) => i / 300);
+  let mse = 0, enUc = 0;
+  IZ.forEach(xx => { const e = Math.abs(fn(xx) - SP.f0(xx)); mse += e * e; if (e > enUc) enUc = e; });
+  return (_spCache[anahtar] = { fn, mse: mse / IZ.length, enUc, param, spMi });
+}
+
+VIZ.spline = s => {
+  clear();
+  const param = Math.max(6, Math.min(30, Math.round(s.param === undefined ? 6 : s.param)));
+  const spMi = !!s.spMi;
+  const F = spUydur(spMi, param);
+  const D = SP.veri;
+  baslikSerit('AYNI BÜTÇE, İKİ ESNEKLİK BİÇİMİ',
+    'Global polinom derece yükseltir, spline düğüm ekler. Parametre sayısı eşit.', []);
+
+  /* sol: eğri */
+  const P = plot(rect(100, 140, 700, 420), -0.02, 1.02, -0.35, 1.25);
+  frame(P, 'x', 'y', [0, 0.25, 0.5, 0.75, 1], [0, 0.5, 1]);
+  cx.setLineDash([7, 6]); cx.strokeStyle = K.mut; cx.lineWidth = 2.4;
+  cx.beginPath();
+  for (let i = 0; i <= 300; i++){ const xx = i / 300, X = P.sx(xx), Y = P.sy(SP.f0(xx));
+    i ? cx.lineTo(X, Y) : cx.moveTo(X, Y); }
+  cx.stroke(); cx.setLineDash([]);
+  D.x.forEach((xx, i) => dot(P.sx(xx), P.sy(D.y[i]), 4, K.blue));
+  cx.strokeStyle = spMi ? K.green : K.orange; cx.lineWidth = 3.6;
+  cx.beginPath();
+  for (let i = 0; i <= 300; i++){
+    const xx = i / 300, X = P.sx(xx), Y = P.sy(Math.max(-0.35, Math.min(1.25, F.fn(xx))));
+    i ? cx.lineTo(X, Y) : cx.moveTo(X, Y);
+  }
+  cx.stroke();
+  if (spMi) spDugumler(param - 4).forEach(kn => {
+    cx.strokeStyle = 'rgba(34,211,160,.45)'; cx.lineWidth = 1.6;
+    cx.beginPath(); cx.moveTo(P.sx(kn), P.R.y + P.R.h); cx.lineTo(P.sx(kn), P.R.y + P.R.h - 18); cx.stroke();
+  });
+  txt('gerçek fonksiyon', P.R.x + 16, P.R.y + 26, K.mut, 18, 'left');
+  txt(spMi ? 'kübik spline · ' + (param - 4) + ' düğüm' : 'polinom · derece ' + (param - 1),
+      P.R.x + 16, P.R.y + 50, spMi ? K.green : K.orange, 19, 'left');
+  txt(param + ' parametre', P.R.x + 16, P.R.y + 76, K.yellow, 21, 'left');
+
+  /* sağ üst: iki yöntemin hata eğrisi */
+  const Q = plot(rect(850, 140, 540, 195), 6, 30, 0, 0.02);
+  frame(Q, 'parametre sayısı', 'ortalama kare hata', [6, 12, 18, 24, 30], [0, 0.01, 0.02]);
+  [[false, K.orange], [true, K.green]].forEach(([sp, renk]) => {
+    cx.strokeStyle = renk; cx.lineWidth = 3;
+    cx.beginPath();
+    for (let p = 6; p <= 30; p += 2){
+      const X = Q.sx(p), Y = Q.sy(Math.min(0.02, spUydur(sp, p).mse));
+      p === 6 ? cx.moveTo(X, Y) : cx.lineTo(X, Y);
+    }
+    cx.stroke();
+  });
+  dot(Q.sx(param), Q.sy(Math.min(0.02, F.mse)), 7, K.yellow);
+  txt('■ polinom', Q.R.x + Q.R.w - 14, Q.R.y + 26, K.orange, 18, 'right');
+  txt('■ spline', Q.R.x + Q.R.w - 14, Q.R.y + 50, K.green, 18, 'right');
+
+  /* sağ alt: kartlar */
+  const bx = 850, bw = 540;
+  const kart = (y, ad, deger, renk, alt) => {
+    box(bx, y, bw, 116, 'rgba(7,10,15,.7)', renk, 2);
+    txt(ad, bx + bw / 2, y + 32, K.mut, 18);
+    txt(deger, bx + bw / 2, y + 82, renk, 32);
+    if (alt) txt(alt, bx + bw / 2, y + 106, K.mut, 15);
+  };
+  const dg = spUydur(false, param), sg = spUydur(true, param);
+  kart(400, 'BU EĞRİNİN ORTALAMA KARE HATASI', F.mse.toExponential(2),
+       F.mse < 0.002 ? K.green : K.orange);
+  kart(530, 'EN KÖTÜ SAPMA', F.enUc.toFixed(3),
+       F.enUc < 0.1 ? K.green : K.red, 'polinom ' + dg.enUc.toFixed(3) + '   ·   spline ' + sg.enUc.toFixed(3));
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

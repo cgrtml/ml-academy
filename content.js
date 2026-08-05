@@ -53,7 +53,7 @@ const ROTALAR = [
     {id:'bayes-reg',      ad:'Bayesçi bakış: Occam\'ın usturası hesaplanabilir mi',  sure:16, durum:'planli'},
     {id:'fisher-lda',     ad:'Fisher\'ın fikri: sınıfları ayıran en iyi yön',   sure:14, durum:'hazir'},
     {id:'uretici-ayirici',  ad:'Sınırı mı çizersin, veriyi mi üretirsin',        sure:14, durum:'hazir'},
-    {id:'spline',         ad:'Spline: eğriyi parça parça bükmek',              sure:12, durum:'planli'},
+    {id:'spline',         ad:'Spline: eğriyi parça parça bükmek',              sure:13, durum:'hazir'},
     {id:'gam',            ad:'Toplamsal modeller: her özelliğin kendi eğrisi',  sure:12, durum:'planli'},
     {id:'ozellik-onemi',  ad:'Özellik önemi: model hangi değişkene bakıyor',   sure:15, durum:'hazir'},
     {id:'ozellik-muh',    ad:'Özellik mühendisliği: veriden yeni bilgi çıkarmak',  sure:14, durum:'planli'},
@@ -5849,5 +5849,110 @@ DERSLER['regresyon'] = {
       'Ve her iki yolda da korele özellikler sorun çıkarır. Gradyan inişinde bu yavaş yakınsama ' +
       'olarak, normal denklemde kötü koşul sayısı olarak görünür. İkisinin de ilacı aynı: ceza terimi.',
     xp:45,
+  },
+]};
+
+/* ─────────────── SPLINE ─────────────── */
+DERSLER['spline'] = {
+  ad:'Spline: eğriyi parça parça bükmek',
+  alt:'Aynı parametre bütçesiyle iki esneklik biçimi yarışıyor. 19 parametrede spline, polinomdan 4 kat daha az hata yapıyor ve en kötü sapması üçte birinden az.',
+  kaynaklar:[
+    {y:'Hastie, Tibshirani, Friedman', t:'2009', b:'The Elements of Statistical Learning, Bölüm 5.1-5.2', n:'Springer'},
+    {y:'Runge, C.', t:'1901', b:'Über empirische Funktionen und die Interpolation zwischen äquidistanten Ordinaten', n:'Zeitschrift für Mathematik und Physik, 46'},
+    {y:'de Boor, C.', t:'1978', b:'A Practical Guide to Splines', n:'Springer'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Polinomun her katsayısı her yeri etkiler',
+    goal:'Global bir modelin esnekliği artırıldığında neden her yerde birden değiştiğini göreceksin.',
+    todo:'Parametre sayısını artır. Eğri kenarlarda ne yapıyor?',
+    kind:'controls', viz:'spline', h:700,
+    controls:[{k:'param', lb:'PARAMETRE SAYISI', min:6, max:30, step:1, val:6, fmt:v => v+' parametre'}],
+    state:{spMi:0},
+    live:s => { const F = spUydur(false, s.param);
+      return [['ORTALAMA KARE HATA', F.mse.toExponential(2), K.orange],
+              ['EN KÖTÜ SAPMA', F.enUc.toFixed(3)],
+              ['DERECE', (s.param-1)]]; },
+    body:'<p>Gri kesikli eğri gerçek fonksiyon: ortada keskin bir tepe, kenarlarda düz. ' +
+      '40 gürültülü ölçüm var.</p>' +
+      '<p>Polinom bu eğriye uymak için <b>derecesini</b> yükseltir. Ama polinomun bir katsayısını ' +
+      'değiştirdiğinde eğrinin tamamı değişir. Ortadaki tepeyi yakalamak için derece yükseltince ' +
+      'kenarlarda istenmeyen dalgalanmalar çıkar.</p>' +
+      '<p>Hataya bak: 6 parametrede 1.73e-2, 14\'te 3.71e-3, 30\'da 2.40e-3. İyileşiyor ama yavaşlıyor.</p>' +
+      '<p>Asıl mesele <b>en kötü sapmada</b>: 14 parametrede 0.204, 30 parametrede 0.159. ' +
+      'Parametreyi iki katına çıkardın, en kötü hata neredeyse yerinde saydı.</p>',
+    learned:'<b>Polinom global bir modeldir: her katsayı eğrinin tamamını etkiler.</b><br><br>' +
+      'Bu yüzden bir bölgeye uyum sağlamak başka bir bölgeyi bozar. Runge 1901\'de bunu göstermişti: ' +
+      'eşit aralıklı noktalarda derece yükseldikçe kenarlardaki salınım büyür.<br><br>' +
+      'En kötü sapma 14 parametrede 0.204, 30 parametrede 0.159. Parametre iki katına çıktı, ' +
+      'en kötü hata neredeyse aynı kaldı.',
+    xp:30,
+  },
+  {
+    t:'Spline: düğüm ekle, sadece orayı büz',
+    goal:'Yerel bir taban kullanmanın aynı bütçeyle neden daha iyi sonuç verdiğini göreceksin.',
+    todo:'YÖNTEM kaydırıcısını SPLINE\'a çek, sonra parametre sayısını artır. Alttaki yeşil çentikler düğümler.',
+    kind:'controls', viz:'spline', h:700,
+    controls:[
+      {k:'param', lb:'PARAMETRE SAYISI', min:6, max:30, step:1, val:6, fmt:v => v+' parametre'},
+      {k:'spMi', lb:'YÖNTEM', min:0, max:1, step:1, val:0, fmt:v => v ? 'KÜBİK SPLINE' : 'POLİNOM'},
+    ],
+    derive:s => ({hh: spUydur(!!s.spMi, s.param).mse}),
+    live:s => { const F = spUydur(!!s.spMi, s.param);
+      return [['YÖNTEM', s.spMi ? 'spline' : 'polinom', s.spMi ? K.green : K.orange],
+              ['HATA', F.mse.toExponential(2)], ['EN KÖTÜ SAPMA', F.enUc.toFixed(3)],
+              ['HEDEF', 'hata < 0.001']]; },
+    unlock:s => s.hh < 0.001,
+    unlockMsg:'Hatayı 0.001\'in altına indir (spline, 19 parametre ve üstü)',
+    body:'<p>Kübik spline aynı işi başka türlü yapar. Eğriyi <b>düğüm</b> noktalarından bölüp ' +
+      'her parçaya ayrı bir kübik polinom uydurur, ama parçaların birleştiği yerde ' +
+      'eğri ve türevleri sürekli kalacak şekilde.</p>' +
+      '<p>Kritik fark: bir düğümün katsayısı sadece <b>kendi bölgesini</b> etkiler. ' +
+      'Ortaya düğüm eklemek kenarları bozmaz.</p>' +
+      '<p>19 parametrede karşılaştır: polinom hatası <b>3.06e-3</b>, spline hatası <b>7.37e-4</b>. ' +
+      'Spline dört kattan fazla iyi. En kötü sapma ise 0.181\'e karşı <b>0.050</b>, yani üçte birinden az.</p>',
+    learned:'<b>Spline yerel bir tabandır: düğüm eklemek sadece o bölgeyi etkiler.</b><br><br>' +
+      'Aynı 19 parametrede spline 7.37e-4 hata yapıyor, polinom 3.06e-3. ' +
+      'En kötü sapmada fark daha keskin: 0.050\'ye karşı 0.181.<br><br>' +
+      'Kübik spline tercih edilir çünkü ikinci türevi sürekli olan en düşük dereceli seçimdir, ' +
+      'yani göze pürüzsüz gelen en ucuz eğridir.',
+    xp:45,
+  },
+  {
+    t:'Spline de doyuyor',
+    goal:'Daha çok düğümün bir noktadan sonra neden işe yaramadığını göreceksin.',
+    todo:'Spline modunda parametreyi 19\'dan 30\'a çıkar. Hata iyileşiyor mu?',
+    kind:'controls', viz:'spline', h:700,
+    controls:[
+      {k:'param', lb:'PARAMETRE SAYISI', min:6, max:30, step:1, val:19, fmt:v => v+' parametre'},
+      {k:'spMi', lb:'YÖNTEM', min:0, max:1, step:1, val:1, fmt:v => v ? 'KÜBİK SPLINE' : 'POLİNOM'},
+    ],
+    live:s => { const F = spUydur(!!s.spMi, s.param);
+      return [['HATA', F.mse.toExponential(2)],
+              ['19 PARAMETREDE', spUydur(true,19).mse.toExponential(2)],
+              ['30 PARAMETREDE', spUydur(true,30).mse.toExponential(2)]]; },
+    body:'<p>Spline eğrisi 19 parametreden sonra düzleşiyor: 19\'da 7.37e-4, 24\'te 7.61e-4, ' +
+      '30\'da 7.59e-4. Düğüm eklemek artık bir şey kazandırmıyor.</p>' +
+      '<p>Sebebi tanıdık: gürültü tabanı. Veride 0.05 standart sapmalı gürültü var ve ' +
+      'model artık gerçek eğriyi değil gürültüyü kovalamaya başlıyor.</p>' +
+      '<p>Yani spline sihirli değil, aynı yanlılık-varyans takasına tabi. ' +
+      'Farkı, aynı esneklik miktarını <b>daha akıllı yerleştirmesi</b>.</p>' +
+      '<p>Pratikte düğüm sayısını da çapraz doğrulama seçer. Alternatif olarak ' +
+      '<b>düzgünleştirici spline</b> kullanılır: her veri noktasına düğüm konur ama ' +
+      'eğriliğe ceza uygulanır, yani ridge fikrinin eğri hâli.</p>',
+    quiz:{ q:'Bir zaman serisinde eğri çoğu yerde düz, ama bir bölgede çok hızlı değişiyor. Hangi yaklaşım?',
+      opts:[
+        {t:'Polinom derecesini yükseltmek', why:'Hızlı değişen bölgeyi yakalamak için gereken yüksek derece, düz bölgelerde salınım yaratır. Bu derste 30 parametrede bile polinomun en kötü sapması 0.159\'da kaldı, çünkü hata düz bölgelerin kenarında birikiyor.'},
+        {t:'Düğümleri eşit değil, hızlı değişen bölgede yoğun yerleştirmek', why:'Doğru. Spline\'ın asıl gücü budur: esnekliği ihtiyaç duyulan yere koyabilirsin. Düz bölgelerde birkaç düğüm yeter, hızlı değişen bölgeye çok düğüm konur. Pratikte düğümler genellikle verinin yüzdeliklerine yerleştirilir, böylece veri yoğun olan yerde otomatik olarak sıklaşır.'},
+        {t:'Veriyi ikiye bölüp iki ayrı model kurmak', why:'Çalışabilir ama birleşme noktasında eğri kopar; türev sürekliliği kaybolur ve tahminlerde sıçrama görülür. Spline tam olarak bu kopmayı önlemek için süreklilik koşulu koyar.'},
+        {t:'Daha çok veri toplamak', why:'Gürültü tabanını düşürür ve her modeli iyileştirir, ama sorunun kaynağını çözmez. Global polinom, sonsuz veriyle bile bir bölgeye uyarken diğerini bozmaya devam eder.'},
+      ], correct:1 },
+    learned:'<b>Spline esnekliği ihtiyacın olduğu yere koymanı sağlar.</b><br><br>' +
+      'Düğüm sayısı bir hiperparametredir ve çapraz doğrulama ile seçilir; bu veride 19 parametreden ' +
+      'sonra kazanç bitiyor (7.37e-4\'ten 7.59e-4\'e).<br><br>' +
+      'Düzgünleştirici spline bu seçimi başka türlü yapar: her noktaya düğüm koyar ama eğrilik cezası ' +
+      'uygular. Ceza katsayısı λ, ridge dersindeki λ ile tam olarak aynı rolü oynar.',
+    xp:50,
   },
 ]};

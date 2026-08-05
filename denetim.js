@@ -443,6 +443,29 @@ console.log('═══ NORMAL DENKLEM ═══');
         [0,0.1,1,10].every((l,i,a) => i===0 || ekKosul(D(0.999), l) < ekKosul(D(0.999), a[i-1])));
 }
 
+
+console.log('═══ SPLINE ═══');
+{
+  const P = p => spUydur(false, p), S = p => spUydur(true, p);
+  iddia('polinom 6 param hata', 0.0173, P(6).mse, 4);
+  iddia('polinom 14 param hata', 0.00371, P(14).mse, 5);
+  iddia('polinom 19 param hata', 0.00306, P(19).mse, 5);
+  iddia('polinom 30 param hata', 0.00240, P(30).mse, 5);
+  iddia('polinom 14 en kötü sapma', 0.204, P(14).enUc, 3);
+  iddia('polinom 30 en kötü sapma', 0.159, P(30).enUc, 3);
+  iddia('spline 19 param hata', 0.000737, S(19).mse, 6);
+  iddia('spline 30 param hata', 0.000759, S(30).mse, 6);
+  iddia('spline 19 en kötü sapma', 0.050, S(19).enUc, 3);
+  iddia('19 parametrede spline kaç kat iyi', 4.1, P(19).mse / S(19).mse, 1);
+  iddia('19 parametrede en kötü sapma oranı', 3.7, P(19).enUc / S(19).enUc, 1);
+  /* dersin iddialari */
+  iddia('polinom en kötü sapması iyileşmiyor', true, P(30).enUc > 0.15);
+  iddia('spline 19 sonrası doyuyor', true, Math.abs(S(30).mse - S(19).mse) < 5e-5);
+  iddia('düğüm sayısı = parametre - 4', 15, spDugumler(19-4).length, 0);
+  iddia('düğümler eşit aralıklı', true,
+        (() => { const d = spDugumler(4); return Math.abs((d[1]-d[0]) - (d[2]-d[1])) < 1e-9; })());
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
