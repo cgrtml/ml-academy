@@ -924,6 +924,120 @@ VIZ.softmaxCE = s => {
                    T > 1 ? K.blue : K.orange, 26);
 };
 
+
+/* ═══════════ DAĞILIM KAYMASI ═══════════
+   Gerçek kural bir EĞRİ. Eğitim verisi eğrinin neredeyse düz göründüğü
+   dar bir bölgede toplanmış, o yüzden doğrusal model orada iyi çalışıyor.
+   Canlı veri kayınca eğrinin büküldüğü bölgeye giriyor ve model çöküyor.
+   Model hiç değişmiyor; değişen dünya. */
+const dkGercek = (a, b) => (b > 0.45 * a * a - 0.6) ? 1 : 0;
+function dkVeri(n, merkez, tohum){
+  const r = rng(tohum);
+  const g = () => { let u = 0, w = 0; while (!u) u = r(); while (!w) w = r();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * w); };
+  const X = [], y = [];
+  for (let i = 0; i < n; i++){
+    const a = merkez + 0.55 * g(), b = -0.2 + 0.75 * g();
+    X.push([a, b]); y.push(dkGercek(a, b));
+  }
+  return { X, y };
+}
+const _dkCache = {};
+function dkEgitim(){
+  if (_dkCache.eg) return _dkCache.eg;
+  const D = dkVeri(400, -1.2, 31);
+  let w = [0, 0], c = 0;
+  const sig = z => 1 / (1 + Math.exp(-z));
+  for (let t = 0; t < 3000; t++){
+    let gw = [0, 0], gc = 0;
+    D.X.forEach((x, i) => { const p = sig(w[0] * x[0] + w[1] * x[1] + c), e = p - D.y[i];
+      gw[0] += e * x[0]; gw[1] += e * x[1]; gc += e; });
+    const n = D.X.length, lr = 0.5;
+    w[0] -= lr * gw[0] / n; w[1] -= lr * gw[1] / n; c -= lr * gc / n;
+  }
+  const ort = D.X.reduce((s, x) => s + x[0], 0) / D.X.length;
+  const sd = Math.sqrt(D.X.reduce((s, x) => s + (x[0] - ort) ** 2, 0) / D.X.length);
+  return (_dkCache.eg = { D, M: { w, c }, ort, sd });
+}
+const dkTahmin = (M, x) => (M.w[0] * x[0] + M.w[1] * x[1] + M.c) > 0 ? 1 : 0;
+const dkDogruluk = (M, D) => D.X.filter((x, i) => dkTahmin(M, x) === D.y[i]).length / D.X.length;
+function dkCanli(kayma){
+  const a = _dkCache['c' + kayma.toFixed(2)];
+  if (a) return a;
+  const T = dkVeri(400, -1.2 + kayma, 77);
+  const E = dkEgitim();
+  const ort = T.X.reduce((s, x) => s + x[0], 0) / T.X.length;
+  return (_dkCache['c' + kayma.toFixed(2)] =
+    { T, dogruluk: dkDogruluk(E.M, T), ort, z: (ort - E.ort) / E.sd });
+}
+
+VIZ.dagilimKaymasi = s => {
+  clear();
+  const kayma = s.kayma === undefined ? 0 : s.kayma;
+  const E = dkEgitim(), C = dkCanli(kayma);
+  baslikSerit('DAĞILIM KAYMASI',
+    'Model bir satır bile değişmedi. Değişen tek şey, gelen verinin nereden geldiği.', []);
+
+  const P = plot(rect(100, 130, 640, 460), -3, 3, -3, 3);
+  frame(P, 'x₁', 'x₂', [-3, -1.5, 0, 1.5, 3], [-3, -1.5, 0, 1.5, 3]);
+  /* gerçek eğri */
+  cx.setLineDash([7, 6]); cx.strokeStyle = K.mut; cx.lineWidth = 2.6;
+  cx.beginPath();
+  for (let i = 0; i <= 120; i++){
+    const a = -3 + 6 * i / 120, b = 0.45 * a * a - 0.6;
+    const X = P.sx(a), Y = P.sy(Math.max(-3, Math.min(3, b)));
+    i ? cx.lineTo(X, Y) : cx.moveTo(X, Y);
+  }
+  cx.stroke(); cx.setLineDash([]);
+  /* modelin doğrusu */
+  const M = E.M;
+  cx.strokeStyle = K.yellow; cx.lineWidth = 3.4;
+  cx.beginPath();
+  const yy = a => -(M.w[0] * a + M.c) / (M.w[1] || 1e-9);
+  cx.moveTo(P.sx(-3), P.sy(Math.max(-3, Math.min(3, yy(-3)))));
+  cx.lineTo(P.sx(3), P.sy(Math.max(-3, Math.min(3, yy(3)))));
+  cx.stroke();
+  /* eğitim bulutu soluk */
+  E.D.X.forEach((x, i) => dot(P.sx(x[0]), P.sy(x[1]), 3.5,
+    E.D.y[i] ? 'rgba(34,211,160,.25)' : 'rgba(248,113,113,.25)'));
+  /* canlı bulut parlak, yanlışlar halkalı */
+  C.T.X.forEach((x, i) => {
+    const dogru = dkTahmin(M, x) === C.T.y[i];
+    dot(P.sx(x[0]), P.sy(x[1]), 4.5, C.T.y[i] ? K.green : K.red);
+    if (!dogru) dot(P.sx(x[0]), P.sy(x[1]), 8, null, K.yellow, 1.8);
+  });
+  txt('gerçek kural (eğri)', P.R.x + 14, P.R.y + 26, K.mut, 18, 'left');
+  txt('modelin sınırı (doğru)', P.R.x + 14, P.R.y + 50, K.yellow, 18, 'left');
+  txt('soluk = eğitim · parlak = canlı', P.R.x + 14, P.R.y + 74, K.blue, 18, 'left');
+
+  /* sağ üst: doğruluk eğrisi */
+  const Q = plot(rect(800, 130, 590, 215), 0, 2.1, 40, 100);
+  frame(Q, 'kayma miktarı', 'doğruluk %', [0, 0.7, 1.4, 2.1], [50, 75, 100]);
+  cx.strokeStyle = K.pink; cx.lineWidth = 3;
+  cx.beginPath();
+  for (let i = 0; i <= 14; i++){
+    const k = i * 0.15, X = Q.sx(k), Y = Q.sy(100 * dkCanli(k).dogruluk);
+    i ? cx.lineTo(X, Y) : cx.moveTo(X, Y);
+  }
+  cx.stroke();
+  dot(Q.sx(kayma), Q.sy(100 * C.dogruluk), 8, K.yellow);
+  cx.strokeStyle = K.dim; cx.lineWidth = 1.5; cx.setLineDash([4, 4]);
+  cx.beginPath(); cx.moveTo(Q.sx(0), Q.sy(50)); cx.lineTo(Q.sx(2.1), Q.sy(50)); cx.stroke();
+  cx.setLineDash([]);
+  txt('yazı tura seviyesi', Q.R.x + Q.R.w - 12, Q.sy(50) - 8, K.dim, 15, 'right');
+
+  /* sağ alt: iki kart */
+  const bx = 800, bw = 590;
+  box(bx, 412, bw, 115, 'rgba(7,10,15,.7)', K.red, 2);
+  txt('CANLIDA ÖLÇEMEZSİN · etiket yok', bx + bw / 2, 444, K.mut, 18);
+  txt('doğruluk  %' + (100 * C.dogruluk).toFixed(1), bx + bw / 2, 498,
+      C.dogruluk < 0.8 ? K.red : K.green, 34);
+  box(bx, 542, bw, 115, 'rgba(7,10,15,.7)', K.green, 2);
+  txt('CANLIDA ÖLÇEBİLİRSİN · sadece girdiler', bx + bw / 2, 574, K.mut, 18);
+  txt('x₁ kayması  ' + C.z.toFixed(2) + ' σ', bx + bw / 2, 628,
+      Math.abs(C.z) > 1 ? K.red : K.green, 34);
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

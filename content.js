@@ -47,7 +47,7 @@ const ROTALAR = [
     {id:'yanlilik',       ad:'Yanlılık ve varyans: modelin iki tür hatası',    sure:16, durum:'hazir'},
     {id:'boyut-laneti',   ad:'Boyut laneti: komşular neden uzaklaşır',         sure:16, durum:'hazir'},
     {id:'softmax',        ad:'Softmax ve çapraz entropi',                      sure:15, durum:'hazir'},
-    {id:'dagilim-kaymasi',  ad:'Zemin kayınca: dağılım kayması',                 sure:12, durum:'planli'},
+    {id:'dagilim-kaymasi',  ad:'Zemin kayınca: dağılım kayması',                 sure:15, durum:'hazir'},
     {id:'hiper-arama',    ad:'Hiperparametre arama: ızgara, rastgele, eleme',  sure:16, durum:'hazir'},
     {id:'gauss-surec',    ad:'Gaussian Process: belirsizliğini söyleyen model',  sure:16, durum:'planli'},
     {id:'bayes-reg',      ad:'Bayesçi bakış: Occam\'ın usturası hesaplanabilir mi',  sure:16, durum:'planli'},
@@ -5272,5 +5272,120 @@ DERSLER['softmax'] = {
       'Bu yüzden dil modellerinde sıcaklık yaratıcılık ayarı gibi kullanılır (örnekleme dersi), ' +
       've bilgi damıtmada öğretmen modelin "yumuşak" cevaplarını almak için T büyütülür.',
     xp:35,
+  },
+]};
+
+/* ─────────────── DAĞILIM KAYMASI ─────────────── */
+DERSLER['dagilim-kaymasi'] = {
+  ad:'Zemin kayınca: dağılım kayması',
+  alt:'Modelin tek satırı değişmedi, doğruluğu %96\'dan %52\'ye düştü. Suç modelde değil, dünyanın kaymasında.',
+  kaynaklar:[
+    {y:'Quiñonero-Candela, J. ve ark.', t:'2009', b:'Dataset Shift in Machine Learning', n:'MIT Press'},
+    {y:'Sculley, D. ve ark.', t:'2015', b:'Hidden Technical Debt in Machine Learning Systems', n:'NeurIPS 2015'},
+    {y:'Huyen, C.', t:'2024', b:'AI Engineering, veri kayması bölümü', n:"O'Reilly"},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Model eğitimde %96, dünyada bilinmiyor',
+    goal:'Modelin eğitim verisinde neden iyi göründüğünü ve bu iyiliğin neye dayandığını göreceksin.',
+    todo:'Kayma 0 dururken bak: sarı doğru, gri eğriye bu dar bölgede ne kadar iyi uyuyor?',
+    kind:'controls', viz:'dagilimKaymasi', h:700,
+    controls:[{k:'kayma', lb:'VERİ KAYMASI', min:0, max:2.1, step:0.05, val:0, fmt:v => v.toFixed(2)}],
+    live:s => { const c = dkCanli(s.kayma);
+      return [['DOĞRULUK', '%'+(100*c.dogruluk).toFixed(1), c.dogruluk > 0.9 ? K.green : K.red],
+              ['x₁ KAYMASI', c.z.toFixed(2)+'σ']]; },
+    body:'<p>Gerçek kural gri kesikli <b>eğri</b>: üstünde kalanlar bir sınıf, altında kalanlar diğeri.</p>' +
+      '<p>Ama eğitim verisi eğrinin sadece dar bir parçasında toplanmış. O bölgede eğri neredeyse düz görünüyor, ' +
+      'bu yüzden doğrusal bir model işi gayet iyi yapıyor: <b>%96.0 doğruluk</b>.</p>' +
+      '<p>Model yanlış değil. Sadece <b>gördüğü dünya için doğru</b>.</p>',
+    learned:'<b>Bir model, eğitim verisinin geldiği dağılım için doğrudur.</b> Bu veride doğrusal sınır, ' +
+      'eğrinin düz göründüğü bölgede %96.0 tutturuyor.<br><br>' +
+      'Buradaki gizli varsayım şudur: canlıda gelecek veri de aynı yerden gelecek. ' +
+      'Makine öğrenmesinin en sessiz ve en sık bozulan varsayımı budur.',
+    xp:20,
+  },
+  {
+    t:'Veri kayıyor, model çöküyor',
+    goal:'Modelin kendisi hiç değişmeden doğruluğun nasıl yazı turaya indiğini göreceksin.',
+    todo:'Kaymayı 2.1\'e kadar aç. Sarı halkalı noktalar modelin yanıldığı örnekler.',
+    kind:'controls', viz:'dagilimKaymasi', h:700,
+    controls:[{k:'kayma', lb:'VERİ KAYMASI', min:0, max:2.1, step:0.05, val:0, fmt:v => v.toFixed(2)}],
+    derive:s => ({dg: dkCanli(s.kayma).dogruluk}),
+    live:s => [['DOĞRULUK', '%'+(100*s.dg).toFixed(1), s.dg < 0.7 ? K.red : K.orange],
+               ['BAŞLANGIÇ', '%96.0'], ['HEDEF', '< %60']],
+    unlock:s => s.dg < 0.60,
+    unlockMsg:'Doğruluğu %60\'ın altına düşür',
+    body:'<p>Canlı veri sağa kaydıkça noktalar eğrinin <b>büküldüğü</b> bölgeye giriyor. ' +
+      'Doğrusal sınır orada gerçeği takip edemiyor.</p>' +
+      '<p>Kayma 0.6 → doğruluk %91.5 &nbsp;·&nbsp; kayma 0.9 → %88.0 &nbsp;·&nbsp; ' +
+      'kayma 1.5 → %71.8 &nbsp;·&nbsp; kayma 2.1 → <b>%52.3</b></p>' +
+      '<p>%52.3, iki sınıflı bir problemde neredeyse yazı tura. Modelin ağırlıkları hiç değişmedi. ' +
+      'Kod aynı, sunucu aynı, model dosyası aynı. Değişen tek şey kimin geldiği.</p>' +
+      '<p>Bu duruma <b>ortak değişken kayması</b> (covariate shift) denir: girdilerin dağılımı değişti ' +
+      'ama girdi ile etiket arasındaki gerçek ilişki aynı kaldı.</p>',
+    learned:'<b>Bozulan model değil, modelin dünyaya dair varsayımı.</b> Doğruluk %96.0\'dan <b>%52.3</b>\'e ' +
+      'inerken modelin tek bir parametresi değişmedi.<br><br>' +
+      'Gerçek hayatta bu şöyle görünür: kampanya yeni bir müşteri kitlesini getirir, bir sensör yaşlanır, ' +
+      'rakip fiyat değiştirir, pandemi alışkanlıkları değiştirir. Model aynı kalır, dünya kayar.',
+    xp:45,
+  },
+  {
+    t:'Peki canlıda bunu nasıl fark edeceksin?',
+    goal:'Üretimde doğruluğu neden ölçemediğini ve onun yerine neye bakman gerektiğini öğreneceksin.',
+    todo:'Sağ alttaki iki karta bak. Hangisini gerçek bir sistemde hesaplayabilirsin?',
+    kind:'controls', viz:'dagilimKaymasi', h:700,
+    controls:[{k:'kayma', lb:'VERİ KAYMASI', min:0, max:2.1, step:0.05, val:0, fmt:v => v.toFixed(2)}],
+    derive:s => ({zz: Math.abs(dkCanli(s.kayma).z)}),
+    live:s => [['x₁ KAYMASI', s.zz.toFixed(2)+'σ', s.zz > 1 ? K.red : K.green],
+               ['ETİKET GEREKİR Mİ', 'hayır', K.green], ['HEDEF', '> 2σ']],
+    unlock:s => s.zz > 2,
+    unlockMsg:'Girdi kaymasını 2 standart sapmanın üstüne çıkar',
+    body:'<p>Kırmızı kart doğruluğu gösteriyor. Ama gerçek bir sistemde <b>o sayıyı hesaplayamazsın</b>, ' +
+      'çünkü canlı veride etiket yoktur. Kredi başvurusunun geri ödenip ödenmeyeceğini aylar sonra öğrenirsin.</p>' +
+      '<p>Yeşil kart ise etikete ihtiyaç duymuyor. Sadece <b>gelen girdilerin dağılımını</b> eğitim ' +
+      'verisininkiyle karşılaştırıyor: x₁\'in ortalaması kaç standart sapma kaydı?</p>' +
+      '<p>Kayma 0\'da 0.03σ, kayma 1.5\'te 2.78σ, kayma 2.1\'de <b>3.88σ</b>. ' +
+      'Doğruluk çökmeden çok önce bu sayı alarm veriyor.</p>',
+    quiz:{ q:'Üretimdeki bir modeli izlemek için kurulacak ilk alarm hangisi olmalı?',
+      opts:[
+        {t:'Modelin doğruluğu belirli bir eşiğin altına düşerse alarm ver', why:'İstenen bu ama çoğu sistemde imkânsız. Doğruluk için gerçek etiket gerekir ve etiket ya çok geç gelir (kredi geri ödemesi), ya hiç gelmez (kullanıcı neden tıklamadı), ya da pahalıdır (uzman etiketlemesi).'},
+        {t:'Gelen girdilerin dağılımı eğitim verisinden anlamlı ölçüde saparsa alarm ver', why:'Doğru. Girdi dağılımı etiket gerektirmez, gerçek zamanlı hesaplanır ve doğruluk çökmeden önce sinyal verir. Bu veride girdi kayması 3.88σ\'ya çıkarken doğruluk %52\'ye iniyor; birinciyi anında, ikinciyi belki hiç göremezsin.'},
+        {t:'Model her gün yeniden eğitilirse sorun kalmaz', why:'Yeniden eğitim iyi bir refleks ama yeni etiketli veri gerektirir. Etiket yoksa neyle eğiteceksin? Ayrıca körlemesine yeniden eğitmek, sorunun ne zaman başladığını da gizler.'},
+        {t:'Tahminlerin ortalaması değişirse alarm ver', why:'Faydalı bir ek sinyaldir ve bazen girdi kaymasını yakalar. Ama yanıltıcı olabilir: girdiler kayarken tahmin dağılımı sabit kalabilir, ya da gerçek bir mevsimsellik yüzünden tahminler kayabilir. Girdiyi doğrudan izlemek daha doğrudan bir ölçüdür.'},
+      ], correct:1 },
+    learned:'<b>Üretimde doğruluk gecikmeli gelir, girdi kayması anında ölçülür.</b><br><br>' +
+      'Bu yüzden izleme sistemleri önce girdiye bakar: özellik ortalamaları, standart sapmaları, ' +
+      'kategori dağılımları, eksik değer oranları.<br><br>' +
+      'Sonra da etiket geldikçe geriye dönük doğruluk hesaplanır. İkisi birlikte kurulur, ' +
+      'ama sadece ikincisine güvenen sistem körler.',
+    xp:50,
+  },
+  {
+    t:'Kayma çeşitleri ve ne yapılacağı',
+    goal:'Farklı kayma türlerini ayırt edip her birine uygun tedaviyi seçeceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'dagilimKaymasi', h:700, state:{kayma:1.5},
+    body:'<p>Üç tür var ve tedavileri farklı:</p>' +
+      '<p><b>Ortak değişken kayması:</b> girdilerin dağılımı P(x) değişti, ama P(y|x) aynı. ' +
+      'Bu derste gördüğün şey. Tedavi: yeni bölgeden veri toplamak, ya da örnekleri yeniden ağırlıklandırmak.</p>' +
+      '<p><b>Etiket kayması:</b> sınıfların oranı P(y) değişti. Örneğin dolandırıcılık oranı %3\'ten %8\'e çıktı. ' +
+      'Tedavi: eşiği ve sınıf ağırlıklarını güncellemek, çoğu zaman modeli yeniden eğitmeye gerek yok.</p>' +
+      '<p><b>Kavram kayması:</b> ilişkinin kendisi P(y|x) değişti. Aynı girdi artık farklı sonuç veriyor. ' +
+      'Örneğin bir kelime argo anlam kazandı. Tedavi: yeni etiketli veriyle yeniden eğitmek. Başka çare yok.</p>',
+    quiz:{ q:'Bir spam filtresi aylardır iyi çalışıyor. Spam gönderenler yeni bir yazım hilesi bulup filtreyi aşmaya başlıyor. Bu hangi kayma ve doğru tedavi ne?',
+      opts:[
+        {t:'Ortak değişken kayması, yeni bölgeden veri toplamak yeter', why:'Değil. Ortak değişken kaymasında girdi dağılımı değişir ama "bu metin spam mi" ilişkisi sabit kalır. Burada saldırgan kasten ilişkiyi bozuyor.'},
+        {t:'Kavram kayması, yeni etiketli veriyle yeniden eğitmek gerekir', why:'Doğru. Aynı metin özellikleri artık farklı anlama geliyor; P(y|x) ilişkisinin kendisi değişti. Üstelik burada kayma rastlantısal değil, düşmanca ve sürekli. Bu yüzden spam filtreleri sürekli yeniden eğitilir ve taze etiket akışı bir altyapı gereksinimidir.'},
+        {t:'Etiket kayması, sınıf ağırlıklarını güncellemek yeter', why:'Etiket kaymasında spam oranı değişirdi, mesela %20\'den %40\'a. Burada oran değil, spam\'in neye benzediği değişti.'},
+        {t:'Kayma yok, model aşırı uyum yapmış', why:'Aşırı uyum eğitim sırasında ortaya çıkar ve model daha ilk günden kötü genellerdi. Burada model aylarca iyi çalıştı, sonra bozuldu. Bu zamanla değişen bir dünyanın imzasıdır.'},
+      ], correct:1 },
+    learned:'<b>Önce hangi kaymanın olduğunu teşhis et, sonra tedavi seç.</b><br><br>' +
+      'P(x) değişti → ortak değişken kayması → yeni bölgeden veri, yeniden ağırlıklandırma.<br>' +
+      'P(y) değişti → etiket kayması → eşik ve sınıf ağırlığı ayarı.<br>' +
+      'P(y|x) değişti → kavram kayması → taze etiketli veriyle yeniden eğitim.<br><br>' +
+      'Düşmanca ortamlarda (spam, dolandırıcılık, güvenlik) kavram kayması istisna değil kuraldır; ' +
+      'yeniden eğitim bir bakım işi değil, sistemin parçasıdır.',
+    xp:45,
   },
 ]};

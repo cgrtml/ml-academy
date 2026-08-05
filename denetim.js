@@ -312,6 +312,28 @@ console.log('═══ SOFTMAX / ÇAPRAZ ENTROPİ ═══');
   iddia('emin+doğru MSE kaybı', 0.0002, ((q2[0]-1)**2+q2[1]**2+q2[2]**2)/3, 4);
 }
 
+
+console.log('═══ DAĞILIM KAYMASI ═══');
+{
+  const E = dkEgitim();
+  iddia('eğitim doğruluğu %', 96.0, 100*dkDogruluk(E.M, E.D), 1);
+  [[0,96.0],[0.6,91.5],[0.9,88.0],[1.5,71.8],[2.1,52.3]].forEach(([k,bek]) =>
+    iddia('kayma '+k+' doğruluk %', bek, 100*dkCanli(k).dogruluk, 1));
+  iddia('kayma 0 girdi sapması σ', 0.03, Math.abs(dkCanli(0).z), 2);
+  iddia('kayma 1.5 girdi sapması σ', 2.78, Math.abs(dkCanli(1.5).z), 2);
+  iddia('kayma 2.1 girdi sapması σ', 3.88, Math.abs(dkCanli(2.1).z), 2);
+  iddia('doğruluk kaymayla düşüyor', true,
+        [0,0.6,0.9,1.5,2.1].every((k,i,a) => i===0 || dkCanli(k).dogruluk < dkCanli(a[i-1]).dogruluk));
+  iddia('girdi sapması kaymayla büyüyor', true,
+        [0,0.6,0.9,1.5,2.1].every((k,i,a) => i===0 || Math.abs(dkCanli(k).z) > Math.abs(dkCanli(a[i-1]).z)));
+  /* model gercekten degismiyor: ayni agirliklar */
+  const w0 = dkEgitim().M.w.slice(), c0 = dkEgitim().M.c;
+  dkCanli(2.1);
+  iddia('model ağırlıkları değişmedi', true,
+        dkEgitim().M.w[0] === w0[0] && dkEgitim().M.w[1] === w0[1] && dkEgitim().M.c === c0);
+  iddia('2.1 kaymada yazı turaya yakın', true, dkCanli(2.1).dogruluk < 0.55);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
