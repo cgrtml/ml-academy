@@ -334,6 +334,32 @@ console.log('═══ DAĞILIM KAYMASI ═══');
   iddia('2.1 kaymada yazı turaya yakın', true, dkCanli(2.1).dogruluk < 0.55);
 }
 
+
+console.log('═══ ÖZELLİK ÖNEMİ ═══');
+{
+  const A = ooOnem('ols'), R = ooOnem('ridge');
+  iddia('OLS taban test MSE', 1.650, A.taban, 3);
+  iddia('ridge taban test MSE', 0.901, R.taban, 3);
+  iddia('OLS x0 katsayı', 3.87, Math.abs(A.M.w[0]), 2);
+  iddia('OLS x1 katsayı', 0.15, Math.abs(A.M.w[1]), 2);
+  iddia('ridge x1 katsayı', 1.59, Math.abs(R.M.w[1]), 2);
+  iddia('OLS x0 perm önem', 26.331, A.tek[0], 3);
+  iddia('OLS x1 perm önem', -0.292, A.tek[1], 3);
+  iddia('OLS x2 perm önem', 6.989, A.tek[2], 3);
+  iddia('ridge x0 perm önem', 5.807, R.tek[0], 3);
+  iddia('ridge x1 perm önem', 4.494, R.tek[1], 3);
+  iddia('ridge x0+x1 birlikte', 16.588, R.cift, 3);
+  iddia('ridge tek tek toplamı', 10.301, R.tek[0]+R.tek[1], 3);
+  iddia('OLS x0+x1 birlikte', 27.329, A.cift, 3);
+  /* dersin iddialari */
+  iddia('aynı veri, iki model çelişiyor', true, A.tek[1] < 0 && R.tek[1] > 4);
+  iddia('ridge: birlikte > ayrı ayrı toplamı', true, R.cift > R.tek[0] + R.tek[1] + 3);
+  iddia('OLS: birlikte ≈ x0 tek başına', true, Math.abs(A.cift - A.tek[0]) < 1.5);
+  iddia('x1 gerçek katsayısı sıfır', 0, DATA.ceza.gercek[1], 0);
+  iddia('gürültü özellikleri önemsiz çıkıyor', true,
+        [3,4,5].every(j => Math.abs(R.tek[j]) < 0.1 && Math.abs(A.tek[j]) < 0.1));
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

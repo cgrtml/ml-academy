@@ -1038,6 +1038,83 @@ VIZ.dagilimKaymasi = s => {
       Math.abs(C.z) > 1 ? K.red : K.green, 34);
 };
 
+
+/* ═══════════ ÖZELLİK ÖNEMİ ═══════════
+   Ridge/lasso dersindeki veriye dönüyoruz: x0 ile x1 korelasyonu 0.986,
+   gerçek katsayılar [3, 0, -2, 0, 0, 0].
+   Aynı veriye uydurulmuş iki model, önem sıralaması konusunda birbiriyle
+   çelişiyor. Çünkü "önem" verinin değil MODELİN özelliği. */
+function ooTestMSE(w, X, y, n){
+  const D = DATA.ceza; let s = 0;
+  for (let k = 0; k < n; k++){ let t = 0; for (let j = 0; j < D.p; j++) t += X[k][j] * w[j];
+    s += (y[k] - t) ** 2; }
+  return s / n;
+}
+const _ooCache = {};
+function ooPerm(w, indeksler, etiket){
+  const D = DATA.ceza;
+  const anahtar = etiket + ':' + indeksler.join(',');
+  if (_ooCache[anahtar] !== undefined) return _ooCache[anahtar];
+  const r = rng(5);
+  const X = D.XT.map(row => row.slice());
+  indeksler.forEach(j => {
+    const kol = X.map(row => row[j]);
+    for (let i = kol.length - 1; i > 0; i--){
+      const t = Math.floor(r() * (i + 1));
+      const tmp = kol[i]; kol[i] = kol[t]; kol[t] = tmp;
+    }
+    X.forEach((row, i) => row[j] = kol[i]);
+  });
+  return (_ooCache[anahtar] = ooTestMSE(w, X, D.yT, D.nT));
+}
+function ooModel(hangi){
+  return hangi === 'ridge' ? { w: ridgeFit(20), ad: 'RIDGE λ=20' } : { w: ridgeFit(0), ad: 'CEZASIZ (OLS)' };
+}
+function ooOnem(hangi){
+  const D = DATA.ceza, M = ooModel(hangi), taban = cezaTest(M.w);
+  return { M, taban,
+    tek: D.ad.map((_, j) => ooPerm(M.w, [j], hangi) - taban),
+    cift: ooPerm(M.w, [0, 1], hangi) - taban };
+}
+
+VIZ.ozellikOnemi = s => {
+  clear();
+  const hangi = s.ridgeMi ? 'ridge' : 'ols';
+  const D = DATA.ceza, O = ooOnem(hangi), M = O.M;
+  baslikSerit('ÖZELLİK ÖNEMİ',
+    'Aynı veri, iki farklı model. Hangi özelliğin önemli olduğu konusunda anlaşamıyorlar.', []);
+
+  const enKat = 4.0, enOnem = 28;
+  const satir = (bx, bw, baslik, deger, olcek, renk, birim) => {
+    txt(baslik, bx + bw / 2, 138, K.mut, 19);
+    D.ad.forEach((ad, j) => {
+      const y0 = 165 + j * 62, bh = 44;
+      box(bx, y0, bw, bh, 'rgba(255,255,255,.03)', null, 0);
+      const ol = Math.max(0, Math.min(1, Math.abs(deger[j]) / olcek)) * (bw - 190);
+      box(bx + 118, y0 + 8, ol, bh - 16, (deger[j] < -0.05 ? K.red : renk) + 'cc', null, 0);
+      txt(ad, bx + 26, y0 + 30, D.gercek[j] ? K.txt : K.mut, 21, 'center');
+      txt(D.gercek[j] ? 'gerçek ' + D.gercek[j] : 'gürültü', bx + 82, y0 + 29,
+          D.gercek[j] ? K.mut : K.dim, 14, 'center');
+      txt(deger[j].toFixed(birim), bx + bw - 16, y0 + 30,
+          deger[j] < -0.05 ? K.red : K.txt, 20, 'right');
+    });
+  };
+  satir(90, 560, 'KATSAYININ BÜYÜKLÜĞÜ', M.w.map(Math.abs), enKat, K.blue, 2);
+  satir(700, 560, 'PERMÜTASYON ÖNEMİ (test MSE artışı)', O.tek, enOnem, K.purple, 3);
+
+  /* alt: çift permütasyon kartı */
+  const oy = 545;
+  box(90, oy, 1170, 105, 'rgba(7,10,15,.7)', K.axis, 2);
+  txt('MODEL: ' + M.ad + '   ·   taban test MSE ' + O.taban.toFixed(3),
+      120, oy + 34, K.mut, 19, 'left');
+  txt('x₀ ve x₁ BİRLİKTE karıştırılırsa: ' + O.cift.toFixed(3),
+      120, oy + 78, K.orange, 26, 'left');
+  txt('tek tek toplamı: ' + (O.tek[0] + O.tek[1]).toFixed(3),
+      1230, oy + 34, K.mut, 19, 'right');
+  txt(O.cift > O.tek[0] + O.tek[1] ? 'birlikte > ayrı ayrı' : 'birlikte ≈ ayrı ayrı',
+      1230, oy + 78, O.cift > O.tek[0] + O.tek[1] ? K.green : K.mut, 22, 'right');
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

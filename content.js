@@ -55,7 +55,7 @@ const ROTALAR = [
     {id:'uretici-ayirici',  ad:'Sınırı mı çizersin, veriyi mi üretirsin',        sure:12, durum:'planli'},
     {id:'spline',         ad:'Spline: eğriyi parça parça bükmek',              sure:12, durum:'planli'},
     {id:'gam',            ad:'Toplamsal modeller: her özelliğin kendi eğrisi',  sure:12, durum:'planli'},
-    {id:'ozellik-onemi',  ad:'Özellik önemi: model hangi değişkene bakıyor',   sure:12, durum:'planli'},
+    {id:'ozellik-onemi',  ad:'Özellik önemi: model hangi değişkene bakıyor',   sure:15, durum:'hazir'},
     {id:'ozellik-muh',    ad:'Özellik mühendisliği: veriden yeni bilgi çıkarmak',  sure:14, durum:'planli'},
     {id:'pekistirmeli',   ad:'Pekiştirmeli öğrenme: ödülle öğrenmek',          sure:16, durum:'planli'},
     {id:'a-yildiz',       ad:'A* araması: sezgiyle akıllıca yol bulmak',       sure:14, durum:'planli'},
@@ -5387,5 +5387,117 @@ DERSLER['dagilim-kaymasi'] = {
       'Düşmanca ortamlarda (spam, dolandırıcılık, güvenlik) kavram kayması istisna değil kuraldır; ' +
       'yeniden eğitim bir bakım işi değil, sistemin parçasıdır.',
     xp:45,
+  },
+]};
+
+/* ─────────────── ÖZELLİK ÖNEMİ ─────────────── */
+DERSLER['ozellik-onemi'] = {
+  ad:'Özellik önemi: model hangi değişkene bakıyor',
+  alt:'Aynı veriye uydurulmuş iki model, hangi değişkenin önemli olduğu konusunda birbiriyle çelişiyor. İkisi de yalan söylemiyor.',
+  kaynaklar:[
+    {y:'Breiman, L.', t:'2001', b:'Random Forests (permütasyon önemi, Bölüm 10)', n:'Machine Learning, 45(1)'},
+    {y:'Molnar, C.', t:'2022', b:'Interpretable Machine Learning, Bölüm 8.5', n:'açık erişim', u:'https://christophm.github.io/interpretable-ml-book/'},
+    {y:'Hooker, G., Mentch, L. & Zhou, S.', t:'2021', b:'Unrestricted Permutation Forces Extrapolation', n:'Statistics and Computing, 31(82)'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Katsayı büyükse önemli midir?',
+    goal:'Katsayı büyüklüğüne bakarak önem sıralaması yapmanın nerede çöktüğünü göreceksin.',
+    todo:'Soldaki katsayı çubuklarına bak. x₁ neredeyse sıfır. Peki x₁ gerçekten gereksiz mi?',
+    kind:'controls', viz:'ozellikOnemi', h:700,
+    controls:[{k:'ridgeMi', lb:'MODEL', min:0, max:1, step:1, val:0, fmt:v => v ? 'RIDGE λ=20' : 'CEZASIZ (OLS)'}],
+    live:s => { const O = ooOnem(s.ridgeMi ? 'ridge' : 'ols');
+      return [['x₀ katsayı', Math.abs(O.M.w[0]).toFixed(2), K.green],
+              ['x₁ katsayı', Math.abs(O.M.w[1]).toFixed(2), K.orange],
+              ['x₂ katsayı', Math.abs(O.M.w[2]).toFixed(2), K.blue]]; },
+    body:'<p>Ridge ve lasso derslerindeki veriye dönüyoruz. Hatırlatma: x₁, x₀\'ın neredeyse kopyası ' +
+      '(korelasyon 0.986) ve gerçek katsayılar <b>[3, 0, −2, 0, 0, 0]</b>.</p>' +
+      '<p>Cezasız modelde katsayılar [3.87, <b>0.15</b>, 1.85, 0.00, 0.06, 0.05]. ' +
+      'x₁\'in katsayısı neredeyse sıfır, yani "önemsiz" görünüyor.</p>' +
+      '<p>Şimdi MODEL kaydırıcısını ridge\'e çevir. Aynı veri, aynı problem, ama katsayılar ' +
+      '[1.69, <b>1.59</b>, 1.31, ...] oldu. x₁ birdenbire x₀ kadar önemli.</p>' +
+      '<p>Hangisi doğru? İkisi de. Çünkü katsayı, verinin değil <b>modelin</b> bir özelliği.</p>',
+    learned:'<b>Katsayı büyüklüğü önem ölçüsü değildir.</b> Aynı veride cezasız model x₁\'e 0.15, ' +
+      'ridge 1.59 veriyor.<br><br>' +
+      'İki ek tuzak daha var: katsayılar <b>ölçekle</b> değişir (metre yerine kilometre kullanırsan ' +
+      'katsayı 1000 kat değişir), ve doğrusal olmayan modellerde katsayı diye bir şey yoktur.',
+    xp:30,
+  },
+  {
+    t:'Permütasyon önemi: karıştır ve ölç',
+    goal:'Modelden bağımsız çalışan, doğrudan performansa bakan bir önem ölçüsü öğreneceksin.',
+    todo:'Sağdaki mor çubuklara bak, sonra modeli değiştirip aynı çubukları tekrar oku.',
+    kind:'controls', viz:'ozellikOnemi', h:700,
+    controls:[{k:'ridgeMi', lb:'MODEL', min:0, max:1, step:1, val:0, fmt:v => v ? 'RIDGE λ=20' : 'CEZASIZ (OLS)'}],
+    derive:s => { const O = ooOnem(s.ridgeMi ? 'ridge' : 'ols'); return {x1: O.tek[1]}; },
+    live:s => { const O = ooOnem(s.ridgeMi ? 'ridge' : 'ols');
+      return [['x₀ önem', O.tek[0].toFixed(3), K.green], ['x₁ önem', O.tek[1].toFixed(3), K.orange],
+              ['x₂ önem', O.tek[2].toFixed(3), K.blue], ['HEDEF', 'x₁ önemi > 4']]; },
+    unlock:s => s.x1 > 4,
+    unlockMsg:'x₁\'in permütasyon önemini 4\'ün üstüne çıkar (modeli değiştir)',
+    body:'<p>Permütasyon önemi basit bir fikirdir: <b>bir özelliğin değerlerini satırlar arasında karıştır</b> ' +
+      've test hatasının ne kadar bozulduğuna bak. Çok bozuluyorsa model o özelliğe yaslanıyordur.</p>' +
+      '<p>Katsayıya göre iki avantajı var: ölçekten etkilenmez ve her model türünde çalışır, ' +
+      'ağaçta da sinir ağında da.</p>' +
+      '<p>Cezasız modelde: x₀ için <b>26.331</b>, x₁ için <b>−0.292</b>. ' +
+      'Negatif, yani x₁\'i karıştırmak modeli biraz <i>iyileştiriyor</i>.</p>' +
+      '<p>Ridge modelinde: x₀ için <b>5.807</b>, x₁ için <b>4.494</b>. Aynı x₁, aynı veri.</p>',
+    learned:'<b>Permütasyon önemi de modele bağlıdır.</b> x₁ cezasız modelde −0.292, ridge modelinde 4.494.<br><br>' +
+      'Ölçüyü değiştirdik ama sorun kalktı mı? Hayır. Çünkü ölçtüğümüz şey hâlâ <b>modelin neye yaslandığı</b>. ' +
+      'Verinin hangi değişkeni gerçekten belirlediği başka bir soru ve permütasyon önemi onu cevaplamaz.',
+    xp:45,
+  },
+  {
+    t:'Korele özellikler birbirini saklıyor',
+    goal:'İki özelliği tek tek karıştırmakla birlikte karıştırmanın neden farklı sonuç verdiğini göreceksin.',
+    todo:'Ridge modelinde alttaki karta bak: x₀ ve x₁ birlikte karıştırılınca hata ne kadar bozuluyor?',
+    kind:'controls', viz:'ozellikOnemi', h:700,
+    controls:[{k:'ridgeMi', lb:'MODEL', min:0, max:1, step:1, val:1, fmt:v => v ? 'RIDGE λ=20' : 'CEZASIZ (OLS)'}],
+    derive:s => { const O = ooOnem(s.ridgeMi ? 'ridge' : 'ols');
+      return {fark: O.cift - (O.tek[0] + O.tek[1])}; },
+    live:s => { const O = ooOnem(s.ridgeMi ? 'ridge' : 'ols');
+      return [['BİRLİKTE', O.cift.toFixed(3), K.orange],
+              ['TEK TEK TOPLAMI', (O.tek[0]+O.tek[1]).toFixed(3)],
+              ['FARK', s.fark.toFixed(3), s.fark > 3 ? K.green : K.mut]]; },
+    unlock:s => s.fark > 3,
+    unlockMsg:'Birlikte karıştırmanın farkını 3\'ün üstüne çıkar',
+    body:'<p>Ridge modelinde x₀ tek başına 5.807, x₁ tek başına 4.494 bozuyor. Toplamı 10.301.</p>' +
+      '<p>Ama ikisini <b>birlikte</b> karıştırınca hata <b>16.588</b> bozuluyor. Toplamdan çok daha fazla.</p>' +
+      '<p>Sebebi şu: x₀\'ı tek başına karıştırdığında model x₁\'e dönüp bilgiyi oradan alıyor, ' +
+      'çünkü x₁ neredeyse aynı sütun. Yani <b>her biri diğerinin arkasına saklanıyor</b> ve ' +
+      'tek tek ölçüm ikisinin de önemini olduğundan küçük gösteriyor.</p>' +
+      '<p>Cezasız modelde ise tablo başka: model bütün ağırlığı x₀\'a yüklediği için ' +
+      'x₀ tek başına 26.331, birlikte 27.329. Neredeyse aynı.</p>',
+    learned:'<b>Korele özellikler tek tek ölçümde birbirini saklar.</b> Ridge modelinde ayrı ayrı toplam ' +
+      '10.301, birlikte <b>16.588</b>.<br><br>' +
+      'Pratik kural: korele özellikleri <b>grup olarak</b> karıştır. "Gelir grubu ne kadar önemli" sorusu, ' +
+      '"aylık gelir ne kadar önemli" sorusundan hem daha anlamlı hem daha kararlı.',
+    xp:50,
+  },
+  {
+    t:'Önem nedensellik değildir',
+    goal:'Bu ölçülerin hangi soruyu cevapladığını, hangisini cevaplamadığını netleştireceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'ozellikOnemi', h:700, state:{ridgeMi:1},
+    body:'<p>Şunu hatırla: bu verinin gerçek katsayıları <b>[3, 0, −2, 0, 0, 0]</b>. ' +
+      'Yani x₁\'in sonuç üzerinde <b>hiçbir gerçek etkisi yok</b>, sadece x₀\'ın kopyası.</p>' +
+      '<p>Buna rağmen ridge modelinde x₁\'in permütasyon önemi 4.494 çıkıyor, x₀\'ınkine yakın. ' +
+      'Ölçü yanlış değil: model <b>gerçekten</b> x₁\'e yaslanıyor. Ama x₁ nedensel bir etken değil.</p>' +
+      '<p>Bir uyarı daha: permütasyon, olmayan veri noktaları üretir. x₀ ile x₁ korelasyonu 0.986 iken ' +
+      'x₀ sütununu karıştırmak, gerçekte asla görülmeyecek (x₀, x₁) çiftleri yaratır. ' +
+      'Model o bölgede hiç eğitilmedi, dolayısıyla oradaki tahminleri güvenilmez.</p>',
+    quiz:{ q:'Bir hastane modeli "hasta odasında kaç kez ziyaret alındı" özelliğine yüksek önem veriyor. Bu bulguyla ne yapmalı?',
+      opts:[
+        {t:'Ziyaret sayısını artırarak hasta sonuçlarını iyileştirmeye çalışmak', why:'Klasik hata. Yüksek önem, o değişkeni değiştirmenin sonucu değiştireceği anlamına gelmez. Ziyaret sayısı büyük ihtimalle hastalığın ciddiyetinin bir belirtisidir, sebebi değil. Müdahale kararı için nedensel çıkarım gerekir, önem sıralaması değil.'},
+        {t:'Bu değişkenin sonucun sebebi mi yoksa belirtisi mi olduğunu ayrı bir çalışmayla incelemek', why:'Doğru. Önem ölçüsü sadece "model buna yaslanıyor" der. Ziyaret sayısı hastalığın ciddiyetiyle korele olabilir, yani bir belirti olabilir. Nedensellik iddiası için deney, doğal deney ya da nedensel grafik gerekir.'},
+        {t:'Özelliği modelden çıkarmak, çünkü nedensel değil', why:'Tahmin amaçlı bir modelde belirtiler değerli olabilir ve onları atmak doğruluğu düşürür. Sorun özelliğin varlığı değil, ondan nedensel sonuç çıkarmak.'},
+        {t:'Modeli ridge yerine lasso ile yeniden eğitmek', why:'Ceza türünü değiştirmek önem sıralamasını değiştirir ama nedensellik sorusuna cevap vermez. Nitekim bu derste aynı veride iki modelin çelişen sıralamalar verdiğini gördün.'},
+      ], correct:1 },
+    learned:'<b>Özellik önemi "model neye yaslanıyor" sorusunu cevaplar, "gerçekte neyi değiştirirsem sonuç değişir" sorusunu değil.</b><br><br>' +
+      'Bu derste x₁\'in gerçek etkisi tam olarak sıfırdı, buna rağmen ridge modelinde önemi 4.494 çıktı.<br><br>' +
+      'Üç pratik kural: ölçüyü hangi modelle hesapladığını söyle, korele özellikleri grup olarak ölç, ' +
+      've nedensel iddia edeceksen ayrı bir çalışma yap.',
+    xp:50,
   },
 ]};
