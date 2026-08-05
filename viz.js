@@ -1723,6 +1723,118 @@ VIZ.qOgrenme = s => {
        K.blue, 'teorik γ¹⁰ = ' + Math.pow(gamma, 10).toFixed(4));
 };
 
+
+/* ═══════════ A* ARAMASI ═══════════
+   Q-öğrenmenin tersi: harita BİLİNİYOR, öğrenmeye gerek yok, aramak yeter.
+   İki duvar, üç geçit. Kısa yol alttaki geçitten değil üstteki geçitten geçiyor,
+   bu yüzden hedefe doğru körü körüne gitmek (açgözlü) yanlış yola sapıyor. */
+const AS = { W: 25, H: 15, bas: [1, 7], hedef: [23, 7], kom: [[0,-1],[0,1],[-1,0],[1,0]] };
+AS.duvar = (x, y) => {
+  if (x === 8  && y !== 1 && y !== 13) return true;
+  if (x === 16 && y !== 1)             return true;
+  return false;
+};
+AS.gezilebilir = (() => { let c = 0;
+  for (let x = 0; x < AS.W; x++) for (let y = 0; y < AS.H; y++) if (!AS.duvar(x, y)) c++;
+  return c; })();
+const _asCache = {};
+function asAra(tur, agirlik){
+  const anahtar = tur + ':' + (agirlik || 1);
+  if (_asCache[anahtar]) return _asCache[anahtar];
+  const g = {}, gel = {}, kapali = new Set(), anah = (x, y) => x + ',' + y;
+  const acik = [{ x: AS.bas[0], y: AS.bas[1], g: 0, f: 0 }];
+  g[anah(AS.bas[0], AS.bas[1])] = 0;
+  const sezgi = (x, y) => Math.abs(x - AS.hedef[0]) + Math.abs(y - AS.hedef[1]);
+  let genisletilen = 0;
+  const sira = [];
+  while (acik.length){
+    acik.sort((a, b) => a.f - b.f);
+    const n = acik.shift(), k = anah(n.x, n.y);
+    if (kapali.has(k)) continue;
+    kapali.add(k); genisletilen++; sira.push([n.x, n.y]);
+    if (n.x === AS.hedef[0] && n.y === AS.hedef[1]){
+      const yol = []; let c = k;
+      while (c){ const p = c.split(',').map(Number); yol.push(p); c = gel[c]; }
+      return (_asCache[anahtar] = { yol: yol.reverse(), genisletilen, sira });
+    }
+    AS.kom.forEach(([dx, dy]) => {
+      const nx = n.x + dx, ny = n.y + dy;
+      if (nx < 0 || nx >= AS.W || ny < 0 || ny >= AS.H || AS.duvar(nx, ny)) return;
+      const nk = anah(nx, ny), ng = n.g + 1;
+      if (g[nk] !== undefined && g[nk] <= ng) return;
+      g[nk] = ng; gel[nk] = k;
+      const f = tur === 'dijkstra' ? ng
+              : tur === 'acgozlu' ? sezgi(nx, ny)
+              : ng + (agirlik || 1) * sezgi(nx, ny);
+      acik.push({ x: nx, y: ny, g: ng, f });
+    });
+  }
+  return (_asCache[anahtar] = { yol: [], genisletilen, sira });
+}
+const asOptimal = () => asAra('dijkstra').yol.length;
+
+VIZ.aramaYildiz = s => {
+  clear();
+  const turler = ['dijkstra', 'astar', 'acgozlu'];
+  const tur = turler[Math.max(0, Math.min(2, Math.round(s.tur === undefined ? 0 : s.tur)))];
+  const w = s.w === undefined ? 1 : s.w;
+  const R = asAra(tur, w);
+  const opt = asOptimal();
+  const ad = tur === 'dijkstra' ? 'DIJKSTRA · sezgi yok'
+           : tur === 'acgozlu'  ? 'AÇGÖZLÜ · sadece sezgi'
+           : 'A* · maliyet + ' + (w !== 1 ? w + '×' : '') + 'sezgi';
+  baslikSerit(ad, 'Harita biliniyor. Soru öğrenmek değil, en az hücreyi açarak en kısa yolu bulmak.', []);
+
+  /* labirent */
+  const hg = 40, gx = 250, gy = 132;
+  const acilanSira = {};
+  R.sira.forEach(([x, y], i) => acilanSira[x + ',' + y] = i);
+  for (let x = 0; x < AS.W; x++) for (let y = 0; y < AS.H; y++){
+    const X = gx + x * hg, Y = gy + y * hg;
+    if (AS.duvar(x, y)){ box(X, Y, hg - 3, hg - 3, 'rgba(132,148,168,.30)', null, 0); continue; }
+    const i = acilanSira[x + ',' + y];
+    let dolgu = 'rgba(255,255,255,.025)';
+    if (i !== undefined){
+      const t = i / Math.max(1, R.sira.length - 1);
+      dolgu = 'rgba(76,196,255,' + (0.10 + 0.42 * (1 - t)) + ')';
+    }
+    box(X, Y, hg - 3, hg - 3, dolgu, null, 0);
+  }
+  /* yol */
+  if (R.yol.length){
+    cx.strokeStyle = K.yellow; cx.lineWidth = 5;
+    cx.beginPath();
+    R.yol.forEach(([x, y], i) => { const X = gx + x * hg + hg / 2 - 2, Y = gy + y * hg + hg / 2 - 2;
+      i ? cx.lineTo(X, Y) : cx.moveTo(X, Y); });
+    cx.stroke();
+  }
+  const isaret = (p, renk, harf) => {
+    const X = gx + p[0] * hg, Y = gy + p[1] * hg;
+    box(X, Y, hg - 3, hg - 3, renk + '88', renk, 2);
+    txt(harf, X + hg / 2 - 2, Y + hg / 2 + 7, K.txt, 22);
+  };
+  isaret(AS.bas, K.green, 'S');
+  isaret(AS.hedef, K.orange, 'H');
+
+  /* kartlar */
+  const ky = gy + AS.H * hg + 30, kw = 355;
+  const kart = (x, ad2, deger, renk, alt) => {
+    box(x, ky, kw, 108, 'rgba(7,10,15,.7)', renk, 2);
+    txt(ad2, x + kw / 2, ky + 30, K.mut, 17);
+    txt(deger, x + kw / 2, ky + 76, renk, 30);
+    if (alt) txt(alt, x + kw / 2, ky + 99, K.mut, 14);
+  };
+  kart(190, 'AÇILAN HÜCRE', R.genisletilen + ' / ' + AS.gezilebilir,
+       R.genisletilen < 200 ? K.green : K.orange,
+       'Dijkstra ' + asAra('dijkstra').genisletilen + ' açıyor');
+  kart(570, 'BULUNAN YOL', R.yol.length + ' adım',
+       R.yol.length === opt ? K.green : K.red,
+       'en kısası ' + opt + ' adım');
+  kart(950, 'OPTİMAL Mİ', R.yol.length === opt ? 'EVET' : 'HAYIR',
+       R.yol.length === opt ? K.green : K.red,
+       R.yol.length === opt ? 'garanti' : (R.yol.length - opt) + ' adım fazla');
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

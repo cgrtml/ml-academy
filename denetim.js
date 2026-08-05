@@ -505,6 +505,35 @@ console.log('═══ PEKİŞTİRMELİ ÖĞRENME ═══');
   iddia('en kısa yol 10 adım', 10, Math.abs(RL.hedef[0]-RL.bas[0]) + Math.abs(RL.hedef[1]-RL.bas[1]), 0);
 }
 
+
+console.log('═══ A* ARAMASI ═══');
+{
+  const D = asAra('dijkstra',1), A1 = asAra('astar',1), A15 = asAra('astar',1.5),
+        A3 = asAra('astar',3), G = asAra('acgozlu',1);
+  iddia('gezilebilir hücre', 348, AS.gezilebilir, 0);
+  iddia('optimal yol', 35, asOptimal(), 0);
+  iddia('Dijkstra açılan', 311, D.genisletilen, 0);
+  iddia('Dijkstra yol', 35, D.yol.length, 0);
+  iddia('A* açılan', 245, A1.genisletilen, 0);
+  iddia('A* yol', 35, A1.yol.length, 0);
+  iddia('A* w=1.5 açılan', 154, A15.genisletilen, 0);
+  iddia('A* w=1.5 yol', 35, A15.yol.length, 0);
+  iddia('A* w=3 açılan', 153, A3.genisletilen, 0);
+  iddia('A* w=3 yol', 37, A3.yol.length, 0);
+  iddia('açgözlü açılan', 117, G.genisletilen, 0);
+  iddia('açgözlü yol', 47, G.yol.length, 0);
+  iddia('açgözlü yol yüzde kaç uzun', 34.3, 100*(G.yol.length/asOptimal()-1), 1);
+  iddia('A* Dijkstradan yüzde kaç az açıyor', 21.2, 100*(1-A1.genisletilen/D.genisletilen), 1);
+  /* dersin iddialari */
+  iddia('A* optimal, açgözlü değil', true, A1.yol.length === asOptimal() && G.yol.length > asOptimal());
+  iddia('w büyüdükçe açılan azalıyor', true, A15.genisletilen < A1.genisletilen);
+  iddia('w=3 optimalliği bozuyor', true, A3.yol.length > asOptimal());
+  iddia('ağırlıklı A* garantisi: yol <= w * optimal', true, A3.yol.length <= 3*asOptimal());
+  /* Manhattan sezgisi kabul edilebilir mi: gercek yol >= Manhattan */
+  iddia('Manhattan sezgisi kabul edilebilir', true,
+        asOptimal()-1 >= Math.abs(AS.hedef[0]-AS.bas[0]) + Math.abs(AS.hedef[1]-AS.bas[1]));
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

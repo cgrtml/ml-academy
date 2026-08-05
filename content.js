@@ -58,7 +58,7 @@ const ROTALAR = [
     {id:'ozellik-onemi',  ad:'Özellik önemi: model hangi değişkene bakıyor',   sure:15, durum:'hazir'},
     {id:'ozellik-muh',    ad:'Özellik mühendisliği: veriden yeni bilgi çıkarmak',  sure:14, durum:'planli'},
     {id:'pekistirmeli',   ad:'Pekiştirmeli öğrenme: ödülle öğrenmek',          sure:18, durum:'hazir'},
-    {id:'a-yildiz',       ad:'A* araması: sezgiyle akıllıca yol bulmak',       sure:14, durum:'planli'},
+    {id:'a-yildiz',       ad:'A* araması: sezgiyle akıllıca yol bulmak',       sure:16, durum:'hazir'},
     {id:'kisit',          ad:'Kısıt tatmin problemleri: değişken ve kural oyunu',  sure:12, durum:'planli'},
     {id:'hessian',        ad:'Hessian: eğrinin eğriliğini ölçmek',             sure:12, durum:'planli'},
     {id:'taylor',         ad:'Taylor serisi: karmaşığı yerel olarak basitleştirmek',  sure:12, durum:'planli'},
@@ -6090,6 +6090,139 @@ DERSLER['pekistirmeli'] = {
       'γ=0.95 ile 0.6302 ve 19 hücre.<br><br>' +
       'Uzun ufuklu problemlerde (satranç, robot yürüyüşü) γ 0.99 ve üstü seçilir. ' +
       'Kısa ufuklularda (reklam tıklaması) 0.9 bile fazla olabilir.',
+    xp:55,
+  },
+]};
+
+/* ─────────────── A* ARAMASI ─────────────── */
+DERSLER['a-yildiz'] = {
+  ad:'A* araması: sezgiyle akıllıca yol bulmak',
+  alt:'Aynı labirent, üç yöntem. Dijkstra 311 hücre açıp en kısa yolu buluyor, açgözlü 117 açıyor ama %34 uzun bir yol getiriyor. A* ikisinin arasında bir yerde değil, ikisinin de en iyisini alıyor.',
+  kaynaklar:[
+    {y:'Hart, P. E., Nilsson, N. J. & Raphael, B.', t:'1968', b:'A Formal Basis for the Heuristic Determination of Minimum Cost Paths', n:'IEEE Trans. Systems Science and Cybernetics, 4(2)'},
+    {y:'Russell, S. & Norvig, P.', t:'2020', b:'Artificial Intelligence: A Modern Approach, 4. baskı, Bölüm 3.5', n:'Pearson'},
+    {y:'Pohl, I.', t:'1970', b:'Heuristic Search Viewed as Path Finding in a Graph (ağırlıklı A*)', n:'Artificial Intelligence, 1(3-4)'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Harita biliniyorsa öğrenmeye gerek yok',
+    goal:'Pekiştirmeli öğrenmeyle arama arasındaki temel farkı göreceksin.',
+    todo:'Dijkstra seçiliyken bak: mavi hücreler açılanlar. Neredeyse her yeri açıyor.',
+    kind:'controls', viz:'aramaYildiz', h:900,
+    controls:[{k:'tur', lb:'YÖNTEM', min:0, max:2, step:1, val:0,
+               fmt:v => ['DIJKSTRA','A*','AÇGÖZLÜ'][v]}],
+    state:{w:1},
+    live:s => { const R = asAra(['dijkstra','astar','acgozlu'][s.tur], 1);
+      return [['AÇILAN', R.genisletilen+' / 348'], ['YOL', R.yol.length+' adım'],
+              ['OPTİMAL', R.yol.length === asOptimal() ? 'evet' : 'hayır',
+               R.yol.length === asOptimal() ? K.green : K.red]]; },
+    body:'<p>Bir önceki derste ajan haritayı bilmiyordu ve 400 bölüm deneyerek öğrendi. ' +
+      'Burada harita <b>tamamen biliniyor</b>: duvarlar nerede, hedef nerede, her hamlenin maliyeti ne.</p>' +
+      '<p>O zaman öğrenmeye gerek yok. Problem farklı: <b>en az işi yaparak en kısa yolu bulmak.</b></p>' +
+      '<p>Dijkstra en basit cevabı verir: başlangıçtan olan uzaklığa göre genişlet, ' +
+      'yani her yöne eşit yayıl. Sonuç garanti en kısa yol, <b>35 adım</b>. ' +
+      'Bedeli 348 gezilebilir hücrenin <b>311</b>\'ini açmak.</p>' +
+      '<p>Dikkat: hedefin nerede olduğunu biliyor ama bu bilgiyi hiç kullanmıyor.</p>',
+    learned:'<b>Dijkstra hedefin yerini bilir ama kullanmaz.</b> Her yöne eşit yayılır, ' +
+      '348 hücrenin 311\'ini açar ve en kısa yolu (35 adım) garanti eder.<br><br>' +
+      'Bu, pekiştirmeli öğrenmeden temel farktır: orada model bilinmiyordu ve deneyerek öğreniliyordu, ' +
+      'burada model biliniyor ve sadece hesaplanıyor.',
+    xp:25,
+  },
+  {
+    t:'Sadece sezgiye güvenmek',
+    goal:'Hedefe doğru körü körüne gitmenin neden hızlı ama yanlış olduğunu göreceksin.',
+    todo:'AÇGÖZLÜ\'yü seç. Kaç hücre açıyor? Bulduğu yol kaç adım?',
+    kind:'controls', viz:'aramaYildiz', h:900,
+    controls:[{k:'tur', lb:'YÖNTEM', min:0, max:2, step:1, val:0,
+               fmt:v => ['DIJKSTRA','A*','AÇGÖZLÜ'][v]}],
+    state:{w:1},
+    derive:s => { const R = asAra(['dijkstra','astar','acgozlu'][s.tur], 1);
+      return {ac: R.genisletilen, yl: R.yol.length}; },
+    live:s => [['AÇILAN', s.ac+' / 348', s.ac < 150 ? K.green : K.orange],
+               ['YOL', s.yl+' adım', s.yl > 35 ? K.red : K.green],
+               ['EN KISASI', '35 adım'], ['HEDEF', 'yol > 40']],
+    unlock:s => s.yl > 40,
+    unlockMsg:'Optimal olmayan bir yol bulan yöntemi seç',
+    body:'<p>Açgözlü arama tam tersini yapar: geçmişi hiç dert etmez, sadece ' +
+      '<b>hedefe kalan tahmini uzaklığa</b> bakar. Buna <b>sezgi</b> (heuristic) denir; ' +
+      'burada Manhattan uzaklığı kullanıyoruz.</p>' +
+      '<p>Sonuç çok hızlı: sadece <b>117</b> hücre açıyor, Dijkstra\'nın üçte biri kadar.</p>' +
+      '<p>Ama bulduğu yol <b>47 adım</b>. En kısası 35. Yani <b>%34 daha uzun</b> bir yol.</p>' +
+      '<p>Sebebi labirentin kurgusu: kısa yol yukarıdaki geçitten geçiyor ama açgözlü arama ' +
+      'hedefe doğru düz gitmeye çalışıp aşağıya sapıyor ve oradan dönmek zorunda kalıyor.</p>',
+    learned:'<b>Açgözlü arama hızlıdır ama garantisi yoktur.</b> 117 hücre açıp 47 adımlık ' +
+      'bir yol buluyor; en kısası 35.<br><br>' +
+      'Sebebi "buraya kadar ne harcadım" sorusunu hiç sormaması. Sadece "buradan sonra ne kaldı" ' +
+      'diye bakıyor ve bu, uzun bir sapmayı ucuz sanmasına yol açıyor.',
+    xp:45,
+  },
+  {
+    t:'A*: ikisini topla',
+    goal:'İki bilgiyi birleştirmenin neden hem hızlı hem garantili olduğunu göreceksin.',
+    todo:'A*\'ı seç. Açılan hücre ve yol uzunluğunu diğer ikisiyle karşılaştır.',
+    kind:'controls', viz:'aramaYildiz', h:900,
+    controls:[{k:'tur', lb:'YÖNTEM', min:0, max:2, step:1, val:0,
+               fmt:v => ['DIJKSTRA','A*','AÇGÖZLÜ'][v]}],
+    state:{w:1},
+    derive:s => { const t = ['dijkstra','astar','acgozlu'][s.tur], R = asAra(t, 1);
+      return {iyi: t === 'astar' && R.yol.length === asOptimal()}; },
+    live:s => { const R = asAra(['dijkstra','astar','acgozlu'][s.tur], 1);
+      return [['AÇILAN', R.genisletilen+' / 348'], ['YOL', R.yol.length+' adım'],
+              ['DIJKSTRA', '311 · 35'], ['AÇGÖZLÜ', '117 · 47']]; },
+    unlock:s => s.iyi,
+    unlockMsg:'Hem 245 hücre açan hem 35 adım bulan yöntemi seç',
+    body:'<p>A*\'ın fikri tek satır:</p>' +
+      '<p style="text-align:center"><b>f(n) = g(n) + h(n)</b></p>' +
+      '<p><b>g(n):</b> başlangıçtan buraya kadar gerçekten harcanan maliyet. Dijkstra\'nın baktığı şey.<br>' +
+      '<b>h(n):</b> buradan hedefe tahmini kalan maliyet. Açgözlünün baktığı şey.</p>' +
+      '<p>Sonuç: <b>245 hücre, 35 adım.</b> Dijkstra\'dan %21 daha az iş yapıyor ve yolu yine garanti buluyor.</p>' +
+      '<p>Garantinin şartı var: sezgi <b>gerçek maliyeti asla abartmamalı</b>. Buna kabul edilebilirlik denir. ' +
+      'Manhattan uzaklığı burada kabul edilebilir, çünkü duvarlar yüzünden gerçek yol her zaman ' +
+      'Manhattan uzaklığından uzun ya da eşittir.</p>',
+    learned:'<b>A* = geçmiş maliyet + geleceğe dair tahmin.</b> f(n) = g(n) + h(n).<br><br>' +
+      'Bu labirentte 245 hücre açıyor (Dijkstra 311) ve yine 35 adımlık en kısa yolu buluyor.<br><br>' +
+      'Optimallik garantisi sezginin <b>kabul edilebilir</b> olmasına bağlıdır: gerçek kalan maliyeti ' +
+      'asla olduğundan büyük tahmin etmemeli. h(n) = 0 alırsan A* aynen Dijkstra olur.',
+    xp:50,
+  },
+  {
+    t:'Sezgiye fazla güvenmek',
+    goal:'Hızı optimallikle takas etme ayarını göreceksin.',
+    todo:'A* seçiliyken ağırlığı artır. 3\'te yol kaç adım oluyor?',
+    kind:'controls', viz:'aramaYildiz', h:900,
+    controls:[
+      {k:'tur', lb:'YÖNTEM', min:0, max:2, step:1, val:1, fmt:v => ['DIJKSTRA','A*','AÇGÖZLÜ'][v]},
+      {k:'w', lb:'SEZGİ AĞIRLIĞI', min:1, max:3, step:0.5, val:1, fmt:v => 'w = '+v.toFixed(1)},
+    ],
+    derive:s => { const R = asAra(['dijkstra','astar','acgozlu'][s.tur], s.w);
+      return {uz: R.yol.length > asOptimal()}; },
+    live:s => { const R = asAra(['dijkstra','astar','acgozlu'][s.tur], s.w);
+      return [['AÇILAN', R.genisletilen+''], ['YOL', R.yol.length+' adım'],
+              ['OPTİMAL', R.yol.length === asOptimal() ? 'evet' : 'HAYIR',
+               R.yol.length === asOptimal() ? K.green : K.red]]; },
+    unlock:s => s.uz,
+    unlockMsg:'A* ile optimal olmayan bir yol bulduracak bir ağırlık seç',
+    body:'<p>f(n) = g(n) + <b>w</b>·h(n) yazıp w\'yi büyütmek sezgiye daha çok güvenmek demektir.</p>' +
+      '<p><b>w=1:</b> 245 hücre, 35 adım, optimal<br>' +
+      '<b>w=1.5:</b> <b>154</b> hücre, 35 adım, hâlâ optimal<br>' +
+      '<b>w=3:</b> 153 hücre, <b>37 adım</b>, artık optimal değil</p>' +
+      '<p>w=1.5\'te iş yükü neredeyse yarıya iniyor ve yol yine en kısa. Bu bir garanti değil, ' +
+      'bu labirentte öyle denk geldi. Teorik garanti şu: ağırlıklı A*, en kısa yoldan ' +
+      'en fazla <b>w kat</b> uzun bir yol bulur.</p>',
+    quiz:{ q:'Bir oyunda 200 karakter aynı anda yol buluyor ve kare başına 16 milisaniye bütçen var. Yolun birkaç adım uzun olması oyuncunun gözünden kaçıyor. Ne yaparsın?',
+      opts:[
+        {t:'Dijkstra, çünkü en kısa yolu garanti eder', why:'Garanti burada en pahalı özellik. Dijkstra bu labirentte 348 hücrenin 311\'ini açıyor; 200 karakterle çarpınca kare bütçesi patlar. Üstelik oyuncu birkaç adımlık farkı zaten görmüyor.'},
+        {t:'Ağırlıklı A*, çünkü açılan hücreyi yarıya indirip yolu en fazla w kat uzatır', why:'Doğru. w=1.5 bu labirentte 245 hücreden 154\'e iniyor ve yol yine 35 adım çıktı. Garanti edilen tek şey yolun en fazla w kat uzun olacağı, ki oyun için fazlasıyla yeterli. Oyun motorlarında standart yaklaşım budur.'},
+        {t:'Açgözlü arama, çünkü en az hücreyi açan odur', why:'En az hücreyi açtığı doğru (117), ama bulduğu yol 47 adım, yani %34 uzun. Karakterlerin görünür biçimde saçma yollardan gitmesi oyuncunun fark edeceği bir kusurdur.'},
+        {t:'Q-öğrenme ile yol bulmayı öğretmek', why:'Harita zaten biliniyor. Bilinen bir modeli öğrenmeye çalışmak, hesaplanabilecek bir şeyi tahmin etmeye çalışmaktır; hem yavaş hem gereksiz.'},
+      ], correct:1 },
+    learned:'<b>Ağırlıklı A* hızı optimallikle takas eder ve takasın sınırı bilinir.</b><br><br>' +
+      'w=1.5\'te açılan hücre 245\'ten 154\'e iniyor; w=3\'te yol 35 yerine 37 adım oluyor.<br><br>' +
+      'Teorik garanti: bulunan yol en kısa yoldan en fazla <b>w kat</b> uzundur. ' +
+      'Bu yüzden oyunlarda ve robotikte w genellikle 1.2 ile 2 arasında seçilir: ' +
+      'kayıp gözle görülmez, kazanç ölçülebilir.',
     xp:55,
   },
 ]};
