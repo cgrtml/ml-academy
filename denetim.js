@@ -606,6 +606,41 @@ console.log('═══ HESSIAN · KOŞUL SAYISI ═══');
   iddia('κ=1 optimal η', 1.0000, hsOptLr(1, 1), 4);
 }
 
+
+console.log('═══ GAUSSIAN PROCESS ═══');
+{
+  const M = gpModel(1.0, 6);
+  iddia('veri noktasında std', 0.0497, M(0.4).sd, 4);
+  iddia('gürültü seviyesi', 0.05, GP.sn, 4);
+  iddia('x=5 std (veri yok)', 0.9982, M(5).sd, 4);
+  iddia('belirsizlik oranı', 20.1, M(5).sd / M(0.4).sd, 1);
+  iddia('x=5 tahmini', -0.022, M(5).ort, 3);
+  iddia('x=5 gerçek değer', 2.739, GP.f0(5), 3);
+  /* Ders bandin her zaman gercegi kapsamadigini soyluyor; ikisini de sinayalim. */
+  iddia('x=4 sapma kaç σ', 1.80, Math.abs(M(4).ort - GP.f0(4)) / M(4).sd, 2);
+  iddia('x=4 bandın içinde', true, Math.abs(M(4).ort - GP.f0(4)) < 2*M(4).sd);
+  iddia('x=5 sapma kaç σ', 2.77, Math.abs(M(5).ort - GP.f0(5)) / M(5).sd, 2);
+  iddia('x=5 bandın dışında', true, Math.abs(M(5).ort - GP.f0(5)) > 2*M(5).sd);
+  iddia('x=1.8 tahmini', 0.891, M(1.8).ort, 3);
+  iddia('x=1.8 gerçek', 0.889, GP.f0(1.8), 3);
+  /* gozlem ekledikce belirsizlik dusuyor */
+  iddia('2 gözlemde x=1.8 std', 1.000, gpModel(1.0,2)(1.8).sd, 3);
+  iddia('6 gözlemde x=1.8 std', 0.301, gpModel(1.0,6)(1.8).sd, 3);
+  iddia('gözlem arttıkça belirsizlik azalıyor', true,
+        [1,2,4,6].every((k,i,a2) => i===0 || gpModel(1.0,k)(1.8).sd <= gpModel(1.0,a2[i-1])(1.8).sd));
+  /* uzunluk olcegi */
+  iddia('l=0.3 x=1.8 std', 0.999, gpModel(0.3,6)(1.8).sd, 3);
+  iddia('l=0.3 x=1.8 ortalama', 0.038, gpModel(0.3,6)(1.8).ort, 3);
+  iddia('l=1.0 x=1.8 ortalama', 0.891, gpModel(1.0,6)(1.8).ort, 3);
+  iddia('l=2.0 x=1.8 ortalama', 1.269, gpModel(2.0,6)(1.8).ort, 3);
+  iddia('l=2.0 x=1.8 std', 0.073, gpModel(2.0,6)(1.8).sd, 3);
+  /* l=2.0 emin ama yanlis: sapma 3 sigmadan buyuk mu */
+  iddia('l=2.0 emin ama yanlış', true,
+        Math.abs(gpModel(2.0,6)(1.8).ort - GP.f0(1.8)) > 3*gpModel(2.0,6)(1.8).sd);
+  iddia('l büyüdükçe belirsizlik azalıyor', true,
+        [0.3,0.6,1.0,2.0].every((l,i,a2) => i===0 || gpModel(l,6)(1.8).sd < gpModel(a2[i-1],6)(1.8).sd));
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

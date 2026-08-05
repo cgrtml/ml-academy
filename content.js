@@ -49,7 +49,7 @@ const ROTALAR = [
     {id:'softmax',        ad:'Softmax ve çapraz entropi',                      sure:15, durum:'hazir'},
     {id:'dagilim-kaymasi',  ad:'Zemin kayınca: dağılım kayması',                 sure:15, durum:'hazir'},
     {id:'hiper-arama',    ad:'Hiperparametre arama: ızgara, rastgele, eleme',  sure:16, durum:'hazir'},
-    {id:'gauss-surec',    ad:'Gaussian Process: belirsizliğini söyleyen model',  sure:16, durum:'planli'},
+    {id:'gauss-surec',    ad:'Gaussian Process: belirsizliğini söyleyen model',  sure:16, durum:'hazir'},
     {id:'bayes-reg',      ad:'Bayesçi bakış: Occam\'ın usturası hesaplanabilir mi',  sure:16, durum:'planli'},
     {id:'fisher-lda',     ad:'Fisher\'ın fikri: sınıfları ayıran en iyi yön',   sure:14, durum:'hazir'},
     {id:'uretici-ayirici',  ad:'Sınırı mı çizersin, veriyi mi üretirsin',        sure:14, durum:'hazir'},
@@ -6479,6 +6479,132 @@ DERSLER['hessian'] = {
       'Ölçekleme κ\'yı doğrudan düşürür ve bu derste κ=1\'de yakınsama <b>tek adım</b> sürüyor.<br><br>' +
       'Momentum gereken adım sayısını κ yerine √κ ile büyütür; κ=100 için bu 363 yerine kabaca 36 demektir. ' +
       'Adam ise Hessian köşegenine ucuz bir yaklaşım kurarak aynı işi yapar.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── GAUSSIAN PROCESS ─────────────── */
+DERSLER['gauss-surec'] = {
+  ad:'Gaussian Process: belirsizliğini söyleyen model',
+  alt:'Şimdiye kadarki her model tek bir sayı söyledi. Bu model bir dağılım söylüyor, ve veri bittiği yerde "bilmiyorum" diyebiliyor.',
+  kaynaklar:[
+    {y:'Rasmussen, C. E. & Williams, C. K. I.', t:'2006', b:'Gaussian Processes for Machine Learning, Bölüm 2', n:'MIT Press', u:'https://gaussianprocess.org/gpml/'},
+    {y:'Bishop, C. M.', t:'2006', b:'Pattern Recognition and Machine Learning, Bölüm 6.4', n:'Springer'},
+    {y:'Snoek, J., Larochelle, H. & Adams, R. P.', t:'2012', b:'Practical Bayesian Optimization of Machine Learning Algorithms', n:'NeurIPS 2012'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Tek sayı değil, bir dağılım',
+    goal:'Bir modelin çıktısının neden sadece bir tahmin olmak zorunda olmadığını göreceksin.',
+    todo:'Gözlem sayısını 1\'den 6\'ya çıkar. Mor bant nerelerde daralıyor?',
+    kind:'controls', viz:'gaussSurec', h:720,
+    controls:[{k:'kn', lb:'GÖZLEM SAYISI', min:1, max:6, step:1, val:1, fmt:v => v+' nokta'}],
+    state:{l:1.0},
+    live:s => { const M = gpModel(1.0, s.kn);
+      return [['x=1.8 std', M(1.8).sd.toFixed(3)], ['x=5 std', M(5).sd.toFixed(3)]]; },
+    body:'<p>Ridge, lasso, karar ağacı, sinir ağı. Hepsi bir x verdiğinde tek bir y söyledi. ' +
+      'Ama "0.7" demekle "0.7 civarı, ama emin değilim" demek aynı şey değil.</p>' +
+      '<p>Gaussian Process her x için bir <b>normal dağılım</b> döndürür: bir ortalama ve bir ' +
+      'standart sapma. Mor çizgi ortalama, mor bant ±2 standart sapma.</p>' +
+      '<p>Gözlem eklerken bandın davranışına dikkat et: <b>yeni noktanın çevresinde daralıyor</b>, ' +
+      'uzak bölgeler aynı kalıyor. Bilgi yereldir.</p>',
+    learned:'<b>Gaussian Process her nokta için bir tahmin değil, bir dağılım verir.</b><br><br>' +
+      'Bilgi yerel yayılır: bir gözlem eklediğinde belirsizlik sadece o noktanın çevresinde düşer. ' +
+      'x=1.8\'de standart sapma 2 gözlemle 1.000, 6 gözlemle <b>0.301</b>.',
+    xp:25,
+  },
+  {
+    t:'Veri bitince model bunu itiraf ediyor',
+    goal:'Modelin bilmediği bölgede nasıl davrandığını göreceksin.',
+    todo:'6 gözlemle bak. Turuncu çizginin sağında bant ne yapıyor?',
+    kind:'controls', viz:'gaussSurec', h:720,
+    controls:[{k:'kn', lb:'GÖZLEM SAYISI', min:1, max:6, step:1, val:6, fmt:v => v+' nokta'}],
+    state:{l:1.0},
+    derive:s => { const M = gpModel(1.0, s.kn); return {oran: M(5).sd / M(0.4).sd}; },
+    live:s => { const M = gpModel(1.0, s.kn);
+      return [['VERİDE std', M(0.4).sd.toFixed(4), K.green], ['x=5 std', M(5).sd.toFixed(4), K.orange],
+              ['ORAN', s.oran.toFixed(1)+'×'], ['HEDEF', '> 15×']]; },
+    unlock:s => s.oran > 15,
+    unlockMsg:'Belirsizlik oranını 15 katın üstüne çıkar',
+    body:'<p>Veri x = 2.6\'da bitiyor. Sağında model hiçbir şey görmedi.</p>' +
+      '<p>Bir veri noktasında (x = 0.4) standart sapma <b>0.0497</b>, yani neredeyse tam olarak ' +
+      'ölçüm gürültüsü kadar (0.05). Model orada emin.</p>' +
+      '<p>x = 5\'te standart sapma <b>0.9982</b>. Aradaki oran <b>20 kat</b>.</p>' +
+      '<p>Asıl öğretici kısım şu: x = 5\'te GP\'nin tahmini <b>−0.022</b>, gerçek değer ise <b>2.739</b>. ' +
+      'Model çok yanılıyor. Ama yanıldığını da haber veriyor: veri içinde belirsizlik 0.05 iken ' +
+      'burada 1.00\'e çıkmış.</p>' +
+      '<p>Burada dürüst olmak gerekiyor: bant her zaman gerçeği <b>kapsamaz</b>. x = 4\'te sapma ' +
+      '1.80 standart sapma, yani ±2σ bandının içinde. Ama x = 5\'te sapma <b>2.77 standart sapma</b>, ' +
+      'yani bandın dışına taşıyor.</p>' +
+      '<p>Sebebi şu: GP veri bitince kendi <b>ön kabulüne</b> döner ve buradaki ön kabul ' +
+      '"ortalama sıfırdır". Gerçek fonksiyon ise yükselmeye devam ediyor. Yani belirsizlik tahmini ' +
+      'de sonuçta bir modeldir; ön kabul yanlışsa o da yanılır.</p>' +
+      '<p>Yine de fark büyük. Polinom uydursaydın orada dar bir bant bile olmadan, kendinden emin ve ' +
+      'yanlış bir sayı alırdın. GP en azından <b>uzaklaştıkça güvenmemen gerektiğini</b> söylüyor.</p>',
+    learned:'<b>Veri bitince GP prior\'a döner ve belirsizliği açılır.</b><br><br>' +
+      'x = 0.4\'te standart sapma 0.0497, x = 5\'te <b>0.9982</b>. 20 kat.<br><br>' +
+      'x = 5 tahmini −0.022, gerçek 2.739. Model yanlış ve bandı bu sapmayı kapsamıyor (2.77σ). ' +
+      'Ama uzaklaştıkça güvenilmezliğini ilan ediyor, ki aşırı uyum dersindeki polinom bunu bile yapamıyordu.<br><br>' +
+      'Ders: geniş bant "bilmiyorum" demektir, "gerçek burada" garantisi değil.',
+    xp:50,
+  },
+  {
+    t:'Uzunluk ölçeği: "yakın" ne demek?',
+    goal:'Çekirdeğin tek parametresinin modeli nasıl tamamen değiştirdiğini göreceksin.',
+    todo:'Uzunluk ölçeğini 0.3\'ten 2.0\'a kadar gezdir. Bandın ve eğrinin şekli nasıl değişiyor?',
+    kind:'controls', viz:'gaussSurec', h:720,
+    controls:[{k:'l', lb:'UZUNLUK ÖLÇEĞİ', min:0.3, max:2.0, step:0.1, val:1.0, fmt:v => 'l = '+v.toFixed(1)}],
+    state:{kn:6},
+    derive:s => { const M = gpModel(s.l, 6); return {sd18: M(1.8).sd}; },
+    live:s => { const M = gpModel(s.l, 6);
+      return [['x=1.8 ortalama', M(1.8).ort.toFixed(3), K.purple],
+              ['GERÇEK', GP.f0(1.8).toFixed(3), K.mut],
+              ['x=1.8 std', s.sd18.toFixed(3)], ['HEDEF', 'std < 0.10']]; },
+    unlock:s => s.sd18 < 0.10,
+    unlockMsg:'x = 1.8\'deki belirsizliği 0.10\'un altına indir',
+    body:'<p>GP\'nin kalbi <b>çekirdek</b>: iki noktanın ne kadar "benzer" olduğunu söyleyen fonksiyon. ' +
+      'RBF çekirdeğinde tek bir ayar var, uzunluk ölçeği l.</p>' +
+      '<p>x = 1.8, iki gözlem arasında kalan bir nokta. Uzunluk ölçeğine göre:</p>' +
+      '<p><b>l = 0.3:</b> ortalama 0.038, std 0.999 · model komşuların bir şey söylemediğini düşünüyor<br>' +
+      '<b>l = 1.0:</b> ortalama <b>0.891</b>, std 0.301 · gerçek değer 0.889, neredeyse tam<br>' +
+      '<b>l = 2.0:</b> ortalama 1.269, std <b>0.073</b> · kendinden çok emin ama gerçekten uzak</p>' +
+      '<p>l = 2.0 tehlikeli: model belirsizliğini 0.073\'e indirmiş ama tahmini 0.38 sapmış. ' +
+      'Yani <b>emin ve yanlış</b>. Uzunluk ölçeği fazla büyükse GP de bu tuzağa düşer.</p>',
+    learned:'<b>Uzunluk ölçeği "hangi mesafe yakın sayılır" sorusunun cevabıdır.</b><br><br>' +
+      'Küçük l: her nokta yalnız, model hiçbir şey genellemiyor, belirsizlik hep yüksek.<br>' +
+      'Büyük l: her şey her şeye bağlı, model fazla pürüzsüz ve fazla emin.<br><br>' +
+      'l = 2.0\'da x = 1.8 tahmini 1.269 (gerçek 0.889) ama standart sapma sadece 0.073. ' +
+      'Belirsizlik tahmini de sonuçta bir modeldir ve yanlış ayarlanırsa o da yanılır.',
+    xp:50,
+  },
+  {
+    t:'Belirsizlik ne işe yarar?',
+    goal:'Belirsizlik tahmininin hangi problemleri çözdüğünü göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'gaussSurec', h:720, state:{l:1.0, kn:6},
+    body:'<p>Belirsizlik sadece hoş bir ek değil, bazı problemlerin tek çözümü:</p>' +
+      '<p><b>Bayesçi optimizasyon.</b> Hiperparametre arama dersinde rastgele arama ile ardışık elemeyi ' +
+      'görmüştün. Üçüncü yol GP kurup "belirsizliğin yüksek olduğu yeri dene" demektir. ' +
+      'Her deneme pahalıysa (bir modeli baştan eğitmek gibi) bu çok kazandırır.</p>' +
+      '<p><b>Aktif öğrenme.</b> Etiketleme pahalıysa, model en çok hangi örnekte kararsızsa onu ' +
+      'etiketletirsin.</p>' +
+      '<p><b>Dağılım kayması tespiti.</b> Gelen örnekte belirsizlik anormal yüksekse, ' +
+      'model o örneğin eğitim dünyasına ait olmadığını söylüyordur.</p>' +
+      '<p>Bedeli var: GP\'nin maliyeti n³ ile büyür, çünkü n×n bir matrisin tersi gerekir. ' +
+      'Birkaç bin örnekten sonra doğrudan kullanılamaz.</p>',
+    quiz:{ q:'Bir malzeme laboratuvarında yeni alaşım arıyorsun. Her deney 3 gün sürüyor ve pahalı. Sekiz deney yaptın. Dokuzuncuyu nereye yaparsın?',
+      opts:[
+        {t:'Şimdiye kadarki en iyi sonucun hemen yanına', why:'Bu saf sömürü. En iyi noktanın çevresinde belirsizlik zaten düşük, yani oradan öğreneceğin az. Pekiştirmeli öğrenme dersindeki ε=0 durumunun aynısı: bildiğini tekrarlayıp hiçbir şey keşfetmemek.'},
+        {t:'GP kurup, yüksek tahmin ile yüksek belirsizliği birlikte gözeten bir noktaya', why:'Doğru. Bayesçi optimizasyonun tam olarak yaptığı budur. Sekiz nokta bir GP için gayet yeterli ve deney pahalı olduğu için her denemenin bilgi değeri kritik. Beklenen iyileşme gibi bir ölçüt, "iyi olabilir" ile "bilmiyorum"u tek sayıda birleştirir.'},
+        {t:'Arama uzayını ızgaraya bölüp sıradaki ızgara noktasına', why:'Izgara araması dersinde gördüğün gibi bütçeyi israf eder ve burada bütçe 3 gün cinsinden. Ayrıca önceki sekiz deneyden hiç öğrenmez.'},
+        {t:'Rastgele bir noktaya', why:'Hiperparametre dersinde rastgele aramanın ızgaradan iyi olduğunu ölçtün, ama orada denemeler ucuzdu. Deney başına 3 gün varken önceki sonuçları kullanmamak çok pahalı bir tercih.'},
+      ], correct:1 },
+    learned:'<b>Belirsizlik, "nereye bakmalıyım" sorusunun cevabıdır.</b><br><br>' +
+      'Bayesçi optimizasyon, aktif öğrenme ve kayma tespiti aynı sinyali kullanır: ' +
+      'modelin nerede bilmediğini bilmesi.<br><br>' +
+      'Bedeli n³ maliyet ve çekirdek seçimidir. Birkaç bin örneği geçince seyrek GP yaklaşımları ' +
+      'ya da derin ağlarla topluluk/dropout tabanlı belirsizlik tahminleri tercih edilir.',
     xp:50,
   },
 ]};

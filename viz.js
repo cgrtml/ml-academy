@@ -2074,6 +2074,112 @@ VIZ.hessianVadi = s => {
        lr >= hsMaxLr(a) ? K.red : K.green, 'η = 2 / a');
 };
 
+
+/* ═══════════ GAUSSIAN PROCESS ═══════════
+   Tek bir tahmin yerine bir DAĞILIM döndüren model.
+   Veri olan yerde bant daralıyor, veri bitince prior'a geri dönüp açılıyor.
+   Yani model "bilmiyorum" diyebiliyor. */
+const GP = { X: [-3.2, -2.4, -1.1, 0.4, 1.0, 2.6], f0: x => Math.sin(1.6 * x) + 0.35 * x, sn: 0.05 };
+GP.y = GP.X.map(GP.f0);
+const gpRbf = (a, b, l) => Math.exp(-((a - b) * (a - b)) / (2 * l * l));
+function gpCoz(A, y){
+  const n = y.length, M = A.map((r, i) => r.concat([y[i]]));
+  for (let c = 0; c < n; c++){
+    let p = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    const t = M[c]; M[c] = M[p]; M[p] = t;
+    const d = M[c][c];
+    for (let j = c; j <= n; j++) M[c][j] /= d;
+    for (let r = 0; r < n; r++){ if (r === c) continue;
+      const f = M[r][c];
+      for (let j = c; j <= n; j++) M[r][j] -= f * M[c][j]; }
+  }
+  return M.map(r => r[n]);
+}
+const _gpCache = {};
+function gpModel(l, kacNokta){
+  const anahtar = l.toFixed(3) + ':' + kacNokta;
+  if (_gpCache[anahtar]) return _gpCache[anahtar];
+  const X = GP.X.slice(0, kacNokta), y = X.map(GP.f0);
+  const n = X.length;
+  const K = X.map((a, i) => X.map((b, j) => gpRbf(a, b, l) + (i === j ? GP.sn * GP.sn : 0)));
+  const alfa = n ? gpCoz(K, y) : [];
+  const model = xs => {
+    if (!n) return { ort: 0, sd: 1 };
+    const ks = X.map(a => gpRbf(a, xs, l));
+    const ort = ks.reduce((s, v2, i) => s + v2 * alfa[i], 0);
+    const w = gpCoz(K, ks);
+    const varyans = 1 - ks.reduce((s, q, i) => s + q * w[i], 0);
+    return { ort, sd: Math.sqrt(Math.max(1e-12, varyans)) };
+  };
+  model.X = X; model.y = y;
+  return (_gpCache[anahtar] = model);
+}
+
+VIZ.gaussSurec = s => {
+  clear();
+  const l = s.l === undefined ? 1.0 : s.l;
+  const kn = Math.max(1, Math.min(6, Math.round(s.kn === undefined ? 6 : s.kn)));
+  const M = gpModel(l, kn);
+  baslikSerit('GAUSSIAN PROCESS · BELİRSİZLİĞİNİ SÖYLEYEN MODEL',
+    'Tek bir sayı değil, bir dağılım. Bant daraldıkça model emin, açıldıkça bilmiyor.', []);
+
+  const P = plot(rect(100, 145, 780, 420), -4.2, 5.4, -2.6, 3.4);
+  frame(P, 'x', 'y', [-4, -2, 0, 2, 4], [-2, 0, 2]);
+  const IZ = Array.from({ length: 200 }, (_, i) => -4.2 + 9.6 * i / 199);
+  const tah = IZ.map(x => M(x));
+  /* ±2σ bandı */
+  cx.fillStyle = 'rgba(167,139,250,.22)';
+  cx.beginPath();
+  IZ.forEach((x, i) => { const Y = P.sy(Math.max(-2.6, Math.min(3.4, tah[i].ort + 2 * tah[i].sd)));
+    i ? cx.lineTo(P.sx(x), Y) : cx.moveTo(P.sx(x), Y); });
+  for (let i = IZ.length - 1; i >= 0; i--){
+    cx.lineTo(P.sx(IZ[i]), P.sy(Math.max(-2.6, Math.min(3.4, tah[i].ort - 2 * tah[i].sd))));
+  }
+  cx.closePath(); cx.fill();
+  /* gerçek fonksiyon */
+  cx.setLineDash([7, 6]); cx.strokeStyle = K.mut; cx.lineWidth = 2.2;
+  cx.beginPath();
+  IZ.forEach((x, i) => { const Y = P.sy(Math.max(-2.6, Math.min(3.4, GP.f0(x))));
+    i ? cx.lineTo(P.sx(x), Y) : cx.moveTo(P.sx(x), Y); });
+  cx.stroke(); cx.setLineDash([]);
+  /* ortalama */
+  cx.strokeStyle = K.purple; cx.lineWidth = 3.4;
+  cx.beginPath();
+  IZ.forEach((x, i) => { const Y = P.sy(Math.max(-2.6, Math.min(3.4, tah[i].ort)));
+    i ? cx.lineTo(P.sx(x), Y) : cx.moveTo(P.sx(x), Y); });
+  cx.stroke();
+  M.X.forEach((x, i) => { dot(P.sx(x), P.sy(M.y[i]), 7, K.green);
+    dot(P.sx(x), P.sy(M.y[i]), 7, '#0b1119', null, 2.5); });
+  txt('gerçek fonksiyon', P.R.x + 16, P.R.y + 26, K.mut, 18, 'left');
+  txt('GP ortalaması', P.R.x + 16, P.R.y + 50, K.purple, 18, 'left');
+  txt('±2 standart sapma', P.R.x + 16, P.R.y + 74, K.purple, 18, 'left');
+  txt(kn + ' gözlem', P.R.x + P.R.w - 14, P.R.y + 26, K.green, 21, 'right');
+  /* veri biten yer */
+  const enSag = Math.max(...M.X);
+  cx.setLineDash([4, 5]); cx.strokeStyle = K.orange; cx.lineWidth = 1.8;
+  cx.beginPath(); cx.moveTo(P.sx(enSag), P.R.y); cx.lineTo(P.sx(enSag), P.R.y + P.R.h); cx.stroke();
+  cx.setLineDash([]);
+  txt('veri burada bitiyor', P.sx(enSag) + 8, P.R.y + P.R.h - 14, K.orange, 16, 'left');
+
+  /* kartlar */
+  const bx = 930, bw = 460;
+  const kart = (y, ad, deger, renk, alt) => {
+    box(bx, y, bw, 112, 'rgba(7,10,15,.7)', renk, 2);
+    txt(ad, bx + bw / 2, y + 31, K.mut, 17);
+    txt(deger, bx + bw / 2, y + 78, renk, 30);
+    if (alt) txt(alt, bx + bw / 2, y + 101, K.mut, 14);
+  };
+  const veride = M(M.X[Math.min(3, M.X.length - 1)]).sd;
+  const uzakta = M(5.0).sd;
+  kart(150, 'BELİRSİZLİK · VERİ NOKTASINDA', veride.toFixed(4), K.green, 'gürültü seviyesi 0.05');
+  kart(280, 'BELİRSİZLİK · x = 5 (veri yok)', uzakta.toFixed(4),
+       uzakta > 0.5 ? K.orange : K.green, 'prior standart sapması 1.00');
+  kart(410, 'ORAN', (uzakta / veride).toFixed(1) + '×', K.blue, 'model nerede bilmediğini biliyor');
+  kart(540, 'x = 5 TAHMİNİ', M(5.0).ort.toFixed(3), K.purple,
+       'gerçek değer ' + GP.f0(5).toFixed(3));
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
