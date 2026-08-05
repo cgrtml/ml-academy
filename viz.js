@@ -2879,6 +2879,141 @@ VIZ.toplamsalModel = s => {
   }
 };
 
+
+/* ═══════════ KISIT TATMİN PROBLEMLERİ ═══════════
+   N-vezir: değişken = sütun, alan = satırlar, kısıt = aynı satır/köşegen yok.
+   Aynı problem, üç arama stratejisi. Ölçü birimi: denenen atama sayısı. */
+const KS = {};
+KS.cakisir = (yer, s, r) => {
+  for (let c = 0; c < s; c++){ const q = yer[c];
+    if (q === r || Math.abs(q - r) === s - c) return true; }
+  return false;
+};
+/* 1) düz geri izleme · soldan sağa, ilk uygun satır */
+function ksGeriIzleme(N){
+  const yer = new Array(N).fill(-1);
+  let dugum = 0, geri = 0;
+  const ara = s => {
+    if (s === N) return true;
+    for (let r = 0; r < N; r++){ dugum++;
+      if (KS.cakisir(yer, s, r)) continue;
+      yer[s] = r;
+      if (ara(s + 1)) return true;
+      yer[s] = -1; geri++; }
+    return false;
+  };
+  const ok = ara(0);
+  return { ok, dugum, geri, budama: 0, yer: [...yer] };
+}
+/* 2) ileri kontrol · atadıktan sonra kalan sütunların alanlarını buda
+   3) mrv=true ise sırada en küçük alanlı sütun seçilir */
+function ksIleri(N, mrv){
+  let dugum = 0, geri = 0, budama = 0;
+  const alan = Array.from({ length: N }, () => new Set([...Array(N).keys()]));
+  const yer = new Array(N).fill(-1);
+  const sec = () => {
+    let en = -1, enBoy = 1e9;
+    for (let c = 0; c < N; c++){ if (yer[c] !== -1) continue;
+      if (!mrv) return c;
+      if (alan[c].size < enBoy){ enBoy = alan[c].size; en = c; } }
+    return en;
+  };
+  const ara = kalan => {
+    if (kalan === 0) return true;
+    const s = sec();
+    if (s === -1) return false;
+    for (const r of [...alan[s]]){ dugum++;
+      yer[s] = r;
+      const geriAl = []; let bos = false;
+      for (let c = 0; c < N && !bos; c++){ if (yer[c] !== -1) continue;
+        for (const d of [...alan[c]]){
+          if (d === r || Math.abs(d - r) === Math.abs(c - s)){
+            alan[c].delete(d); geriAl.push([c, d]); budama++; } }
+        if (alan[c].size === 0) bos = true; }
+      if (!bos && ara(kalan - 1)) return true;
+      for (const [c, d] of geriAl) alan[c].add(d);
+      yer[s] = -1; geri++; }
+    return false;
+  };
+  const ok = ara(N);
+  return { ok, dugum, geri, budama, yer: [...yer] };
+}
+const _ksCache = {};
+function ksAra(N, strateji){          /* 0 = geri izleme · 1 = ileri kontrol · 2 = ileri + MRV */
+  const anahtar = N + ':' + strateji;
+  if (_ksCache[anahtar]) return _ksCache[anahtar];
+  const R = strateji === 0 ? ksGeriIzleme(N) : ksIleri(N, strateji === 2);
+  return (_ksCache[anahtar] = R);
+}
+KS.kapsam = [6, 8, 10, 12, 14, 16, 18, 20];
+KS.adlar = ['geri izleme', 'ileri kontrol', 'ileri kontrol + MRV'];
+/* kaba kuvvet: her sutun icin N secenek */
+KS.kabaKuvvet = N => Math.pow(N, N);
+KS.permutasyon = N => { let s = 1; for (let i = 2; i <= N; i++) s *= i; return s; };
+
+VIZ.kisitArama = s => {
+  clear();
+  const N = Math.max(6, Math.min(20, s.n === undefined ? 8 : s.n));
+  const st = Math.max(0, Math.min(2, s.strateji === undefined ? 0 : s.strateji));
+  const R = ksAra(N, st);
+  baslikSerit('KISIT TATMİN · N-VEZİR',
+    'Değişken: sütun. Alan: satırlar. Kısıt: aynı satır ya da köşegen olmasın.', []);
+
+  /* ── sol: tahta ── */
+  const boy = 420, x0 = 120, y0 = 180, h = boy / N;
+  for (let c = 0; c < N; c++) for (let r = 0; r < N; r++){
+    cx.fillStyle = (r + c) % 2 ? 'rgba(255,255,255,.045)' : 'rgba(255,255,255,.015)';
+    cx.fillRect(x0 + c*h, y0 + r*h, h, h);
+  }
+  cx.strokeStyle = K.axis; cx.lineWidth = 2; cx.strokeRect(x0, y0, boy, boy);
+  const renk = [K.orange, K.blue, K.green][st];
+  R.yer.forEach((r, c) => {
+    if (r < 0) return;
+    dot(x0 + c*h + h/2, y0 + r*h + h/2, Math.min(13, h*0.33), renk);
+  });
+  txt('bulunan çözüm · ' + N + ' vezir', x0 + boy/2, y0 + boy + 34, K.mut, 19);
+  txt(KS.adlar[st], x0 + boy/2, y0 + boy + 62, renk, 21);
+
+  /* ── sağ üst: düğüm sayısı, log ölçekte ── */
+  const P = plot(rect(680, 180, 690, 275), 5, 21, 0, 7.2);
+  frame(P, 'N (tahta boyu)', 'log₁₀ denenen atama', [6, 10, 14, 18], [0, 2, 4, 6]);
+  [0, 1, 2].forEach(k => {
+    const c = [K.orange, K.blue, K.green][k];
+    cx.strokeStyle = c; cx.lineWidth = k === st ? 3.6 : 2;
+    cx.globalAlpha = k === st ? 1 : 0.45;
+    cx.beginPath();
+    KS.kapsam.forEach((n, i) => {
+      const y = P.sy(Math.log10(Math.max(1, ksAra(n, k).dugum)));
+      i ? cx.lineTo(P.sx(n), y) : cx.moveTo(P.sx(n), y); });
+    cx.stroke();
+    KS.kapsam.forEach(n => dot(P.sx(n), P.sy(Math.log10(Math.max(1, ksAra(n, k).dugum))), 4, c));
+    cx.globalAlpha = 1;
+  });
+  dot(P.sx(N), P.sy(Math.log10(Math.max(1, R.dugum))), 9, K.yellow);
+  /* etiketler kendi egrilerinin ucunda */
+  txt('geri izleme', P.sx(20) - 10, P.sy(Math.log10(ksAra(20, 0).dugum)) - 14, K.orange, 17, 'right');
+  txt('ileri kontrol', P.sx(20) - 10, P.sy(Math.log10(ksAra(20, 1).dugum)) - 14, K.blue, 17, 'right');
+  txt('ileri + MRV', P.sx(20) - 10, P.sy(Math.log10(ksAra(20, 2).dugum)) + 26, K.green, 17, 'right');
+
+  /* ── sağ alt: kartlar ── */
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 108, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 29, K.mut, 15);
+    txt(deger, x + w/2, y + 74, rnk, 27);
+    if (alt) txt(alt, x + w/2, y + 96, K.mut, 14);
+  };
+  const bx = 680;
+  const bin = v2 => v2.toLocaleString('tr-TR');
+  kart(bx, 532, 220, 'DENENEN ATAMA', bin(R.dugum), renk, 'bu strateji, N = ' + N);
+  kart(bx + 235, 532, 220, 'GERİ DÖNÜŞ', bin(R.geri), renk);
+  kart(bx + 470, 532, 220, 'GERİ İZLEMEYE GÖRE',
+       st === 0 ? '1×' : (ksAra(N, 0).dugum / R.dugum).toFixed(0) + '×', K.purple, 'kaç kat az');
+  kart(bx, 657, 340, 'KABA KUVVET (Nᴺ)', KS.kabaKuvvet(N).toExponential(2), K.red,
+       'hiç kısıt kullanmadan');
+  kart(bx + 355, 657, 335, 'BU STRATEJİ', bin(R.dugum) + ' atama', renk,
+       'kısıtlar aramayı budayınca');
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

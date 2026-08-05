@@ -829,6 +829,68 @@ console.log('═══ TOPLAMSAL MODELLER (GAM) ═══');
   iddia('eğitim ve test ayrık', 180, D.TR.length + D.TE.length, 0);
 }
 
+console.log('═══ KISIT TATMİN (N-VEZİR) ═══');
+{
+  /* uc strateji de gercekten cozum buluyor mu · once dogruluk, sonra hiz */
+  for (const n of KS.kapsam) for (let st = 0; st < 3; st++)
+    iddia('N=' + n + ' strateji ' + st + ' çözüm buldu', true, ksAra(n, st).ok);
+  /* bulunan yerlesim gercekten gecerli mi: bagimsiz dogrulama */
+  {
+    let ihlal = 0;
+    for (const n of KS.kapsam) for (let st = 0; st < 3; st++){
+      const y = ksAra(n, st).yer;
+      if (new Set(y).size !== n) { ihlal++; continue; }
+      for (let a = 0; a < n; a++) for (let b = a+1; b < n; b++)
+        if (Math.abs(y[a] - y[b]) === b - a) ihlal++;
+    }
+    iddia('hiçbir çözümde satır ya da köşegen çakışması yok', 0, ihlal, 0);
+  }
+  /* dugum sayilari */
+  iddia('N=8 geri izleme atama', 876, ksAra(8, 0).dugum, 0);
+  iddia('N=16 geri izleme atama', 160712, ksAra(16, 0).dugum, 0);
+  iddia('N=16 ileri kontrol atama', 8144, ksAra(16, 1).dugum, 0);
+  iddia('N=16 ileri + MRV atama', 43, ksAra(16, 2).dugum, 0);
+  iddia('N=20 geri izleme atama', 3992510, ksAra(20, 0).dugum, 0);
+  iddia('N=20 ileri kontrol atama', 138534, ksAra(20, 1).dugum, 0);
+  iddia('N=20 ileri + MRV atama', 113, ksAra(20, 2).dugum, 0);
+  /* derste yazan kazanc oranlari */
+  iddia('N=16 ileri kontrolün kazancı', 19.7, ksAra(16,0).dugum / ksAra(16,1).dugum, 1);
+  iddia('N=20 ileri kontrolün kazancı', 28.8, ksAra(20,0).dugum / ksAra(20,1).dugum, 1);
+  iddia('N=20 MRV kazancı', 35332, ksAra(20,0).dugum / ksAra(20,2).dugum, 0);
+  /* siralamanin her N de korunmasi */
+  {
+    let ihlal = 0;
+    for (const n of KS.kapsam){
+      if (!(ksAra(n,1).dugum <= ksAra(n,0).dugum)) ihlal++;
+      if (!(ksAra(n,2).dugum <= ksAra(n,1).dugum)) ihlal++;
+    }
+    iddia('her N için MRV ≤ ileri kontrol ≤ geri izleme', 0, ihlal, 0);
+  }
+  /* geri izleme N ile tekduze buyuyor mu */
+  iddia('geri izleme N=14 ten 16 ya büyüyor', true, ksAra(16,0).dugum > ksAra(14,0).dugum);
+  iddia('geri izleme N=18 den 20 ye büyüyor', true, ksAra(20,0).dugum > ksAra(18,0).dugum);
+  /* DERSIN DURUSTLUK IDDIASI: MRV tekduze DEGIL, yani bir garanti degil */
+  iddia('N=16 MRV atama', 43, ksAra(16,2).dugum, 0);
+  iddia('N=18 MRV atama', 124, ksAra(18,2).dugum, 0);
+  iddia('MRV düğüm sayısı N ile tekdüze artmıyor', true,
+        ksAra(18,2).dugum > ksAra(16,2).dugum && ksAra(20,2).dugum < ksAra(18,2).dugum);
+  /* MRV egrisi neredeyse yatay: en buyuk ve en kucuk arasi az */
+  {
+    const hepsi = KS.kapsam.map(n => ksAra(n, 2).dugum);
+    iddia('MRV en yüksek düğüm sayısı', 124, Math.max(...hepsi), 0);
+    iddia('MRV hiçbir N de 200 atamayı geçmiyor', true, Math.max(...hepsi) < 200);
+    iddia('geri izleme ise 3 milyonu aşıyor', true,
+          Math.max(...KS.kapsam.map(n => ksAra(n, 0).dugum)) > 3e6);
+  }
+  /* kaba kuvvet buyuklukleri */
+  iddia('N=8 kaba kuvvet (milyon)', 16.8, KS.kabaKuvvet(8) / 1e6, 1);
+  iddia('N=20 kaba kuvvet (log10)', 26.02, Math.log10(KS.kabaKuvvet(20)), 2);
+  iddia('N=20 permütasyon sayısı (log10)', 18.39, Math.log10(KS.permutasyon(20)), 2);
+  /* geri izleme kaba kuvvetin yaninda kucucuk kaliyor */
+  iddia('N=20 geri izleme, kaba kuvvetin 10^19 unda biri', true,
+        KS.kabaKuvvet(20) / ksAra(20,0).dugum > 1e19);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

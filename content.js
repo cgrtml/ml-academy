@@ -59,7 +59,7 @@ const ROTALAR = [
     {id:'ozellik-muh',    ad:'Özellik mühendisliği: veriden yeni bilgi çıkarmak',  sure:18, durum:'hazir'},
     {id:'pekistirmeli',   ad:'Pekiştirmeli öğrenme: ödülle öğrenmek',          sure:18, durum:'hazir'},
     {id:'a-yildiz',       ad:'A* araması: sezgiyle akıllıca yol bulmak',       sure:16, durum:'hazir'},
-    {id:'kisit',          ad:'Kısıt tatmin problemleri: değişken ve kural oyunu',  sure:12, durum:'planli'},
+    {id:'kisit',          ad:'Kısıt tatmin problemleri: değişken ve kural oyunu',  sure:16, durum:'hazir'},
     {id:'hessian',        ad:'Hessian: eğrinin eğriliğini ölçmek',             sure:15, durum:'hazir'},
     {id:'taylor',         ad:'Taylor serisi: karmaşığı yerel olarak basitleştirmek',  sure:15, durum:'hazir'},
   ],
@@ -7024,6 +7024,149 @@ DERSLER['gam'] = {
       'Kenar dağılımlarda bilgi yokken esnek eğriler gürültüyü ezberler. Çözüm modeli ' +
       'terk etmek değil: <b>seçilmiş etkileşim terimleri eklemek</b> okunabilirliği koruyarak ' +
       'aynı veride 0.9761’e çıkarıyor.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── KISIT TATMİN PROBLEMLERİ ─────────────── */
+DERSLER['kisit'] = {
+  ad:'Kısıt tatmin: öğrenmeden çözmek',
+  alt:'Bazı problemlerde veri yoktur, kural vardır. Bu derste model eğitmiyoruz, arama uzayını kuralların kendisiyle buduyoruz.',
+  kaynaklar:[
+    {y:'Russell, S. & Norvig, P.', t:'2020', b:'Artificial Intelligence: A Modern Approach, 4. baskı, Bölüm 6', n:'Pearson'},
+    {y:'Dechter, R.', t:'2003', b:'Constraint Processing', n:'Morgan Kaufmann'},
+    {y:'Haralick, R. M. & Elliott, G. L.', t:'1980', b:'Increasing Tree Search Efficiency for Constraint Satisfaction Problems', n:'Artificial Intelligence 14(3)'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Kural varsa veriye gerek yok',
+    goal:'Bir problemi kısıt tatmin problemi olarak yazmayı ve aramanın nasıl budandığını göreceksin.',
+    todo:'N’i büyüt. Kaba kuvvet sayısıyla denenen atama sayısını karşılaştır.',
+    kind:'controls', viz:'kisitArama', h:820, state:{strateji:0},
+    controls:[{k:'n', lb:'TAHTA BOYU N', min:6, max:20, step:2, val:8, fmt:v => v+' × '+v}],
+    derive:s => ({d: ksAra(s.n, 0).dugum}),
+    live:s => [['DENENEN ATAMA', s.d.toLocaleString('tr-TR'), K.orange],
+               ['KABA KUVVET', KS.kabaKuvvet(s.n).toExponential(2), K.red],
+               ['HEDEF', 'N = 20 dene']],
+    unlock:s => s.n >= 20,
+    unlockMsg:'Tahta boyunu 20 yap',
+    body:'<p>Bu derste eğitilecek bir model yok. Veri de yok. Sadece kurallar var.</p>' +
+      '<p>N-vezir problemi: N × N tahtaya N vezir yerleştir, hiçbiri diğerini yemesin. ' +
+      'Kısıt tatmin problemi olarak üç parça halinde yazılır:</p>' +
+      '<p><b>değişkenler:</b> her sütun bir değişken<br>' +
+      '<b>alanlar:</b> her değişken 0 ile N&minus;1 arası bir satır değeri alabilir<br>' +
+      '<b>kısıtlar:</b> iki vezir aynı satırda ya da aynı köşegende olamaz</p>' +
+      '<p>Kaba kuvvet, her sütun için N seçenek demektir: N=8 için <b>16,8 milyon</b>, ' +
+      'N=20 için <b>1,05 × 10²⁶</b> kombinasyon. Bunu saymaya ömür yetmez.</p>' +
+      '<p>Geri izleme şunu yapıyor: soldan sağa ilerle, her sütunda ilk uygun satırı dene, ' +
+      'çakışma çıkarsa geri dön. Fark şu ki <b>kısıtlar hemen kontrol ediliyor</b>, sonda değil. ' +
+      'Yarım kalmış bir yerleşim geçersizse o daldaki milyonlarca olasılık bir anda düşüyor.</p>' +
+      '<p>N=8 için denenen atama sayısı <b>876</b>. N=20 için <b>3.992.510</b>. ' +
+      'Büyük bir sayı, ama 10²⁶ değil.</p>',
+    learned:'<b>Kısıtları erken kontrol etmek, arama uzayını kesip atmaktır.</b><br><br>' +
+      'N=20 için kaba kuvvet 1,05 × 10²⁶ kombinasyon demek. Geri izleme aynı çözümü ' +
+      '<b>3.992.510</b> atama deneyerek buluyor.<br><br>' +
+      'Buradaki kazanç bir modelden ya da veriden gelmiyor. <b>Problemin yapısından</b> geliyor.',
+    xp:25,
+  },
+  {
+    t:'İleriye bakmak: alanları budamak',
+    goal:'Bir atamanın gelecekteki seçenekleri nasıl daralttığını göreceksin.',
+    todo:'Stratejiyi ileri kontrole al ve N’i büyüt. Mavi eğri turuncunun ne kadar altında?',
+    kind:'controls', viz:'kisitArama', h:820,
+    controls:[{k:'n', lb:'TAHTA BOYU N', min:6, max:20, step:2, val:16, fmt:v => v+' × '+v},
+              {k:'strateji', lb:'STRATEJİ', min:0, max:1, step:1, val:0,
+               fmt:v => ['geri izleme','ileri kontrol'][v]}],
+    derive:s => ({oran: ksAra(s.n, 0).dugum / ksAra(s.n, s.strateji).dugum}),
+    live:s => [['DENENEN ATAMA', ksAra(s.n, s.strateji).dugum.toLocaleString('tr-TR')],
+               ['KAZANÇ', s.oran.toFixed(0)+'×'], ['HEDEF', '> 15×']],
+    unlock:s => s.oran > 15,
+    unlockMsg:'Geri izlemeye göre 15 kattan fazla kazanç sağla',
+    body:'<p>Düz geri izlemenin körlüğü şu: bir vezir yerleştirdiğinde, bunun ileride hangi ' +
+      'seçenekleri imkânsız kıldığını <b>o sütuna gelene kadar fark etmiyor</b>.</p>' +
+      '<p>İleri kontrol her atamadan sonra kalan sütunların alanlarını gözden geçirir ve ' +
+      'artık imkânsız olan değerleri siler. Bir sütunun alanı tamamen boşalırsa, o dal ' +
+      '<b>daha oraya varmadan</b> terk edilir.</p>' +
+      '<p>Ölçüm, N=16 için: geri izleme <b>160.712</b> atama, ileri kontrol <b>8.144</b>. ' +
+      '19,7 kat az.</p>' +
+      '<p>N=20 için fark daha da açılıyor: <b>3.992.510</b> yerine <b>138.534</b>, yani 28,8 kat.</p>' +
+      '<p>Buradaki fikir bu derse özgü değil. "Bir seçim yaptığında sonuçlarını hemen yay, ' +
+      'çelişki çıkarsa erken vazgeç" ilkesi Sudoku çözücülerinden derleyici tip denetimine, ' +
+      'zaman çizelgelemeden SAT çözücülere kadar aynı yerde durur.</p>',
+    learned:'<b>İleri kontrol, çelişkiyi ona varmadan önce görür.</b><br><br>' +
+      'Her atamadan sonra kalan alanlar budanır, bir alan boşalırsa dal hemen terk edilir.<br><br>' +
+      'N=16: <b>160.712 → 8.144</b> atama. N=20: <b>3.992.510 → 138.534</b>. ' +
+      'Aynı arama ağacı, aynı çözüm, sadece daha erken pes ediliyor.',
+    xp:50,
+  },
+  {
+    t:'Sıradaki değişkeni seçmek',
+    goal:'Arama sırasının, arama algoritmasından daha çok fark yaratabildiğini ölçeceksin.',
+    todo:'MRV’yi aç ve N=20’ye çıkar. Yeşil eğri nereye düşüyor?',
+    kind:'controls', viz:'kisitArama', h:820,
+    controls:[{k:'n', lb:'TAHTA BOYU N', min:6, max:20, step:2, val:20, fmt:v => v+' × '+v},
+              {k:'strateji', lb:'STRATEJİ', min:0, max:2, step:1, val:1,
+               fmt:v => ['geri izleme','ileri kontrol','ileri + MRV'][v]}],
+    derive:s => ({oran: ksAra(s.n, 0).dugum / ksAra(s.n, s.strateji).dugum}),
+    live:s => [['DENENEN ATAMA', ksAra(s.n, s.strateji).dugum.toLocaleString('tr-TR'), K.green],
+               ['KAZANÇ', s.oran.toFixed(0)+'×'], ['HEDEF', '> 1000×']],
+    unlock:s => s.oran > 1000,
+    unlockMsg:'Geri izlemeye göre 1000 kattan fazla kazanç sağla',
+    body:'<p>Şimdiye kadar sütunları hep soldan sağa işledik. Bunun bir gerekçesi yok, sadece ' +
+      'alışkanlık.</p>' +
+      '<p><b>MRV</b> (minimum remaining values) kuralı şunu söylüyor: sırada <b>alanı en küçük ' +
+      'olan değişkeni</b> işle. Yani en sıkışmış olanı.</p>' +
+      '<p>Sezgi ters gelebilir, ama mantığı şu: o değişken zaten çözümü zorlaştıracak. ' +
+      'Onu sona bırakırsan, önündeki kolay seçimleri yaptıktan sonra ancak orada tıkanırsın ' +
+      've bütün o kolay seçimleri baştan yapmak zorunda kalırsın. Erken denersen, ' +
+      'çıkmaz sokakları <b>küçükken</b> keşfedersin.</p>' +
+      '<p>Ölçüm, N=20: geri izleme <b>3.992.510</b>, ileri kontrol <b>138.534</b>, ' +
+      'ileri kontrol + MRV <b>113</b>.</p>' +
+      '<p>Yüz on üç. Geri izlemeye göre <b>35.332 kat</b> az. Algoritma değişmedi, ' +
+      'kısıtlar değişmedi, sadece <b>hangi değişkenin önce ele alınacağı</b> değişti.</p>' +
+      '<p>Grafiğe bak: turuncu ve mavi eğriler N ile yukarı tırmanıyor, yeşil eğri neredeyse ' +
+      'yatay. Dahası düzgün de değil: N=16’da <b>43</b>, N=18’de <b>124</b>, N=20’de <b>113</b>. ' +
+      'MRV bir garanti vermiyor, sadece pratikte çok iyi çalışıyor.</p>',
+    learned:'<b>Arama sırası, arama algoritmasının kendisi kadar belirleyicidir.</b><br><br>' +
+      'N=20 için: <b>3.992.510 → 138.534 → 113</b> atama.<br><br>' +
+      'MRV en sıkışmış değişkeni önce ele alır, böylece çıkmazlar ağaç küçükken bulunur. ' +
+      'Ama düğüm sayısı N ile tekdüze artmıyor (16’da 43, 18’de 124), yani bu ' +
+      '<b>bir sezgisel kural, bir teorem değil</b>.',
+    xp:50,
+  },
+  {
+    t:'Bu bir öğrenme problemi değil',
+    goal:'Kısıt yaklaşımının ne zaman doğru araç, ne zaman yanlış araç olduğunu göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'kisitArama', h:820, state:{n:20, strateji:2},
+    body:'<p>Bu ders boyunca hiçbir şey öğrenmedik. Eğitim kümesi yok, kayıp fonksiyonu yok, ' +
+      'genelleme yok. Bulunan çözüm <b>kesin olarak doğru</b>: kısıtları sağlıyor ya da sağlamıyor.</p>' +
+      '<p>Makine öğrenmesi bunun tam tersini yapar: kuralı bilmediğimiz için örneklerden ' +
+      'yaklaşık bir kural çıkarır ve çıktısı hiçbir zaman kesin değildir.</p>' +
+      '<p><b>Kısıt yaklaşımı doğru araçtır</b> kurallar tam olarak biliniyorsa ve çözümün ' +
+      'geçerliliği kontrol edilebiliyorsa: vardiya çizelgesi, ders programı, üretim sıralama, ' +
+      'devre yerleşimi, paket bağımlılık çözümü. Bir paket yöneticisinin sürüm çakışmalarını ' +
+      'çözmesi tam olarak budur.</p>' +
+      '<p><b>Yanlış araçtır</b> kural yazılamıyorsa. "Bu fotoğrafta kedi var mı" sorusunu kısıt ' +
+      'olarak yazamazsın.</p>' +
+      '<p>Dürüst bir uyarı: buradaki hızlanma problemin zorluğunu değiştirmiyor. Kısıt tatmin ' +
+      'genel halde NP-tam bir problemdir. MRV’nin N=20’de 113 atamada bitirmesi, bu problem ' +
+      'ailesinin uysal olmasından. Başka bir kısıt kümesinde aynı sezgisel kural hiçbir şey ' +
+      'kazandırmayabilir. Nitekim düğüm sayısının N ile düzgün artmaması bunun küçük bir işareti.</p>',
+    quiz:{ q:'Bir hastanede aylık nöbet çizelgesi kuruyorsun. Kurallar net: kimse üst üste iki nöbet tutamaz, herkesin ayda en az 4 en fazla 7 nöbeti olur, her gece en az bir uzman bulunur. Geçen üç yılın çizelgeleri de elinde. Nasıl yaklaşırsın?',
+      opts:[
+        {t:'Kısıt tatmin problemi olarak yazarım; geçmiş çizelgeleri kural çıkarmak için değil, tercih sıralaması için kullanırım', why:'Doğru. Kurallar zaten açıkça yazılı, dolayısıyla onları veriden öğrenmeye çalışmak hem gereksiz hem riskli: öğrenilen model kuralı ihlal eden bir çizelge üretebilir, kısıt çözücü üretemez. Geçmiş veriye düşen iş, geçerli çözümler arasından hangisinin tercih edildiğini belirlemek, yani hedef fonksiyonu şekillendirmek.'},
+        {t:'Geçmiş çizelgelerle bir model eğitir, yeni ay için tahmin ettiririm', why:'Eğitilen model kuralları yaklaşık öğrenir ve çıktısının geçerli olacağının hiçbir garantisi yoktur. Burada "üst üste iki nöbet olmaz" bir eğilim değil, sağlanması zorunlu bir kısıt. Yaklaşıklık kabul edilebilir bir şey değil.'},
+        {t:'Kaba kuvvetle bütün olası çizelgeleri üretip kuralları sağlayanları seçerim', why:'Bu dersteki ilk ölçümün gösterdiği şey tam olarak bunun neden çalışmadığı: N=20 için kaba kuvvet 10²⁶ kombinasyon, kısıtları erken kontrol eden arama ise aynı çözümü 3.992.510 atamada buluyor. Kısıtları üretimden sonra değil, üretim sırasında kullanmak gerekir.'},
+        {t:'Kuralların çoğunu koda gömer, kalanları elle düzeltirim', why:'Elle düzeltme, kısıtları tekrar tekrar ihlal eden bir döngü yaratır: bir çakışmayı düzeltirken başkasını bozarsın. Çizelgeleme problemlerinin çözücüye verilmesinin sebebi tam olarak budur.'},
+      ], correct:0 },
+    learned:'<b>Kısıt tatmin, öğrenmenin alternatifi değil, farklı bir problem sınıfıdır.</b><br><br>' +
+      'Kural biliniyorsa ve geçerlilik kontrol edilebiliyorsa kısıt çözücü kesin sonuç verir. ' +
+      'Kural yazılamıyorsa öğrenme gerekir ve sonuç hep yaklaşıktır.<br><br>' +
+      'Buradaki hızlanma problemi kolaylaştırmıyor: kısıt tatmin genel halde NP-tamdır. ' +
+      'MRV’nin N=20’de <b>113</b> atamada bitirmesi bir <b>sezgisel kuralın</b> bu problem ' +
+      'ailesindeki başarısıdır, bir garanti değil.',
     xp:50,
   },
 ]};
