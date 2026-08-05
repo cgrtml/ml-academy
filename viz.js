@@ -3014,6 +3014,193 @@ VIZ.kisitArama = s => {
        'kısıtlar aramayı budayınca');
 };
 
+
+/* ═══════════ MATRİSLER · DÖNÜŞÜM OLARAK ═══════════
+   Bir matris sayı tablosu değil, uzaya uygulanan bir işlemdir.
+   Determinant o işlemin alanı kaç kat büyüttüğüdür. */
+const MT = {};
+MT.uygula = (M, p) => [M[0]*p[0] + M[1]*p[1], M[2]*p[0] + M[3]*p[1]];
+MT.det = M => M[0]*M[3] - M[1]*M[2];
+MT.carp = (A, B) => [A[0]*B[0]+A[1]*B[2], A[0]*B[1]+A[1]*B[3],
+                     A[2]*B[0]+A[3]*B[2], A[2]*B[1]+A[3]*B[3]];
+/* ayakkabi baglama formulu · donusmus cokgenin gercek alani */
+MT.alan = kose => {
+  let s = 0;
+  for (let i = 0; i < kose.length; i++){ const j = (i+1) % kose.length;
+    s += kose[i][0]*kose[j][1] - kose[j][0]*kose[i][1]; }
+  return Math.abs(s) / 2;
+};
+MT.birimKare = [[0,0],[1,0],[1,1],[0,1]];
+/* ev sekli · donusumun ne yaptigi bir karede degil bir figurde gorunur */
+MT.ev = [[0,0],[1.4,0],[1.4,1],[0.7,1.6],[0,1]];
+/* ders 3: bir sinir agi katmani */
+MT.katman = { girdi: 3, cikti: 4 };
+MT.katmanW = [[0.5,-0.2,0.8],[0.1,0.9,-0.4],[-0.7,0.3,0.2],[0.4,0.4,0.6]];
+MT.katmanX = [1.0, 2.0, -1.0];
+MT.katmanCarp = () => MT.katmanW.map(sat => sat.reduce((s, w, k) => s + w*MT.katmanX[k], 0));
+MT.carpmaSayisi = (g, c) => g * c;
+
+VIZ.matrisDonusum = s => {
+  clear();
+  const sahne = s.sahne || 'donusum';
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 108, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 29, K.mut, 15);
+    txt(deger, x + w/2, y + 74, rnk, 27);
+    if (alt) txt(alt, x + w/2, y + 96, K.mut, 14);
+  };
+  const matrisCiz = (M, x, y, ad, rnk) => {
+    txt(ad, x + 110, y - 12, K.mut, 17);
+    box(x, y, 220, 96, 'rgba(7,10,15,.6)', rnk, 2);
+    txt(M[0].toFixed(1), x + 62, y + 40, rnk, 24);
+    txt(M[1].toFixed(1), x + 158, y + 40, rnk, 24);
+    txt(M[2].toFixed(1), x + 62, y + 80, rnk, 24);
+    txt(M[3].toFixed(1), x + 158, y + 80, rnk, 24);
+  };
+  /* donusmus izgara ve sekil grafigin disina tasabilir · dikdortgene kirp */
+  const kirp = (P, ic) => { cx.save();
+    cx.beginPath(); cx.rect(P.R.x, P.R.y, P.R.w, P.R.h); cx.clip();
+    ic(); cx.restore(); };
+  const izgara = (P, M, rnk, kalin) => {
+    cx.strokeStyle = rnk; cx.lineWidth = kalin || 1.2; cx.globalAlpha = 0.5;
+    for (let i = -3; i <= 3; i++){
+      cx.beginPath();
+      for (let t = -3; t <= 3; t += 0.25){
+        const a = MT.uygula(M, [i, t]);
+        t === -3 ? cx.moveTo(P.sx(a[0]), P.sy(a[1])) : cx.lineTo(P.sx(a[0]), P.sy(a[1])); }
+      cx.stroke();
+      cx.beginPath();
+      for (let t = -3; t <= 3; t += 0.25){
+        const a = MT.uygula(M, [t, i]);
+        t === -3 ? cx.moveTo(P.sx(a[0]), P.sy(a[1])) : cx.lineTo(P.sx(a[0]), P.sy(a[1])); }
+      cx.stroke();
+    }
+    cx.globalAlpha = 1;
+  };
+  const sekilCiz = (P, M, kose, dolgu, cizgi) => {
+    cx.beginPath();
+    kose.forEach((p, i) => { const a = MT.uygula(M, p);
+      i ? cx.lineTo(P.sx(a[0]), P.sy(a[1])) : cx.moveTo(P.sx(a[0]), P.sy(a[1])); });
+    cx.closePath();
+    cx.fillStyle = dolgu; cx.fill();
+    cx.strokeStyle = cizgi; cx.lineWidth = 3; cx.stroke();
+  };
+
+  if (sahne === 'donusum' || sahne === 'tekil'){
+    const M = [s.a === undefined ? 1 : s.a, s.b === undefined ? 0 : s.b,
+               s.c === undefined ? 0 : s.c, s.d === undefined ? 1 : s.d];
+    const det = MT.det(M);
+    const donmus = MT.ev.map(p => MT.uygula(M, p));
+    const alan = MT.alan(donmus), alan0 = MT.alan(MT.ev);
+    baslikSerit('MATRİS · UZAYA UYGULANAN İŞLEM',
+      'Matris bir sayı tablosu değil. Her noktayı başka bir noktaya taşıyan bir kural.', []);
+    const P = plot(rect(120, 180, 520, 440), -2.6, 2.6, -2.6, 2.6);
+    frame(P, 'x', 'y', [-2, 0, 2], [-2, 0, 2]);
+    kirp(P, () => {
+      izgara(P, [1,0,0,1], K.axis);
+      izgara(P, M, K.blue, 1.6);
+      sekilCiz(P, [1,0,0,1], MT.ev, 'rgba(255,255,255,.05)', K.mut);
+      sekilCiz(P, M, MT.ev, (Math.abs(det) < 0.02 ? K.red : K.green) + '33',
+               Math.abs(det) < 0.02 ? K.red : K.green);
+    });
+    box(P.R.x + 6, P.R.y + 6, 250, 58, 'rgba(7,10,15,.86)', K.axis, 1);
+    txt('gri: özgün şekil', P.R.x + 14, P.R.y + 26, K.mut, 17, 'left');
+    txt('renkli: dönüşmüş hâli', P.R.x + 14, P.R.y + 50,
+        Math.abs(det) < 0.02 ? K.red : K.green, 17, 'left');
+    const bx = 700;
+    matrisCiz(M, bx, 210, 'MATRİS', K.blue);
+    kart(bx + 260, 200, 200, 'DETERMİNANT', det.toFixed(3),
+         Math.abs(det) < 0.02 ? K.red : K.purple);
+    kart(bx + 480, 200, 200, 'ÖZGÜN ALAN', alan0.toFixed(3), K.mut);
+    kart(bx, 360, 200, 'YENİ ALAN', alan.toFixed(3),
+         Math.abs(det) < 0.02 ? K.red : K.green);
+    kart(bx + 220, 360, 200, 'ALAN ORANI',
+         alan0 > 0 ? (alan/alan0).toFixed(3) : '0', K.green, 'yeni / özgün');
+    kart(bx + 440, 360, 240, '|DETERMİNANT|', Math.abs(det).toFixed(3), K.purple,
+         'oranla aynı sayı');
+    box(bx, 500, 680, 120, 'rgba(7,10,15,.55)',
+        Math.abs(det) < 0.02 ? K.red : K.axis, 2);
+    if (Math.abs(det) < 0.02){
+      txt('DETERMİNANT SIFIR · ŞEKİL EZİLDİ', bx + 340, 534, K.red, 20);
+      txt('Bütün düzlem tek bir doğruya indi. Alan sıfır.', bx + 24, 574, K.txt, 19, 'left');
+      txt('Farklı noktalar aynı yere düştü: geri dönüş yok.', bx + 24, 604, K.mut, 18, 'left');
+    } else {
+      txt('DETERMİNANT NE ANLATIYOR', bx + 340, 534, K.mut, 19);
+      txt('Alan tam olarak |determinant| katına çıkıyor.', bx + 24, 574, K.txt, 19, 'left');
+      txt(det < 0 ? 'Determinant negatif: şekil ayrıca aynalandı.'
+                  : 'Determinant pozitif: yön korundu.', bx + 24, 604, K.mut, 18, 'left');
+    }
+  }
+
+  else if (sahne === 'sira'){
+    const A = [0, -1, 1, 0];            /* 90 derece dondur */
+    const B = [2, 0, 0, 1];             /* x eksenini iki kat ger */
+    const AB = MT.carp(A, B), BA = MT.carp(B, A);
+    const M = s.sira ? BA : AB;
+    baslikSerit('MATRİS ÇARPIMI · SIRA ÖNEMLİ',
+      'Çarpım, iki işlemi arka arkaya uygulamak demektir. Sıra değişince sonuç değişir.', []);
+    const ciz = (P, MM, ad, rnk) => {
+      frame(P, '', '', [-2, 0, 2], [-2, 0, 2]);
+      kirp(P, () => {
+        izgara(P, [1,0,0,1], K.axis);
+        sekilCiz(P, [1,0,0,1], MT.ev, 'rgba(255,255,255,.05)', K.mut);
+        sekilCiz(P, MM, MT.ev, rnk + '33', rnk);
+      });
+      txt(ad, P.R.x + P.R.w/2, P.R.y + P.R.h + 66, rnk, 20);
+    };
+    const P1 = plot(rect(130, 190, 380, 380), -2.8, 2.8, -2.8, 2.8);
+    ciz(P1, AB, 'önce ger, sonra döndür', s.sira ? K.mut : K.green);
+    const P2 = plot(rect(580, 190, 380, 380), -2.8, 2.8, -2.8, 2.8);
+    ciz(P2, BA, 'önce döndür, sonra ger', s.sira ? K.orange : K.mut);
+    const bx = 995;
+    matrisCiz(AB, bx, 230, 'A · B', K.green);
+    matrisCiz(BA, bx + 255, 230, 'B · A', K.orange);
+    kart(bx, 380, 220, 'İKİSİ AYNI MI', 'hayır', K.red, 'AB ≠ BA');
+    kart(bx + 255, 380, 220, 'DETERMİNANTLAR',
+         MT.det(AB).toFixed(1) + ' = ' + MT.det(BA).toFixed(1), K.purple, 'bunlar eşit');
+    box(bx, 520, 475, 168, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('A: 90 derece döndür', bx + 18, 556, K.txt, 18, 'left');
+    txt('B: x yönünde 2 kat ger', bx + 18, 584, K.txt, 18, 'left');
+    txt('Alan ikisinde de 2 kat, çünkü', bx + 18, 620, K.mut, 18, 'left');
+    txt('determinantlar çarpılır.', bx + 18, 648, K.mut, 18, 'left');
+    txt('Ama varılan yer farklı.', bx + 18, 676, K.mut, 18, 'left');
+  }
+
+  else { /* katman: sinir agi katmani = tek matris carpimi */
+    const y = MT.katmanCarp();
+    baslikSerit('MATRİS ÇARPIMI · BİR SİNİR AĞI KATMANI',
+      'Dört nöronun hepsi tek bir matris çarpımıyla hesaplanıyor.', []);
+    const x0 = 150, y0 = 210;
+    txt('GİRDİ', x0 + 60, y0 - 20, K.mut, 17);
+    MT.katmanX.forEach((v2, i) => {
+      box(x0, y0 + i*70, 120, 54, 'rgba(7,10,15,.7)', K.blue, 2);
+      txt(v2.toFixed(1), x0 + 60, y0 + i*70 + 36, K.blue, 24);
+    });
+    txt('AĞIRLIK MATRİSİ  (4 × 3)', x0 + 480, y0 - 20, K.mut, 17);
+    MT.katmanW.forEach((sat, i) => sat.forEach((w, j) => {
+      box(x0 + 220 + j*160, y0 + i*70, 150, 54, 'rgba(7,10,15,.6)', K.axis, 1.5);
+      txt(w.toFixed(1), x0 + 295 + j*160, y0 + i*70 + 36, K.txt, 22);
+    }));
+    txt('ÇIKTI', x0 + 830, y0 - 20, K.mut, 17);
+    y.forEach((v2, i) => {
+      box(x0 + 760, y0 + i*70, 140, 54, 'rgba(7,10,15,.7)', K.green, 2);
+      txt(v2.toFixed(2), x0 + 830, y0 + i*70 + 36, K.green, 23);
+    });
+    const bx = 1130;
+    kart(bx, 210, 230, 'ÇARPMA SAYISI', String(MT.carpmaSayisi(3, 4)), K.purple, '3 girdi × 4 nöron');
+    kart(bx, 340, 230, 'TOPLAMA SAYISI', String(4 * 2), K.purple, 'nöron başına 2');
+    box(150, 520, 1210, 180, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('BU NEDEN ÖNEMLİ', 755, 556, K.mut, 19);
+    txt('Burada 12 çarpma var. Gerçek bir dil modelinde tek bir katman 4096 girdi ve 4096 çıktı taşır:',
+        180, 598, K.txt, 19, 'left');
+    txt('16.777.216 çarpma, üstelik sadece bir katman ve tek bir kelime için.', 180, 630, K.txt, 19, 'left');
+    txt('Bunların hepsi birbirinden bağımsız, yani aynı anda yapılabilir. Ekran kartlarının bu işi',
+        180, 662, K.mut, 18, 'left');
+    txt('binlerce kat hızlandırmasının sebebi bu: matris çarpımı sonuna kadar paralel bir iştir.',
+        180, 690, K.mut, 18, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

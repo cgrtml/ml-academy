@@ -5,7 +5,8 @@ function sahteCtx(){
   const noop=()=>{c._c++};
   ['fillRect','strokeRect','beginPath','moveTo','lineTo','arc','ellipse','closePath','fill','stroke',
    'save','restore','translate','rotate','scale','setLineDash','fillText','setTransform','roundTo',
-   'bezierCurveTo','quadraticCurveTo','clearRect','roundRect','clip','putImageData','drawImage'].forEach(m=>c[m]=noop);
+   'bezierCurveTo','quadraticCurveTo','clearRect','roundRect','clip','putImageData','drawImage',
+   'rect','arcTo','arcTo','clip'].forEach(m=>c[m]=noop);
   c.createLinearGradient=()=>({addColorStop:noop});
   c.createRadialGradient=()=>({addColorStop:noop});
   c.createImageData=(w,h)=>({data:new Uint8ClampedArray(w*h*4)});

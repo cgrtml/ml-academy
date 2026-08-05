@@ -891,6 +891,90 @@ console.log('═══ KISIT TATMİN (N-VEZİR) ═══');
         KS.kabaKuvvet(20) / ksAra(20,0).dugum > 1e19);
 }
 
+console.log('═══ MATRİSLER ═══');
+{
+  /* dersin cekirdek iddiasi: alan orani = |determinant| · her matriste sinansin */
+  const testler = [[2,0,0,1],[1,0.5,0,1],[0,-1,1,0],[2,1,1,2],[1.5,0.8,0,1.5],
+                   [1,2,2,4],[1.5,0,0,-1],[0.3,-1.2,0.7,0.4],[2.5,1.5,0,2.5]];
+  {
+    let ihlal = 0;
+    for (const M of testler){
+      const a0 = MT.alan(MT.ev), a = MT.alan(MT.ev.map(p => MT.uygula(M, p)));
+      if (Math.abs(a / a0 - Math.abs(MT.det(M))) > 1e-9) ihlal++;
+    }
+    iddia('alan oranı her matriste |determinant| a eşit', 0, ihlal, 0);
+  }
+  /* ayni sey birim kare icin de gecerli · sekle bagli degil */
+  {
+    let ihlal = 0;
+    for (const M of testler){
+      const a = MT.alan(MT.birimKare.map(p => MT.uygula(M, p)));
+      if (Math.abs(a - Math.abs(MT.det(M))) > 1e-9) ihlal++;
+    }
+    iddia('birim kare için de aynı eşitlik geçerli', 0, ihlal, 0);
+  }
+  /* derste yazan somut ornek: a=2, d=1.5 → det 3, alan 3 kat */
+  iddia('a=2 d=1.5 determinantı', 3, MT.det([2, 0, 0, 1.5]), 6);
+  iddia('a=2 d=1.5 alan oranı', 3, MT.alan(MT.ev.map(p => MT.uygula([2,0,0,1.5], p))) / MT.alan(MT.ev), 6);
+  /* yatirma (b) alani hic degistirmiyor · dersin ikinci iddiasi */
+  {
+    let ihlal = 0;
+    for (let b = -1.5; b <= 1.5; b += 0.1){
+      const a = MT.alan(MT.ev.map(p => MT.uygula([2, b, 0, 1.5], p)));
+      if (Math.abs(a / MT.alan(MT.ev) - 3) > 1e-9) ihlal++;
+    }
+    iddia('b değerinin hiçbir seçimi alanı değiştirmiyor', 0, ihlal, 0);
+  }
+  /* tekil matris: alan sifir ve iki farkli girdi ayni yere dusuyor */
+  iddia('tekil matris determinantı', 0, MT.det([1.5, 0.8, 0, 0]), 9);
+  iddia('tekil matriste alan sıfır', 0, MT.alan(MT.ev.map(p => MT.uygula([1.5,0.8,0,0], p))), 9);
+  {
+    const M = [1.5, 0.8, 0, 0];
+    const p1 = MT.uygula(M, [0.8, 0]), p2 = MT.uygula(M, [0, 1.5]);
+    iddia('iki farklı nokta aynı çıktıya düşüyor', 0, Math.hypot(p1[0]-p2[0], p1[1]-p2[1]), 9);
+  }
+  /* sutunlari birbirinin kati olan matris de tekil */
+  iddia('sütunları orantılı matrisin determinantı sıfır', 0, MT.det([1, 2, 2, 4]), 9);
+  /* carpim sıraya duyarli · dersin ucuncu iddiasi */
+  {
+    const A = [0, -1, 1, 0], B = [2, 0, 0, 1];
+    const AB = MT.carp(A, B), BA = MT.carp(B, A);
+    iddia('A·B matrisi', '0,-1,2,0', AB.join(','), 0);
+    iddia('B·A matrisi', '0,-2,1,0', BA.join(','), 0);
+    iddia('AB ile BA farklı', true, AB.join(',') !== BA.join(','));
+    iddia('AB determinantı', 2, MT.det(AB), 6);
+    iddia('BA determinantı', 2, MT.det(BA), 6);
+    iddia('determinantlar eşit (çarpma sıra tanımaz)', true, Math.abs(MT.det(AB) - MT.det(BA)) < 1e-9);
+    iddia('det(AB) = det(A)·det(B)', MT.det(A) * MT.det(B), MT.det(AB), 6);
+    /* carpim gercekten "arka arkaya uygulamak" mi: bir nokta uzerinde sina */
+    {
+      let ihlal = 0;
+      for (const p of MT.ev){
+        const q1 = MT.uygula(AB, p), q2 = MT.uygula(A, MT.uygula(B, p));
+        if (Math.hypot(q1[0]-q2[0], q1[1]-q2[1]) > 1e-9) ihlal++;
+      }
+      iddia('A·B uygulamak, önce B sonra A uygulamakla aynı', 0, ihlal, 0);
+    }
+  }
+  /* sinir agi katmani */
+  {
+    const y = MT.katmanCarp();
+    iddia('katman çıktısı 1. nöron', -0.70, y[0], 6);
+    iddia('katman çıktısı 2. nöron', 2.30, y[1], 6);
+    iddia('katman çıktısı 3. nöron', -0.30, y[2], 6);
+    iddia('katman çıktısı 4. nöron', 0.60, y[3], 6);
+    /* derste elle yapilan hesap ayni sonucu veriyor mu */
+    iddia('elle hesap 0.5·1 - 0.2·2 + 0.8·(-1)', -0.70, 0.5*1 - 0.2*2 + 0.8*(-1), 6);
+    iddia('3 girdi 4 nöron çarpma sayısı', 12, MT.carpmaSayisi(3, 4), 0);
+    iddia('4096 × 4096 çarpma sayısı', 16777216, MT.carpmaSayisi(4096, 4096), 0);
+    /* quiz iddiasi: ikisini de iki katlayinca dort kat */
+    iddia('512 → 1024 iki katlanınca çarpma 4 katına çıkıyor',
+          4, MT.carpmaSayisi(1024, 1024) / MT.carpmaSayisi(512, 512), 6);
+    iddia('512×512 çarpma', 262144, MT.carpmaSayisi(512, 512), 0);
+    iddia('1024×1024 çarpma', 1048576, MT.carpmaSayisi(1024, 1024), 0);
+  }
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

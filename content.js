@@ -19,7 +19,7 @@ const ROTALAR = [
     {id:'bolme',         ad:'Eğitim / doğrulama / test',          sure:12, durum:'hazir'},
     {id:'sizinti',       ad:'Veri sızıntısı dedektifi',           sure:12, durum:'hazir'},
     {id:'kanit',         ad:'Bu model gerçekten daha mı iyi?',    sure:12, durum:'hazir', dis:'ders-kanit.html'},
-    {id:'mat-matris',     ad:'Matrisler: yapay zekânın gizli iskeleti',        sure:12, durum:'planli'},
+    {id:'mat-matris',     ad:'Matrisler: yapay zekânın gizli iskeleti',        sure:15, durum:'hazir'},
     {id:'mat-olasilik',   ad:'Olasılık: modelin belirsizlikle dansı',          sure:12, durum:'planli'},
     {id:'neden-simdi',    ad:'Neden şimdi patladı: veri, hesap, algoritma',    sure:8, durum:'planli'},
     {id:'arama-uzayi',    ad:'Arama uzayı: problemi düğüm ve kenara çevirmek',  sure:12, durum:'planli'},
@@ -7167,6 +7167,139 @@ DERSLER['kisit'] = {
       'Buradaki hızlanma problemi kolaylaştırmıyor: kısıt tatmin genel halde NP-tamdır. ' +
       'MRV’nin N=20’de <b>113</b> atamada bitirmesi bir <b>sezgisel kuralın</b> bu problem ' +
       'ailesindeki başarısıdır, bir garanti değil.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── MATRİSLER ─────────────── */
+DERSLER['mat-matris'] = {
+  ad:'Matris: sayı tablosu değil, uzaya uygulanan bir işlem',
+  alt:'Matrisleri ezberlenecek bir kural olarak değil, şekilleri hareket ettiren bir makine olarak göreceksin.',
+  kaynaklar:[
+    {y:'Strang, G.', t:'2016', b:'Introduction to Linear Algebra, 5. baskı, Bölüm 1-2', n:'Wellesley-Cambridge Press'},
+    {y:'Deisenroth, M. P., Faisal, A. A. & Ong, C. S.', t:'2020', b:'Mathematics for Machine Learning, Bölüm 2', n:'Cambridge University Press', u:'https://mml-book.github.io/'},
+    {y:'Goodfellow, I., Bengio, Y. & Courville, A.', t:'2016', b:'Deep Learning, Bölüm 2', n:'MIT Press', u:'https://www.deeplearningbook.org/'},
+  ],
+  rota:0,
+  adimlar:[
+  {
+    t:'Matris şekli hareket ettirir',
+    goal:'Bir matrisin dört sayısının uzaya ne yaptığını göreceksin.',
+    todo:'Üç kaydırıcıyı oynat. Şekil nasıl değişiyor? Alan oranı hangi sayıya eşit çıkıyor?',
+    kind:'controls', viz:'matrisDonusum', h:700, state:{sahne:'donusum', c:0},
+    controls:[{k:'a', lb:'a · x’i ne kadar ger', min:0.2, max:2.5, step:0.1, val:1, fmt:v => 'a = '+v.toFixed(1)},
+              {k:'b', lb:'b · ne kadar yatır', min:-1.5, max:1.5, step:0.1, val:0, fmt:v => 'b = '+v.toFixed(1)},
+              {k:'d', lb:'d · y’yi ne kadar ger', min:0, max:2.5, step:0.1, val:1, fmt:v => 'd = '+v.toFixed(1)}],
+    derive:s => { const M = [s.a, s.b, 0, s.d];
+      return {oran: MT.alan(MT.ev.map(p => MT.uygula(M, p))) / MT.alan(MT.ev)}; },
+    live:s => [['DETERMİNANT', MT.det([s.a, s.b, 0, s.d]).toFixed(3), K.purple],
+               ['ALAN ORANI', s.oran.toFixed(3), K.green], ['HEDEF', 'oran > 2.5']],
+    unlock:s => s.oran > 2.5,
+    unlockMsg:'Şeklin alanını 2.5 katından fazlasına çıkar',
+    body:'<p>Bir matris dört sayıdan oluşuyor. Bu dört sayı, düzlemdeki <b>her noktayı</b> ' +
+      'başka bir noktaya taşıyan bir kural yazıyor.</p>' +
+      '<p>Gri şekil özgün ev. Renkli şekil, matris uygulandıktan sonraki hâli. Arkadaki mavi ' +
+      'ızgara da aynı işlemden geçmiş: matris sadece şekli değil, <b>bütün uzayı</b> büküyor.</p>' +
+      '<p>Kaydırıcılarla oynarken şunu fark et: <b>b</b> şekli yana yatırıyor ama alan hiç ' +
+      'değişmiyor. Sadece <b>a</b> ve <b>d</b> alanı büyütüyor.</p>' +
+      '<p>Alan oranını ve determinant kartını yan yana izle. <b>Bu ikisi her zaman aynı sayı.</b> ' +
+      'Determinant kuru bir hesap değil, "bu matris alanı kaç katına çıkarıyor" sorusunun cevabı.</p>' +
+      '<p>Örnek: a = 2, d = 1.5 ise determinant 3, ve şeklin alanı gerçekten tam 3 katına çıkıyor. ' +
+      'b’yi istediğin kadar oynat, bu değişmiyor.</p>',
+    learned:'<b>Matris bir sayı tablosu değil, uzaya uygulanan bir işlemdir.</b><br><br>' +
+      'Determinant o işlemin alanı kaç katına çıkardığıdır. Bu bir benzetme değil, ' +
+      'ölçülebilir bir eşitlik: şeklin yeni alanı bölü eski alanı, tam olarak ' +
+      '|determinant|’a eşittir.<br><br>' +
+      'Yatırma (b) alanı hiç değiştirmez, çünkü determinanta girmez.',
+    xp:25,
+  },
+  {
+    t:'Determinant sıfırsa bilgi kayboldu',
+    goal:'Bir dönüşümün neden geri alınamaz hâle gelebileceğini göreceksin.',
+    todo:'d’yi 0 yap. Şekle ne oluyor?',
+    kind:'controls', viz:'matrisDonusum', h:700, state:{sahne:'tekil', c:0},
+    controls:[{k:'a', lb:'a', min:0.2, max:2.5, step:0.1, val:1.5, fmt:v => 'a = '+v.toFixed(1)},
+              {k:'b', lb:'b', min:-1.5, max:1.5, step:0.1, val:0.8, fmt:v => 'b = '+v.toFixed(1)},
+              {k:'d', lb:'d', min:0, max:2.5, step:0.1, val:1.5, fmt:v => 'd = '+v.toFixed(1)}],
+    derive:s => ({det: Math.abs(MT.det([s.a, s.b, 0, s.d]))}),
+    live:s => [['|DETERMİNANT|', s.det.toFixed(3), s.det < 0.02 ? K.red : K.purple],
+               ['YENİ ALAN', MT.alan(MT.ev.map(p => MT.uygula([s.a,s.b,0,s.d], p))).toFixed(3)],
+               ['HEDEF', 'determinantı sıfırla']],
+    unlock:s => s.det < 0.02,
+    unlockMsg:'Determinantı sıfır yap',
+    body:'<p>d’yi sıfıra indir. Şekil bir doğruya iniyor, alan <b>0.000</b> oluyor.</p>' +
+      '<p>Burada olan şey şu: matris iki boyutlu düzlemi tek boyutlu bir doğruya bastırdı. ' +
+      'İki farklı nokta artık <b>aynı yere</b> düşüyor.</p>' +
+      '<p>Bunun sonucu ağır: dönüşümü geri alamazsın. Çıktıya bakıp girdinin ne olduğunu ' +
+      'söyleyemezsin, çünkü aynı çıktıyı veren sonsuz tane girdi var. Böyle matrislere ' +
+      '<b>tekil</b> denir ve tersi yoktur.</p>' +
+      '<p>Bu makine öğrenmesinde soyut bir dert değil. Bir veri kümesinde iki sütun birbirinin ' +
+      'katıysa (örneğin "metre" ve "santimetre"), o veriden kurulan matris tam olarak böyle ' +
+      'tekil olur. Doğrusal regresyonun o durumda tek bir doğru cevap verememesinin sebebi budur.</p>' +
+      '<p>Determinant sıfıra <b>yaklaşırken</b> de sorun başlar: alan giderek eziliyor, ' +
+      'geri hesap giderek güvenilmezleşiyor. Koşul sayısı dersinde bunun ölçüsünü göreceksin.</p>',
+    learned:'<b>Determinant sıfırsa dönüşüm bilgi yok eder ve geri alınamaz.</b><br><br>' +
+      'Alan sıfıra iner, farklı girdiler aynı çıktıya düşer, matrisin tersi yoktur.<br><br>' +
+      'Veri tarafındaki karşılığı: birbirinin katı olan sütunlar. O veriyle kurulan denklemin ' +
+      'tek bir çözümü olmaz.',
+    xp:50,
+  },
+  {
+    t:'Çarpım: arka arkaya uygulamak',
+    goal:'Matris çarpımının neden sıraya duyarlı olduğunu göreceksin.',
+    todo:'İki sırayı karşılaştır. Sonuçlar aynı mı?',
+    kind:'controls', viz:'matrisDonusum', h:720, state:{sahne:'sira'},
+    controls:[{k:'sira', lb:'HANGİSİNİ VURGULA', min:0, max:1, step:1, val:0,
+               fmt:v => v ? 'önce döndür' : 'önce ger'}],
+    body:'<p>İki matrisi çarpmak, iki işlemi <b>arka arkaya uygulamak</b> demektir. Başka bir ' +
+      'anlamı yok.</p>' +
+      '<p>A: 90 derece döndür. B: x yönünde iki kat ger.</p>' +
+      '<p>Soldaki resim önce germe sonra döndürme. Sağdaki önce döndürme sonra germe. ' +
+      '<b>İki şekil farklı yerlerde.</b></p>' +
+      '<p>Matrislere bak: A·B = [0, &minus;1; 2, 0], B·A = [0, &minus;2; 1, 0]. Aynı iki matris, ' +
+      'farklı sıra, farklı sonuç. Sayılarda 3 × 5 ile 5 × 3 aynıdır, <b>matrislerde değil</b>.</p>' +
+      '<p>Sebebi resimde görünüyor: germe x eksenini kayırıyor. Döndürmeden önce gerersen ' +
+      'x ekseni gerilir, sonra o gerilmiş şey döner. Önce döndürürsen, x ekseninde olan şey ' +
+      'başka yere gitmiş olur ve gerilme başka bir şeye uygulanır.</p>' +
+      '<p>Buna karşılık determinantlar eşit: ikisi de <b>2</b>. Çünkü determinantlar çarpılır ' +
+      've sayı çarpması sıra tanımaz. <b>Alan iki durumda da aynı oranda büyüyor, ama şekil ' +
+      'başka yere gidiyor.</b></p>',
+    learned:'<b>Matris çarpımı sıraya duyarlıdır: AB genelde BA’ya eşit değildir.</b><br><br>' +
+      'A·B = [0, &minus;1; 2, 0] ama B·A = [0, &minus;2; 1, 0].<br><br>' +
+      'Determinantlar yine de eşit (ikisi de 2), çünkü det(AB) = det(A)·det(B) ve sayı ' +
+      'çarpması sıra tanımaz. <b>Alan değişimi aynı, varılan yer farklı.</b>',
+    xp:50,
+  },
+  {
+    t:'Sinir ağı katmanı tek bir matris çarpımıdır',
+    goal:'Matrislerin yapay zekâda neden her yerde olduğunu göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'matrisDonusum', h:770, state:{sahne:'katman'},
+    body:'<p>Üç girdi var, dört nöron var. Her nöron üç girdiyi kendi ağırlıklarıyla çarpıp ' +
+      'topluyor.</p>' +
+      '<p>Bunu tek tek yazmak yerine, ağırlıkları 4 × 3’lük bir matrise dizip girdi vektörüyle ' +
+      'çarpıyoruz. Çıktı doğrudan geliyor: <b>&minus;0.70, 2.30, &minus;0.30, 0.60</b>.</p>' +
+      '<p>İlk nöronu elle kontrol et: 0.5×1 + (&minus;0.2)×2 + 0.8×(&minus;1) = 0.5 &minus; 0.4 &minus; 0.8 = ' +
+      '<b>&minus;0.70</b>. Matris çarpımı bunu dört nöron için aynı anda yapıyor.</p>' +
+      '<p>Burada 12 çarpma var. Gerçek bir dil modelinde tek bir katman 4096 girdi ve 4096 çıktı ' +
+      'taşır: <b>16.777.216</b> çarpma. Ve bu sadece bir katman, tek bir kelime için.</p>' +
+      '<p>Kritik nokta şu: bu çarpmaların hepsi <b>birbirinden bağımsız</b>. Hiçbiri diğerinin ' +
+      'sonucunu beklemiyor, yani hepsi aynı anda yapılabilir. Ekran kartları tam olarak bu tür ' +
+      'işler için tasarlandı: binlerce küçük hesabı paralel yürütmek.</p>' +
+      '<p>Yapay zekânın son on yılda hızlanmasının bir ayağı burada. Matris çarpımı, donanımın ' +
+      'en iyi yaptığı işe birebir uyuyor.</p>',
+    quiz:{ q:'Bir modelin katmanını 512 girdiden 1024 girdiye çıkarıyorsun ve çıktı sayısını da 512’den 1024’e. Bu katmandaki çarpma sayısı ne olur?',
+      opts:[
+        {t:'4 katına çıkar', why:'Doğru. Çarpma sayısı girdi × çıktı olduğu için, ikisi de iki katına çıkınca sonuç 2 × 2 = 4 katına çıkar. 512×512 = 262.144 iken 1024×1024 = 1.048.576. Model boyutunu iki katlamanın maliyeti neden dört kat, sorusunun cevabı budur ve büyük modellerin eğitim maliyetinin neden bu kadar hızlı büyüdüğünü açıklar.'},
+        {t:'2 katına çıkar', why:'Girdi sayısı iki katına çıksa ama çıktı sabit kalsaydı doğru olurdu. Burada ikisi birden iki katına çıkıyor ve çarpma sayısı girdi × çıktı olduğu için etki çarpılıyor.'},
+        {t:'Değişmez, çünkü matris hâlâ tek bir çarpım', why:'Tek bir matris çarpımı olması işlem sayısını değiştirmez. Matris 512×512 iken 262.144 sayı içerirken 1024×1024 iken 1.048.576 sayı içerir ve her biri bir çarpmaya karşılık gelir.'},
+        {t:'8 katına çıkar', why:'Bu, üç boyutun birden iki katlanması durumunda olurdu. Burada iki boyut var: girdi ve çıktı. 2 × 2 = 4.'},
+      ], correct:0 },
+    learned:'<b>Bir sinir ağı katmanı, tanım gereği bir matris çarpımıdır.</b><br><br>' +
+      'Üç girdi ve dört nöron için 12 çarpma. 4096 girdi ve 4096 çıktı için <b>16.777.216</b>, ' +
+      'tek katman ve tek kelime başına.<br><br>' +
+      'Çarpmaların birbirinden bağımsız olması işi paralelleştirilebilir kılıyor. ' +
+      'Ekran kartlarının yapay zekâdaki rolü buradan geliyor.',
     xp:50,
   },
 ]};
