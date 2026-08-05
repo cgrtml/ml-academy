@@ -21,7 +21,7 @@ const ROTALAR = [
     {id:'kanit',         ad:'Bu model gerçekten daha mı iyi?',    sure:12, durum:'hazir', dis:'ders-kanit.html'},
     {id:'mat-matris',     ad:'Matrisler: yapay zekânın gizli iskeleti',        sure:15, durum:'hazir'},
     {id:'mat-olasilik',   ad:'Olasılık: modelin belirsizlikle dansı',          sure:16, durum:'hazir'},
-    {id:'neden-simdi',    ad:'Neden şimdi patladı: veri, hesap, algoritma',    sure:8, durum:'planli'},
+    {id:'neden-simdi',    ad:'Neden şimdi patladı: veri, hesap, algoritma',    sure:16, durum:'hazir'},
     {id:'arama-uzayi',    ad:'Arama uzayı: problemi düğüm ve kenara çevirmek',  sure:12, durum:'planli'},
     {id:'kombinatorik',   ad:'Kombinatorik patlama: kaba kuvvet neden çöker',  sure:10, durum:'planli'},
   ],
@@ -7447,6 +7447,154 @@ DERSLER['mat-olasilik'] = {
       'Duyarlılığı %95’ten %100’e çıkarmak ise ancak <b>%1.87 → %1.96</b>.<br><br>' +
       'Üçüncü ve çoğu zaman en güçlü yol, aramayı önce daraltıp <b>taban oranını yükseltmektir</b>. ' +
       'Ucuz tarama sonrası pahalı doğrulama düzeninin mantığı budur.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── NEDEN ŞİMDİ ─────────────── */
+DERSLER['neden-simdi'] = {
+  ad:'Neden şimdi patladı: veri, hesap, algoritma',
+  alt:'Bu soruya slaytla değil deneyle cevap veriyoruz. Aynı problemde üç kaldıracı tek tek ve birlikte çekip farkı ölçüyoruz.',
+  kaynaklar:[
+    {y:'Hernandez, D. & Brown, T.', t:'2020', b:'Measuring the Algorithmic Efficiency of Neural Networks', n:'OpenAI'},
+    {y:'Sutton, R.', t:'2019', b:'The Bitter Lesson', n:'incompleteideas.net', u:'http://www.incompleteideas.net/IncIdeas/BitterLesson.html'},
+    {y:'Kaplan, J. ve ark.', t:'2020', b:'Scaling Laws for Neural Language Models', n:'arXiv:2001.08361'},
+  ],
+  rota:0,
+  adimlar:[
+  {
+    t:'Deney: aynı problem, üç kaldıraç',
+    goal:'Kaldıraçların ne olduğunu ve neyi ölçtüğümüzü göreceksin.',
+    todo:'Üç kaydırıcıyı serbestçe oynat. Test hatasını 0.05 altına indirebiliyor musun?',
+    kind:'controls', viz:'ucKaldirac', h:770,
+    controls:[{k:'ni', lb:'VERİ', min:0, max:4, step:1, val:0, fmt:v => NS.veri[v]+' örnek'},
+              {k:'hi', lb:'HESAP', min:0, max:5, step:1, val:0, fmt:v => NS.hesap[v]+' tur'},
+              {k:'alg', lb:'ALGORİTMA', min:0, max:2, step:1, val:0, fmt:v => NS.algAd[v]}],
+    derive:s => ({hata: nsEgit(Math.round(s.alg), NS.veri[Math.round(s.ni)], NS.hesap[Math.round(s.hi)])}),
+    live:s => [['TEST HATASI', s.hata.toFixed(4), s.hata < 0.05 ? K.green : K.orange],
+               ['HEDEF', '< 0.05']],
+    unlock:s => s.hata < 0.05,
+    unlockMsg:'Test hatasını 0.05 altına indir',
+    body:'<p>"Yapay zekâ neden şimdi patladı" sorusuna genelde üç kelimeyle cevap verilir: ' +
+      'veri, hesap, algoritma. Bu doğru ama boş bir cevap. Hangisi ne kadar katkı yaptı?</p>' +
+      '<p>Ölçelim. Elimizde tek bir problem var: iki girdiden bir sayı tahmin etmek. ' +
+      'Gerçek kural eğrisel ve içinde bir çarpım terimi var. Test kümesi hep aynı 1500 nokta.</p>' +
+      '<p>Üç kaldıracımız var:</p>' +
+      '<p><b>Veri:</b> 25 örnekten 400 örneğe<br>' +
+      '<b>Hesap:</b> 10 eğitim turundan 2000 tura<br>' +
+      '<b>Algoritma:</b> ham doğrusal &rarr; polinom özellikler &rarr; polinom + ölçekleme</p>' +
+      '<p>Başlangıç noktamız en fakir köşe: ham doğrusal model, 25 örnek, 10 tur. ' +
+      'Test hatası <b>4.9024</b>. Buna <b>temel</b> diyeceğiz ve bütün kazançları buna göre ' +
+      'ölçeceğiz.</p>' +
+      '<p>Kaydırıcılarla oyna. Hangi kaldıracın ne yaptığını hissetmeye çalış. ' +
+      'Bir sonraki adımda tek tek ölçeceğiz.</p>',
+    learned:'<b>Soruyu ölçülebilir hâle getirdik.</b><br><br>' +
+      'Tek bir problem, sabit bir test kümesi ve üç ayrı kaldıraç. ' +
+      'Temel nokta: ham model, 25 örnek, 10 tur, test hatası <b>4.9024</b>.<br><br>' +
+      'Artık "hangisi daha önemli" sorusu bir tartışma değil, bir ölçüm.',
+    xp:25,
+  },
+  {
+    t:'Kaldıraçları tek tek çekmek',
+    goal:'Her kaldıracın tek başına ne kadar kazandırdığını ölçeceksin.',
+    todo:'Sadece veriyi 400 yap, sonra sadece hesabı 2000 yap. Kazanç kartına bak.',
+    kind:'controls', viz:'ucKaldirac', h:770,
+    controls:[{k:'ni', lb:'VERİ', min:0, max:4, step:1, val:4, fmt:v => NS.veri[v]+' örnek'},
+              {k:'hi', lb:'HESAP', min:0, max:5, step:1, val:0, fmt:v => NS.hesap[v]+' tur'},
+              {k:'alg', lb:'ALGORİTMA', min:0, max:0, step:1, val:0, fmt:() => 'ham doğrusal'}],
+    live:s => [['TEST HATASI', nsEgit(0, NS.veri[Math.round(s.ni)], NS.hesap[Math.round(s.hi)]).toFixed(4)],
+               ['KAZANÇ', NS.kazanc(0, NS.veri[Math.round(s.ni)], NS.hesap[Math.round(s.hi)]).toFixed(2)+'×', K.red],
+               ['TAVAN', '2.8735']],
+    body:'<p>Şimdi her kaldıracı <b>yalnız başına</b> sonuna kadar çekiyoruz. Diğer ikisi ' +
+      'en fakir hâlinde kalıyor.</p>' +
+      '<p><b>Sadece veri, 16 katına:</b> hata 4.9024’ten 4.8990’a. Kazanç <b>1.00 kat</b>. ' +
+      'Yani hiç. Bu adımda algoritma kaydırıcısı kilitli, veriyi istediğin kadar büyüt, ' +
+      'hiçbir şey olmuyor.</p>' +
+      '<p><b>Sadece hesap, 200 katına:</b> 4.9024’ten 3.2440’a. Kazanç <b>1.51 kat</b>. Az.</p>' +
+      '<p><b>Sadece algoritma:</b> 4.9024’ten 1.1751’e. Kazanç <b>4.17 kat</b>. En iyisi ' +
+      'bu ama o da mütevazı.</p>' +
+      '<p>Neden veri ve hesap bu kadar etkisiz: ham doğrusal model bu kuralı ' +
+      '<b>hiçbir koşulda</b> temsil edemiyor. 400 örnek ve 2000 turla bile hata <b>2.8735</b>’te ' +
+      'takılıyor. Bu bir tavan ve tavanın yerini belirleyen şey modelin kendisi.</p>' +
+      '<p>Matris dersindeki "verilmeyen sütun kurulamaz" fikri burada da geçerli: ' +
+      'çarpım terimi modelin sözlüğünde yoksa, ne kadar örnek gösterirsen göster öğrenemez.</p>',
+    learned:'<b>Her kaldıraç tek başına hayal kırıklığı yaratıyor.</b><br><br>' +
+      'Sadece veri ×16: <b>1.00 kat</b>. Sadece hesap ×200: <b>1.51 kat</b>. ' +
+      'Sadece algoritma: <b>4.17 kat</b>.<br><br>' +
+      'Ham doğrusal modelin hatası 400 örnek ve 2000 turda bile <b>2.8735</b>’te tavan yapıyor. ' +
+      'Model kuralı temsil edemiyorsa veri ve hesap boşa gider.',
+    xp:50,
+  },
+  {
+    t:'Birlikte çekince ne oluyor',
+    goal:'Kaldıraçların neden toplanmadığını, hatta çarpılmadığını göreceksin.',
+    todo:'Üçünü birden sonuna kadar aç. Kazanç kaça çıkıyor?',
+    kind:'controls', viz:'ucKaldirac', h:770,
+    controls:[{k:'ni', lb:'VERİ', min:0, max:4, step:1, val:0, fmt:v => NS.veri[v]+' örnek'},
+              {k:'hi', lb:'HESAP', min:0, max:5, step:1, val:0, fmt:v => NS.hesap[v]+' tur'},
+              {k:'alg', lb:'ALGORİTMA', min:0, max:2, step:1, val:0, fmt:v => NS.algAd[v]}],
+    derive:s => ({kz: NS.kazanc(Math.round(s.alg), NS.veri[Math.round(s.ni)], NS.hesap[Math.round(s.hi)])}),
+    live:s => [['KAZANÇ', s.kz.toFixed(1)+'×', s.kz > 100 ? K.green : K.orange],
+               ['TEK TEK ÇARPIMI', '6.3×', K.mut], ['HEDEF', 'kazanç > 100×']],
+    unlock:s => s.kz > 100,
+    unlockMsg:'Toplam kazancı 100 katın üstüne çıkar',
+    body:'<p>Üçünü birden aç: 400 örnek, 2000 tur, polinom + ölçekleme.</p>' +
+      '<p>Hata <b>0.0144</b>. Temele göre kazanç <b>341.2 kat</b>.</p>' +
+      '<p>Şimdi karşılaştır. Tek tek ölçtüğümüz kazançlar 1.00, 1.51 ve 4.17’ydi. ' +
+      'Bunları çarpsan <b>6.3 kat</b> eder. Gerçek sonuç <b>341.2 kat</b>, yani ' +
+      'çarpımdan <b>54 kat</b> daha büyük.</p>' +
+      '<p>Kaldıraçlar toplanmıyor. Çarpılmıyorlar bile. <b>Birbirlerinin kilidini açıyorlar.</b></p>' +
+      '<p>Mekanizma şu: algoritma kaldıracı, verinin ve hesabın satın alabileceği şeyi ' +
+      'değiştiriyor. Polinom özellikler olmadan veri işe yaramıyordu, çünkü model o bilgiyi ' +
+      'kullanamıyordu. Ölçekleme olmadan hesap işe yaramıyordu, çünkü gradyan inişi ağır ' +
+      'ilerliyordu.</p>' +
+      '<p>Aynı şeyi ters yönden de ölçebiliriz. Hatayı 0.05 altına indirmek için ' +
+      'ölçekleme olmadan <b>4000</b> tur gerekiyor, ölçeklemeyle <b>200</b> tur. ' +
+      'Yani tek bir algoritma değişikliği <b>20 kat hesap</b> değerinde.</p>' +
+      '<p>"Yapay zekâ neden şimdi patladı" sorusunun cevabı burada. Üçünden biri değil, ' +
+      'üçü aynı anda olduğu için. Biri eksik olsaydı diğer ikisi de büyük ölçüde boşa giderdi.</p>',
+    learned:'<b>Kaldıraçlar birbirinin kilidini açar.</b><br><br>' +
+      'Tek tek kazançlar 1.00, 1.51 ve 4.17. Çarpımları <b>6.3 kat</b>. ' +
+      'Birlikte çekildiklerinde gerçek sonuç <b>341.2 kat</b>.<br><br>' +
+      'Ve bir algoritma değişikliği doğrudan hesaba çevrilebiliyor: aynı hatayı yakalamak ' +
+      'ölçeklemesiz <b>4000</b>, ölçeklemeli <b>200</b> tur alıyor. <b>20 kat hesap.</b>',
+    xp:50,
+  },
+  {
+    t:'Bu ne anlatıyor, ne anlatmıyor',
+    goal:'Ölçtüğün şeyi gerçek dünyaya taşırken nerede duracağını göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'ucKaldirac', h:770, state:{ni:4, hi:5, alg:2},
+    body:'<p>Bu küçük deney gerçek tarihin yerine geçmez, ama mekanizmayı doğru gösterir. ' +
+      'Sahadaki karşılıkları şunlar:</p>' +
+      '<p><b>Veri:</b> etiketli görüntü kümelerinin binlerden milyonlara çıkması, sonra ' +
+      'internetin kendisinin eğitim verisi hâline gelmesi.</p>' +
+      '<p><b>Hesap:</b> ekran kartlarının matris çarpımını paralel yapabilmesi. ' +
+      'Matris dersinde saydığımız 16.777.216 çarpmanın hepsinin birbirinden bağımsız ' +
+      'olmasının bedeli burada ödeniyor.</p>' +
+      '<p><b>Algoritma:</b> daha iyi başlatma, normalleştirme, artık bağlantılar, dikkat ' +
+      'mekanizması. Bunların ortak özelliği, aynı hesapla daha uzağa gitmek. ' +
+      'Bizim deneydeki ölçekleme kaldıracının büyütülmüş hâli.</p>' +
+      '<p>Ne anlatmıyor: <b>bu eğri sonsuza kadar gitmez</b>. Deneyde bile ölçekleme ' +
+      'kaldıracı 300 turdan sonra hiçbir şey kazandırmıyor, hata 0.0144’te duruyor. ' +
+      'Orası gürültünün belirlediği taban ve hiçbir kaldıraç oraya dokunamaz.</p>' +
+      '<p>Bir de dürüst bir sınır: bu deneyde algoritma kaldıracı en güçlü çıktı. ' +
+      'Bu, algoritmanın her zaman en güçlü kaldıraç olduğu anlamına <b>gelmez</b>. ' +
+      'Sadece bu problemde, bu ölçeklerde böyle. Başka bir problemde veri kaldıracı ' +
+      'baskın olabilir. Ölçmeden bilinmez.</p>',
+    quiz:{ q:'Bir ekipte modelin test hatası aylardır aynı yerde takılı. Veri kümesini iki katına çıkardılar, hiçbir şey değişmedi. Sonra eğitim süresini üç katına çıkardılar, yine değişmedi. Sıradaki adım ne olmalı?',
+      opts:[
+        {t:'Modelin problemi temsil edip edemediğini sınamak, çünkü iki kaldıracın da etkisiz olması bir tavana işaret eder', why:'Doğru. Bu dersteki tam olarak ölçtüğün desen bu: ham doğrusal model 16 kat veri ve 200 kat hesapla bile 2.8735’te tavan yaptı, çünkü kural onun temsil edebileceği bir şey değildi. İki bağımsız kaldıracın da hiçbir şey değiştirmemesi, sorunun miktarda değil biçimde olduğunun en güçlü işaretidir. Sınamanın ucuz yolu: modeli küçük bir alt kümeye kasten aşırı uydurmayı denemek, bu bile başarılamıyorsa temsil sorunu kesinleşir.'},
+        {t:'Veriyi bir kat daha artırmak, iki kat yeterli olmamış olabilir', why:'Bu dersteki ölçüm bunun neden umutsuz olduğunu gösteriyor: veriyi 16 katına çıkarmak kazancı 1.00 katta bıraktı, yani tam olarak hiç. Tavan varken veri eklemek ölçek değil yön sorunudur.'},
+        {t:'Öğrenme oranını düşürüp daha uzun eğitmek', why:'Bu, hesap kaldıracının bir başka biçimi ve o kaldıraç zaten denendi. Deneyde hesabı 200 katına çıkarmak sadece 1.51 kat kazandırmıştı. Tavan varken daha dikkatli optimizasyon tavanı yükseltmez.'},
+        {t:'Daha büyük bir model kullanmak', why:'Yönü doğru ama gerekçesi eksik: burada asıl mesele boyut değil, modelin gerekli ilişkiyi ifade edip edemediği. Bu derste kazandıran şey parametre sayısını artırmak değil, çarpım terimini modelin sözlüğüne eklemekti. Önce temsil sorununu doğrulamak, sonra buna göre büyütmek gerekir.'},
+      ], correct:0 },
+    learned:'<b>Üçü aynı anda olduğu için patladı, biri olduğu için değil.</b><br><br>' +
+      'Deneyde tek tek kazançlar 1.00, 1.51 ve 4.17; birlikte <b>341.2</b>. ' +
+      'Bir kaldıracın etkisi, diğerlerinin durumuna bağlı.<br><br>' +
+      'Sınırı da ölçtük: 300 turdan sonra hata <b>0.0144</b>’te duruyor. Orası gürültü tabanı ' +
+      've hiçbir kaldıraç oraya dokunamaz. <b>Hangi kaldıracın baskın olduğu probleme göre ' +
+      'değişir ve ölçmeden bilinmez.</b>',
     xp:50,
   },
 ]};

@@ -3337,6 +3337,122 @@ VIZ.olasilikTaban = s => {
   }
 };
 
+
+/* ═══════════ NEDEN ŞİMDİ · ÜÇ KALDIRAÇ ═══════════
+   Aynı problem, aynı ölçüm. Veri, hesap ve algoritma kaldıraçlarını
+   tek tek ve birlikte çekip farkı ölçüyoruz. */
+const NS = {};
+NS.f0 = (a, b) => 1.2*Math.sin(1.7*a) + 0.8*b*b - 0.9*a*b + 0.3;
+NS.veri = [25, 50, 100, 200, 400];
+NS.hesap = [10, 30, 100, 300, 1000, 2000];
+NS.algAd = ['ham doğrusal', 'polinom özellikler', 'polinom + ölçekleme'];
+NS.havuz = (() => {
+  const r = rng(101), H = [], T = [];
+  for (let i = 0; i < 400; i++){ const a = -2 + 4*r(), b = -2 + 4*r();
+    H.push([a, b, NS.f0(a, b) + 0.25 * omNormal(r)]); }
+  for (let i = 0; i < 1500; i++){ const a = -2 + 4*r(), b = -2 + 4*r();
+    T.push([a, b, NS.f0(a, b)]); }
+  return { H, T };
+})();
+NS.oz = alg => alg === 0
+  ? p => [1, p[0], p[1]]
+  : p => [1, p[0], p[1], p[0]*p[0], p[1]*p[1], p[0]*p[1],
+          p[0]**3, p[1]**3, p[0]*p[0]*p[1], p[0]*p[1]*p[1]];
+const _nsCache = {};
+/* alg 0: ham ozellik · alg 1: polinom · alg 2: polinom + standartlastirma (on kosullama) */
+function nsEgit(alg, n, tur){
+  const anahtar = alg + ':' + n + ':' + tur;
+  if (_nsCache[anahtar] !== undefined) return _nsCache[anahtar];
+  const oz = NS.oz(alg), { H, T } = NS.havuz;
+  const X = H.slice(0, n).map(oz), Y = H.slice(0, n).map(p => p[2]);
+  const P = X[0].length;
+  const mu = new Array(P).fill(0), sd = new Array(P).fill(1);
+  if (alg === 2) for (let j = 1; j < P; j++){
+    mu[j] = X.reduce((s, x) => s + x[j], 0) / n;
+    sd[j] = Math.sqrt(X.reduce((s, x) => s + (x[j] - mu[j]) ** 2, 0) / n) || 1; }
+  const q = x => x.map((v2, j) => (v2 - mu[j]) / sd[j]);
+  const XX = X.map(q);
+  const w = new Array(P).fill(0);
+  const lr = alg === 2 ? 0.15 : 0.004;
+  for (let t = 0; t < tur; t++){
+    const g = new Array(P).fill(0);
+    for (let i = 0; i < n; i++){
+      const e = XX[i].reduce((s, v2, j) => s + v2 * w[j], 0) - Y[i];
+      for (let j = 0; j < P; j++) g[j] += e * XX[i][j]; }
+    for (let j = 0; j < P; j++) w[j] -= lr * g[j] / n;
+  }
+  const tah = p => q(oz(p)).reduce((s, v2, j) => s + v2 * w[j], 0);
+  const mse = T.reduce((s, p) => s + (tah(p) - p[2]) ** 2, 0) / T.length;
+  return (_nsCache[anahtar] = mse);
+}
+NS.temel = () => nsEgit(0, 25, 10);
+NS.kazanc = (alg, n, tur) => NS.temel() / nsEgit(alg, n, tur);
+
+VIZ.ucKaldirac = s => {
+  clear();
+  const alg = Math.max(0, Math.min(2, s.alg === undefined ? 0 : Math.round(s.alg)));
+  const ni = Math.max(0, Math.min(4, s.ni === undefined ? 0 : Math.round(s.ni)));
+  const hi = Math.max(0, Math.min(5, s.hi === undefined ? 0 : Math.round(s.hi)));
+  const n = NS.veri[ni], tur = NS.hesap[hi];
+  const hata = nsEgit(alg, n, tur);
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 27);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+  baslikSerit('ÜÇ KALDIRAÇ · VERİ, HESAP, ALGORİTMA',
+    'Aynı problem, aynı test kümesi. Değişen sadece hangi kaldıracı çektiğin.', []);
+
+  /* sol: hata / hesap egrisi · secili veri boyutunda uc algoritma */
+  const P = plot(rect(120, 190, 620, 400), 0.9, 3.4, -2.1, 0.85);
+  frame(P, 'log₁₀ eğitim turu', 'log₁₀ test hatası', [1, 2, 3], [-2, -1, 0]);
+  [0, 1, 2].forEach(a => {
+    const c = [K.orange, K.blue, K.green][a];
+    cx.strokeStyle = c; cx.lineWidth = a === alg ? 3.6 : 2;
+    cx.globalAlpha = a === alg ? 1 : 0.4;
+    cx.beginPath();
+    NS.hesap.forEach((h, i) => {
+      const y = P.sy(Math.max(-2.1, Math.log10(nsEgit(a, n, h))));
+      i ? cx.lineTo(P.sx(Math.log10(h)), y) : cx.moveTo(P.sx(Math.log10(h)), y); });
+    cx.stroke();
+    NS.hesap.forEach(h => dot(P.sx(Math.log10(h)),
+      P.sy(Math.max(-2.1, Math.log10(nsEgit(a, n, h)))), 4, c));
+    cx.globalAlpha = 1;
+  });
+  dot(P.sx(Math.log10(tur)), P.sy(Math.max(-2.1, Math.log10(hata))), 9, K.yellow);
+  [0, 1, 2].forEach(a => {
+    const c = [K.orange, K.blue, K.green][a];
+    const y = P.sy(Math.max(-2.1, Math.log10(nsEgit(a, n, NS.hesap[NS.hesap.length-1]))));
+    txt(NS.algAd[a], P.R.x + P.R.w - 14, y - 12, c, 17, 'right');
+  });
+  txt('eğitim verisi: ' + n + ' örnek', P.R.x + 14, P.R.y + P.R.h - 18, K.mut, 18, 'left');
+
+  /* sag: kaldirac durumu ve kazanclar */
+  const bx = 800;
+  const durum = (y, ad, deger, rnk) => {
+    box(bx, y, 590, 62, 'rgba(7,10,15,.6)', rnk, 2);
+    txt(ad, bx + 18, y + 39, K.mut, 18, 'left');
+    txt(deger, bx + 572, y + 39, rnk, 21, 'right');
+  };
+  durum(190, 'VERİ', n + ' örnek', K.purple);
+  durum(262, 'HESAP', tur + ' eğitim turu', K.blue);
+  durum(334, 'ALGORİTMA', NS.algAd[alg], [K.orange, K.blue, K.green][alg]);
+  kart(bx, 420, 285, 'TEST HATASI', hata.toFixed(4),
+       hata < 0.05 ? K.green : hata < 1 ? K.orange : K.red);
+  kart(bx + 305, 420, 285, 'TEMELE GÖRE KAZANÇ', NS.kazanc(alg, n, tur).toFixed(1) + '×',
+       K.purple, 'temel: ham, 25 örnek, 10 tur');
+  box(bx, 546, 590, 170, 'rgba(7,10,15,.55)', K.axis, 2);
+  txt('KALDIRAÇLARI TEK TEK ÇEKİNCE', bx + 295, 580, K.mut, 18);
+  const satir = (y, ad, kz, rnk) => {
+    txt(ad, bx + 20, y, K.txt, 18, 'left');
+    txt(kz, bx + 570, y, rnk, 19, 'right'); };
+  satir(616, 'sadece veri ×16', NS.kazanc(0, 400, 10).toFixed(2) + '×', K.red);
+  satir(646, 'sadece hesap ×200', NS.kazanc(0, 25, 2000).toFixed(2) + '×', K.orange);
+  satir(676, 'sadece algoritma', NS.kazanc(2, 25, 10).toFixed(2) + '×', K.blue);
+  satir(706, 'ÜÇÜ BİRDEN', NS.kazanc(2, 400, 2000).toFixed(1) + '×', K.green);
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

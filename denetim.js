@@ -1047,6 +1047,60 @@ console.log('═══ OLASILIK · TABAN ORANI ═══');
   }
 }
 
+console.log('═══ NEDEN ŞİMDİ · ÜÇ KALDIRAÇ ═══');
+{
+  iddia('temel hata (ham, 25 örnek, 10 tur)', 4.9024, NS.temel(), 4);
+  /* kaldiraclar tek tek */
+  iddia('sadece veri ×16 hatası', 4.8990, nsEgit(0, 400, 10), 4);
+  iddia('sadece veri kazancı', 1.00, NS.kazanc(0, 400, 10), 2);
+  iddia('sadece hesap ×200 hatası', 3.2440, nsEgit(0, 25, 2000), 4);
+  iddia('sadece hesap kazancı', 1.51, NS.kazanc(0, 25, 2000), 2);
+  iddia('sadece algoritma hatası', 1.1751, nsEgit(2, 25, 10), 4);
+  iddia('sadece algoritma kazancı', 4.17, NS.kazanc(2, 25, 10), 2);
+  /* ham model tavani: veri ve hesap ne olursa olsun asilmiyor */
+  iddia('ham model tavanı (400 örnek, 2000 tur)', 2.8735, nsEgit(0, 400, 2000), 4);
+  {
+    let enIyi = 1e9;
+    for (const n of NS.veri) for (const h of NS.hesap) enIyi = Math.min(enIyi, nsEgit(0, n, h));
+    iddia('ham modelin hiçbir ayarda inebildiği en düşük hata', 2.8735, enIyi, 4);
+    iddia('ham model hiçbir ayarda 2.8 in altına inemiyor', true, enIyi > 2.8);
+    /* buna karsilik alg2 en fakir veri ve hesapla bile daha iyi */
+    iddia('algoritma 2, en fakir ayarda bile ham modelin tavanını geçiyor',
+          true, nsEgit(2, 25, 10) < enIyi);
+  }
+  /* ucu birden · dersin asil iddiasi */
+  iddia('üçü birden hata', 0.0144, nsEgit(2, 400, 2000), 4);
+  iddia('üçü birden kazanç', 341.2, NS.kazanc(2, 400, 2000), 1);
+  {
+    const carpim = NS.kazanc(0,400,10) * NS.kazanc(0,25,2000) * NS.kazanc(2,25,10);
+    iddia('tek tek kazançların çarpımı', 6.3, carpim, 1);
+    iddia('birlikte kazanç, çarpımdan kaç kat büyük', 54, NS.kazanc(2,400,2000) / carpim, 0);
+    iddia('kaldıraçlar toplanmıyor da çarpılmıyor da', true,
+          NS.kazanc(2,400,2000) > 10 * carpim);
+  }
+  /* algoritma degisikligi hesaba cevrilebiliyor */
+  {
+    const bul = a => { for (const h of [10,20,30,50,100,200,300,500,1000,2000,4000,8000])
+      if (nsEgit(a, 200, h) < 0.05) return h; return null; };
+    iddia('ölçeklemesiz gereken tur', 4000, bul(1), 0);
+    iddia('ölçeklemeli gereken tur', 200, bul(2), 0);
+    iddia('algoritma değişikliği kaç kat hesap değerinde', 20, bul(1) / bul(2), 0);
+  }
+  /* dersin sınırı: gurultu tabani · 300 turdan sonra kazanc yok */
+  iddia('algoritma 2, 300 tur hatası', 0.0148, nsEgit(2, 400, 300), 4);
+  iddia('algoritma 2, 2000 tur hatası', 0.0144, nsEgit(2, 400, 2000), 4);
+  iddia('300 turdan sonra kazanç ihmal edilebilir', true,
+        nsEgit(2, 400, 300) - nsEgit(2, 400, 2000) < 0.001);
+  /* deney gercekten ayni test kumesini kullaniyor */
+  iddia('test kümesi boyu', 1500, NS.havuz.T.length, 0);
+  iddia('eğitim havuzu boyu', 400, NS.havuz.H.length, 0);
+  iddia('test kümesi gürültüsüz (gerçek fonksiyon)', 0,
+        NS.havuz.T.reduce((s, p) => s + Math.abs(p[2] - NS.f0(p[0], p[1])), 0), 9);
+  /* ham modelin 3, polinom modelin 10 ozelligi var */
+  iddia('ham özellik sayısı', 3, NS.oz(0)([1, 1]).length, 0);
+  iddia('polinom özellik sayısı', 10, NS.oz(1)([1, 1]).length, 0);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
