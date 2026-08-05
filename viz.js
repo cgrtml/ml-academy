@@ -3201,6 +3201,142 @@ VIZ.matrisDonusum = s => {
   }
 };
 
+
+/* ═══════════ OLASILIK · TABAN ORANI ═══════════
+   Testin ne kadar iyi olduğu tek başına hiçbir şey söylemez.
+   Pozitif bir sonucun ne anlama geldiği, hastalığın ne kadar yaygın olduğuna bağlıdır. */
+const OL = {};
+OL.oranlar = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5];
+OL.bayes = (r, duy, ozg) => (duy * r) / (duy * r + (1 - ozg) * (1 - r));
+OL.tablo = (N, r, duy, ozg) => {
+  const hasta = N * r, saglikli = N - hasta;
+  const dp = hasta * duy, yn = hasta * (1 - duy);
+  const yp = saglikli * (1 - ozg), dn = saglikli * ozg;
+  return { hasta, saglikli, dp, yn, yp, dn, poz: dp + yp };
+};
+/* buyuk sayilar yasasi · KOSU bagimsiz deney, ortalama mutlak sapma */
+OL.KOSU = 400;
+const _olCache = {};
+OL.ortSapma = N => {
+  if (_olCache['s' + N] !== undefined) return _olCache['s' + N];
+  let top = 0;
+  for (let k = 0; k < OL.KOSU; k++){
+    const r = rng(1000 + k * 7919); let y = 0;
+    for (let i = 0; i < N; i++) if (r() < 0.5) y++;
+    top += Math.abs(y / N - 0.5);
+  }
+  return (_olCache['s' + N] = top / OL.KOSU);
+};
+OL.kapsam = [10, 40, 160, 640, 2560];
+/* tek bir kosunun izi · frekans nasil oturuyor */
+OL.iz = (() => {
+  const r = rng(7); let y = 0; const iz = [];
+  for (let i = 1; i <= 2000; i++){ if (r() < 0.5) y++; iz.push(y / i); }
+  return iz;
+})();
+
+VIZ.olasilikTaban = s => {
+  clear();
+  const sahne = s.sahne || 'sayilar';
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 108, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 29, K.mut, 15);
+    txt(deger, x + w/2, y + 74, rnk, 27);
+    if (alt) txt(alt, x + w/2, y + 96, K.mut, 14);
+  };
+
+  if (sahne === 'sayilar'){
+    const N = Math.max(10, Math.min(2000, s.n === undefined ? 20 : s.n));
+    baslikSerit('OLASILIK · BÜYÜK SAYILAR',
+      'Olasılık tek bir denemeyi değil, uzun vadeli oranı söyler.', []);
+    const P = plot(rect(120, 190, 640, 380), 1, 2000, 0, 1);
+    frame(P, 'atış sayısı', 'yazı oranı', [1, 500, 1000, 1500, 2000], [0, 0.5, 1]);
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.sx(1), P.sy(0.5)); cx.lineTo(P.sx(2000), P.sy(0.5)); cx.stroke();
+    cx.setLineDash([]);
+    cx.strokeStyle = K.blue; cx.lineWidth = 2.6; cx.beginPath();
+    for (let i = 0; i < N; i++){ const x = P.sx(i + 1), y = P.sy(OL.iz[i]);
+      i ? cx.lineTo(x, y) : cx.moveTo(x, y); }
+    cx.stroke();
+    dot(P.sx(N), P.sy(OL.iz[N-1]), 8, K.yellow);
+    txt('kesikli çizgi: gerçek olasılık 0.5', P.R.x + 14, P.R.y + 28, K.mut, 17, 'left');
+    /* sag: sapma N ile nasil kuculuyor */
+    const Q = plot(rect(890, 190, 480, 230), 0.8, 3.6, -2.4, -0.6);
+    frame(Q, 'log₁₀ atış sayısı', 'log₁₀ ortalama sapma', [1, 2, 3], [-2, -1]);
+    cx.strokeStyle = K.green; cx.lineWidth = 3.2; cx.beginPath();
+    OL.kapsam.forEach((n, i) => { const x = Q.sx(Math.log10(n)), y = Q.sy(Math.log10(OL.ortSapma(n)));
+      i ? cx.lineTo(x, y) : cx.moveTo(x, y); });
+    cx.stroke();
+    OL.kapsam.forEach(n => dot(Q.sx(Math.log10(n)), Q.sy(Math.log10(OL.ortSapma(n))), 5, K.green));
+    txt('eğim ≈ −0.5 · yani 1/√N', Q.R.x + Q.R.w - 14, Q.R.y + 28, K.green, 17, 'right');
+    const bx = 830;
+    kart(bx, 510, 260, 'BU ATIŞTA ORAN', OL.iz[N-1].toFixed(3), K.blue, N + ' atış sonrası');
+    kart(bx + 280, 510, 260, '0.5 TEN SAPMA', Math.abs(OL.iz[N-1] - 0.5).toFixed(3), K.purple);
+    box(bx, 640, 540, 100, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('Atış sayısı 4 katına çıkınca sapma yarıya iner.', bx + 20, 676, K.txt, 18, 'left');
+    txt('Yani doğruluk 1/√N ile artar: yavaş ama kesin.', bx + 20, 706, K.mut, 18, 'left');
+  }
+
+  else { /* bayes ve taban: mozaik */
+    const r = s.oran === undefined ? 0.01 : s.oran;
+    const duy = s.duy === undefined ? 0.99 : s.duy;
+    const ozg = s.ozg === undefined ? 0.99 : s.ozg;
+    const N = 10000, T = OL.tablo(N, r, duy, ozg);
+    const kesinlik = T.poz > 0 ? T.dp / T.poz : 0;
+    /* JS toLowerCase Türkçe I'yı yanlış çeviriyor · küçük hâlleri elle yazıyoruz */
+    const etiket = sahne === 'taban' ? ['DOLANDIRICI', 'TEMİZ', 'dolandırıcı', 'temiz']
+                                     : ['HASTA', 'SAĞLIKLI', 'hasta', 'sağlıklı'];
+    baslikSerit(sahne === 'taban' ? 'OLASILIK · AYNI MODEL, FARKLI DÜNYA'
+                                  : 'OLASILIK · TABAN ORANI',
+      '10.000 kişi. Her kare bir kişi, renk test sonucunu gösteriyor.', []);
+    /* dogal frekans izgarasi: 10.000 kare, her kare bir kisi.
+       %1 oranini alan olarak gostermek okunmuyor · saymak okunuyor. */
+    const sayi = v2 => Math.round(v2).toLocaleString('tr-TR');
+    const SUT = 100, hu = 4.4, mx = 120, my = 186;
+    const dp = Math.round(T.dp), yn = Math.round(T.yn), yp = Math.round(T.yp);
+    const renkler = [[dp, K.red, 1], [yn, K.red, 0.3], [yp, K.orange, 1]];
+    let sayac = 0, kalan = renkler.map(x => x[0]);
+    for (let i = 0; i < 10000; i++){
+      const c = i % SUT, sr = Math.floor(i / SUT);
+      let renk = 'rgba(120,200,255,.13)';
+      let k = 0, top = 0;
+      for (; k < renkler.length; k++){ top += kalan[k];
+        if (i < top){ renk = renkler[k][1]; cx.globalAlpha = renkler[k][2]; break; } }
+      cx.fillStyle = renk;
+      cx.fillRect(mx + c*hu, my + sr*hu, hu - 0.55, hu - 0.55);
+      cx.globalAlpha = 1;
+    }
+    box(mx - 3, my - 3, SUT*hu + 3, 100*hu + 3, null, K.axis, 1.5);
+    txt('10.000 kişi · her kare bir kişi', mx + SUT*hu/2, my + 100*hu + 28, K.mut, 18);
+    /* renk anahtari */
+    const anahtar = (x, y, renk, alfa, ad) => {
+      cx.globalAlpha = alfa; cx.fillStyle = renk; cx.fillRect(x, y - 12, 16, 16);
+      cx.globalAlpha = 1; txt(ad, x + 26, y + 2, K.mut, 17, 'left'); };
+    anahtar(mx, my + 100*hu + 62, K.red, 1, sayi(dp) + ' doğru pozitif · ' + etiket[2] + ' ve test +');
+    anahtar(mx, my + 100*hu + 90, K.orange, 1, sayi(yp) + ' yanlış pozitif · ' + etiket[3] + ' ama test +');
+    anahtar(mx, my + 100*hu + 118, '#7ac8ff', 0.35, sayi(T.dn) + ' doğru negatif');
+    /* sag: kesinlik cubugu ve kartlar */
+    const bx = 830;
+    txt('POZİTİF ÇIKANLARIN İÇİNDE', bx + 280, 214, K.mut, 18);
+    const cw = 560, cx0 = bx, cy = 232;
+    box(cx0, cy, cw, 62, 'rgba(255,170,60,.30)', K.orange, 2);
+    box(cx0, cy, cw * kesinlik, 62, 'rgba(255,90,90,.55)', K.red, 2);
+    txt('gerçekten ' + etiket[2], cx0 + 14, cy + 39, K.txt, 18, 'left');
+    txt('%' + (100 * kesinlik).toFixed(1), cx0 + cw - 14, cy + 39, K.txt, 20, 'right');
+    kart(bx, 330, 265, sahne === 'taban' ? 'TABAN ORANI' : 'HASTALIK ORANI',
+         '%' + (100 * r).toFixed(r < 0.01 ? 2 : 1), K.purple);
+    kart(bx + 295, 330, 265, 'KESİNLİK', '%' + (100 * kesinlik).toFixed(1),
+         kesinlik > 0.5 ? K.green : K.red, 'pozitifin ne kadarı doğru');
+    kart(bx, 460, 265, 'DOĞRU POZİTİF', sayi(T.dp), K.red, '10.000 kişide');
+    kart(bx + 295, 460, 265, 'YANLIŞ POZİTİF', sayi(T.yp), K.orange, '10.000 kişide');
+    box(bx, 590, 560, 120, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('Testin duyarlılığı %' + (100*duy).toFixed(0) + ', özgüllüğü %' + (100*ozg).toFixed(0) +
+        '.', bx + 20, 626, K.txt, 18, 'left');
+    txt('Bu iki sayı hiç değişmiyor. Değişen tek şey', bx + 20, 658, K.mut, 18, 'left');
+    txt('kaç kişinin gerçekten ' + etiket[2] + ' olduğu.', bx + 20, 688, K.mut, 18, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

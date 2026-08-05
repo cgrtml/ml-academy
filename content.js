@@ -20,7 +20,7 @@ const ROTALAR = [
     {id:'sizinti',       ad:'Veri sızıntısı dedektifi',           sure:12, durum:'hazir'},
     {id:'kanit',         ad:'Bu model gerçekten daha mı iyi?',    sure:12, durum:'hazir', dis:'ders-kanit.html'},
     {id:'mat-matris',     ad:'Matrisler: yapay zekânın gizli iskeleti',        sure:15, durum:'hazir'},
-    {id:'mat-olasilik',   ad:'Olasılık: modelin belirsizlikle dansı',          sure:12, durum:'planli'},
+    {id:'mat-olasilik',   ad:'Olasılık: modelin belirsizlikle dansı',          sure:16, durum:'hazir'},
     {id:'neden-simdi',    ad:'Neden şimdi patladı: veri, hesap, algoritma',    sure:8, durum:'planli'},
     {id:'arama-uzayi',    ad:'Arama uzayı: problemi düğüm ve kenara çevirmek',  sure:12, durum:'planli'},
     {id:'kombinatorik',   ad:'Kombinatorik patlama: kaba kuvvet neden çöker',  sure:10, durum:'planli'},
@@ -7300,6 +7300,153 @@ DERSLER['mat-matris'] = {
       'tek katman ve tek kelime başına.<br><br>' +
       'Çarpmaların birbirinden bağımsız olması işi paralelleştirilebilir kılıyor. ' +
       'Ekran kartlarının yapay zekâdaki rolü buradan geliyor.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── OLASILIK ─────────────── */
+DERSLER['mat-olasilik'] = {
+  ad:'Olasılık: bir testin iyi olması yetmez',
+  alt:'Aynı test, aynı iki sayı, bambaşka anlamlar. Bunun sebebini bir kere anlayınca sınıflandırma metriklerine bakışın değişiyor.',
+  kaynaklar:[
+    {y:'Gigerenzer, G. & Hoffrage, U.', t:'1995', b:'How to Improve Bayesian Reasoning Without Instruction: Frequency Formats', n:'Psychological Review 102(4)'},
+    {y:'Deisenroth, M. P., Faisal, A. A. & Ong, C. S.', t:'2020', b:'Mathematics for Machine Learning, Bölüm 6', n:'Cambridge University Press', u:'https://mml-book.github.io/'},
+    {y:'Wasserman, L.', t:'2004', b:'All of Statistics, Bölüm 1-2', n:'Springer'},
+  ],
+  rota:0,
+  adimlar:[
+  {
+    t:'Olasılık tek bir denemeyi anlatmaz',
+    goal:'Bir olasılık sayısının aslında neyi söz verdiğini göreceksin.',
+    todo:'Atış sayısını artır. Mavi çizgi kesikli çizgiye ne zaman oturuyor?',
+    kind:'controls', viz:'olasilikTaban', h:760, state:{sahne:'sayilar'},
+    controls:[{k:'n', lb:'ATIŞ SAYISI', min:10, max:2000, step:10, val:20, fmt:v => v+' atış'}],
+    derive:s => { const n = Math.max(1, Math.min(2000, Math.round(s.n)));
+      return {n2: n, sapma: Math.abs(OL.iz[n - 1] - 0.5)}; },
+    live:s => [['ŞU ANKİ ORAN', OL.iz[s.n2 - 1].toFixed(3), K.blue],
+               ['0.5 TEN SAPMA', s.sapma.toFixed(3), K.purple],
+               ['HEDEF', '1500+ atış, sapma < 0.02']],
+    unlock:s => s.n2 >= 1500 && s.sapma < 0.02,
+    unlockMsg:'Atış sayısını 1500 üstüne çıkar ve sapmayı 0.02 altına indir',
+    body:'<p>"Yazı gelme olasılığı 0.5" cümlesi, bir sonraki atış hakkında <b>hiçbir şey</b> ' +
+      'söylemez. Söylediği şey, atış sayısı büyüdükçe yazı oranının 0.5’e yaklaşacağıdır.</p>' +
+      '<p>Grafikteki mavi çizgi tek bir deney serisinin izi. Başta zıplıyor, sonra sakinleşiyor. ' +
+      '10 atışta oran 0.500, 100 atışta 0.430, 2000 atışta 0.490.</p>' +
+      '<p>Sağdaki grafik daha önemli. Her N için deneyi <b>400 kez</b> baştan yapıp sapmanın ' +
+      'ortalamasını aldık: 10 atışta <b>0.1218</b>, 40 atışta <b>0.0627</b>, 160 atışta ' +
+      '<b>0.0313</b>, 2560 atışta <b>0.0078</b>.</p>' +
+      '<p>Deseni gördün mü: <b>atış sayısı 4 katına çıkınca sapma yarıya iniyor</b>. ' +
+      'Yani doğruluk N ile değil, √N ile artıyor. Ölçülen log-log eğimi <b>&minus;0.4947</b>, ' +
+      'yani neredeyse tam olarak &minus;0.5.</p>' +
+      '<p>Bu makine öğrenmesinde doğrudan işine yarayacak: test kümeni 4 katına çıkarmak, ' +
+      'ölçtüğün doğruluğun gürültüsünü sadece yarıya indirir. 100 örnekle ölçülen bir başarı ' +
+      'oranı, kulağa kesin gelse de epeyce oynaktır.</p>',
+    learned:'<b>Olasılık bir söz değil, uzun vadeli bir orandır.</b><br><br>' +
+      'Ölçüm hatası 1/√N ile küçülür: 400 deneyin ortalamasında sapma 10 atışta 0.1218, ' +
+      '2560 atışta <b>0.0078</b>. Log-log eğim <b>&minus;0.4947</b>.<br><br>' +
+      'Sonuç: örnek sayısını 4 katlamak, belirsizliği ancak yarıya indirir. ' +
+      'Küçük test kümeleriyle yapılan karşılaştırmalara bu yüzden dikkat etmek gerekir.',
+    xp:25,
+  },
+  {
+    t:'Test %99 doğru, peki pozitif ne demek?',
+    goal:'Bir sonucun anlamının, testin kalitesi kadar hastalığın yaygınlığına da bağlı olduğunu göreceksin.',
+    todo:'Hastalık oranını düşür. Pozitif çıkanların kaçta kaçı gerçekten hasta?',
+    kind:'controls', viz:'olasilikTaban', h:760, state:{sahne:'bayes', duy:0.99, ozg:0.99},
+    controls:[{k:'ix', lb:'HASTALIK ORANI', min:0, max:8, step:1, val:3,
+               fmt:v => '%' + (100 * OL.oranlar[v]).toFixed(OL.oranlar[v] < 0.01 ? 2 : 1)}],
+    derive:s => { const r = OL.oranlar[s.ix];
+      return {oran: r, kes: OL.bayes(r, 0.99, 0.99)}; },
+    live:s => [['KESİNLİK', '%' + (100 * s.kes).toFixed(1), s.kes > 0.5 ? K.green : K.red],
+               ['HASTALIK ORANI', '%' + (100 * s.oran).toFixed(2)],
+               ['HEDEF', 'kesinliği %15 altına indir']],
+    unlock:s => s.kes < 0.15,
+    unlockMsg:'Kesinliği %15 altına indir',
+    body:'<p>Bir test var: hastaların <b>%99</b>’unu doğru yakalıyor, sağlıklıların <b>%99</b>’una ' +
+      'doğru şekilde negatif diyor. Kulağa mükemmel geliyor.</p>' +
+      '<p>Testin pozitif çıktı. Hasta olma olasılığın nedir?</p>' +
+      '<p>Çoğu insan "%99" der. Hekimlerin de büyük kısmı öyle der. Doğru cevap, hastalığın ' +
+      'ne kadar yaygın olduğunu bilmeden <b>verilemez</b>.</p>' +
+      '<p>Hastalık her 100 kişiden 1’inde varsa, 10.000 kişide ne olur:</p>' +
+      '<p><b>100</b> kişi hasta &rarr; test <b>99</b>’unu yakalar (doğru pozitif)<br>' +
+      '<b>9.900</b> kişi sağlıklı &rarr; test <b>99</b>’una yanlışlıkla pozitif der</p>' +
+      '<p>Toplam <b>198</b> pozitif, bunların <b>99</b>’u gerçekten hasta. Yani cevap <b>%50</b>. ' +
+      'Yazı tura kadar.</p>' +
+      '<p>Sebep şu: sağlıklı insanlar o kadar kalabalık ki, onların küçücük hata payı bile ' +
+      'hastaların tamamı kadar çok yanlış pozitif üretiyor.</p>' +
+      '<p>Oranı %0.1’e indir: kesinlik <b>%9.02</b>’ye düşüyor. %10’a çıkar: <b>%91.67</b>. ' +
+      'Test hiç değişmedi.</p>',
+    learned:'<b>Bir testin kalitesi, sonucunun ne anlama geldiğini tek başına belirlemez.</b><br><br>' +
+      'Duyarlılık %99 ve özgüllük %99 sabitken, pozitif bir sonucun doğru olma olasılığı ' +
+      'hastalık oranı %0.1 iken <b>%9.02</b>, %1 iken <b>%50.00</b>, %10 iken <b>%91.67</b>.<br><br>' +
+      'Nadir olayları ararken yanlış pozitifler doğru pozitifleri sayıca ezer. ' +
+      'Buna <b>taban oranı</b> problemi denir.',
+    xp:50,
+  },
+  {
+    t:'Aynı model, farklı dünya',
+    goal:'Bunun makine öğrenmesindeki tam karşılığını göreceksin.',
+    todo:'Dolandırıcılık oranını yükselt. Kesinliği %80 üstüne çıkarabiliyor musun?',
+    kind:'controls', viz:'olasilikTaban', h:760, state:{sahne:'taban', duy:0.95, ozg:0.95},
+    controls:[{k:'ix', lb:'DOLANDIRICILIK ORANI', min:0, max:8, step:1, val:0,
+               fmt:v => '%' + (100 * OL.oranlar[v]).toFixed(OL.oranlar[v] < 0.01 ? 2 : 1)}],
+    derive:s => { const r = OL.oranlar[s.ix];
+      return {oran: r, kes: OL.bayes(r, 0.95, 0.95)}; },
+    live:s => [['KESİNLİK', '%' + (100 * s.kes).toFixed(1), s.kes > 0.8 ? K.green : K.orange],
+               ['TABAN ORANI', '%' + (100 * s.oran).toFixed(2)],
+               ['HEDEF', 'kesinlik > %80']],
+    unlock:s => s.kes > 0.8,
+    unlockMsg:'Kesinliği %80 üstüne çıkar',
+    body:'<p>Şimdi tıbbi testi bir sınıflandırma modeliyle değiştir. Model kart işlemlerinde ' +
+      'dolandırıcılık arıyor. Dolandırıcılıkların %95’ini yakalıyor, temiz işlemlerin ' +
+      '%95’ine doğru şekilde temiz diyor.</p>' +
+      '<p>Bu iki sayı modelin kendi özelliği. Modeli hiç değiştirmiyoruz.</p>' +
+      '<p>Dolandırıcılık oranı %0.1 olan bir bankada model "dolandırıcılık" dediğinde ' +
+      'haklı çıkma oranı: <b>%1.87</b>. Yani model alarm verdiğinde <b>54 kerede 53</b> ' +
+      'yanlış alarmdır.</p>' +
+      '<p>Aynı modeli oranın %5 olduğu bir ortama koy: <b>%50.00</b>. %20’ye çıkar: ' +
+      '<b>%82.61</b>.</p>' +
+      '<p>Model aynı model. Değişen tek şey <b>dünyanın kendisi</b>.</p>' +
+      '<p>Bunun iki pratik sonucu var. Birincisi, bir modelin başarı sayılarını başka bir ' +
+      'ortama taşıyamazsın; makalede %90 kesinlik veren model senin verinde %5 verebilir. ' +
+      'İkincisi, "accuracy neden yalan söyler" dersindeki hesabın kaynağı tam olarak budur: ' +
+      'nadir sınıflarda doğruluk oranı hiçbir şey ölçmez.</p>',
+    learned:'<b>Kesinlik modelin değil, modelle dünyanın ortak özelliğidir.</b><br><br>' +
+      'Duyarlılık ve özgüllük %95’te sabitken kesinlik, taban oranı %0.1 iken <b>%1.87</b>, ' +
+      '%5 iken <b>%50.00</b>, %20 iken <b>%82.61</b>.<br><br>' +
+      'Bir modelin başarı rakamları, ölçüldüğü ortamın sınıf dengesinden ayrı okunamaz.',
+    xp:50,
+  },
+  {
+    t:'Peki ne yapmalı',
+    goal:'Taban oranı düşükken tasarımın nasıl değiştiğini göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'olasilikTaban', h:760, state:{sahne:'taban', duy:0.95, ozg:0.95, ix:0},
+    body:'<p>Nadir olay arıyorsan üç kaldıraç var, ve hangisinin işe yaradığı hesapla belli.</p>' +
+      '<p><b>Özgüllüğü artırmak.</b> En etkilisi budur. Model %95 yerine %99.5 özgüllüğe ' +
+      'çıksa, %0.1 taban oranında kesinlik %1.87’den <b>%15.98</b>’ye çıkar. Yanlış pozitifleri ' +
+      'azaltmak, doğru pozitifleri artırmaktan çok daha değerlidir.</p>' +
+      '<p><b>Duyarlılığı artırmak.</b> Neredeyse hiç işe yaramaz. %95 yerine %100 olsa bile ' +
+      'kesinlik %1.87’den ancak <b>%1.96</b>’ya çıkar. Çünkü sorun kaçırdıkların değil, ' +
+      'yanlış yakaladıkların.</p>' +
+      '<p><b>Taban oranını yükseltmek.</b> Aramayı önce daraltmak. Bütün işlemlere değil de ' +
+      'önceden riskli bulunan bir alt kümeye bakarsan, o alt kümede oran yükselir ve aynı model ' +
+      'birden kullanışlı hâle gelir. Tıptaki tarama-doğrulama sırasının mantığı budur: ' +
+      'ucuz test havuzu daraltır, pahalı test daralmış havuzda çalışır.</p>' +
+      '<p>Dördüncü bir yol da var ama işi çözmez: eşiği kaydırmak. Bu duyarlılık ile özgüllüğü ' +
+      'birbirine çevirir, ikisini birden iyileştirmez.</p>',
+    quiz:{ q:'Bir hastanede nadir bir kanser türü için tarama kuruyorsun. Görülme sıklığı 10.000’de 1. Modelin duyarlılığı %98, özgüllüğü %98 ve pozitif çıkan herkes pahalı bir biyopsiye gönderiliyor. Bütçen sınırlı. Neye yatırım yaparsın?',
+      opts:[
+        {t:'Özgüllüğü yükseltmeye, çünkü biyopsilerin neredeyse tamamı boşa gidiyor', why:'Doğru. 10.000’de 1 sıklıkta, %98 özgüllük 10.000 kişide yaklaşık 200 yanlış pozitif üretirken doğru pozitif sayısı 1’dir: biyopsilerin yaklaşık %99.5’i gereksiz. Bu dersteki hesabın gösterdiği gibi, taban oranı düşükken kesinliği belirleyen şey yanlış pozitif sayısıdır, dolayısıyla iyileştirilecek tek anlamlı yer özgüllüktür.'},
+        {t:'Duyarlılığı yükseltmeye, hasta kaçırmak en kötü sonuçtur', why:'Duyarlılık zaten %98 ve mükemmel olsa bile kazanç çok küçük: bu derste ölçtüğün gibi %95’ten %100’e çıkmak kesinliği %1.87’den ancak %1.96’ya taşıyor. Kaçırılan hasta sayısı burada zaten çok küçük, sorun yanlış pozitiflerde.'},
+        {t:'Daha çok veri toplamaya, model daha iyi öğrensin', why:'Daha çok veri modeli iyileştirebilir ama sorun modelin öğrenme kapasitesi değil, taban oranının kendisi. Duyarlılık ve özgüllük sabit kaldığı sürece kesinlik değişmez; veri, ancak özgüllüğü yükselttiği ölçüde işe yarar.'},
+        {t:'Eşiği yükseltmeye, böylece daha az pozitif çıkar', why:'Eşiği kaydırmak duyarlılık ile özgüllüğü birbirine çevirir: yanlış pozitifler azalırken kaçırılan hastalar artar. Bu bir tasarım tercihi olabilir ama modelin ayırt etme gücünü artırmaz, sadece hatayı bir taraftan öbür tarafa taşır.'},
+      ], correct:0 },
+    learned:'<b>Taban oranı düşükken iyileştirilecek doğru yer özgüllüktür.</b><br><br>' +
+      '%0.1 oranda özgüllüğü %95’ten %99.5’e çıkarmak kesinliği <b>%1.87 → %15.98</b> yapar. ' +
+      'Duyarlılığı %95’ten %100’e çıkarmak ise ancak <b>%1.87 → %1.96</b>.<br><br>' +
+      'Üçüncü ve çoğu zaman en güçlü yol, aramayı önce daraltıp <b>taban oranını yükseltmektir</b>. ' +
+      'Ucuz tarama sonrası pahalı doğrulama düzeninin mantığı budur.',
     xp:50,
   },
 ]};

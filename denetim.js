@@ -975,6 +975,78 @@ console.log('═══ MATRİSLER ═══');
   }
 }
 
+console.log('═══ OLASILIK · TABAN ORANI ═══');
+{
+  /* buyuk sayilar yasasi · sapma 400 bagimsiz kosunun ortalamasi */
+  iddia('10 atış ortalama sapma', 0.1218, OL.ortSapma(10), 4);
+  iddia('40 atış ortalama sapma', 0.0627, OL.ortSapma(40), 4);
+  iddia('160 atış ortalama sapma', 0.0313, OL.ortSapma(160), 4);
+  iddia('2560 atış ortalama sapma', 0.0078, OL.ortSapma(2560), 4);
+  iddia('sapma N ile tekdüze azalıyor', true,
+        OL.kapsam.every((n, i, a2) => i === 0 || OL.ortSapma(n) < OL.ortSapma(a2[i-1])));
+  /* asil iddia: 1/√N · log-log egim -0.5 e ne kadar yakin */
+  {
+    const egim = (Math.log10(OL.ortSapma(2560)) - Math.log10(OL.ortSapma(10))) /
+                 (Math.log10(2560) - Math.log10(10));
+    iddia('log-log eğim (1/√N yasası)', -0.4947, egim, 4);
+    iddia('eğim −0.5 e 0.02 den yakın', true, Math.abs(egim + 0.5) < 0.02);
+  }
+  /* "4 kat atis, yari sapma": rastgele bir olcum, tam 2 degil · araligi sinayalim */
+  {
+    let enAz = 1e9, enCok = -1e9;
+    for (let i = 1; i < OL.kapsam.length; i++){
+      const o = OL.ortSapma(OL.kapsam[i-1]) / OL.ortSapma(OL.kapsam[i]);
+      enAz = Math.min(enAz, o); enCok = Math.max(enCok, o);
+    }
+    iddia('4 katlamada oranın en küçüğü', 1.875, enAz, 3);
+    iddia('4 katlamada oranın en büyüğü', 2.129, enCok, 3);
+    iddia('bütün oranlar 2 nin yüzde 15 inde', true, enAz > 1.7 && enCok < 2.3);
+  }
+  /* tek kosunun izi · derste yazan sayilar */
+  iddia('10 atışta oran', 0.500, OL.iz[9], 3);
+  iddia('100 atışta oran', 0.430, OL.iz[99], 3);
+  iddia('2000 atışta oran', 0.490, OL.iz[1999], 3);
+  /* Bayes · tibbi test */
+  iddia('taban %0.1 kesinlik', 9.02, 100 * OL.bayes(0.001, 0.99, 0.99), 2);
+  iddia('taban %1 kesinlik', 50.00, 100 * OL.bayes(0.01, 0.99, 0.99), 2);
+  iddia('taban %10 kesinlik', 91.67, 100 * OL.bayes(0.1, 0.99, 0.99), 2);
+  /* dogal frekans hesabi Bayes ile ayni sonucu vermeli · iki yoldan dogrulama */
+  {
+    const T = OL.tablo(10000, 0.01, 0.99, 0.99);
+    iddia('10.000 kişide hasta sayısı', 100, T.hasta, 6);
+    iddia('doğru pozitif', 99, T.dp, 6);
+    iddia('yanlış pozitif', 99, T.yp, 6);
+    iddia('toplam pozitif', 198, T.poz, 6);
+    iddia('doğal frekans hesabı Bayes formülüyle aynı',
+          OL.bayes(0.01, 0.99, 0.99), T.dp / T.poz, 9);
+  }
+  /* kesinlik taban orani ile tekduze artiyor · test ve model sabitken */
+  {
+    let ihlal = 0;
+    for (let i = 1; i < OL.oranlar.length; i++)
+      if (OL.bayes(OL.oranlar[i], 0.99, 0.99) <= OL.bayes(OL.oranlar[i-1], 0.99, 0.99)) ihlal++;
+    iddia('kesinlik taban oranıyla tekdüze artıyor', 0, ihlal, 0);
+  }
+  /* ayni model, farkli dunya */
+  iddia('model .95/.95 taban %0.1 kesinlik', 1.87, 100 * OL.bayes(0.001, 0.95, 0.95), 2);
+  iddia('model .95/.95 taban %5 kesinlik', 50.00, 100 * OL.bayes(0.05, 0.95, 0.95), 2);
+  iddia('model .95/.95 taban %20 kesinlik', 82.61, 100 * OL.bayes(0.2, 0.95, 0.95), 2);
+  iddia('%0.1 tabanda kaç alarmdan biri doğru', 54,
+        1 / OL.bayes(0.001, 0.95, 0.95), 0);
+  /* dersin son adimindaki kaldirac karsilastirmasi */
+  iddia('özgüllük .95 → .995 kesinliği', 15.98, 100 * OL.bayes(0.001, 0.95, 0.995), 2);
+  iddia('duyarlılık .95 → 1.00 kesinliği', 1.96, 100 * OL.bayes(0.001, 1.0, 0.95), 2);
+  iddia('özgüllük kaldıracı duyarlılıktan güçlü', true,
+        OL.bayes(0.001, 0.95, 0.995) > 5 * OL.bayes(0.001, 1.0, 0.95));
+  /* quiz senaryosu: sıklık 1/10000, %98/%98 */
+  {
+    const T = OL.tablo(10000, 0.0001, 0.98, 0.98);
+    iddia('quiz senaryosunda yanlış pozitif', 200.0, T.yp, 1);
+    iddia('quiz senaryosunda doğru pozitif', 0.98, T.dp, 2);
+    iddia('boşa giden biyopsi oranı', 99.5, 100 * T.yp / T.poz, 1);
+  }
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
