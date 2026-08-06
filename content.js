@@ -78,7 +78,7 @@ const ROTALAR = [
     {id:'cnn',      ad:'Evrişim: çekirdek görüntüde gezerken', sure:12, durum:'hazir'},
     {id:'embed',    ad:'Gömme uzayları (embeddings)',      sure:12, durum:'hazir'},
     {id:'transfer', ad:'Transfer öğrenme',                 sure:14, durum:'hazir'},
-    {id:'ilkleme',        ad:'Ağırlık ilkleme: Xavier ve He',                  sure:12, durum:'planli'},
+    {id:'ilkleme',        ad:'Ağırlık ilkleme: Xavier ve He',                  sure:17, durum:'hazir'},
     {id:'patlayan',       ad:'Patlayan gradyan ve klipleme',                   sure:10, durum:'planli'},
     {id:'kisayol',        ad:'Kısayol bağlantıları: ResNet fikri',             sure:12, durum:'planli'},
     {id:'havuzlama',      ad:'Havuzlama: görüntüyü özetlemek',                 sure:10, durum:'planli'},
@@ -7850,6 +7850,154 @@ DERSLER['kombinatorik'] = {
       'Bir yılda çözülebilen boyut <b>19 şehirden 43 şehre</b> çıkıyor.<br><br>' +
       'Ama Held-Karp da üstel: 50 şehirde <b>89 yıl</b>. Gerçek ölçekte kullanılan şey ' +
       'kesin çözüm değil, <b>garantili yaklaşımlar</b>.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── AĞIRLIK İLKLEME ─────────────── */
+DERSLER['ilkleme'] = {
+  ad:'Ağırlık ilkleme: eğitim başlamadan kaybedilen ağlar',
+  alt:'Ağırlıkların başlangıç ölçeği yanlışsa sinyal derinlikte ya sönüyor ya patlıyor. Bu dersteki ağ, tek bir sayı yüzünden hiç öğrenemiyor.',
+  kaynaklar:[
+    {y:'Glorot, X. & Bengio, Y.', t:'2010', b:'Understanding the Difficulty of Training Deep Feedforward Neural Networks', n:'AISTATS 2010'},
+    {y:'He, K., Zhang, X., Ren, S. & Sun, J.', t:'2015', b:'Delving Deep into Rectifiers', n:'ICCV 2015'},
+    {y:'Goodfellow, I., Bengio, Y. & Courville, A.', t:'2016', b:'Deep Learning, Bölüm 8.4', n:'MIT Press', u:'https://www.deeplearningbook.org/'},
+  ],
+  rota:2,
+  adimlar:[
+  {
+    t:'Sinyal yirmi katmanda ne oluyor',
+    goal:'Başlangıç ölçeğinin derinlikte nasıl katlanarak büyüdüğünü göreceksin.',
+    todo:'c değerini gezdir. Son katmandaki standart sapmayı sağlıklı bölgede tutabiliyor musun?',
+    kind:'controls', viz:'agirlikIlkleme', h:770, state:{sahne:'ileri', akt:'relu'},
+    controls:[{k:'c', lb:'BAŞLANGIÇ ÖLÇEĞİ c', min:0.4, max:2.2, step:0.1, val:0.5,
+               fmt:v => 'σ = ' + v.toFixed(1) + ' / √96'}],
+    derive:s => ({son: ilIleri(s.c, 'relu').izler[IL.KAT]}),
+    live:s => [['SON KATMAN std', s.son < 1e-4 ? s.son.toExponential(2) : s.son.toFixed(4),
+                s.son > 0.3 && s.son < 3 ? K.green : K.red],
+               ['HEDEF', '0.3 ile 3 arası']],
+    unlock:s => s.son > 0.3 && s.son < 3,
+    unlockMsg:'Son katmandaki standart sapmayı 0.3 ile 3 arasına getir',
+    body:'<p>20 katmanlı bir ağ. Her katman 96 birim, aktivasyon ReLU. Ağırlıkları rastgele ' +
+      'ilkliyoruz: <b>σ = c / √96</b>. Tek ayarımız <b>c</b>.</p>' +
+      '<p>Girdinin standart sapması 1. Şimdi katman katman ne olduğuna bakalım:</p>' +
+      '<p><b>c = 0.5:</b> son katmanda std <b>8.9 × 10⁻¹⁰</b>. Sinyal yok olmuş.<br>' +
+      '<b>c = 1:</b> <b>9.4 × 10⁻⁴</b>. Hâlâ çok küçük.<br>' +
+      '<b>c = √2 ≈ 1.4:</b> <b>0.9593</b>. Girdiyle aynı ölçekte.<br>' +
+      '<b>c = 2:</b> <b>982.3</b>. Patlamış.</p>' +
+      '<p>Dikkat et: c’yi 0.5’ten 2’ye, yani sadece <b>4 kat</b> değiştirdik. Sonuç ' +
+      '10⁻¹⁰’dan 10³’e, yani <b>10¹² kat</b> değişti.</p>' +
+      '<p>Sebebi katlanma. Her katman sinyali sabit bir çarpanla ölçekliyor ve 20 katman ' +
+      'boyunca o çarpan 20. kuvvetine çıkıyor. Kombinatorik dersindeki üstel büyümenin ' +
+      'aynısı, bu sefer ağın içinde.</p>',
+    learned:'<b>Başlangıç ölçeğindeki küçük bir hata, derinlikte katlanarak büyür.</b><br><br>' +
+      'c değerini 0.5’ten 2’ye çıkarmak (4 kat) son katman standart sapmasını ' +
+      '8.9 × 10⁻¹⁰’dan 982.3’e taşıyor: <b>10¹² kat</b>.<br><br>' +
+      'Sağlıklı olan tek yer <b>c = √2</b> civarı: son katmanda std <b>0.9593</b>.',
+    xp:25,
+  },
+  {
+    t:'Neden tam olarak √2',
+    goal:'He ilklemesinin nereden geldiğini ölçümle göreceksin.',
+    todo:'Kartlardaki katman başına oranı Xavier ve He için karşılaştır.',
+    kind:'controls', viz:'agirlikIlkleme', h:770, state:{sahne:'ileri', akt:'relu'},
+    controls:[{k:'c', lb:'BAŞLANGIÇ ÖLÇEĞİ c', min:0.4, max:2.2, step:0.1, val:1.0,
+               fmt:v => 'σ = ' + v.toFixed(1) + ' / √96'}],
+    live:s => [['KATMAN BAŞINA ORAN', IL.oran(s.c, 'relu').toFixed(4)],
+               ['1/√2', (1/Math.SQRT2).toFixed(4), K.mut],
+               ['HEDEF ORAN', '1.0000', K.green]],
+    body:'<p>Doğru ölçeği bulmak için tek bir katmanda ne olduğuna bakalım.</p>' +
+      '<p>Bir nöron 96 girdiyi ağırlıklarla çarpıp topluyor. Bağımsız terimlerin toplamında ' +
+      'varyanslar toplanır, dolayısıyla çıktının varyansı <b>96 · σ² · (girdi varyansı)</b> ' +
+      'olur. Bunun 1 kalması için σ² = 1/96, yani <b>σ = 1/√96</b> gerekir. ' +
+      'Buna <b>Xavier</b> ilklemesi denir ve <b>c = 1</b>’e karşılık gelir.</p>' +
+      '<p>Ama ReLU var. ReLU negatif çıktıları sıfırlıyor, yani sinyalin <b>yarısını atıyor</b>. ' +
+      'Varyans yarıya iniyor, standart sapma <b>1/√2</b> katına.</p>' +
+      '<p>Bu bir hesap değil, ölçüm. c = 1’de katman başına ölçülen oran <b>0.7153</b>, ' +
+      'teorik 1/√2 = <b>0.7071</b>. Yirmi katman sonrası: ölçülen <b>9.37 × 10⁻⁴</b>, ' +
+      'teorik (1/√2)²⁰ = <b>9.77 × 10⁻⁴</b>.</p>' +
+      '<p>Çözüm bu kaybı baştan telafi etmek: σ’yı √2 ile çarp. <b>σ = √2/√96</b>, ' +
+      'yani σ² = <b>2/fan_in</b>. Bu <b>He ilklemesi</b>.</p>' +
+      '<p>Ölçülen sonuç: c = √2’de katman başına oran <b>1.0116</b>. Yani sinyal ne sönüyor ' +
+      'ne büyüyor.</p>',
+    learned:'<b>He ilklemesi, ReLU’nun attığı yarıyı baştan telafi eder.</b><br><br>' +
+      'Xavier σ² = 1/fan_in verir ve ReLU ile katman başına oran <b>0.7153</b> ölçülür ' +
+      '(teorik 1/√2 = 0.7071).<br><br>' +
+      'He σ² = <b>2/fan_in</b> alır ve ölçülen oran <b>1.0116</b> olur. ' +
+      'Aradaki tek fark √2 çarpanı, ve 20 katmanda o çarpan bin katlık bir farka dönüşüyor.',
+    xp:50,
+  },
+  {
+    t:'tanh patlamıyor, peki iyi mi',
+    goal:'Bir aktivasyonun patlamayı engellemesinin neden yetmediğini göreceksin.',
+    todo:'c değerini büyüt. Standart sapma patlıyor mu? Türev çarpımına bak.',
+    kind:'controls', viz:'agirlikIlkleme', h:770, state:{sahne:'ileri', akt:'tanh'},
+    controls:[{k:'c', lb:'BAŞLANGIÇ ÖLÇEĞİ c', min:0.4, max:2.2, step:0.1, val:1.0,
+               fmt:v => 'σ = ' + v.toFixed(1) + ' / √96'}],
+    derive:s => ({tc: ilIleri(s.c, 'tanh').turevCarpim}),
+    live:s => [['DOYGUN BİRİM', '%' + (100 * ilIleri(s.c, 'tanh').doygunOran).toFixed(1), K.orange],
+               ['TÜREV ÇARPIMI', s.tc.toExponential(2), s.tc < 1e-4 ? K.red : K.green],
+               ['HEDEF', 'çarpımı 10⁻⁴ altına indir']],
+    unlock:s => s.tc < 1e-4,
+    unlockMsg:'Türev çarpımını 10⁻⁴ altına indir',
+    body:'<p>Aktivasyonu tanh yapalım. tanh çıktısı her zaman &minus;1 ile 1 arasında, ' +
+      'yani ne kadar büyük ölçek verirsen ver <b>patlayamaz</b>.</p>' +
+      '<p>Ölçüm bunu doğruluyor: c = 2’de son katman std <b>0.7336</b>. ReLU’da aynı ayar ' +
+      '982.3 veriyordu.</p>' +
+      '<p>Bu iyi bir haber gibi görünüyor ama değil. Bedeli başka yerde ödeniyor.</p>' +
+      '<p>tanh doyduğunda, yani çıktısı ±1’e yaklaştığında, <b>türevi sıfıra gider</b>. ' +
+      'Geri yayılım gradyanı katman katman bu türevlerle çarparak taşır. Türevler küçükse ' +
+      'gradyan de sönerek gelir.</p>' +
+      '<p>Ölçülen değerler:</p>' +
+      '<p><b>c = 1:</b> doygun birim %0.9, 20 katmanlık türev çarpımı <b>0.155</b><br>' +
+      '<b>c = √2:</b> doygun %8.0, çarpım <b>3.48 × 10⁻⁴</b><br>' +
+      '<b>c = 2:</b> doygun %32.3, çarpım <b>1.96 × 10⁻⁷</b></p>' +
+      '<p>Yani c = 2’de ileri sinyal gayet sağlıklı görünüyor (std 0.73) ama gradyan ' +
+      '<b>on milyonda bire</b> inmiş durumda. Ağ öğrenemez.</p>' +
+      '<p>Ders şu: ileri geçişte sinyalin sağ salim durması <b>yetmez</b>. ' +
+      'Geriye akan türevin de yaşaması gerekir.</p>',
+    learned:'<b>Patlamamak, sağlıklı olmak demek değildir.</b><br><br>' +
+      'tanh ile c = 2’de son katman std <b>0.7336</b>, yani ileri sinyal iyi görünüyor. ' +
+      'Ama birimlerin <b>%32.3</b>’ü doymuş ve 20 katmanlık türev çarpımı ' +
+      '<b>1.96 × 10⁻⁷</b>.<br><br>' +
+      'Aynı ölçekte ReLU 982.3’e patlıyordu. İki başarısızlık farklı görünüyor ama ' +
+      'sonucu aynı: <b>gradyan hedefe ulaşmıyor</b>.',
+    xp:50,
+  },
+  {
+    t:'Peki eğitimde ne oluyor',
+    goal:'Bütün bu ölçümlerin gerçek eğitimde ne kadar fark yarattığını göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'controls', viz:'agirlikIlkleme', h:770, state:{sahne:'egitim'},
+    controls:[{k:'c', lb:'VURGULANAN', min:0, max:3, step:1, val:2,
+               fmt:v => ['c = 0.5','Xavier c = 1','He c = √2','c = 2'][v]}],
+    body:'<p>Şimdi aynı fikri gerçek bir eğitimle sınayalım. 8 katmanlı ReLU ağı, ' +
+      'aynı veri, aynı öğrenme oranı, 60 adım. Değişen tek şey <b>c</b>.</p>' +
+      '<p><b>c = 0.5:</b> kayıp 0.6667’den <b>0.6667</b>’ye. 60 adımdaki toplam değişim ' +
+      'üç milyonda bir, yani dört ondalıkta hiç kıpırdamıyor. ' +
+      'Sinyal ileri geçişte öldüğü için gradyan da sıfır geliyor, ağırlıklar güncellenmiyor.</p>' +
+      '<p><b>Xavier c = 1:</b> 0.6655’ten <b>0.5995</b>’e. Bir şeyler oluyor ama zar zor.</p>' +
+      '<p><b>He c = √2:</b> 0.7282’den <b>0.0420</b>’ye. Kayıp <b>17 kat</b> düşüyor. ' +
+      'Çalışan tek ayar bu.</p>' +
+      '<p><b>c = 2:</b> başlangıç kaybı zaten <b>22.29</b>, çünkü çıktılar patlamış durumda. ' +
+      'Eğitim <b>NaN</b>’a gidiyor.</p>' +
+      '<p>Buradaki ders mimariyle ilgili değil. Ağ, veri, optimizasyon ve adım sayısı ' +
+      'dört durumda da birebir aynı. Fark, eğitim daha başlamadan verilen <b>tek bir sayıda</b>.</p>' +
+      '<p>Modern kütüphanelerde bu ayarı çoğu zaman elle yapmazsın, çünkü varsayılan ' +
+      'zaten He ya da Xavier’dir. Ama katman türü değiştirdiğinde ya da kendi katmanını ' +
+      'yazdığında bu varsayılan seninle gelmez.</p>',
+    quiz:{ q:'Kendi yazdığın 30 katmanlı bir ağda kayıp ilk adımdan itibaren hiç düşmüyor. Ağırlıkları normal dağılımdan sabit 0.01 standart sapmayla ilklemişsin, katman genişliği 512. Sorun ne olabilir?',
+      opts:[
+        {t:'İlkleme ölçeği fan_in ile ölçeklenmiyor; 0.01, 512 girdi için fazla küçük ve sinyal derinlikte sönüyor', why:'Doğru. He ölçeği bu genişlik için √(2/512) ≈ 0.0625 olurdu, yani seçtiğin değerin altı katı. 0.01 ile katman başına oran birden epeyce küçük çıkar ve 30 katmanda bu üstel olarak sönümlenir. Bu derste ölçtüğün tam olarak bu desendi: c = 0.5 ile kayıp 0.6667 den 0.6667 ye, yani hiç kıpırdamadı. Sabit bir standart sapma, genişlik değiştiğinde yanlış hâle gelir.'},
+        {t:'Öğrenme oranı çok düşüktür, artırmak gerekir', why:'Gradyan sıfıra yakınsa öğrenme oranını artırmak onu sıfırdan farklı yapmaz, sadece sıfırın katını büyütür. Ayrıca sinyal sönmesinin belirtisi tam olarak budur: kayıp adım büyüklüğünden bağımsız olarak sabit kalır.'},
+        {t:'Ağ çok derin, katman sayısını azaltmak gerekir', why:'Derinlik sorunu görünür kılıyor ama sebebi değil. Doğru ölçekle ilklenmiş 30 katmanlı bir ağ pekâlâ eğitilebilir: bu derste 20 katmanlı ağ He ölçeğiyle son katmanda 0.9593 standart sapma koruyordu. Önce ilklemeyi düzeltmek gerekir.'},
+        {t:'Veri normalleştirilmemiştir', why:'Girdi normalleştirmesi gerçekten önemlidir ve ilk kontrol edilecek şeylerden biridir, ama tek başına 30 katman boyunca sönmeyi açıklamaz. Girdi ölçeği bir kere etki eder, ilkleme ölçeği ise her katmanda tekrar tekrar çarpılır.'},
+      ], correct:0 },
+    learned:'<b>Yanlış ilkleme, eğitimi başlamadan bitirir.</b><br><br>' +
+      'Aynı ağ ve aynı veriyle 60 adım sonra kayıp: c = 0.5 ile <b>0.6667</b> (değişim milyonda üç), ' +
+      'Xavier ile <b>0.5995</b>, He ile <b>0.0420</b>, c = 2 ile <b>NaN</b>.<br><br>' +
+      'Doğru ölçek fan_in’e bağlıdır: ReLU için <b>σ² = 2/fan_in</b>. ' +
+      'Sabit bir standart sapma, katman genişliği değiştiğinde yanlışa döner.',
     xp:50,
   },
 ]};

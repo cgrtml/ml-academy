@@ -1254,6 +1254,86 @@ console.log('═══ KOMBİNATORİK PATLAMA ═══');
         true, KP.heldKarp(50)/KP.HIZ/3.156e7 > 1);
 }
 
+console.log('═══ AĞIRLIK İLKLEME ═══');
+{
+  const S2 = Math.SQRT2;
+  /* ReLU · ileri gecis */
+  iddia('ReLU c=0.5 son katman std (log10)', -9.049,
+        Math.log10(ilIleri(0.5, 'relu').izler[IL.KAT]), 3);
+  iddia('ReLU c=1 son katman std (log10)', -3.028,
+        Math.log10(ilIleri(1, 'relu').izler[IL.KAT]), 3);
+  iddia('ReLU He son katman std', 0.9593, ilIleri(S2, 'relu').izler[IL.KAT], 4);
+  iddia('ReLU c=2 son katman std', 982.3, ilIleri(2, 'relu').izler[IL.KAT], 1);
+  /* c yi 4 kat degistirmek sonucu 10^13 kat degistiriyor */
+  iddia('c 0.5 ten 2 ye · sonuç kaç kat (log10)', 12.041,
+        Math.log10(ilIleri(2,'relu').izler[IL.KAT] / ilIleri(0.5,'relu').izler[IL.KAT]), 3);
+  /* asil iddia: ReLU + Xavier katman basina 1/√2 · olculen vs teorik */
+  iddia('ReLU + Xavier katman başına oran', 0.7153, IL.oran(1, 'relu'), 4);
+  iddia('teorik 1/√2', 0.7071, 1 / S2, 4);
+  iddia('ölçülen oran teorik değerin %2 sinde', true,
+        Math.abs(IL.oran(1, 'relu') - 1/S2) / (1/S2) < 0.02);
+  iddia('teorik (1/√2)^20 (log10)', -3.010, Math.log10(Math.pow(1/S2, 20)), 3);
+  iddia('ölçülen 20 katman sonrası da aynı mertebede', true,
+        Math.abs(Math.log10(ilIleri(1,'relu').izler[IL.KAT]) - Math.log10(Math.pow(1/S2,20))) < 0.1);
+  /* He duzeltiyor */
+  iddia('ReLU + He katman başına oran', 1.0116, IL.oran(S2, 'relu'), 4);
+  iddia('He oranı 1 e Xavier den çok daha yakın', true,
+        Math.abs(IL.oran(S2,'relu') - 1) < Math.abs(IL.oran(1,'relu') - 1));
+  /* c ile son std tekduze artiyor */
+  {
+    let ihlal = 0; const cs = [0.5, 0.8, 1, 1.2, S2, 1.7, 2];
+    for (let i = 1; i < cs.length; i++)
+      if (ilIleri(cs[i],'relu').izler[IL.KAT] <= ilIleri(cs[i-1],'relu').izler[IL.KAT]) ihlal++;
+    iddia('son katman std, c ile tekdüze artıyor', 0, ihlal, 0);
+  }
+  /* tanh · patlamiyor ama doyuyor */
+  iddia('tanh c=2 son katman std', 0.7336, ilIleri(2, 'tanh').izler[IL.KAT], 4);
+  iddia('tanh aynı ölçekte ReLU dan çok daha küçük', true,
+        ilIleri(2,'tanh').izler[IL.KAT] < 0.01 * ilIleri(2,'relu').izler[IL.KAT]);
+  /* tanh hicbir olcekte patlamiyor · genis tarama */
+  {
+    let enBuyuk = 0;
+    for (let c2 = 0.4; c2 <= 2.2; c2 += 0.2) enBuyuk = Math.max(enBuyuk, ilIleri(c2,'tanh').izler[IL.KAT]);
+    iddia('tanh hiçbir ölçekte 1 i aşmıyor', true, enBuyuk < 1);
+  }
+  /* bedeli turevde */
+  iddia('tanh c=1 doygun birim oranı', 0.009, ilIleri(1, 'tanh').doygunOran, 3);
+  iddia('tanh He doygun birim oranı', 0.080, ilIleri(S2, 'tanh').doygunOran, 3);
+  iddia('tanh c=2 doygun birim oranı', 0.323, ilIleri(2, 'tanh').doygunOran, 3);
+  iddia('tanh c=1 türev çarpımı', 0.155, ilIleri(1, 'tanh').turevCarpim, 3);
+  iddia('tanh He türev çarpımı (log10)', -3.458, Math.log10(ilIleri(S2,'tanh').turevCarpim), 3);
+  iddia('tanh c=2 türev çarpımı (log10)', -6.707, Math.log10(ilIleri(2,'tanh').turevCarpim), 3);
+  /* ileri saglikli ama geri olu · dersin asil iddiasi */
+  iddia('tanh c=2 de ileri sinyal sağlıklı ama gradyan ölü', true,
+        ilIleri(2,'tanh').izler[IL.KAT] > 0.5 && ilIleri(2,'tanh').turevCarpim < 1e-6);
+  /* olcek buyudukce doygunluk artiyor, turev carpimi duşuyor */
+  {
+    let ihlal = 0; const cs = [0.5, 1, S2, 2];
+    for (let i = 1; i < cs.length; i++){
+      if (ilIleri(cs[i],'tanh').doygunOran < ilIleri(cs[i-1],'tanh').doygunOran) ihlal++;
+      if (ilIleri(cs[i],'tanh').turevCarpim > ilIleri(cs[i-1],'tanh').turevCarpim) ihlal++;
+    }
+    iddia('ölçek arttıkça doygunluk artıyor ve türev çarpımı düşüyor', 0, ihlal, 0);
+  }
+  /* GERCEK EGITIM · dersin odemesi */
+  iddia('c=0.5 ilk kayıp', 0.6667, ilEgit(0.5, 60).ilk, 4);
+  iddia('c=0.5 son kayıp', 0.6667, ilEgit(0.5, 60).son, 4);
+  /* "hic kipirdamiyor" tam sifir degil: 60 adimda degisim 3 milyonda bir */
+  iddia('c=0.5 te 60 adımlık toplam değişim', 0.000003,
+        ilEgit(0.5,60).ilk - ilEgit(0.5,60).son, 6);
+  iddia('c=0.5 değişimi yüz binde birin altında', true,
+        Math.abs(ilEgit(0.5,60).ilk - ilEgit(0.5,60).son) < 1e-5);
+  iddia('Xavier son kayıp', 0.5995, ilEgit(1, 60).son, 4);
+  iddia('He son kayıp', 0.0420, ilEgit(S2, 60).son, 4);
+  iddia('He kaybı kaç kat düşürdü', 17.3, ilEgit(S2,60).ilk / ilEgit(S2,60).son, 1);
+  iddia('c=2 ilk kayıp', 22.2909, ilEgit(2, 60).ilk, 4);
+  iddia('c=2 eğitimi NaN a gidiyor', false, isFinite(ilEgit(2, 60).son));
+  iddia('He, denenen dört ölçeğin en iyisi', true,
+        [0.5, 1, 2].every(c2 => !(ilEgit(c2,60).son < ilEgit(S2,60).son)));
+  iddia('He, Xavier den 14 kat düşük kayıp', 14.3,
+        ilEgit(1,60).son / ilEgit(S2,60).son, 1);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

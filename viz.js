@@ -3799,6 +3799,218 @@ VIZ.kombinatorikPatlama = s => {
   }
 };
 
+
+/* ═══════════ AĞIRLIK İLKLEME ═══════════
+   Derin bir ağda sinyalin katman katman ne olduğunu ölçüyoruz.
+   Ağırlıkların başlangıç ölçeği yanlışsa sinyal ya sönüyor ya patlıyor. */
+const IL = {};
+IL.KAT = 20; IL.GEN = 96; IL.YIG = 48;
+IL.std = a => { const m = a.reduce((s, v2) => s + v2, 0) / a.length;
+  return Math.sqrt(a.reduce((s, v2) => s + (v2 - m) ** 2, 0) / a.length); };
+const _ilCache = {};
+/* sigma = c / sqrt(fan_in) · aktivasyon relu ya da tanh */
+function ilIleri(c, akt){
+  const k = 'f' + c.toFixed(3) + akt;
+  if (_ilCache[k]) return _ilCache[k];
+  const r = rng(7), { KAT, GEN, YIG } = IL;
+  let H = [];
+  for (let b = 0; b < YIG; b++){ const x = [];
+    for (let j = 0; j < GEN; j++) x.push(omNormal(r)); H.push(x); }
+  const izler = [IL.std(H.flat())];
+  const turevler = [];
+  let doygun = 0, toplam = 0;
+  for (let kk = 0; kk < KAT; kk++){
+    const sg = c / Math.sqrt(GEN), W = [];
+    for (let i = 0; i < GEN; i++){ const row = [];
+      for (let j = 0; j < GEN; j++) row.push(sg * omNormal(r)); W.push(row); }
+    let turevTop = 0;
+    H = H.map(x => { const y = new Array(GEN).fill(0);
+      for (let i = 0; i < GEN; i++){ let s = 0;
+        for (let j = 0; j < GEN; j++) s += W[i][j] * x[j];
+        if (akt === 'relu'){ y[i] = Math.max(0, s); turevTop += s > 0 ? 1 : 0; }
+        else { const t = Math.tanh(s); y[i] = t; turevTop += 1 - t*t;
+               if (Math.abs(t) > 0.9) doygun++; }
+        toplam++; }
+      return y; });
+    izler.push(IL.std(H.flat()));
+    turevler.push(turevTop / (YIG * GEN));
+  }
+  const R = { izler, turevler, doygunOran: doygun / toplam,
+              turevCarpim: turevler.reduce((s, v2) => s * v2, 1) };
+  return (_ilCache[k] = R);
+}
+/* katman basina ortalama olcek carpani */
+IL.oran = (c, akt) => { const z = ilIleri(c, akt).izler;
+  let s = 0, n = 0;
+  for (let k = 2; k <= IL.KAT; k++){ if (z[k-1] > 0){ s += z[k] / z[k-1]; n++; } }
+  return n ? s / n : 0; };
+/* gercekten egit · 8 katman ReLU */
+IL.EKAT = 8; IL.EGEN = 32; IL.EYIG = 48;
+function ilEgit(c, adim){
+  const k = 'e' + c.toFixed(3) + ':' + adim;
+  if (_ilCache[k]) return _ilCache[k];
+  const r = rng(11), { EKAT, EGEN, EYIG } = IL;
+  const X = [], Y = [];
+  for (let b = 0; b < EYIG; b++){ const x = [];
+    for (let j = 0; j < EGEN; j++) x.push(omNormal(r));
+    X.push(x); Y.push(Math.tanh(x[0] * 1.5) + 0.5 * x[1] * x[2]); }
+  const W = [];
+  for (let kk = 0; kk < EKAT; kk++){ const sg = c / Math.sqrt(EGEN), M = [];
+    for (let i = 0; i < EGEN; i++){ const row = [];
+      for (let j = 0; j < EGEN; j++) row.push(sg * omNormal(r)); M.push(row); }
+    W.push(M); }
+  const v2 = []; for (let j = 0; j < EGEN; j++) v2.push(omNormal(r) / Math.sqrt(EGEN));
+  const lr = 0.05;
+  const kayip = () => { let s = 0;
+    for (let b = 0; b < EYIG; b++){ let h = X[b];
+      for (let kk = 0; kk < EKAT; kk++){ const y = new Array(EGEN).fill(0);
+        for (let i = 0; i < EGEN; i++){ let t = 0;
+          for (let j = 0; j < EGEN; j++) t += W[kk][i][j] * h[j]; y[i] = Math.max(0, t); }
+        h = y; }
+      const p = h.reduce((t, u, j) => t + u * v2[j], 0);
+      s += (p - Y[b]) ** 2; }
+    return s / EYIG; };
+  const iz = [kayip()];
+  for (let t = 0; t < adim; t++){
+    const gW = W.map(M => M.map(row => row.map(() => 0))), gv = new Array(EGEN).fill(0);
+    for (let b = 0; b < EYIG; b++){
+      const Hs = [X[b]], Zs = []; let h = X[b];
+      for (let kk = 0; kk < EKAT; kk++){
+        const z = new Array(EGEN).fill(0), y = new Array(EGEN).fill(0);
+        for (let i = 0; i < EGEN; i++){ let t2 = 0;
+          for (let j = 0; j < EGEN; j++) t2 += W[kk][i][j] * h[j];
+          z[i] = t2; y[i] = Math.max(0, t2); }
+        Zs.push(z); Hs.push(y); h = y; }
+      const p = h.reduce((t2, u, j) => t2 + u * v2[j], 0);
+      const e = 2 * (p - Y[b]) / EYIG;
+      for (let j = 0; j < EGEN; j++) gv[j] += e * h[j];
+      let d = v2.map(u => e * u);
+      for (let kk = EKAT - 1; kk >= 0; kk--){
+        const dz = d.map((u, i) => Zs[kk][i] > 0 ? u : 0);
+        for (let i = 0; i < EGEN; i++) for (let j = 0; j < EGEN; j++)
+          gW[kk][i][j] += dz[i] * Hs[kk][j];
+        const nd = new Array(EGEN).fill(0);
+        for (let j = 0; j < EGEN; j++){ let t2 = 0;
+          for (let i = 0; i < EGEN; i++) t2 += W[kk][i][j] * dz[i]; nd[j] = t2; }
+        d = nd; }
+    }
+    for (let kk = 0; kk < EKAT; kk++) for (let i = 0; i < EGEN; i++)
+      for (let j = 0; j < EGEN; j++) W[kk][i][j] -= lr * gW[kk][i][j];
+    for (let j = 0; j < EGEN; j++) v2[j] -= lr * gv[j];
+    if ((t + 1) % 10 === 0) iz.push(kayip());
+  }
+  return (_ilCache[k] = { iz, ilk: iz[0], son: iz[iz.length - 1] });
+}
+IL.cAdlar = c => Math.abs(c - 1) < 1e-6 ? 'Xavier (c = 1)'
+  : Math.abs(c - Math.SQRT2) < 1e-6 ? 'He (c = √2)' : 'c = ' + c.toFixed(1);
+
+VIZ.agirlikIlkleme = s => {
+  clear();
+  const sahne = s.sahne || 'ileri';
+  const akt = s.akt || 'relu';
+  const c = s.c === undefined ? 1 : s.c;
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 25);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'egitim'){
+    baslikSerit('AĞIRLIK İLKLEME · GERÇEKTEN EĞİTİM',
+      '8 katmanlı ReLU ağı, 60 adım. Değişen tek şey başlangıç ölçeği.', []);
+    const P = plot(rect(140, 200, 640, 420), 0, 60, -1.6, 1.6);
+    frame(P, 'eğitim adımı', 'log₁₀ kayıp', [0, 20, 40, 60], [-1, 0, 1]);
+    const secim = [[0.5, K.red], [1, K.orange], [Math.SQRT2, K.green], [2, K.purple]];
+    secim.forEach(([cc, renk]) => {
+      const R = ilEgit(cc, 60);
+      cx.strokeStyle = renk; cx.lineWidth = Math.abs(cc - c) < 1e-6 ? 3.8 : 2;
+      cx.globalAlpha = Math.abs(cc - c) < 1e-6 ? 1 : 0.45;
+      cx.beginPath();
+      let ilkNokta = true;
+      R.iz.forEach((k2, i) => {
+        if (!isFinite(k2)) return;
+        const y = P.sy(Math.max(-1.6, Math.min(1.6, Math.log10(Math.max(1e-3, k2)))));
+        ilkNokta ? (cx.moveTo(P.sx(i * 10), y), ilkNokta = false) : cx.lineTo(P.sx(i * 10), y);
+      });
+      cx.stroke(); cx.globalAlpha = 1;
+    });
+    /* c=0.5 ve Xavier egrileri neredeyse ust uste bitiyor · etiketleri ayir */
+    txt('c = 0.5', P.R.x + P.R.w - 14, P.sy(Math.log10(ilEgit(0.5,60).son)) - 32, K.red, 17, 'right');
+    txt('Xavier', P.R.x + P.R.w - 14, P.sy(Math.log10(ilEgit(1,60).son)) + 36, K.orange, 17, 'right');
+    txt('He', P.R.x + P.R.w - 14, P.sy(Math.log10(ilEgit(Math.SQRT2,60).son)) - 16, K.green, 17, 'right');
+    txt('c = 2 · ıraksadı, çizilemiyor', P.R.x + 14, P.R.y + 28, K.purple, 17, 'left');
+    const bx = 830;
+    const sat = (y, ad, R, renk) => {
+      box(bx, y, 540, 76, 'rgba(7,10,15,.6)', renk, 2);
+      txt(ad, bx + 18, y + 48, renk, 21, 'left');
+      txt(isFinite(R.son) ? R.son.toFixed(4) : 'NaN', bx + 522, y + 48,
+          isFinite(R.son) ? K.txt : K.red, 22, 'right');
+      txt('başlangıç ' + R.ilk.toFixed(3), bx + 330, y + 48, K.mut, 16, 'right');
+    };
+    txt('60 ADIM SONRA KAYIP', bx + 270, 224, K.mut, 18);
+    sat(240, 'c = 0.5', ilEgit(0.5, 60), K.red);
+    sat(330, 'Xavier c = 1', ilEgit(1, 60), K.orange);
+    sat(420, 'He c = √2', ilEgit(Math.SQRT2, 60), K.green);
+    sat(510, 'c = 2', ilEgit(2, 60), K.purple);
+    box(bx, 610, 540, 110, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('c = 0.5 te kayıp dört ondalıkta kıpırdamıyor.', bx + 18, 646, K.txt, 18, 'left');
+    txt('c = 2 de ilk kayıp zaten 22.29 ve eğitim NaN a gidiyor.', bx + 18, 678, K.txt, 18, 'left');
+    txt('Aynı ağ, aynı veri, aynı adım sayısı.', bx + 18, 708, K.mut, 18, 'left');
+  }
+
+  else {
+    const R = ilIleri(c, akt);
+    baslikSerit('AĞIRLIK İLKLEME · SİNYAL KATMAN KATMAN',
+      IL.KAT + ' katman, her biri ' + IL.GEN + ' birim. Ağırlıklar σ = c / √' + IL.GEN + ' ile ilkleniyor.', []);
+    const P = plot(rect(140, 200, 640, 420), 0, IL.KAT, -10, 4);
+    frame(P, 'katman', 'log₁₀ aktivasyon std', [0, 5, 10, 15, 20], [-10, -6, -2, 2]);
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([7, 6]);
+    cx.beginPath(); cx.moveTo(P.sx(0), P.sy(0)); cx.lineTo(P.sx(IL.KAT), P.sy(0)); cx.stroke();
+    cx.setLineDash([]);
+    txt('sağlıklı bölge (std ≈ 1)', P.sx(0) + 12, P.sy(0) - 14, K.mut, 17, 'left');
+    /* karsilastirma icin uc referans */
+    [[0.5, K.red], [1, K.orange], [Math.SQRT2, K.green], [2, K.purple]].forEach(([cc, renk]) => {
+      const Z = ilIleri(cc, akt).izler;
+      cx.strokeStyle = renk; cx.lineWidth = Math.abs(cc - c) < 1e-6 ? 3.8 : 1.8;
+      cx.globalAlpha = Math.abs(cc - c) < 1e-6 ? 1 : 0.35;
+      cx.beginPath();
+      Z.forEach((z, i) => { const y = P.sy(Math.max(-10, Math.min(4, Math.log10(Math.max(1e-10, z)))));
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke(); cx.globalAlpha = 1;
+    });
+    const sonY = P.sy(Math.max(-10, Math.min(4, Math.log10(Math.max(1e-10, R.izler[IL.KAT])))));
+    dot(P.sx(IL.KAT), sonY, 9, K.yellow);
+    const bx = 830;
+    kart(bx, 200, 260, 'BAŞLANGIÇ ÖLÇEĞİ', IL.cAdlar(c), K.blue);
+    kart(bx + 280, 200, 260, 'AKTİVASYON', akt === 'relu' ? 'ReLU' : 'tanh', K.blue);
+    const son = R.izler[IL.KAT];
+    kart(bx, 330, 260, 'SON KATMAN std', son < 1e-4 ? son.toExponential(2) : son.toFixed(4),
+         son > 0.3 && son < 3 ? K.green : K.red,
+         son < 0.3 ? 'sinyal söndü' : son > 3 ? 'sinyal patladı' : 'sağlıklı');
+    kart(bx + 280, 330, 260, 'KATMAN BAŞINA ORAN', IL.oran(c, akt).toFixed(4), K.purple,
+         '1.0 olmalı');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    if (akt === 'relu'){
+      txt('ReLU SİNYALİN YARISINI ATIYOR', bx + 270, 494, K.mut, 18);
+      txt('Negatif çıktıları sıfırladığı için varyans her', bx + 18, 534, K.txt, 18, 'left');
+      txt('katmanda yarıya iniyor: std 1/√2 katına.', bx + 18, 564, K.txt, 18, 'left');
+      txt('Xavier ölçeğinde ölçülen oran: ' + IL.oran(1, 'relu').toFixed(4), bx + 18, 602, K.orange, 18, 'left');
+      txt('1/√2 = ' + (1/Math.SQRT2).toFixed(4) + '  ·  He bunu √2 ile telafi ediyor.', bx + 18, 632, K.mut, 18, 'left');
+      txt('He ölçeğinde ölçülen oran: ' + IL.oran(Math.SQRT2, 'relu').toFixed(4), bx + 18, 670, K.green, 18, 'left');
+    } else {
+      txt('tanh PATLAMIYOR AMA DOYUYOR', bx + 270, 494, K.mut, 18);
+      txt('Çıktısı ±1 arasında sıkışık olduğu için ölçek', bx + 18, 534, K.txt, 18, 'left');
+      txt('büyüse de std patlamıyor. Bedeli türevde.', bx + 18, 564, K.txt, 18, 'left');
+      txt('doygun birim oranı: %' + (100 * R.doygunOran).toFixed(1), bx + 18, 602, K.orange, 18, 'left');
+      txt('ortalama türev: ' + (R.turevler.reduce((s2,v3)=>s2+v3,0)/R.turevler.length).toFixed(4),
+          bx + 18, 632, K.orange, 18, 'left');
+      txt('20 katman türev çarpımı: ' + R.turevCarpim.toExponential(2), bx + 18, 670,
+          R.turevCarpim < 1e-4 ? K.red : K.green, 18, 'left');
+    }
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
