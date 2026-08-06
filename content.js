@@ -109,7 +109,7 @@ const ROTALAR = [
     {id:'self-cons',      ad:'Self-consistency: çoğunluğa güvenmek',           sure:10, durum:'planli'},
     {id:'oz-gozetim',     ad:'Kendi kendine gözetim: etiketi veriden üretmek',  sure:12, durum:'planli'},
     {id:'olcek-yasalari',  ad:'Ölçek yasaları: büyütmenin getirisi ve bedeli',  sure:14, durum:'planli'},
-    {id:'perplexity',     ad:'Perplexity: bir modelin şaşkınlığını ölçmek',    sure:12, durum:'planli'},
+    {id:'perplexity',     ad:'Perplexity: bir modelin şaşkınlığını ölçmek',    sure:16, durum:'hazir'},
     {id:'talimat-ayar',   ad:'İtaat öğretmek: talimat ince ayarı',             sure:14, durum:'planli'},
     {id:'icl',            ad:'Örnekle öğretmek: in-context learning',          sure:12, durum:'planli'},
     {id:'zincir-prompt',  ad:'Problemi bölmek: zincirleme promptlar',          sure:12, durum:'planli'},
@@ -9449,6 +9449,154 @@ DERSLER['enc-dec'] = {
       '<b>Kodlayıcı-çözücü:</b> girdide kısıt yok, çıktıda zaten gerekli.<br><br>' +
       'Yalnızca-çözücü modellerin bugünkü yaygınlığı, ölçtüğümüz dezavantajı ortadan ' +
       'kaldırmıyor; <b>ölçekle telafi ediyor</b>.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── PERPLEXITY ─────────────── */
+DERSLER['perplexity'] = {
+  ad:'Perplexity: bir modelin şaşkınlığını ölçmek',
+  alt:'Kaynağın gerçek entropisini bildiğimiz bir kurulumda ölçüyoruz, böylece perplexity bir tavana karşı sınanabiliyor.',
+  kaynaklar:[
+    {y:'Shannon, C. E.', t:'1951', b:'Prediction and Entropy of Printed English', n:'Bell System Technical Journal 30(1)'},
+    {y:'Jelinek, F. ve ark.', t:'1977', b:'Perplexity: A Measure of the Difficulty of Speech Recognition Tasks', n:'JASA 62(S1)'},
+    {y:'Jurafsky, D. & Martin, J. H.', t:'2024', b:'Speech and Language Processing, 3. baskı taslağı, Bölüm 3', n:'Stanford', u:'https://web.stanford.edu/~jurafsky/slp3/'},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'Kaç seçenek arasında şaşırıyor',
+    goal:'Perplexity’nin ne ölçtüğünü ve nasıl okunacağını göreceksin.',
+    todo:'Mertebeyi artır. Perplexity yeşil çizgiye ne zaman oturuyor?',
+    kind:'controls', viz:'perplexity', h:770, state:{sahne:'olcum'},
+    controls:[{k:'ni', lb:'n-GRAM MERTEBESİ', min:0, max:3, step:1, val:0,
+               fmt:v => PX.mertebeler[v] + '-gram'}],
+    derive:s => ({p: PX.simge(PX.mertebeler[Math.round(s.ni)]).ppl}),
+    live:s => [['PERPLEXITY', s.p.toFixed(4), s.p < 3 ? K.green : K.orange],
+               ['ALT SINIR', Math.exp(PX.H1).toFixed(4), K.green],
+               ['HEDEF', 'alt sınıra %1 yaklaş']],
+    unlock:s => s.p / Math.exp(PX.H1) < 1.01,
+    unlockMsg:'Perplexity’yi teorik alt sınırın %1 yakınına getir',
+    body:'<p>Bir dil modeli her adımda bir olasılık dağılımı verir. İyi bir model doğru ' +
+      'simgeye yüksek olasılık verir. Bunu tek bir sayıya indirmenin standart yolu ' +
+      '<b>perplexity</b>:</p>' +
+      '<p style="text-align:center;font-size:1.1em">perplexity = e<sup>ortalama negatif log olabilirlik</sup></p>' +
+      '<p>Okuması şöyle: model, her adımda kaç seçenek arasından rastgele seçiyormuş gibi ' +
+      'şaşkın? Perplexity 4 demek, dört seçenek arasında yazı tura atmakla aynı demek.</p>' +
+      '<p>Burada kaynağı biz kuruyoruz: dört harfli bir alfabe ve <b>1. mertebeden Markov ' +
+      'zinciri</b>. Her harf yalnızca bir öncekine bağlı. Geçiş olasılıklarını bildiğimiz ' +
+      'için gerçek entropiyi <b>tam olarak</b> hesaplayabiliyoruz.</p>' +
+      '<p>Üç referans var:</p>' +
+      '<p>hiçbir şey bilmemek &rarr; perplexity <b>4</b> (alfabe boyu)<br>' +
+      'harflerin sıklığını bilmek &rarr; <b>3.8582</b><br>' +
+      'bir önceki harfi de bilmek &rarr; <b>2.9422</b> (gerçek alt sınır)</p>' +
+      '<p>Şimdi modelleri ölçelim. 1-gram (bağlam yok) <b>3.8714</b>: sıklık sınırına ' +
+      'oturuyor. 2-gram (bir harf bağlam) <b>2.9465</b>: gerçek alt sınırın ' +
+      '<b>%0.14</b> yakınında.</p>',
+    learned:'<b>Perplexity, modelin kaç seçenek arasında şaşırdığının ölçüsüdür.</b><br><br>' +
+      'Bu kaynakta hiçbir şey bilmemek <b>4</b>, sadece harf sıklığını bilmek <b>3.8582</b>, ' +
+      'bir önceki harfi bilmek <b>2.9422</b> verir.<br><br>' +
+      'Ölçülen: 1-gram <b>3.8714</b>, 2-gram <b>2.9465</b>. İkincisi teorik alt sınırın ' +
+      '<b>%0.14</b> yakınında.',
+    xp:25,
+  },
+  {
+    t:'Daha fazla bağlam her zaman iyi değil',
+    goal:'Fazla bağlamın neden zarar verebildiğini ölçeceksin.',
+    todo:'Mertebeyi 2’den 4’e çıkar. Perplexity düşüyor mu, yükseliyor mu?',
+    kind:'controls', viz:'perplexity', h:770, state:{sahne:'olcum'},
+    controls:[{k:'ni', lb:'n-GRAM MERTEBESİ', min:1, max:3, step:1, val:1,
+               fmt:v => PX.mertebeler[v] + '-gram'}],
+    live:s => [['PERPLEXITY', PX.simge(PX.mertebeler[Math.round(s.ni)]).ppl.toFixed(4)],
+               ['BAĞLAM SAYISI', String(PX.simge(PX.mertebeler[Math.round(s.ni)]).baglam)],
+               ['2-GRAM', PX.simge(2).ppl.toFixed(4), K.green]],
+    body:'<p>2-gram alt sınıra oturdu. O zaman daha uzun bağlam daha da iyi olmalı, değil mi?</p>' +
+      '<p>Ölçüm:</p>' +
+      '<p>2-gram <b>2.9465</b> &nbsp;·&nbsp; 3-gram <b>2.9472</b> &nbsp;·&nbsp; ' +
+      '4-gram <b>2.9558</b></p>' +
+      '<p>Uzadıkça <b>kötüleşiyor</b>. Fark küçük ama yön net ve sebebi öğretici.</p>' +
+      '<p>Kaynak 1. mertebeden. Yani bir önceki harften fazlası <b>hiçbir bilgi taşımıyor</b>. ' +
+      '3-gram ve 4-gram bu yok bilgiyi aramak için bağlam sayısını 4’ten <b>16</b>’ya, ' +
+      'sonra <b>64</b>’e çıkarıyor.</p>' +
+      '<p>Her bağlam için ayrı sayım tutulunca, her sayım daha az örnekten hesaplanıyor. ' +
+      'Olasılık dersindeki 1/&radic;N kuralı burada da geçerli: az örnekle yapılan tahmin ' +
+      'gürültülü olur ve bu gürültü doğrudan perplexity’ye yansıyor.</p>' +
+      '<p>Bu, önyargı-varyans dengesinin dil modellerindeki hâli. Bağlamı uzatmak önyargıyı ' +
+      'azaltır ama varyansı artırır. Kaynakta gerçekten uzun bağımlılık yoksa, kazanılacak ' +
+      'önyargı da yoktur ve geriye sadece varyans kalır.</p>',
+    learned:'<b>Bağlamı uzatmak, taşınacak bilgi yoksa sadece varyans ekler.</b><br><br>' +
+      'Kaynak 1. mertebe olduğu için: 2-gram <b>2.9465</b>, 3-gram <b>2.9472</b>, ' +
+      '4-gram <b>2.9558</b>. Uzadıkça kötüleşiyor.<br><br>' +
+      'Bağlam sayısı 4’ten 16’ya, sonra 64’e çıkıyor ve her sayım daha az örnekten ' +
+      'hesaplanıyor. <b>Önyargı-varyans dengesinin dil modeli hâli.</b>',
+    xp:50,
+  },
+  {
+    t:'Perplexity karşılaştırılabilir mi',
+    goal:'Aynı modelin, sadece dilimleme değişince neden başka bir sayı verdiğini göreceksin.',
+    todo:'İki çubuğa bak. Aynı bilgi, aynı kalite, aynı sayı mı?',
+    kind:'static', viz:'perplexity', h:770, state:{sahne:'token'},
+    body:'<p>Şimdi kritik soru: iki modelin perplexity’sini karşılaştırabilir miyiz?</p>' +
+      '<p>Aynı kaynağı iki farklı şekilde dilimleyelim. Birincisi harf harf (alfabe 4). ' +
+      'İkincisinde harfleri <b>ikişer ikişer</b> birleştirip tek token yapalım (alfabe 16). ' +
+      'Metin aynı, bilgi aynı.</p>' +
+      '<p>Sonuç:</p>' +
+      '<p>simge başına perplexity: <b>2.9465</b><br>' +
+      'token başına perplexity: <b>8.7474</b></p>' +
+      '<p>Neredeyse <b>3 kat</b> fark. Ve iki model de aynı şeyi biliyor.</p>' +
+      '<p>Sebebi basit: token modeli her tahminde <b>iki harf birden</b> tahmin ediyor. ' +
+      'Doğal olarak daha zor bir iş, dolayısıyla daha yüksek perplexity.</p>' +
+      '<p>Şimdi aynı iki modeli <b>simge başına</b> negatif log olabilirlikle karşılaştıralım: ' +
+      '<b>1.080613</b> ve <b>1.084380</b>. Fark sadece <b>%0.35</b>.</p>' +
+      '<p>Yani karşılaştırılabilir olan şey perplexity değil, <b>karakter başına bilgi</b>. ' +
+      'Farklı tokenizer kullanan iki modelin perplexity değerlerini yan yana koymak ' +
+      'anlamsızdır; iyi tokenizer kullanan model, sırf token başına daha çok metin ' +
+      'sıkıştırdığı için daha yüksek perplexity gösterir.</p>' +
+      '<p>Pratikte bu yüzden karakter başına bit (bpc) ya da bayt başına bit (bpb) ' +
+      'raporlanır. İkisi de dilimlemeden bağımsızdır.</p>',
+    learned:'<b>Perplexity tokenizasyona bağlıdır, dolayısıyla modeller arasında ' +
+      'doğrudan karşılaştırılamaz.</b><br><br>' +
+      'Aynı kaynak ve aynı bilgi: simge başına <b>2.9465</b>, token başına <b>8.7474</b>. ' +
+      'Yaklaşık <b>3 kat</b> fark.<br><br>' +
+      'Simge başına NLL ise <b>1.080613</b> ve <b>1.084380</b>: sadece <b>%0.35</b> farklı. ' +
+      'Karşılaştırma için <b>karakter başına bit</b> kullanılmalı.',
+    xp:50,
+  },
+  {
+    t:'Ne ölçer, ne ölçmez',
+    goal:'Perplexity’nin hangi kararlara dayanak olabileceğini göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'perplexity', h:770, state:{sahne:'token'},
+    body:'<p>Perplexity <b>bir şeyi</b> çok iyi ölçer: modelin bir metin dağılımını ne kadar ' +
+      'iyi sıkıştırdığını. Bu ölçüm sağlamdır, ucuzdur ve etiketsiz veriyle yapılır.</p>' +
+      '<p>Ölçmediği şeyler:</p>' +
+      '<p><b>Doğruluk.</b> Model olguları yanlış ama akıcı biçimde üretebilir. Halüsinasyon ' +
+      'dersinde ölçtüğün gibi akıcılık ile doğruluk ayrı şeylerdir ve perplexity yalnızca ' +
+      'akıcılığı görür.</p>' +
+      '<p><b>Yararlılık.</b> Talimatı takip etme, biçim tutturma, kısa cevap verme gibi ' +
+      'özellikler perplexity’ye yansımaz. İnce ayar sonrası perplexity çoğu zaman ' +
+      '<b>yükselir</b> ama model daha kullanışlı hâle gelir.</p>' +
+      '<p><b>Karşılaştırılabilirlik.</b> Bir önceki adımda ölçtük: farklı tokenizer, ' +
+      '3 kat farklı sayı.</p>' +
+      '<p>Ve unutulmaması gereken bir şey daha: perplexity <b>ölçüldüğü veriye</b> aittir. ' +
+      'Aynı model, farklı bir alanda ölçülünce çok başka bir sayı verir. Perplexity ' +
+      'raporlarken hangi veri kümesinde ölçüldüğünü yazmamak, doğruluk oranını hangi test ' +
+      'kümesinde ölçtüğünü yazmamakla aynı şeydir.</p>' +
+      '<p>Doğru kullanımı şu: <b>aynı veri, aynı tokenizer, tek değişken</b>. O zaman ' +
+      'perplexity çok duyarlı ve çok ucuz bir ilerleme göstergesidir.</p>',
+    quiz:{ q:'İki dil modelini karşılaştırıyorsunuz. A modelinin perplexity değeri 12.4, B modelininki 18.7. A modeli 32.000 tokenlık bir sözlük kullanıyor, B ise 128.000. Hangi sonuca varırsınız?',
+      opts:[
+        {t:'Hiçbir sonuca varamam: farklı sözlükler perplexity’yi karşılaştırılamaz kılar, karakter başına bit hesaplamak gerekir', why:'Doğru. Bu derste ölçtüğün gibi aynı kaynağı iki farklı şekilde dilimlemek perplexity yi 2.9465 ten 8.7474 e çıkardı, yani yaklaşık 3 kat, ve iki model de aynı bilgiye sahipti. Daha büyük sözlük token başına daha çok metin taşır, dolayısıyla token başına tahmin doğal olarak zorlaşır. Karşılaştırılabilir olan simge başına bilgiydi: aynı ölçümde 1.080613 ve 1.084380, yani %0.35 fark.'},
+        {t:'A modeli daha iyi, çünkü perplexity’si düşük', why:'Perplexity düşüklüğü ancak aynı tokenizasyonda anlamlıdır. Bu derste aynı bilgiye sahip iki model, sırf dilimleme farkıyla 2.9465 ve 8.7474 aldı. B nin daha büyük sözlüğü token başına daha çok metin taşıyor olabilir.'},
+        {t:'B modeli daha iyi, çünkü daha büyük sözlük kullanıyor', why:'Sözlük büyüklüğü tek başına kalite göstergesi değil. Büyük sözlük token başına daha çok metin sıkıştırır ve bu perplexity yi yükseltir; ama bu, modelin daha iyi ya da daha kötü olduğunu söylemez.'},
+        {t:'Aradaki fark küçük, ikisi de benzer sayılır', why:'Farkın büyüklüğü hakkında yorum yapabilmek için önce ölçülerin aynı birimde olması gerekir. Farklı sözlüklerle ölçülen iki perplexity aynı birimde değildir, dolayısıyla aralarındaki fark yorumlanamaz.'},
+      ], correct:0 },
+    learned:'<b>Perplexity sıkıştırmayı ölçer; doğruluğu, yararlılığı ya da talimat ' +
+      'uyumunu ölçmez.</b><br><br>' +
+      'Ayrıca <b>ölçüldüğü veriye ve tokenizasyona</b> aittir: aynı bilgi, farklı dilimleme, ' +
+      '3 kat farklı sayı.<br><br>' +
+      'Doğru kullanımı <b>aynı veri, aynı tokenizer, tek değişken</b>. O kurulumda çok ' +
+      'duyarlı ve çok ucuz bir göstergedir.',
     xp:50,
   },
 ]};

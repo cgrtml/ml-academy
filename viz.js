@@ -6129,6 +6129,145 @@ VIZ.kodlayiciCozucu = s => {
   }
 };
 
+
+/* ═══════════ PERPLEXITY ═══════════
+   Kaynağın gerçek entropisi bilindiği için ölçülen perplexity
+   bir tavana karşı sınanabiliyor. */
+const PX = {};
+PX.A = ['a', 'b', 'c', 'd'];
+PX.P = [[0.70, 0.15, 0.10, 0.05],
+        [0.10, 0.60, 0.20, 0.10],
+        [0.05, 0.25, 0.55, 0.15],
+        [0.20, 0.10, 0.30, 0.40]];
+PX.duragan = (() => { let p = [0.25, 0.25, 0.25, 0.25];
+  for (let it = 0; it < 2000; it++){ const q = new Array(4).fill(0);
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) q[j] += p[i]*PX.P[i][j];
+    p = q; }
+  return p; })();
+PX.H1 = -PX.duragan.reduce((s, pi, i) =>
+  s + pi*PX.P[i].reduce((t, p) => t + (p > 0 ? p*Math.log(p) : 0), 0), 0);
+PX.H0 = -PX.duragan.reduce((s, p) => s + (p > 0 ? p*Math.log(p) : 0), 0);
+PX.uret = (n, seed) => {
+  const r = rng(seed), out = [];
+  let s = 0, u = r(), acc = 0;
+  for (let i = 0; i < 4; i++){ acc += PX.duragan[i]; if (u < acc){ s = i; break; } }
+  for (let t = 0; t < n; t++){ out.push(s);
+    let val = r(), a2 = 0, nx = 3;
+    for (let j = 0; j < 4; j++){ a2 += PX.P[s][j]; if (val < a2){ nx = j; break; } }
+    s = nx; }
+  return out;
+};
+PX.egit = PX.uret(20000, 7);
+PX.test = PX.uret(20000, 99);
+PX.ciftle = a => { const o = []; for (let i = 0; i + 1 < a.length; i += 2) o.push(a[i]*4 + a[i+1]); return o; };
+PX.egit2 = PX.ciftle(PX.egit);
+PX.test2 = PX.ciftle(PX.test);
+const _pxCache = {};
+PX.ngram = (EG, TS, V, n, k) => {
+  const key = V + ':' + n + ':' + k + ':' + EG.length;
+  if (_pxCache[key]) return _pxCache[key];
+  const say = {}, top = {};
+  for (let t = n-1; t < EG.length; t++){
+    const ctx = EG.slice(t-n+1, t).join(',');
+    say[ctx] = say[ctx] || new Array(V).fill(0);
+    say[ctx][EG[t]]++; top[ctx] = (top[ctx] || 0) + 1; }
+  const olas = (ctx, x) => { const c = say[ctx], tp = top[ctx] || 0;
+    return ((c ? c[x] : 0) + k) / (tp + V*k); };
+  let logp = 0, m = 0;
+  for (let t = n-1; t < TS.length; t++){
+    const ctx = TS.slice(t-n+1, t).join(',');
+    logp += Math.log(olas(ctx, TS[t])); m++; }
+  const R = { nll: -logp/m, ppl: Math.exp(-logp/m), adet: m,
+              baglam: Object.keys(say).length, param: Object.keys(say).length*(V-1) };
+  return (_pxCache[key] = R);
+};
+PX.simge = n => PX.ngram(PX.egit, PX.test, 4, n, 0.5);
+PX.token = n => PX.ngram(PX.egit2, PX.test2, 16, n, 0.5);
+PX.mertebeler = [1, 2, 3, 4];
+
+VIZ.perplexity = s => {
+  clear();
+  const sahne = s.sahne || 'olcum';
+  const n = PX.mertebeler[Math.max(0, Math.min(3, s.ni === undefined ? 0 : Math.round(s.ni)))];
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'token'){
+    const A1 = PX.simge(2), A2 = PX.token(2), A3 = PX.token(1);
+    baslikSerit('PERPLEXITY · TOKENİZASYONA BAĞLI',
+      'Aynı kaynak, aynı bilgi. Değişen tek şey metnin nasıl dilimlendiği.', []);
+    const P = plot(rect(200, 210, 560, 380), -0.5, 1.5, 0, 10.5);
+    frame(P, '', 'token başına perplexity', [], [0, 2, 4, 6, 8, 10]);
+    [[0, A1.ppl, K.green, 'simge başına\n(alfabe 4)'],
+     [1, A2.ppl, K.orange, 'token başına\n(alfabe 16)']].forEach(([x, val, renk, ad]) => {
+      const y0 = P.sy(0), y1 = P.sy(val);
+      cx.fillStyle = renk + '55'; cx.fillRect(P.sx(x) - 70, y1, 140, y0 - y1);
+      cx.strokeStyle = renk; cx.lineWidth = 2; cx.strokeRect(P.sx(x) - 70, y1, 140, y0 - y1);
+      txt(val.toFixed(4), P.sx(x), y1 - 16, renk, 22);
+      ad.split('\n').forEach((sat, q) =>
+        txt(sat, P.sx(x), P.R.y + P.R.h + 34 + q*24, renk, 18)); });
+    const bx = 830;
+    kart(bx, 210, 260, 'SİMGE PERPLEXITY', A1.ppl.toFixed(4), K.green);
+    kart(bx + 280, 210, 260, 'TOKEN PERPLEXITY', A2.ppl.toFixed(4), K.orange,
+         (A2.ppl/A1.ppl).toFixed(2) + '× farklı');
+    kart(bx, 340, 260, 'SİMGE BAŞINA NLL', A1.nll.toFixed(6), K.green, 'simge modeli');
+    kart(bx + 280, 340, 260, 'SİMGE BAŞINA NLL', (A2.nll/2).toFixed(6), K.green, 'token modeli');
+    box(bx, 470, 540, 240, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('KARŞILAŞTIRILABİLİR OLAN NE', bx + 270, 504, K.mut, 18);
+    txt('Token perplexity ' + (A2.ppl/A1.ppl).toFixed(2) + ' kat farklı, ama simge başına',
+        bx + 18, 544, K.txt, 18, 'left');
+    txt('NLL sadece %' + (100*Math.abs(A2.nll/2 - A1.nll)/A1.nll).toFixed(2) + ' farklı.',
+        bx + 18, 574, K.txt, 18, 'left');
+    txt('Farklı tokenizer kullanan iki modelin', bx + 18, 614, K.orange, 18, 'left');
+    txt('perplexity değerleri karşılaştırılamaz.', bx + 18, 644, K.orange, 18, 'left');
+    txt('Karakter başına bite çevirmek gerekir.', bx + 18, 684, K.green, 18, 'left');
+  }
+
+  else {
+    const R = PX.simge(n);
+    baslikSerit('PERPLEXITY · MODEL KAÇ SEÇENEK ARASINDA ŞAŞIRIYOR',
+      'Kaynak 1. mertebeden bir Markov zinciri, gerçek entropisi biliniyor.', []);
+    const P = plot(rect(140, 200, 640, 400), 0.6, 4.4, 2.7, 4.1);
+    frame(P, 'n-gram mertebesi', 'test perplexity', [1, 2, 3, 4], [3, 3.5, 4]);
+    /* teorik siniralar */
+    const ciz = (val, renk, ad, ust) => {
+      cx.strokeStyle = renk; cx.lineWidth = 2; cx.setLineDash([7, 6]);
+      cx.beginPath(); cx.moveTo(P.sx(0.6), P.sy(val)); cx.lineTo(P.sx(4.4), P.sy(val)); cx.stroke();
+      cx.setLineDash([]);
+      txt(ad, P.sx(4.35), P.sy(val) + (ust ? -12 : 24), renk, 17, 'right'); };
+    ciz(4, K.red, 'alfabe boyu 4 · hiçbir şey bilmemek', true);
+    ciz(Math.exp(PX.H0), K.orange, 'bağımsız varsayım: ' + Math.exp(PX.H0).toFixed(4), false);
+    ciz(Math.exp(PX.H1), K.green, 'gerçek alt sınır: ' + Math.exp(PX.H1).toFixed(4), false);
+    cx.strokeStyle = K.blue; cx.lineWidth = 3.4; cx.beginPath();
+    PX.mertebeler.forEach((q, i) => { const y = P.sy(Math.min(4.1, PX.simge(q).ppl));
+      i ? cx.lineTo(P.sx(q), y) : cx.moveTo(P.sx(q), y); });
+    cx.stroke();
+    PX.mertebeler.forEach(q => dot(P.sx(q), P.sy(Math.min(4.1, PX.simge(q).ppl)), 5, K.blue));
+    dot(P.sx(n), P.sy(Math.min(4.1, R.ppl)), 9, K.yellow);
+    const bx = 830;
+    kart(bx, 200, 260, 'MERTEBE', n + '-gram', K.blue, (n-1) + ' simge bağlam');
+    kart(bx + 280, 200, 260, 'PERPLEXITY', R.ppl.toFixed(4),
+         R.ppl < 3 ? K.green : K.orange);
+    kart(bx, 330, 260, 'TEORİK ALT SINIR', Math.exp(PX.H1).toFixed(4), K.green,
+         'kaynağın entropisi');
+    kart(bx + 280, 330, 260, 'FARK', '%' + (100*(R.ppl/Math.exp(PX.H1) - 1)).toFixed(2),
+         K.purple, 'alt sınıra göre');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('MERTEBEYE GÖRE', bx + 270, 494, K.mut, 18);
+    PX.mertebeler.forEach((q, i) => {
+      const v2 = PX.simge(q);
+      txt(q + '-gram', bx + 18, 532 + i*36, K.txt, 18, 'left');
+      txt(v2.ppl.toFixed(4), bx + 330, 532 + i*36,
+          q === 2 ? K.green : K.txt, 18, 'right');
+      txt(v2.baglam + ' bağlam', bx + 522, 532 + i*36, K.mut, 16, 'right'); });
+    txt('Kaynak 1. mertebe olduğu için 2-gram yeterli.', bx + 18, 686, K.green, 17, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

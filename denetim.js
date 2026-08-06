@@ -2011,6 +2011,74 @@ console.log('═══ KODLAYICI MI ÇÖZÜCÜ MÜ ═══');
   iddia('eğitim ve test kümeleri ayrık tohumlardan', true, ED.NDIZI === 400 && ED.T === 24);
 }
 
+console.log('═══ PERPLEXITY ═══');
+{
+  /* kaynak gecerli mi: gecis matrisi satirlari 1 e toplaniyor mu */
+  {
+    let ihlal = 0;
+    for (const row of PX.P) if (Math.abs(row.reduce((s, p) => s + p, 0) - 1) > 1e-12) ihlal++;
+    iddia('geçiş matrisinin her satırı 1 e toplanıyor', 0, ihlal, 0);
+  }
+  /* duragan dagilim gercekten duragan mi · pi P = pi */
+  {
+    let enBuyuk = 0;
+    for (let j = 0; j < 4; j++){
+      let s = 0;
+      for (let i = 0; i < 4; i++) s += PX.duragan[i]*PX.P[i][j];
+      enBuyuk = Math.max(enBuyuk, Math.abs(s - PX.duragan[j])); }
+    iddia('durağan dağılım gerçekten sabit nokta', 0, enBuyuk, 12);
+    iddia('durağan dağılım 1 e toplanıyor', 1, PX.duragan.reduce((s, p) => s + p, 0), 12);
+  }
+  /* teorik entropiler */
+  iddia('koşullu entropi H1 (nat)', 1.079172, PX.H1, 6);
+  iddia('bağımsız entropi H0 (nat)', 1.350205, PX.H0, 6);
+  iddia('gerçek alt sınır perplexity', 2.9422, Math.exp(PX.H1), 4);
+  iddia('bağımsız varsayım perplexity', 3.8582, Math.exp(PX.H0), 4);
+  iddia('koşullu entropi bağımsızdan küçük', true, PX.H1 < PX.H0);
+  iddia('bağımsız perplexity alfabe boyunun altında', true, Math.exp(PX.H0) < 4);
+  /* olculen perplexity · modeller alt sinira yaklasiyor */
+  iddia('1-gram perplexity', 3.8714, PX.simge(1).ppl, 4);
+  iddia('2-gram perplexity', 2.9465, PX.simge(2).ppl, 4);
+  iddia('3-gram perplexity', 2.9472, PX.simge(3).ppl, 4);
+  iddia('4-gram perplexity', 2.9558, PX.simge(4).ppl, 4);
+  iddia('1-gram sıklık sınırına oturuyor', true,
+        Math.abs(PX.simge(1).ppl - Math.exp(PX.H0)) / Math.exp(PX.H0) < 0.01);
+  iddia('2-gram alt sınıra %1 den yakın', true,
+        PX.simge(2).ppl / Math.exp(PX.H1) - 1 < 0.01);
+  iddia('2-gram alt sınıra fark (%)', 0.14, 100*(PX.simge(2).ppl/Math.exp(PX.H1) - 1), 2);
+  /* hicbir model teorik alt sinirin ALTINA inemiyor */
+  {
+    let ihlal = 0;
+    for (const n of PX.mertebeler) if (PX.simge(n).ppl < Math.exp(PX.H1) - 1e-9) ihlal++;
+    iddia('hiçbir model teorik alt sınırın altına inemiyor', 0, ihlal, 0);
+  }
+  /* DAHA FAZLA BAGLAM KOTULESTIRIYOR · dersin ikinci adimi */
+  iddia('3-gram 2-gram dan kötü', true, PX.simge(3).ppl > PX.simge(2).ppl);
+  iddia('4-gram 3-gram dan kötü', true, PX.simge(4).ppl > PX.simge(3).ppl);
+  iddia('2-gram bütün mertebelerin en iyisi', 2,
+        PX.mertebeler.reduce((en, n) => PX.simge(n).ppl < PX.simge(en).ppl ? n : en, 1), 0);
+  /* baglam sayisi 4 katina cikiyor */
+  iddia('2-gram bağlam sayısı', 4, PX.simge(2).baglam, 0);
+  iddia('3-gram bağlam sayısı', 16, PX.simge(3).baglam, 0);
+  iddia('4-gram bağlam sayısı', 64, PX.simge(4).baglam, 0);
+  /* TOKENIZASYON BAGIMLILIGI · dersin ucuncu adimi */
+  {
+    const A1 = PX.simge(2), A2 = PX.token(2);
+    iddia('simge başına perplexity', 2.9465, A1.ppl, 4);
+    iddia('token başına perplexity', 8.7474, A2.ppl, 4);
+    iddia('perplexity oranı', 2.969, A2.ppl / A1.ppl, 3);
+    iddia('simge başına NLL (simge modeli)', 1.080613, A1.nll, 6);
+    iddia('simge başına NLL (token modeli)', 1.084380, A2.nll / 2, 6);
+    iddia('simge başına NLL farkı (%)', 0.349, 100*Math.abs(A2.nll/2 - A1.nll)/A1.nll, 3);
+    /* asil iddia: perplexity 3 kat degisiyor ama simge basina bilgi degismiyor */
+    iddia('perplexity 2 katından fazla değişiyor', true, A2.ppl / A1.ppl > 2);
+    iddia('simge başına bilgi %1 den az değişiyor', true,
+          Math.abs(A2.nll/2 - A1.nll)/A1.nll < 0.01);
+    /* alfabe 16 da en kotu perplexity 16 · token modeli onun cok altinda */
+    iddia('token modeli alfabe boyunun çok altında', true, A2.ppl < 16);
+  }
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
