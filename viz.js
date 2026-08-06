@@ -6268,6 +6268,150 @@ VIZ.perplexity = s => {
   }
 };
 
+
+/* ═══════════ ÖLÇEK YASALARI ═══════════
+   Aynı Markov kaynağı. Veri büyüdükçe kayıp bir güç yasası izliyor ve
+   uydurulan indirgenemez terim, bilinen gerçek entropiyle karşılaştırılabiliyor. */
+const OY = {};
+OY.boyutlar = [50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
+OY.esik = 2000;                       /* ekstrapolasyon icin uydurma siniri */
+OY.test = PX.uret(60000, 99);
+const _oyCache = {};
+OY.nll = N => {
+  if (_oyCache['n' + N] !== undefined) return _oyCache['n' + N];
+  const EG = PX.uret(N, 7), say = {}, top = {};
+  for (let t = 1; t < EG.length; t++){ const c = EG[t-1];
+    say[c] = say[c] || [0,0,0,0]; say[c][EG[t]]++; top[c] = (top[c] || 0) + 1; }
+  let lp = 0, m = 0;
+  for (let t = 1; t < OY.test.length; t++){ const c = OY.test[t-1];
+    const cc = say[c], tp = top[c] || 0;
+    lp += Math.log(((cc ? cc[OY.test[t]] : 0) + 0.5) / (tp + 2)); m++; }
+  return (_oyCache['n' + N] = -lp/m);
+};
+OY.veri = () => OY.boyutlar.map(N => [N, OY.nll(N)]);
+/* log(L − L∞) = log A − α log N · dogrusal uydurma */
+OY.dogrusal = (pts, Linf) => {
+  const xs = [], ys = [];
+  for (const [N, L] of pts){ if (L - Linf <= 0) continue;
+    xs.push(Math.log(N)); ys.push(Math.log(L - Linf)); }
+  const n = xs.length;
+  const mx = xs.reduce((s, v2) => s + v2, 0)/n, my = ys.reduce((s, v2) => s + v2, 0)/n;
+  let sxy = 0, sxx = 0;
+  for (let i = 0; i < n; i++){ sxy += (xs[i]-mx)*(ys[i]-my); sxx += (xs[i]-mx)**2; }
+  const b = sxy/sxx, a = my - b*mx;
+  let ss = 0, sr = 0;
+  for (let i = 0; i < n; i++){ const p = a + b*xs[i]; sr += (ys[i]-p)**2; ss += (ys[i]-my)**2; }
+  return { alpha: -b, A: Math.exp(a), r2: 1 - sr/ss, nokta: n };
+};
+/* L∞ bilinmiyormus gibi ara: en dogrusal log-log u veren deger */
+/* L∞ aramasi · ust sinir gozlenen en dusuk kayiptan geliyor, gercek entropiden DEGIL */
+OY.uydur = pts => {
+  const key = 'f' + pts.length;
+  if (_oyCache[key]) return _oyCache[key];
+  const enDusuk = Math.min(...pts.map(p => p[1]));
+  let en = { r2: -9 };
+  for (let L = 0.5; L <= enDusuk - 0.0002; L += 0.0002){
+    const f = OY.dogrusal(pts, L);
+    if (f.r2 > en.r2) en = { ...f, Linf: L }; }
+  return (_oyCache[key] = en);
+};
+OY.tam = () => OY.uydur(OY.veri());
+OY.kucuk = () => OY.uydur(OY.veri().filter(([N]) => N <= OY.esik));
+OY.tahmin = (fit, N) => fit.Linf + fit.A * Math.pow(N, -fit.alpha);
+OY.ekstraHata = () => OY.veri().filter(([N]) => N > OY.esik)
+  .map(([N, L]) => ({ N, L, p: OY.tahmin(OY.kucuk(), N),
+                      hata: Math.abs(OY.tahmin(OY.kucuk(), N) - L)/L }));
+
+VIZ.olcekYasalari = s => {
+  clear();
+  const sahne = s.sahne || 'egri';
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'ekstra'){
+    const K2 = OY.kucuk(), E = OY.ekstraHata();
+    baslikSerit('ÖLÇEK YASALARI · KÜÇÜKTEN BÜYÜĞÜ ÖNGÖRMEK',
+      'Yalnızca N ≤ ' + OY.esik + ' ile uydurup daha büyük N leri tahmin ediyoruz.', []);
+    const P = plot(rect(140, 200, 640, 400), 1.5, 5.2, 1.0785, 1.155);
+    frame(P, 'log₁₀ eğitim verisi', 'test NLL', [2, 3, 4, 5], [1.08, 1.10, 1.12, 1.14]);
+    /* uydurma bolgesi */
+    cx.fillStyle = 'rgba(120,200,255,.07)';
+    cx.fillRect(P.sx(1.5), P.R.y, P.sx(Math.log10(OY.esik)) - P.sx(1.5), P.R.h);
+    txt('uydurma bölgesi', P.sx(2.3), P.R.y + 26, K.mut, 17);
+    /* gercek nokta */
+    cx.strokeStyle = K.blue; cx.lineWidth = 3; cx.beginPath();
+    OY.veri().forEach(([N, L], i) => { const y = P.sy(Math.min(1.155, L));
+      i ? cx.lineTo(P.sx(Math.log10(N)), y) : cx.moveTo(P.sx(Math.log10(N)), y); });
+    cx.stroke();
+    OY.veri().forEach(([N, L]) => dot(P.sx(Math.log10(N)), P.sy(Math.min(1.155, L)), 5, K.blue));
+    /* tahmin egrisi */
+    cx.strokeStyle = K.orange; cx.lineWidth = 2.6; cx.setLineDash([7, 6]);
+    cx.beginPath();
+    for (let i = 0; i <= 100; i++){ const lx = 1.5 + 3.7*i/100;
+      const y = P.sy(Math.min(1.155, OY.tahmin(K2, Math.pow(10, lx))));
+      i ? cx.lineTo(P.sx(lx), y) : cx.moveTo(P.sx(lx), y); }
+    cx.stroke(); cx.setLineDash([]);
+    txt('ölçülen', P.R.x + P.R.w - 14, P.sy(1.0805) - 10, K.blue, 18, 'right');
+    txt('küçük veriyle uydurulan tahmin', P.R.x + P.R.w - 14, P.R.y + 28, K.orange, 17, 'right');
+    const bx = 830;
+    kart(bx, 200, 260, 'UYDURMA SINIRI', 'N ≤ ' + OY.esik, K.blue, K2.nokta + ' nokta');
+    kart(bx + 280, 200, 260, 'EN BÜYÜK HATA',
+         '%' + (100*Math.max(...E.map(e => e.hata))).toFixed(3), K.green,
+         'öngörülen bölgede');
+    kart(bx, 330, 260, 'ÖNGÖRÜLEN L∞', K2.Linf.toFixed(4), K.green);
+    kart(bx + 280, 330, 260, 'GERÇEK H', PX.H1.toFixed(4), K.mut, 'kaynaktan');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('ÖNGÖRÜ HATALARI', bx + 270, 494, K.mut, 18);
+    E.forEach((e, i) => {
+      txt('N = ' + e.N.toLocaleString('tr-TR'), bx + 18, 532 + i*36, K.txt, 17, 'left');
+      txt(e.p.toFixed(6), bx + 350, 532 + i*36, K.orange, 17, 'right');
+      txt('%' + (100*e.hata).toFixed(3), bx + 522, 532 + i*36, K.green, 17, 'right'); });
+  }
+
+  else {
+    const F = OY.tam();
+    baslikSerit('ÖLÇEK YASALARI · KAYIP VERİYLE NASIL DÜŞÜYOR',
+      'Aynı Markov kaynağı. Fazla kayıp = test NLL − gerçek entropi.', []);
+    const P = plot(rect(140, 200, 640, 400), 1.5, 5.2, -3.7, -0.9);
+    frame(P, 'log₁₀ eğitim verisi', 'log₁₀ fazla kayıp', [2, 3, 4, 5], [-3, -2, -1]);
+    cx.strokeStyle = K.blue; cx.lineWidth = 3; cx.beginPath();
+    OY.veri().forEach(([N, L], i) => {
+      const y = P.sy(Math.max(-3.7, Math.log10(Math.max(1e-6, L - PX.H1))));
+      i ? cx.lineTo(P.sx(Math.log10(N)), y) : cx.moveTo(P.sx(Math.log10(N)), y); });
+    cx.stroke();
+    OY.veri().forEach(([N, L]) => dot(P.sx(Math.log10(N)),
+      P.sy(Math.max(-3.7, Math.log10(Math.max(1e-6, L - PX.H1)))), 5, K.blue));
+    /* uydurulan dogru */
+    cx.strokeStyle = K.green; cx.lineWidth = 2.6; cx.setLineDash([7, 6]);
+    cx.beginPath();
+    for (let i = 0; i <= 100; i++){ const lx = 1.5 + 3.7*i/100;
+      const y = P.sy(Math.max(-3.7, Math.log10(F.A) / Math.LN10 * 0 +
+        (Math.log(F.A) - F.alpha*Math.log(Math.pow(10, lx))) / Math.LN10));
+      i ? cx.lineTo(P.sx(lx), y) : cx.moveTo(P.sx(lx), y); }
+    cx.stroke(); cx.setLineDash([]);
+    txt('uydurulan güç yasası · eğim −' + F.alpha.toFixed(3),
+        P.R.x + P.R.w - 14, P.R.y + 28, K.green, 17, 'right');
+    txt('log-log ta düz çizgi = güç yasası', P.R.x + 14, P.R.y + P.R.h - 20, K.mut, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'ÜS α', F.alpha.toFixed(4), K.green, 'L − L∞ ∝ N^−α');
+    kart(bx + 280, 200, 260, 'log-log R²', F.r2.toFixed(4), K.purple);
+    kart(bx, 330, 260, 'UYDURULAN L∞', F.Linf.toFixed(4), K.green, 'aranarak bulundu');
+    kart(bx + 280, 330, 260, 'GERÇEK ENTROPİ', PX.H1.toFixed(4), K.mut,
+         'fark ' + Math.abs(F.Linf - PX.H1).toFixed(4));
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('İKİ TERİM', bx + 270, 494, K.mut, 18);
+    txt('L(N) = L∞ + A · N^(−α)', bx + 270, 534, K.txt, 21);
+    txt('L∞ indirgenemez: kaynağın kendi belirsizliği.', bx + 18, 576, K.green, 18, 'left');
+    txt('İkinci terim veriyle sıfıra gider.', bx + 18, 606, K.green, 18, 'left');
+    txt('L∞ modele değil VERİYE ait. Hiçbir model,', bx + 18, 646, K.orange, 18, 'left');
+    txt('hiçbir veri miktarıyla altına inemez.', bx + 18, 676, K.orange, 18, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

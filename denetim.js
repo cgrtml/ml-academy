@@ -2079,6 +2079,64 @@ console.log('═══ PERPLEXITY ═══');
   }
 }
 
+console.log('═══ ÖLÇEK YASALARI ═══');
+{
+  const F = OY.tam(), K2 = OY.kucuk(), V = OY.veri();
+  /* kayip veriyle tekduze azaliyor mu (gurultuye ragmen genel yon) */
+  iddia('en küçük veride kayıp', 1.149203, OY.nll(50), 6);
+  iddia('en büyük veride kayıp', 1.079538, OY.nll(100000), 6);
+  iddia('kayıp veriyle azalıyor', true, OY.nll(100000) < OY.nll(50));
+  iddia('hiçbir veri miktarında entropi altına inilmiyor', true,
+        V.every(([N, L]) => L >= PX.H1));
+  /* fazla kayip ve azalan getiri */
+  {
+    const f1 = OY.nll(50) - PX.H1, f2 = OY.nll(100000) - PX.H1;
+    iddia('50 örnekte fazla kayıp (log10)', -1.155, Math.log10(f1), 3);
+    iddia('100000 örnekte fazla kayıp (log10)', -3.436, Math.log10(f2), 3);
+    iddia('2000 kat veri kaç kat kazandırdı', 191, f1/f2, 0);
+    iddia('getiri veri artışından çok daha yavaş', true, f1/f2 < 2000);
+  }
+  /* GUC YASASI UYDURMA · L∞ gercek entropi KULLANILMADAN araniyor */
+  iddia('uydurulan üs α', 0.6624, F.alpha, 4);
+  iddia('log-log R²', 0.9568, F.r2, 4);
+  iddia('uydurulan L∞', 1.0792, F.Linf, 4);
+  iddia('gerçek entropi', 1.079172, PX.H1, 6);
+  iddia('uydurulan L∞ ile gerçek arasındaki fark', 0.00003, Math.abs(F.Linf - PX.H1), 5);
+  iddia('L∞ gerçek entropiyi binde birden yakın buluyor', true,
+        Math.abs(F.Linf - PX.H1)/PX.H1 < 0.001);
+  /* arama gercek entropiyi kullanmiyor · ust sinir gozlenen en dusuk kayiptan */
+  {
+    const enDusuk = Math.min(...V.map(p => p[1]));
+    iddia('arama üst sınırı gözlenen en düşük kayıptan', 1.079538, enDusuk, 6);
+    iddia('L∞ gözlenen en düşük kaybın altında', true, F.Linf < enDusuk);
+  }
+  /* EKSTRAPOLASYON · sadece N<=2000 ile uydurup buyugu tahmin et */
+  iddia('küçük uydurmadaki nokta sayısı', 6, K2.nokta, 0);
+  iddia('küçük uydurmanın L∞ değeri', 1.0792, K2.Linf, 4);
+  iddia('küçük uydurmanın üssü', 0.7953, K2.alpha, 4);
+  {
+    const E = OY.ekstraHata();
+    iddia('öngörülen nokta sayısı', 5, E.length, 0);
+    iddia('en büyük öngörü hatası (%)', 0.0438, 100*Math.max(...E.map(e => e.hata)), 4);
+    iddia('bütün öngörüler binde birden iyi', true, E.every(e => e.hata < 0.001));
+    iddia('N=100000 öngörüsü', 1.079310, E[E.length-1].p, 6);
+    /* 50 kat oteye ekstrapolasyon */
+    iddia('en uzak öngörü kaç kat ötede', 50, 100000/OY.esik, 0);
+  }
+  /* DURUSTLUK: us alt kumeye gore degisiyor ama tahmin tutuyor */
+  iddia('iki uydurmanın üsleri farklı', true, Math.abs(K2.alpha - F.alpha) > 0.1);
+  iddia('iki uydurmanın L∞ değerleri aynı', true, Math.abs(K2.Linf - F.Linf) < 0.001);
+  {
+    /* buyuk N de tahmini L∞ belirliyor: guc terimi ihmal edilebilir */
+    const gucTerim = K2.A * Math.pow(100000, -K2.alpha);
+    iddia('N=100000 de güç teriminin katkısı', 0.00011, gucTerim, 5);
+    iddia('tahminin neredeyse tamamı L∞ dan geliyor', true, gucTerim / K2.Linf < 0.001);
+  }
+  /* kucuk uydurmanin uyumu daha kotu · durustluk */
+  iddia('küçük uydurmanın R² si', 0.8856, K2.r2, 4);
+  iddia('küçük uydurma tam uydurmadan daha gürültülü', true, K2.r2 < F.r2);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

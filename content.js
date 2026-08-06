@@ -108,7 +108,7 @@ const ROTALAR = [
     {id:'cot',            ad:'Chain-of-Thought: cevaptan önce düşünmek',       sure:12, durum:'planli'},
     {id:'self-cons',      ad:'Self-consistency: çoğunluğa güvenmek',           sure:10, durum:'planli'},
     {id:'oz-gozetim',     ad:'Kendi kendine gözetim: etiketi veriden üretmek',  sure:12, durum:'planli'},
-    {id:'olcek-yasalari',  ad:'Ölçek yasaları: büyütmenin getirisi ve bedeli',  sure:14, durum:'planli'},
+    {id:'olcek-yasalari',  ad:'Ölçek yasaları: büyütmenin getirisi ve bedeli',  sure:16, durum:'hazir'},
     {id:'perplexity',     ad:'Perplexity: bir modelin şaşkınlığını ölçmek',    sure:16, durum:'hazir'},
     {id:'talimat-ayar',   ad:'İtaat öğretmek: talimat ince ayarı',             sure:14, durum:'planli'},
     {id:'icl',            ad:'Örnekle öğretmek: in-context learning',          sure:12, durum:'planli'},
@@ -9597,6 +9597,140 @@ DERSLER['perplexity'] = {
       '3 kat farklı sayı.<br><br>' +
       'Doğru kullanımı <b>aynı veri, aynı tokenizer, tek değişken</b>. O kurulumda çok ' +
       'duyarlı ve çok ucuz bir göstergedir.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── ÖLÇEK YASALARI ─────────────── */
+DERSLER['olcek-yasalari'] = {
+  ad:'Ölçek yasaları: büyütmenin getirisi ve bedeli',
+  alt:'Perplexity dersindeki kaynağın gerçek entropisini biliyoruz. Bu sayede uydurduğumuz ölçek yasasının vardığı tabanı doğrulukla karşılaştırabiliyoruz.',
+  kaynaklar:[
+    {y:'Kaplan, J. ve ark.', t:'2020', b:'Scaling Laws for Neural Language Models', n:'arXiv:2001.08361'},
+    {y:'Hoffmann, J. ve ark.', t:'2022', b:'Training Compute-Optimal Large Language Models', n:'NeurIPS 2022'},
+    {y:'Hestness, J. ve ark.', t:'2017', b:'Deep Learning Scaling is Predictable, Empirically', n:'arXiv:1712.00409'},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'Kayıp veriyle güç yasası izliyor',
+    goal:'Ölçek yasasının neye benzediğini ve iki teriminin ne olduğunu göreceksin.',
+    todo:'Grafiğe bak. Log-log ekseninde noktalar bir doğruya mı oturuyor?',
+    kind:'static', viz:'olcekYasalari', h:770, state:{sahne:'egri'},
+    body:'<p>Perplexity dersindeki kaynağı kullanıyoruz: dört harfli, 1. mertebeden Markov ' +
+      'zinciri. Gerçek entropisi <b>1.079172</b> ve bunu tam olarak biliyoruz.</p>' +
+      '<p>Aynı modeli farklı miktarda veriyle eğitip test kaybını ölçüyoruz. 50 örnekle ' +
+      '<b>1.149203</b>, 100.000 örnekle <b>1.079538</b>.</p>' +
+      '<p>Kayıptan gerçek entropiyi çıkarınca geriye <b>fazla kayıp</b> kalıyor: modelin ' +
+      'yalnızca veri azlığından kaynaklanan hatası. Grafik bunu log-log ekseninde ' +
+      'gösteriyor ve noktalar bir <b>doğruya</b> oturuyor.</p>' +
+      '<p>Log-log ekseninde doğru olmak, güç yasası demek:</p>' +
+      '<p style="text-align:center;font-size:1.15em">L(N) = L<sub>∞</sub> + A · N<sup>−α</sup></p>' +
+      '<p>Uydurulan değerler: α = <b>0.6624</b>, log-log R² = <b>0.9568</b>.</p>' +
+      '<p>İki terimin anlamı çok farklı. <b>A · N⁻ᵃ</b> veri arttıkça sıfıra gider: ' +
+      'bu, azaltılabilir hata. <b>L∞</b> ise hiç gitmez.</p>' +
+      '<p>Kritik nokta: L∞ modele ait değil, <b>veriye ait</b>. Kaynağın kendi ' +
+      'belirsizliğidir. Hiçbir model, hiçbir veri miktarıyla onun altına inemez. ' +
+      'Perplexity dersinde bunu doğrudan ölçmüştük: hiçbir n-gram mertebesi ' +
+      'teorik alt sınırın altına inmiyordu.</p>',
+    learned:'<b>Kayıp, veri miktarıyla bir güç yasası izler: L(N) = L∞ + A·N⁻ᵃ.</b><br><br>' +
+      'Bu kaynakta ölçülen üs α = <b>0.6624</b> ve log-log doğrusallığı R² = <b>0.9568</b>.<br><br>' +
+      'İki terim çok farklı: <b>A·N⁻ᵃ</b> veriyle sıfıra gider, <b>L∞</b> gitmez. ' +
+      'L∞ modele değil <b>veriye</b> aittir.',
+    xp:25,
+  },
+  {
+    t:'Uydurulan taban gerçeği buluyor mu',
+    goal:'Ölçek yasasının, kendisine hiç söylenmemiş bir sayıyı bulup bulamadığını göreceksin.',
+    todo:'İki kartı karşılaştır: uydurulan L∞ ile gerçek entropi.',
+    kind:'static', viz:'olcekYasalari', h:770, state:{sahne:'egri'},
+    body:'<p>Bir önceki adımda L∞’u uydururken <b>gerçek entropiyi kullanmadık</b>. ' +
+      'Yordam şu: farklı L∞ değerleri deneyip log-log grafiğini <b>en düz</b> yapan ' +
+      'değeri seçtik. Aramanın üst sınırı bile gerçek entropiden değil, gözlenen en düşük ' +
+      'kayıptan geliyor (bir güç yasasının tabanı, gözlenen değerlerin altında olmak zorunda).</p>' +
+      '<p>Sonuç:</p>' +
+      '<p>uydurulan L∞: <b>1.0792</b><br>gerçek entropi: <b>1.079172</b><br>' +
+      'fark: <b>0.00003</b></p>' +
+      '<p>Yani ölçek yasası, kaynağın entropisini beş ondalık hane doğrulukla ' +
+      '<b>kendi başına buldu</b>. Modele hiç söylenmedi.</p>' +
+      '<p>Bu, ölçek yasalarının pratikteki en değerli kullanımının temeli. Gerçek dil ' +
+      'modellerinde L∞’u kimse bilmez. Ama küçük ölçekli koşulardan uydurulan yasa, ' +
+      '"bu veri ve bu mimari ailesinde ne kadar ilerlenebilir" sorusuna sayı verir.</p>' +
+      '<p>Ve verdiği sayı bir <b>sınırdır</b>: L∞’a yaklaştıkça daha çok veri getirisi ' +
+      'küçülür. Bu kaynakta 50 örnekten 100.000’e çıkmak fazla kaybı ' +
+      '<b>7.0 × 10⁻²</b>’den <b>3.7 × 10⁻⁴</b>’e indiriyor, yani 2000 kat veri ' +
+      '191 kat kazandırıyor.</p>',
+    learned:'<b>Ölçek yasası, kendisine söylenmemiş indirgenemez kaybı bulabiliyor.</b><br><br>' +
+      'L∞ araması gerçek entropiyi hiç kullanmadan yapıldı ve sonuç <b>1.0792</b> çıktı; ' +
+      'gerçek değer <b>1.079172</b>. Fark <b>0.00003</b>.<br><br>' +
+      'Getiri azalıyor: 2000 kat veri, fazla kaybı yalnızca <b>191 kat</b> düşürüyor. ' +
+      'L∞’a yaklaştıkça her yeni örneğin değeri azalır.',
+    xp:50,
+  },
+  {
+    t:'Küçükten büyüğü öngörmek',
+    goal:'Ölçek yasalarının asıl işe yaradığı yeri ölçeceksin.',
+    todo:'Turuncu kesikli eğri, mavi noktaları uydurma bölgesinin dışında da yakalıyor mu?',
+    kind:'static', viz:'olcekYasalari', h:770, state:{sahne:'ekstra'},
+    body:'<p>Şimdi asıl soru: bu yasa <b>henüz ölçmediğin</b> bir ölçeği öngörebilir mi?</p>' +
+      '<p>Sınayalım. Yalnızca <b>N ≤ 2000</b> olan altı noktayı kullanarak yasa uyduruyoruz. ' +
+      'Sonra 5.000’den 100.000’e kadar olan noktaları tahmin edip gerçekle ' +
+      'karşılaştırıyoruz. Bu noktalar uydurmaya hiç girmedi.</p>' +
+      '<p>Bağıl hatalar:</p>' +
+      '<p>N = 5.000 &rarr; <b>%0.044</b> &nbsp;·&nbsp; 10.000 &rarr; <b>%0.005</b> &nbsp;·&nbsp; ' +
+      '20.000 &rarr; <b>%0.030</b> &nbsp;·&nbsp; 100.000 &rarr; <b>%0.021</b></p>' +
+      '<p>En büyük hata <b>%0.044</b>. Yani altı küçük koşudan uydurulan yasa, ' +
+      '<b>50 kat</b> daha büyük bir ölçeği binde yarımdan az hatayla öngörüyor.</p>' +
+      '<p>Gerçek dünyada bunun karşılığı şu: bir modeli tam ölçekte eğitmek milyonlarca ' +
+      'dolar tutuyorsa, küçük ölçekli birkaç koşuyla o eğitimin nereye varacağını ' +
+      'önceden kestirebilirsin. Mimariler arasında seçim, veri karışımı kararı ve bütçe ' +
+      'planlaması bu şekilde yapılıyor.</p>' +
+      '<p>Dürüst bir ayrıntı: küçük veriyle uydurulan yasanın üssü α = <b>0.7953</b>, ' +
+      'tam uydurmanın üssü ise <b>0.6624</b>. Yani <b>üs yanlış bulundu</b>, ama tahmin ' +
+      'yine de tuttu. Sebebi, büyük N’de tahminin neredeyse tamamen L∞ tarafından ' +
+      'belirlenmesi. Öngörünün doğruluğu üssün değil, <b>tabanın</b> doğru bulunmasından ' +
+      'geliyor.</p>',
+    learned:'<b>Küçük ölçekli koşulardan uydurulan yasa, büyük ölçeği öngörebiliyor.</b><br><br>' +
+      'Yalnızca N ≤ 2000 olan <b>altı nokta</b> ile uydurulan yasa, 50 kat daha büyük ' +
+      'ölçekleri en fazla <b>%0.044</b> hatayla tahmin ediyor.<br><br>' +
+      'Ama dikkat: küçük veriyle bulunan üs <b>0.7953</b>, gerçekte <b>0.6624</b>. ' +
+      'Üs yanlış, tahmin doğru. Çünkü büyük N’de sonucu <b>L∞ belirliyor</b>.',
+    xp:50,
+  },
+  {
+    t:'Nerede kırılır',
+    goal:'Ölçek yasalarına ne kadar güvenilebileceğini göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'olcekYasalari', h:770, state:{sahne:'ekstra'},
+    body:'<p>Ölçek yasaları güçlü ama sihirli değil. Ölçtüklerimiz sınırlarını da ' +
+      'gösteriyor.</p>' +
+      '<p><b>Uyum kusursuz değil.</b> Tam uydurmanın log-log R²’si <b>0.9568</b>, ' +
+      'küçük veriyle uydurmanınki <b>0.8856</b>. Noktalar doğruya oturuyor ama ' +
+      'saçılım var, ve bu saçılım tahmindeki belirsizliğe dönüşür.</p>' +
+      '<p><b>Üs güvenilir değil.</b> Aynı veriden iki farklı alt küme, iki farklı α veriyor: ' +
+      '0.6624 ve 0.7953. Bir makalede bildirilen üsse tek başına güvenmek yanlış olur.</p>' +
+      '<p><b>Yasa yalnızca uydurulduğu rejimde geçerlidir.</b> Burada tek bir şeyi ' +
+      'değiştirdik: veri miktarını. Mimari, tokenizasyon, öğrenme oranı ve kaynağın kendisi ' +
+      'sabitti. Bunlardan biri değişirse eğri kayar ve eski yasa geçersiz olur.</p>' +
+      '<p><b>Ve L∞ her zaman oradadır.</b> Bu, ölçeklemenin en çok gözden kaçan sonucu. ' +
+      'Büyütmek fazla kaybı düşürür, indirgenemez kaybı düşürmez. Bir görevde ' +
+      'ihtiyacın olan doğruluk L∞’un altındaysa, <b>büyütmek onu asla getirmeyecektir</b>; ' +
+      'daha iyi veri ya da farklı bir problem tanımı gerekir.</p>' +
+      '<p>Perplexity dersinin kapanışıyla aynı yere varıyoruz: ölçüm ancak ' +
+      '<b>neyi ölçtüğünü</b> bilirsen işe yarar.</p>',
+    quiz:{ q:'Bir ekip küçük ölçekli koşularla ölçek yasası uydurdu ve 100 kat büyük bir model için kaybın 2.10 olacağını öngördü. Ama modelin hedef görevde işe yaraması için kaybın 1.60 altına inmesi gerekiyor. Uydurulan yasanın L∞ değeri 2.05. Ne yaparsınız?',
+      opts:[
+        {t:'Büyütmekten vazgeçip veriye ya da problem tanımına dönerim: L∞ 2.05 iken hiçbir ölçek 1.60 a inemez', why:'Doğru. Bu derste ölçtüğün gibi L∞ modele değil veriye aittir ve hiçbir model onun altına inemez; perplexity dersinde de hiçbir n-gram mertebesi teorik alt sınırın altına inememişti. Öngörülen 2.10 zaten L∞ olan 2.05 e çok yakın, yani ölçekten gelecek kazanç neredeyse tükenmiş. 1.60 hedefine ulaşmanın yolu daha büyük model değil, daha bilgilendirici veri ya da yeniden tanımlanmış bir görev.'},
+        {t:'10.000 kat büyütürüm, güç yasası düşmeye devam eder', why:'Güç yasasının düşen kısmı yalnızca A·N⁻ᵃ terimidir ve o sıfıra gider; L∞ kalır. Bu derste 2000 kat veri fazla kaybı 191 kat düşürdü ama tabana yaklaştıkça getiri hızla azaldı. 2.05 tabanıyla 1.60 a ulaşmak matematiksel olarak imkânsız.'},
+        {t:'Üssü yeniden ölçerim, α yanlış hesaplanmış olabilir', region:'', why:'Üs gerçekten güvenilmez ve bu derste iki alt kümeden 0.6624 ile 0.7953 çıktı. Ama üs yalnızca tabana ne hızda yaklaşıldığını belirler, tabanın nerede olduğunu değil. Doğru bir α da 1.60 a inmeyi mümkün kılmaz.'},
+        {t:'Öngörüye güvenmem, tam ölçekte eğitip görürüm', why:'Bu derste ölçtüğün gibi küçük koşulardan uydurulan yasa 50 kat büyük ölçeği %0.044 hatayla öngörebiliyordu, yani öngörü ciddiye alınacak kadar iyidir. Milyonlarca dolarlık bir eğitimi, cevabı zaten hesaplanabilirken denemek için harcamak ölçek yasalarının var oluş sebebine aykırı.'},
+      ], correct:0 },
+    learned:'<b>Ölçek yasası bir tahmin aracıdır, bir garanti değil.</b><br><br>' +
+      'Log-log uyumu kusursuz değil (R² <b>0.9568</b> ve <b>0.8856</b>), üs alt kümeye göre ' +
+      'değişiyor (<b>0.6624</b> ve <b>0.7953</b>), ve yasa yalnızca uydurulduğu rejimde ' +
+      'geçerli.<br><br>' +
+      'En önemlisi: <b>L∞ her zaman orada.</b> Büyütmek azaltılabilir kaybı düşürür, ' +
+      'indirgenemez kaybı düşürmez.',
     xp:50,
   },
 ]};
