@@ -5129,6 +5129,194 @@ VIZ.lstmKapilar = s => {
   }
 };
 
+
+/* ═══════════ OTOKODLAYICI ═══════════
+   Etiketsiz veriden temsil öğrenmek: dar bir boğazdan geçirip geri kurmak.
+   Doğrusal hâli PCA ile aynı yere varıyor; kazanç doğrusal olmayan katmanlardan geliyor. */
+const OK = {};
+OK.D = 6; OK.N = 120; OK.G = 10; OK.ADIM = 400; OK.LR = 0.10;
+OK.bogazlar = [1, 2, 3, 4];
+OK.veri = (() => {
+  const r = rng(11), X = [];
+  for (let i = 0; i < OK.N; i++){
+    const a = -1.5 + 3*r(), b = -1.5 + 3*r();
+    const z = [a, b, a*a - 0.5, Math.sin(2*a), a*b, Math.cos(1.5*b)];
+    X.push(z.map(val => val + 0.05 * omNormal(r)));
+  }
+  const m = new Array(OK.D).fill(0);
+  for (const x of X) for (let j = 0; j < OK.D; j++) m[j] += x[j] / OK.N;
+  return X.map(x => x.map((val, j) => val - m[j]));
+})();
+OK.varyans = () => OK.veri.reduce((s, x) => s + x.reduce((t, val) => t + val*val, 0), 0) / OK.N;
+const _okCache = {};
+/* PCA · guc yinelemesi + deflasyon */
+OK.pca = k => {
+  if (_okCache['p' + k] !== undefined) return _okCache['p' + k];
+  const D = OK.D, X = OK.veri, N = OK.N;
+  const C = Array.from({ length: D }, () => new Array(D).fill(0));
+  for (const x of X) for (let i = 0; i < D; i++) for (let j = 0; j < D; j++) C[i][j] += x[i]*x[j]/N;
+  const V = [], A = C.map(r2 => r2.slice());
+  for (let q = 0; q < k; q++){
+    let v2 = new Array(D).fill(0).map((_, i) => Math.sin(i + q + 1));
+    for (let it = 0; it < 500; it++){
+      const w = new Array(D).fill(0);
+      for (let i = 0; i < D; i++){ let s = 0;
+        for (let j = 0; j < D; j++) s += A[i][j]*v2[j]; w[i] = s; }
+      const n = Math.sqrt(w.reduce((s, x2) => s + x2*x2, 0));
+      v2 = w.map(x2 => x2 / n); }
+    let lam = 0;
+    for (let i = 0; i < D; i++){ let s = 0;
+      for (let j = 0; j < D; j++) s += A[i][j]*v2[j]; lam += v2[i]*s; }
+    V.push(v2);
+    for (let i = 0; i < D; i++) for (let j = 0; j < D; j++) A[i][j] -= lam*v2[i]*v2[j];
+  }
+  let hata = 0;
+  for (const x of X){
+    const rec = new Array(D).fill(0);
+    for (const v2 of V){ const c = x.reduce((s, xv, j) => s + xv*v2[j], 0);
+      for (let j = 0; j < D; j++) rec[j] += c*v2[j]; }
+    hata += x.reduce((s, xv, j) => s + (xv - rec[j])**2, 0);
+  }
+  return (_okCache['p' + k] = hata / N);
+};
+/* otokodlayici · dogrusal ya da tanh gizli katmanli */
+function okAe(k, dogrusal, eps){
+  const key = 'a' + k + (dogrusal ? 'd' : 'n') + (eps || 0);
+  if (_okCache[key] !== undefined) return _okCache[key];
+  const D = OK.D, G = OK.G, X = OK.veri, N = OK.N, r = rng(13);
+  const mk = (a, b2) => { const M = [];
+    for (let i = 0; i < a; i++){ const row = [];
+      for (let j = 0; j < b2; j++) row.push(omNormal(r) / Math.sqrt(b2)); M.push(row); }
+    return M; };
+  let W1, W2, W3, W4;
+  if (dogrusal){ W1 = mk(k, D); W2 = mk(D, k); }
+  else { W1 = mk(G, D); W2 = mk(k, G); W3 = mk(G, k); W4 = mk(D, G); }
+  if (eps) W1[0][0] += eps;
+  const mv = (M, x) => M.map(row => row.reduce((s, w, j) => s + w*x[j], 0));
+  const ileri = x => {
+    if (dogrusal){ const z = mv(W1, x); return { z, rec: mv(W2, z) }; }
+    const h1 = mv(W1, x).map(Math.tanh), z = mv(W2, h1);
+    const h2 = mv(W3, z).map(Math.tanh);
+    return { h1, z, h2, rec: mv(W4, h2) }; };
+  const kayip = () => X.reduce((s, x) => { const { rec } = ileri(x);
+    return s + x.reduce((t, val, j) => t + (val - rec[j])**2, 0); }, 0) / N;
+  for (let it = 0; it < OK.ADIM; it++){
+    const g1 = W1.map(r2 => r2.map(() => 0)), g2 = W2.map(r2 => r2.map(() => 0));
+    const g3 = dogrusal ? null : W3.map(r2 => r2.map(() => 0));
+    const g4 = dogrusal ? null : W4.map(r2 => r2.map(() => 0));
+    for (const x of X){
+      const F = ileri(x);
+      const e = F.rec.map((val, j) => 2*(val - x[j])/N);
+      if (dogrusal){
+        for (let i = 0; i < D; i++) for (let j = 0; j < k; j++) g2[i][j] += e[i]*F.z[j];
+        const dz = new Array(k).fill(0);
+        for (let j = 0; j < k; j++){ let s = 0;
+          for (let i = 0; i < D; i++) s += W2[i][j]*e[i]; dz[j] = s; }
+        for (let i = 0; i < k; i++) for (let j = 0; j < D; j++) g1[i][j] += dz[i]*x[j];
+      } else {
+        for (let i = 0; i < D; i++) for (let j = 0; j < G; j++) g4[i][j] += e[i]*F.h2[j];
+        const dh2 = new Array(G).fill(0);
+        for (let j = 0; j < G; j++){ let s = 0;
+          for (let i = 0; i < D; i++) s += W4[i][j]*e[i]; dh2[j] = s*(1 - F.h2[j]**2); }
+        for (let i = 0; i < G; i++) for (let j = 0; j < k; j++) g3[i][j] += dh2[i]*F.z[j];
+        const dz = new Array(k).fill(0);
+        for (let j = 0; j < k; j++){ let s = 0;
+          for (let i = 0; i < G; i++) s += W3[i][j]*dh2[i]; dz[j] = s; }
+        for (let i = 0; i < k; i++) for (let j = 0; j < G; j++) g2[i][j] += dz[i]*F.h1[j];
+        const dh1 = new Array(G).fill(0);
+        for (let j = 0; j < G; j++){ let s = 0;
+          for (let i = 0; i < k; i++) s += W2[i][j]*dz[i]; dh1[j] = s*(1 - F.h1[j]**2); }
+        for (let i = 0; i < G; i++) for (let j = 0; j < D; j++) g1[i][j] += dh1[i]*x[j];
+      }
+    }
+    const uygula = (M, g) => { for (let i = 0; i < M.length; i++)
+      for (let j = 0; j < M[0].length; j++) M[i][j] -= OK.LR*g[i][j]; };
+    uygula(W1, g1); uygula(W2, g2);
+    if (!dogrusal){ uygula(W3, g3); uygula(W4, g4); }
+  }
+  return (_okCache[key] = kayip());
+}
+OK.hassasiyet = (k, dog) => { const a = okAe(k, dog, 0), b = okAe(k, dog, 1e-12);
+  return Math.abs(a - b) / Math.max(1e-12, a); };
+OK.fark = k => Math.abs(okAe(k, true, 0) - OK.pca(k)) / OK.pca(k);
+
+VIZ.otokodlayici = s => {
+  clear();
+  const k = OK.bogazlar[Math.max(0, Math.min(3, s.ki === undefined ? 0 : Math.round(s.ki)))];
+  const sahne = s.sahne || 'bogaz';
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 25);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'bogaz'){
+    baslikSerit('OTOKODLAYICI · DAR BOĞAZDAN GEÇİRİP GERİ KURMAK',
+      OK.D + ' boyutlu veri, ' + k + ' boyutluk boğaz, sonra yeniden ' + OK.D + ' boyut.', []);
+    /* sema */
+    const y0 = 215, kutu = (x, w, h, ad, alt, renk) => {
+      box(x, y0 + (150 - h)/2, w, h, 'rgba(7,10,15,.7)', renk, 2);
+      txt(ad, x + w/2, y0 + 75 + 8, renk, 24);
+      if (alt) txt(alt, x + w/2, y0 + 175, K.mut, 17); };
+    kutu(200, 130, 150, String(OK.D), 'girdi', K.blue);
+    kutu(430, 130, 110, String(OK.G), 'kodlayıcı', K.mut);
+    kutu(660, 130, Math.max(50, 40*k), String(k), 'boğaz', K.green);
+    kutu(890, 130, 110, String(OK.G), 'çözücü', K.mut);
+    kutu(1120, 130, 150, String(OK.D), 'yeniden kurulmuş', K.blue);
+    [330, 560, 790, 1020].forEach(x => arw(x, y0 + 75, x + 98, y0 + 75, K.mut, 3));
+    const bx = 200;
+    kart(bx, 440, 250, 'BOĞAZ BOYU', String(k), K.green);
+    kart(bx + 270, 440, 250, 'YENİDEN KURMA HATASI', okAe(k, false, 0).toFixed(4), K.green);
+    kart(bx + 540, 440, 250, 'TOPLAM VARYANS', OK.varyans().toFixed(4), K.mut,
+         'hiç kurmasan bu kadar');
+    kart(bx + 810, 440, 250, 'AÇIKLANAN ORAN',
+         (100 * (1 - okAe(k, false, 0)/OK.varyans())).toFixed(1) + '%', K.purple);
+    box(bx, 580, 1060, 130, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('Etiket yok. Ağ kendi girdisini hedef olarak kullanıyor: çıkışın girişe eşit olması isteniyor.',
+        bx + 24, 620, K.txt, 19, 'left');
+    txt('Boğaz dar olduğu için kopyalayamıyor, sıkıştırmak zorunda. Sıkıştırırken neyin önemli',
+        bx + 24, 654, K.mut, 18, 'left');
+    txt('olduğuna karar vermek zorunda kalıyor ve öğrenilen şey o karar.', bx + 24, 686, K.mut, 18, 'left');
+  }
+
+  else { /* karsilastirma: PCA vs dogrusal AE vs dogrusal olmayan */
+    baslikSerit('OTOKODLAYICI · PCA İLE KARŞILAŞTIRMA',
+      'Aynı veri, aynı boğaz. Doğrusal otokodlayıcı nereye varıyor?', []);
+    const P = plot(rect(140, 200, 620, 400), 0.7, 4.3, 0, 2.4);
+    frame(P, 'boğaz boyu', 'yeniden kurma hatası', [1, 2, 3, 4], [0, 1, 2]);
+    const ciz = (f, renk, kalin) => {
+      cx.strokeStyle = renk; cx.lineWidth = kalin; cx.beginPath();
+      OK.bogazlar.forEach((q, i) => { const y = P.sy(f(q));
+        i ? cx.lineTo(P.sx(q), y) : cx.moveTo(P.sx(q), y); });
+      cx.stroke();
+      OK.bogazlar.forEach(q => dot(P.sx(q), P.sy(f(q)), 5, renk)); };
+    ciz(q => OK.pca(q), K.orange, 5);
+    ciz(q => okAe(q, true, 0), K.blue, 2.4);
+    ciz(q => okAe(q, false, 0), K.green, 3.4);
+    txt('PCA (kalın)', P.R.x + P.R.w - 14, P.R.y + 28, K.orange, 17, 'right');
+    txt('doğrusal otokodlayıcı', P.R.x + P.R.w - 14, P.R.y + 52, K.blue, 17, 'right');
+    txt('doğrusal olmayan otokodlayıcı', P.R.x + P.R.w - 14, P.R.y + 76, K.green, 17, 'right');
+    dot(P.sx(k), P.sy(okAe(k, false, 0)), 9, K.yellow);
+    const bx = 810;
+    kart(bx, 200, 260, 'PCA', OK.pca(k).toFixed(4), K.orange);
+    kart(bx + 280, 200, 260, 'DOĞRUSAL AE', okAe(k, true, 0).toFixed(4), K.blue,
+         'fark %' + (100 * OK.fark(k)).toFixed(3));
+    kart(bx, 330, 260, 'DOĞRUSAL OLMAYAN', okAe(k, false, 0).toFixed(4), K.green);
+    kart(bx + 280, 330, 260, 'NE KADAR DAHA İYİ',
+         (100 * (1 - okAe(k, false, 0)/OK.pca(k))).toFixed(1) + '%', K.green, 'PCA ya göre');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('DOĞRUSAL AE İLE PCA FARKI', bx + 270, 494, K.mut, 18);
+    OK.bogazlar.forEach((q, i) => {
+      txt('boğaz ' + q, bx + 18, 534 + i*40, K.txt, 18, 'left');
+      txt('%' + (100 * OK.fark(q)).toFixed(3), bx + 330, 534 + i*40, K.blue, 18, 'right');
+      txt('nl: −%' + (100 * (1 - okAe(q, false, 0)/OK.pca(q))).toFixed(1),
+          bx + 522, 534 + i*40, K.green, 18, 'right'); });
+    txt('en büyük fark %' + (100 * Math.max(...OK.bogazlar.map(OK.fark))).toFixed(3),
+        bx + 18, 694, K.orange, 17, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

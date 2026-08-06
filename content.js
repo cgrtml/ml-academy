@@ -84,7 +84,7 @@ const ROTALAR = [
     {id:'havuzlama',      ad:'Havuzlama: görüntüyü özetlemek',                 sure:16, durum:'hazir'},
     {id:'rnn',            ad:'RNN: sırayı hafızada tutmak',                    sure:17, durum:'hazir'},
     {id:'lstm',           ad:'LSTM: unutmayı ve hatırlamayı öğrenen ağ',       sure:18, durum:'hazir'},
-    {id:'otokodlayici',   ad:'Otokodlayıcı: etiketsiz veriden öğrenmek',       sure:14, durum:'planli'},
+    {id:'otokodlayici',   ad:'Otokodlayıcı: etiketsiz veriden öğrenmek',       sure:16, durum:'hazir'},
     {id:'hesap-cizge',    ad:'Hesaplama çizgesi: türev nasıl akar',            sure:12, durum:'planli'},
     {id:'mdn',            ad:'Tek cevap yetmediğinde: karışım yoğunluk ağı',   sure:14, durum:'planli'},
     {id:'bayes-ag',       ad:'Bayesçi ağ: ağırlıklara da şüpheyle bakmak',     sure:16, durum:'planli'},
@@ -8750,6 +8750,153 @@ DERSLER['lstm'] = {
       'olsa bile hâlâ adım sayısı kadar uzun bir yol.<br><br>' +
       '<b>Dikkat</b> üçünü birden çözer: yol uzunluğu her mesafe için <b>1</b>, ve hesap ' +
       'paralelleşir. Karşılığında maliyet dizi uzunluğunun <b>karesiyle</b> büyür.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── OTOKODLAYICI ─────────────── */
+DERSLER['otokodlayici'] = {
+  ad:'Otokodlayıcı: etiketsiz veriden temsil öğrenmek',
+  alt:'Ağ kendi girdisini hedef olarak kullanıyor. Dar bir boğazdan geçmek zorunda kaldığı için neyin önemli olduğuna karar vermek zorunda kalıyor.',
+  kaynaklar:[
+    {y:'Hinton, G. E. & Salakhutdinov, R. R.', t:'2006', b:'Reducing the Dimensionality of Data with Neural Networks', n:'Science 313(5786)'},
+    {y:'Baldi, P. & Hornik, K.', t:'1989', b:'Neural Networks and Principal Component Analysis', n:'Neural Networks 2(1)'},
+    {y:'Goodfellow, I., Bengio, Y. & Courville, A.', t:'2016', b:'Deep Learning, Bölüm 14', n:'MIT Press', u:'https://www.deeplearningbook.org/'},
+  ],
+  rota:2,
+  adimlar:[
+  {
+    t:'Etiketsiz öğrenmenin en basit hâli',
+    goal:'Otokodlayıcının hangi soruyu sorduğunu göreceksin.',
+    todo:'Boğaz boyunu artır. Yeniden kurma hatası nasıl değişiyor?',
+    kind:'controls', viz:'otokodlayici', h:770, state:{sahne:'bogaz'},
+    controls:[{k:'ki', lb:'BOĞAZ BOYU', min:0, max:3, step:1, val:0,
+               fmt:v => OK.bogazlar[v] + ' boyut'}],
+    derive:s => ({h: okAe(OK.bogazlar[Math.round(s.ki)], false, 0)}),
+    live:s => [['YENİDEN KURMA HATASI', s.h.toFixed(4), K.green],
+               ['AÇIKLANAN ORAN', (100*(1 - s.h/OK.varyans())).toFixed(1) + '%'],
+               ['HEDEF', 'oranı %85 üstüne çıkar']],
+    unlock:s => (1 - s.h/OK.varyans()) > 0.85,
+    unlockMsg:'Açıklanan oranı %85 üstüne çıkar',
+    body:'<p>Şimdiye kadar her modelin bir etiketi vardı: doğru cevap. Ama etiketli veri ' +
+      'pahalı, etiketsiz veri bol. Etiketsiz veriden bir şey öğrenilebilir mi?</p>' +
+      '<p>Otokodlayıcının cevabı şu: <b>ağın hedefi kendi girdisi olsun</b>. Çıkışın girişe ' +
+      'eşit olmasını isteyelim.</p>' +
+      '<p>Böyle söylenince anlamsız görünüyor: girdiyi olduğu gibi kopyalamak ne öğretir? ' +
+      'İşte bu yüzden araya <b>dar bir boğaz</b> koyuyoruz. 6 boyutlu veri önce k boyuta ' +
+      'iniyor, sonra tekrar 6 boyuta çıkıyor.</p>' +
+      '<p>Boğaz dar olduğu için kopyalama imkânsız. Ağ neyi tutup neyi atacağına karar ' +
+      'vermek zorunda, ve <b>öğrenilen şey o karar</b>.</p>' +
+      '<p>Veri 6 boyutlu ama aslında 2 parametreden üretildi: eğri bir yüzey. Ölçüm bunu ' +
+      'yakalıyor. Boğaz 1 boyutken hata <b>1.6942</b>, 2 boyutta <b>0.7679</b>, ' +
+      '3 boyutta <b>0.3189</b>. Toplam varyans <b>3.3790</b>, yani hiç bir şey yapmasan ' +
+      'hata bu olurdu.</p>',
+    learned:'<b>Otokodlayıcı, etiket yerine girdinin kendisini hedef olarak kullanır.</b><br><br>' +
+      'Dar boğaz kopyalamayı imkânsız kılar, dolayısıyla ağ neyi tutacağına karar vermek ' +
+      'zorunda kalır.<br><br>' +
+      '6 boyutlu veride yeniden kurma hatası: boğaz 1 iken <b>1.6942</b>, 2 iken ' +
+      '<b>0.7679</b>, 3 iken <b>0.3189</b>. Karşılaştırma tabanı toplam varyans: <b>3.3790</b>.',
+    xp:25,
+  },
+  {
+    t:'Doğrusal otokodlayıcı PCA’dır',
+    goal:'Şaşırtıcı bir eşdeğerliği ölçümle göreceksin.',
+    todo:'Boğaz boyunu gezdir. Mavi eğri turuncunun neresinde?',
+    kind:'controls', viz:'otokodlayici', h:770, state:{sahne:'karsilastirma'},
+    controls:[{k:'ki', lb:'BOĞAZ BOYU', min:0, max:3, step:1, val:0,
+               fmt:v => OK.bogazlar[v] + ' boyut'}],
+    live:s => [['PCA', OK.pca(OK.bogazlar[Math.round(s.ki)]).toFixed(4), K.orange],
+               ['DOĞRUSAL AE', okAe(OK.bogazlar[Math.round(s.ki)], true, 0).toFixed(4), K.blue],
+               ['FARK', '%' + (100*OK.fark(OK.bogazlar[Math.round(s.ki)])).toFixed(3)]],
+    body:'<p>Otokodlayıcıdan bütün doğrusal olmayan katmanları çıkaralım. Geriye iki matris ' +
+      'kalıyor: biri sıkıştıran, biri geri açan. Kayıp yine kare hata.</p>' +
+      '<p>Bu ağı gradyan inişiyle eğitip PCA ile karşılaştırdık. PCA tamamen farklı bir ' +
+      'yoldan hesaplanıyor: kovaryans matrisinin özvektörleri, güç yinelemesiyle.</p>' +
+      '<p>Sonuç:</p>' +
+      '<p>boğaz 1: PCA <b>2.1141</b>, AE <b>2.1141</b> · fark <b>%0.000</b><br>' +
+      'boğaz 2: <b>1.3426</b> ve <b>1.3426</b> · fark <b>%0.001</b><br>' +
+      'boğaz 3: <b>0.7845</b> ve <b>0.7857</b> · fark <b>%0.150</b><br>' +
+      'boğaz 4: <b>0.3477</b> ve <b>0.3478</b> · fark <b>%0.005</b></p>' +
+      '<p>Aynı sayılar. Grafikte mavi eğri turuncunun üstüne oturuyor.</p>' +
+      '<p>Bu bir tesadüf değil, bilinen bir teorem: <b>kare hatayla eğitilen doğrusal bir ' +
+      'otokodlayıcı, PCA ile aynı alt uzayı bulur</b>. İkisi de "varyansın en çoğunu tutan ' +
+      'k boyutlu alt uzay" sorusunu çözüyor.</p>' +
+      '<p>Pratik sonucu şu: doğrusal bir otokodlayıcı kurmanın PCA’ya göre hiçbir üstünlüğü ' +
+      'yok. Üstelik PCA kapalı formda ve deterministik, otokodlayıcı ise yinelemeli ' +
+      've başlangıca bağlı.</p>',
+    learned:'<b>Kare hatayla eğitilen doğrusal otokodlayıcı PCA ile aynı alt uzayı bulur.</b><br><br>' +
+      'Dört boğaz boyunda da hatalar örtüşüyor, en büyük fark <b>%0.150</b> ve o da ' +
+      'gradyan inişinin tam yakınsamamış olmasından.<br><br>' +
+      'Yani otokodlayıcının kazancı "sinir ağı olmasından" gelmiyor. ' +
+      'Kazanç nereden geliyorsa, orada olmalı.',
+    xp:50,
+  },
+  {
+    t:'Kazanç doğrusal olmayan katmanlardan geliyor',
+    goal:'Eğri bir yüzeyi doğrusal bir alt uzayla temsil etmenin bedelini ölçeceksin.',
+    todo:'Boğazı 3’e getir. Yeşil eğri turuncudan ne kadar aşağıda?',
+    kind:'controls', viz:'otokodlayici', h:770, state:{sahne:'karsilastirma'},
+    controls:[{k:'ki', lb:'BOĞAZ BOYU', min:0, max:3, step:1, val:0,
+               fmt:v => OK.bogazlar[v] + ' boyut'}],
+    derive:s => { const q = OK.bogazlar[Math.round(s.ki)];
+      return {kz: 1 - okAe(q, false, 0)/OK.pca(q)}; },
+    live:s => [['PCA YA GÖRE KAZANÇ', (100*s.kz).toFixed(1) + '%', K.green],
+               ['HEDEF', 'kazancı %50 üstüne çıkar']],
+    unlock:s => s.kz > 0.5,
+    unlockMsg:'PCA’ya göre kazancı %50 üstüne çıkar',
+    body:'<p>Şimdi kodlayıcıya ve çözücüye birer tanh katmanı ekliyoruz. Boğaz aynı, ' +
+      'veri aynı, adım sayısı aynı.</p>' +
+      '<p>PCA’ya göre kazanç:</p>' +
+      '<p>boğaz 1: <b>%19.9</b> &nbsp;·&nbsp; boğaz 2: <b>%42.8</b> &nbsp;·&nbsp; ' +
+      'boğaz 3: <b>%59.4</b> &nbsp;·&nbsp; boğaz 4: <b>%16.1</b></p>' +
+      '<p>En büyük kazanç boğaz 3’te: hata <b>0.7845</b>’ten <b>0.3189</b>’a iniyor.</p>' +
+      '<p>Sebebi verinin nasıl üretildiğinde: iki parametreden, ama <b>eğri</b> bir ' +
+      'dönüşümle. Veri 6 boyutlu uzayda düz bir düzlem üstünde değil, kıvrılmış bir yüzey ' +
+      'üstünde duruyor.</p>' +
+      '<p>PCA sadece düz alt uzaylar bulabilir. Kıvrılmış bir yüzeyi düz bir düzlemle ' +
+      'örtmeye çalışmak zorunda ve fark, o kıvrımın bedeli.</p>' +
+      '<p>Boğaz 4’te kazancın düşmesi de anlamlı: yeterince boyut verince düz alt uzay ' +
+      'da yüzeyi iyi örtmeye başlıyor, dolayısıyla eğrilikten kazanılacak şey azalıyor.</p>',
+    learned:'<b>Otokodlayıcının PCA’ya üstünlüğü doğrusal olmayan katmanlardan gelir.</b><br><br>' +
+      'Aynı boğazda PCA’ya göre kazanç: 1 boyutta <b>%19.9</b>, 2’de <b>%42.8</b>, ' +
+      '3’te <b>%59.4</b>, 4’te <b>%16.1</b>.<br><br>' +
+      'Veri eğri bir yüzey üstünde duruyor ve PCA sadece düz alt uzay bulabiliyor. ' +
+      'Boğaz genişledikçe kazanç azalıyor, çünkü düz uzay da yeterli hâle geliyor.',
+    xp:50,
+  },
+  {
+    t:'Düşük hata, iyi temsil demek değil',
+    goal:'Yeniden kurma hatasının neden tek başına bir ölçüt olmadığını göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'otokodlayici', h:770, state:{sahne:'karsilastirma', ki:3},
+    body:'<p>Buraya kadar hep hatayı düşürmeye çalıştık. Peki en düşük hatayı nasıl ' +
+      'alırdık?</p>' +
+      '<p>Boğazı girdiyle aynı boyuta, yani 6’ya açarak. O zaman ağ kimlik fonksiyonunu ' +
+      'öğrenebilir ve hata <b>sıfıra</b> iner.</p>' +
+      '<p>Ve öğrendiği şey <b>hiçbir şey</b> olur. Girdiyi olduğu gibi geçiren bir temsil, ' +
+      'girdinin kendisidir. Sıkıştırma yoksa karar da yoktur.</p>' +
+      '<p>Buradaki ders genel: <b>yeniden kurma hatası bir amaç değil, bir baskıdır</b>. ' +
+      'Değerli olan hatanın düşük olması değil, ağın onu düşürmek için <b>bir şeyden ' +
+      'vazgeçmek zorunda kalması</b>.</p>' +
+      '<p>Bu yüzden pratikte kullanılan varyantların hepsi ek bir kısıt koyar. ' +
+      '<b>Gürültü gidermeli</b> otokodlayıcıda girdi bozulur ve temiz hâli istenir, ' +
+      'böylece kopyalama işe yaramaz. <b>Seyrek</b> otokodlayıcıda boğazdaki birimlerin ' +
+      'çoğunun sıfır olması zorlanır. <b>Değişimsel</b> otokodlayıcıda boğaz bir dağılım ' +
+      'olmaya zorlanır.</p>' +
+      '<p>Üçünün de amacı aynı: kolay çözümü kapatmak. Kısıt olmadan otokodlayıcı ' +
+      'her zaman en tembel çözümü bulur.</p>',
+    quiz:{ q:'Sensör verisinden anomali tespiti için otokodlayıcı kuruyorsun. Boğaz 64 boyut, girdi 60 boyut. Eğitimde yeniden kurma hatası neredeyse sıfıra iniyor ama model hiçbir anomaliyi yakalamıyor. Neden?',
+      opts:[
+        {t:'Boğaz girdiden geniş olduğu için ağ kimliği öğrenmiş: her şeyi, anomaliler dahil, kusursuz geri kuruyor', why:'Doğru. Anomali tespiti otokodlayıcının normal veriyi iyi, anormal veriyi kötü kurmasına dayanır. Bu ayrım ancak boğaz bir şeyden vazgeçmeye zorladığında oluşur. 60 boyutu 64 boyuta geçirmek hiçbir kısıt getirmez ve bu derste anlatıldığı gibi sıfır hata bu durumda öğrenmenin değil, öğrenmemenin işaretidir. Boğazı belirgin biçimde daraltmak gerekir.'},
+        {t:'Daha uzun eğitmek gerekir', why:'Hata zaten neredeyse sıfır, yani optimizasyon başarılı. Sorun modelin hedefe ulaşamaması değil, hedefin yanlış olması: kimlik fonksiyonu bu kaybı mükemmel çözer ve hiçbir şey öğretmez.'},
+        {t:'Daha derin bir ağ kullanmak gerekir', region:'', why:'Derinlik kapasiteyi artırır, yani kimliği daha da kolay öğrenmesini sağlar. Sorunu büyütür. Eksik olan kapasite değil kısıt.'},
+        {t:'Kayıp fonksiyonunu kare hatadan mutlak hataya çevirmek gerekir', why:'Kayıp fonksiyonunun biçimi burada belirleyici değil. Kimlik fonksiyonu hangi yeniden kurma kaybını kullanırsan kullan sıfır verir; sorun kaybın türünde değil, boğazın darlığında.'},
+      ], correct:0 },
+    learned:'<b>Yeniden kurma hatası bir amaç değil, bir baskıdır.</b><br><br>' +
+      'Boğaz girdi kadar genişse ağ kimliği öğrenir, hata sıfıra iner ve temsil ' +
+      '<b>hiçbir şey</b> öğretmez.<br><br>' +
+      'Bu yüzden pratikteki varyantların hepsi ek bir kısıt koyar: gürültü gidermeli, ' +
+      'seyrek ve değişimsel otokodlayıcılar. Hepsinin amacı <b>kolay çözümü kapatmak</b>.',
     xp:50,
   },
 ]};

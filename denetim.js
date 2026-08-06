@@ -1698,6 +1698,73 @@ console.log('═══ LSTM · KAPILAR VE HÜCRE ═══');
         LS.hassasiyet(16, 'lstm', 1) > 0.01);
 }
 
+console.log('═══ OTOKODLAYICI ═══');
+{
+  /* once kararlilik */
+  {
+    let enBuyuk = 0;
+    for (const k of OK.bogazlar){
+      enBuyuk = Math.max(enBuyuk, OK.hassasiyet(k, true));
+      enBuyuk = Math.max(enBuyuk, OK.hassasiyet(k, false)); }
+    iddia('bütün otokodlayıcı koşuları 1e-12 bozulmaya kararlı', true, enBuyuk < 1e-9);
+  }
+  iddia('toplam varyans', 3.3790, OK.varyans(), 4);
+  iddia('veri boyutu', 6, OK.D, 0);
+  /* veri gercekten merkezlenmis mi · PCA nin gecerliligi buna bagli */
+  {
+    let enBuyuk = 0;
+    for (let j = 0; j < OK.D; j++){
+      const m = OK.veri.reduce((s, x) => s + x[j], 0) / OK.N;
+      enBuyuk = Math.max(enBuyuk, Math.abs(m)); }
+    iddia('veri her boyutta merkezlenmiş', 0, enBuyuk, 12);
+  }
+  /* PCA hatasi bogazla tekduze azaliyor · ve k=D de sifira gitmeli */
+  {
+    let ihlal = 0;
+    for (let i = 1; i < OK.bogazlar.length; i++)
+      if (OK.pca(OK.bogazlar[i]) >= OK.pca(OK.bogazlar[i-1])) ihlal++;
+    iddia('PCA hatası boğazla tekdüze azalıyor', 0, ihlal, 0);
+    iddia('boğaz veri boyutuna eşitken PCA hatası sıfır', 0, OK.pca(6), 9);
+  }
+  /* DOGRUSAL AE = PCA · dersin cekirdek iddiasi */
+  iddia('boğaz 1 · PCA', 2.1141, OK.pca(1), 4);
+  iddia('boğaz 1 · doğrusal AE', 2.1141, okAe(1, true, 0), 4);
+  iddia('boğaz 2 · PCA', 1.3426, OK.pca(2), 4);
+  iddia('boğaz 2 · doğrusal AE', 1.3426, okAe(2, true, 0), 4);
+  iddia('boğaz 3 · PCA', 0.7845, OK.pca(3), 4);
+  iddia('boğaz 4 · PCA', 0.3477, OK.pca(4), 4);
+  iddia('boğaz 1 · AE-PCA bağıl farkı (%)', 0.000, 100*OK.fark(1), 3);
+  iddia('boğaz 3 · AE-PCA bağıl farkı (%)', 0.150, 100*OK.fark(3), 3);
+  {
+    const enBuyuk = Math.max(...OK.bogazlar.map(OK.fark));
+    iddia('en büyük AE-PCA farkı (%)', 0.150, 100*enBuyuk, 3);
+    iddia('doğrusal AE her boğazda PCA ile örtüşüyor', true, enBuyuk < 0.002);
+  }
+  /* dogrusal AE PCA dan daha iyi OLAMAZ · teorik alt sinir */
+  {
+    let ihlal = 0;
+    for (const k of OK.bogazlar) if (okAe(k, true, 0) < OK.pca(k) - 1e-9) ihlal++;
+    iddia('doğrusal AE hiçbir boğazda PCA nın altına inemiyor', 0, ihlal, 0);
+  }
+  /* DOGRUSAL OLMAYAN kazanci */
+  iddia('boğaz 1 · doğrusal olmayan AE', 1.6942, okAe(1, false, 0), 4);
+  iddia('boğaz 2 · doğrusal olmayan AE', 0.7679, okAe(2, false, 0), 4);
+  iddia('boğaz 3 · doğrusal olmayan AE', 0.3189, okAe(3, false, 0), 4);
+  iddia('boğaz 4 · doğrusal olmayan AE', 0.2918, okAe(4, false, 0), 4);
+  iddia('boğaz 1 kazancı (%)', 19.9, 100*(1 - okAe(1,false,0)/OK.pca(1)), 1);
+  iddia('boğaz 2 kazancı (%)', 42.8, 100*(1 - okAe(2,false,0)/OK.pca(2)), 1);
+  iddia('boğaz 3 kazancı (%)', 59.4, 100*(1 - okAe(3,false,0)/OK.pca(3)), 1);
+  iddia('boğaz 4 kazancı (%)', 16.1, 100*(1 - okAe(4,false,0)/OK.pca(4)), 1);
+  iddia('doğrusal olmayan AE her boğazda PCA yı geçiyor', true,
+        OK.bogazlar.every(k => okAe(k, false, 0) < OK.pca(k)));
+  iddia('en büyük kazanç boğaz 3 te', 3,
+        OK.bogazlar.reduce((en, k) =>
+          (1 - okAe(k,false,0)/OK.pca(k)) > (1 - okAe(en,false,0)/OK.pca(en)) ? k : en, 1), 0);
+  /* bogaz genisledikce kazanc azaliyor · dersin son gozlemi */
+  iddia('boğaz 4 te kazanç boğaz 3 tekinden az', true,
+        (1 - okAe(4,false,0)/OK.pca(4)) < (1 - okAe(3,false,0)/OK.pca(3)));
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
