@@ -22,7 +22,7 @@ const ROTALAR = [
     {id:'mat-matris',     ad:'Matrisler: yapay zekânın gizli iskeleti',        sure:15, durum:'hazir'},
     {id:'mat-olasilik',   ad:'Olasılık: modelin belirsizlikle dansı',          sure:16, durum:'hazir'},
     {id:'neden-simdi',    ad:'Neden şimdi patladı: veri, hesap, algoritma',    sure:16, durum:'hazir'},
-    {id:'arama-uzayi',    ad:'Arama uzayı: problemi düğüm ve kenara çevirmek',  sure:12, durum:'planli'},
+    {id:'arama-uzayi',    ad:'Arama uzayı: problemi düğüm ve kenara çevirmek',  sure:15, durum:'hazir'},
     {id:'kombinatorik',   ad:'Kombinatorik patlama: kaba kuvvet neden çöker',  sure:10, durum:'planli'},
   ],
 },
@@ -7595,6 +7595,133 @@ DERSLER['neden-simdi'] = {
       'Sınırı da ölçtük: 300 turdan sonra hata <b>0.0144</b>’te duruyor. Orası gürültü tabanı ' +
       've hiçbir kaldıraç oraya dokunamaz. <b>Hangi kaldıracın baskın olduğu probleme göre ' +
       'değişir ve ölçmeden bilinmez.</b>',
+    xp:50,
+  },
+]};
+
+/* ─────────────── ARAMA UZAYI ─────────────── */
+DERSLER['arama-uzayi'] = {
+  ad:'Arama uzayı: problemi düğüm ve kenara çevirmek',
+  alt:'Bir bulmacayı bilgisayara anlatmanın yolu, onu durumlar ve geçişler olarak yazmaktır. Bu yazım biçimi problemin zorluğunu da belirler.',
+  kaynaklar:[
+    {y:'Russell, S. & Norvig, P.', t:'2020', b:'Artificial Intelligence: A Modern Approach, 4. baskı, Bölüm 3', n:'Pearson'},
+    {y:'Cormen, T. H. ve ark.', t:'2022', b:'Introduction to Algorithms, 4. baskı, Bölüm 20', n:'MIT Press'},
+    {y:'Newell, A. & Simon, H. A.', t:'1972', b:'Human Problem Solving', n:'Prentice Hall'},
+  ],
+  rota:0,
+  adimlar:[
+  {
+    t:'Durumlar ve geçişler',
+    goal:'Bir bulmacanın nasıl bir grafiğe dönüştüğünü göreceksin.',
+    todo:'Grafiğe bak. 24 nokta var ama kaçı dolu?',
+    kind:'static', viz:'aramaUzayi', h:770, state:{A:5, B:3, hedef:4},
+    body:'<p>Elinde iki kap var: biri <b>5 litre</b>, biri <b>3 litre</b>. Üzerlerinde ölçek yok. ' +
+      'Tam <b>4 litre</b> su ölçmen gerekiyor.</p>' +
+      '<p>Bunu bilgisayara anlatmanın yolu üç parçadan geçer:</p>' +
+      '<p><b>Durum:</b> iki kapta kaçar litre olduğu, yani (a, b) çifti<br>' +
+      '<b>Başlangıç:</b> (0, 0), ikisi de boş<br>' +
+      '<b>Geçişler:</b> altı hamle var. Kabı doldur, boşalt ya da birinden diğerine dök.</p>' +
+      '<p>Bu kadarı problemi bir <b>grafiğe</b> çevirir. Her durum bir düğüm, her hamle bir kenar. ' +
+      'Soldaki resim tam olarak bu grafik: yatay eksen A kabındaki litre, dikey eksen B kabındaki.</p>' +
+      '<p>Toplam <b>24</b> nokta var (6 × 4). Ama içi dolu olanları say: sadece <b>16</b>. ' +
+      'Sekiz durum (0,0)’dan asla ulaşılamıyor.</p>' +
+      '<p>Neden: bir hamle sonrası kaplardan en az biri ya tamamen dolu ya tamamen boş olmak ' +
+      'zorunda. (2, 1) gibi bir durum bu yüzden hiç oluşmuyor. Ulaşılamayan sekiz durumun ' +
+      'hepsinde ikinci kapta 1 veya 2 litre var ve birinci kap ne dolu ne boş.</p>' +
+      '<p>Bu önemli bir fark: <b>olası durum</b> ile <b>ulaşılabilir durum</b> aynı şey değil.</p>',
+    learned:'<b>Bir problemi durum ve geçiş olarak yazmak, onu grafiğe çevirmektir.</b><br><br>' +
+      'Su kabı probleminde <b>24</b> olası durumdan sadece <b>16</b> tanesine ulaşılabiliyor. ' +
+      'Kalan 8 durum kuralların izin verdiği bir şekilde oluşamıyor.<br><br>' +
+      'Arama uzayı, kutunun içindeki tüm kombinasyonlar değil, <b>başlangıçtan gidilebilecek ' +
+      'yerlerin</b> kümesidir.',
+    xp:25,
+  },
+  {
+    t:'En kısa çözümü bulmak',
+    goal:'Genişlik öncelikli aramanın neden en kısa yolu garantilediğini göreceksin.',
+    todo:'Yeşil yolu takip et. Çözüm adımlarını sağdaki listeden oku.',
+    kind:'static', viz:'aramaUzayi', h:770, state:{A:5, B:3, hedef:4},
+    body:'<p>Grafiği kurduktan sonra soru sadeleşiyor: (0,0) düğümünden, içinde 4 olan bir ' +
+      'düğüme giden en kısa yol nedir?</p>' +
+      '<p><b>Genişlik öncelikli arama</b> bunu şöyle çözer: önce bir hamlelik bütün durumlara ' +
+      'bak, sonra iki hamleliklere, sonra üçe. Hedefi ilk gördüğün anda durursun.</p>' +
+      '<p>Neden bu en kısa yolu garantiler: hedefi d. katmanda bulduysan, d&minus;1 katmanının ' +
+      'tamamını zaten taramışsın ve orada yoktu. Daha kısa bir yol olsaydı onu daha önce ' +
+      'görecektin.</p>' +
+      '<p>Sonuç <b>6 adım</b>. Yeşil çizgi bu yolu gösteriyor ve sağdaki listede hamleler yazılı.</p>' +
+      '<p>Açılan düğüm sayısı <b>16</b>. Yani ulaşılabilir bütün durumları görmüş oluyoruz. ' +
+      'Uzay küçük olduğu için burada bu bir sorun değil.</p>' +
+      '<p>A*/Dijkstra dersinde aynı fikrin, kenarların maliyeti farklı olduğunda nasıl ' +
+      'değiştiğini göreceksin. Burada her hamle eşit maliyetli olduğu için genişlik öncelikli ' +
+      'arama zaten en iyisi.</p>',
+    learned:'<b>Genişlik öncelikli arama, eşit maliyetli hamlelerde en kısa yolu garantiler.</b><br><br>' +
+      'Sebep katman katman ilerlemesi: hedefi d. adımda bulduysan, daha kısası olsaydı ' +
+      'zaten daha önce görülürdü.<br><br>' +
+      'Su kabı probleminde çözüm <b>6 adım</b> ve arama <b>16 düğüm</b> açıyor.',
+    xp:50,
+  },
+  {
+    t:'Aynı durumu iki kere görmemek',
+    goal:'Tek bir küçük defterin arama maliyetini nasıl bin kat düşürdüğünü ölçeceksin.',
+    todo:'Ziyaret kümesini kapat. Açılan düğüm sayısına bak.',
+    kind:'controls', viz:'aramaUzayi', h:770, state:{A:5, B:3, hedef:4},
+    controls:[{k:'ziyaretsiz', lb:'ZİYARET KÜMESİ', min:0, max:1, step:1, val:0,
+               fmt:v => v ? 'kapalı' : 'açık'}],
+    derive:s => { const R = auBfs(5, 3, 4);
+      return {ac: s.ziyaretsiz ? auZiyaretsiz(5, 3, 4, R.yol.length).acilan : R.acilan}; },
+    live:s => [['AÇILAN DÜĞÜM', s.ac.toLocaleString('tr-TR'), s.ziyaretsiz ? K.red : K.green],
+               ['HEDEF', '10.000 üstünü gör']],
+    unlock:s => s.ac > 10000,
+    unlockMsg:'Ziyaret kümesini kapatıp açılan düğüm sayısını 10.000 üstüne çıkar',
+    body:'<p>Arama sırasında aynı duruma birden çok yoldan varabilirsin. A’yı doldurup ' +
+      'boşaltmak seni başladığın yere geri getirir.</p>' +
+      '<p>Ziyaret kümesi, görülen durumları bir kenara not eden basit bir defterdir. ' +
+      'Bir durumu ikinci kez gördüğünde onu tekrar açmazsın.</p>' +
+      '<p>Kaydırıcıyla bu defteri kapat ve sayıya bak:</p>' +
+      '<p><b>ziyaret kümesiyle: 16 düğüm</b><br><b>ziyaret kümesi olmadan: 15.312 düğüm</b></p>' +
+      '<p>Aynı problem, aynı 6 adımlık çözüm, <b>957 kat</b> daha fazla iş.</p>' +
+      '<p>Sebep şu: defter olmadan arama bir <b>ağaç</b> gezer, defterle bir <b>grafik</b> gezer. ' +
+      'Altı hamle olduğu için ağacın 6. derinliğe kadar büyüklüğü 6⁰+6¹+...+6⁶ = <b>55.987</b> ' +
+      'düğüme kadar çıkabilir. Oysa grafik hiçbir zaman <b>24</b> düğümü geçemez, çünkü ' +
+      'o kadar durum var.</p>' +
+      '<p>Fark derinlikle katlanarak açılıyor: ağaç üstel büyür, grafik büyüyemez. ' +
+      'Kısıt tatmin dersindeki budama fikrinin en basit hâli budur.</p>',
+    learned:'<b>Görülen durumları not etmek, üstel bir aramayı sonlu bir aramaya çevirir.</b><br><br>' +
+      'Defterle <b>16</b> düğüm, defter olmadan <b>15.312</b>. Aynı çözüm için <b>957 kat</b> iş.<br><br>' +
+      'Defter olmadan arama bir ağaç gezer ve ağaç derinlikle üstel büyür. ' +
+      'Defterle grafik gezilir ve grafik <b>en fazla durum sayısı kadardır</b>.',
+    xp:50,
+  },
+  {
+    t:'Ya cevap uzayda yoksa',
+    goal:'Arama algoritmasının çözemeyeceği bir problemi nasıl tanıyacağını göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'aramaUzayi', h:770, state:{A:6, B:3, hedef:4},
+    body:'<p>Şimdi kapları değiştirdik: <b>6 litre</b> ve <b>3 litre</b>. Hedef yine 4 litre.</p>' +
+      '<p>Grafiğe bak. Ulaşılabilir durum sayısı <b>16</b>’dan <b>6</b>’ya düştü ve içlerinde ' +
+      '4 litre içeren hiçbir durum yok.</p>' +
+      '<p>Bu bir arama başarısızlığı değil. Ne kadar akıllı bir algoritma yazarsan yaz, ' +
+      'olmayan bir düğümü bulamazsın.</p>' +
+      '<p>Sebebi aritmetik: her hamleden sonra kaplardaki su miktarı, 6 ve 3’ün <b>EBOB</b>’unun ' +
+      'yani <b>3</b>’ün katı olmak zorunda. 4 sayısı 3’e bölünmüyor. Dolayısıyla erişilebilir ' +
+      'durumlarda 4 litre <b>hiç yok</b>.</p>' +
+      '<p>5 ve 3 kaplarında ise EBOB <b>1</b>’dir ve 1 her sayıyı böler. Bu yüzden orada ' +
+      'sadece 4 değil, 0 ile 5 arasındaki her miktar ölçülebilir.</p>' +
+      '<p>Buradan çıkan pratik ders: arama uzayını kurduktan sonra sorulacak ilk soru ' +
+      '"hangi algoritmayı kullanayım" değil, <b>"cevap bu uzayda var mı"</b>. ' +
+      'İkincisi çoğu zaman daha ucuza cevaplanır.</p>',
+    quiz:{ q:'Bir depo robotu için yol planlaması yazıyorsun. Robot dört yöne gidebiliyor ve raflar arasında dolaşıyor. Arama kodun çalışıyor ama bazı hedeflerde saatlerce dönüp sonuç vermiyor. İlk neye bakarsın?',
+      opts:[
+        {t:'Ziyaret edilen hücreleri not edip etmediğime, çünkü not tutmayan arama aynı yerleri tekrar tekrar gezer', why:'Doğru. Bu dersteki ölçüm tam olarak bu: ziyaret kümesi olmadan aynı 6 adımlık çözüm 16 yerine 15.312 düğüm açtırdı, 957 kat. Izgara üzerinde dört yön varken not tutmayan arama 4 üzeri derinlik kadar düğüm üretir ve hiç bitmeyebilir; oysa hücre sayısı sabittir. Sonsuza dönmenin en yaygın sebebi budur ve düzeltmesi birkaç satırdır.'},
+        {t:'Daha hızlı bir arama algoritmasına geçmeye', why:'Algoritmayı değiştirmek, aynı durumları tekrar tekrar açma sorununu çözmez. Not tutmayan bir A* de aynı döngüye girer. Önce arama grafik mi ağaç mı geziyor, ona bakmak gerekir.'},
+        {t:'Hedefe gerçekten ulaşılabilir olup olmadığına', why:'Bu iyi bir ikinci soru ve bu dersin son adımı tam olarak bunu anlatıyor. Ama belirti "sonuç vermiyor" değil "saatlerce dönüyor": ulaşılamaz bir hedefte sonlu bir arama hızla tükenir ve başarısızlık döndürür. Bitmeyen çalışma önce tekrar ziyareti düşündürür.'},
+        {t:'Robotun sensör verilerinin doğruluğuna', why:'Arama kodu verilen haritayı gezerken saatlerce dönüyorsa sorun algoritmanın kendisindedir. Sensör hatası yanlış bir yol üretir, sonu gelmeyen bir arama değil.'},
+      ], correct:0 },
+    learned:'<b>Arama uzayında olmayan bir cevabı hiçbir algoritma bulamaz.</b><br><br>' +
+      '6 ve 3 litrelik kaplarla ulaşılabilir durum sayısı <b>6</b> ve hiçbirinde 4 litre yok, ' +
+      'çünkü EBOB <b>3</b> ve 4 sayısı 3’e bölünmüyor.<br><br>' +
+      '5 ve 3 kaplarında EBOB <b>1</b> olduğu için her miktar ölçülebiliyor. ' +
+      'İlk sorulacak soru hangi algoritma değil, <b>cevabın uzayda olup olmadığıdır</b>.',
     xp:50,
   },
 ]};

@@ -1101,6 +1101,79 @@ console.log('═══ NEDEN ŞİMDİ · ÜÇ KALDIRAÇ ═══');
   iddia('polinom özellik sayısı', 10, NS.oz(1)([1, 1]).length, 0);
 }
 
+console.log('═══ ARAMA UZAYI (SU KABI) ═══');
+{
+  const R = auBfs(5, 3, 4);
+  iddia('olası durum sayısı', 24, R.toplam, 0);
+  iddia('ulaşılabilir durum sayısı', 16, R.ulasilan.size, 0);
+  iddia('ulaşılamayan durum sayısı', 8, R.toplam - R.ulasilan.size, 0);
+  /* ulasilamayan sekiz durumun hepsinde B de 1 ya da 2 var ve A ne dolu ne bos */
+  {
+    let uymayan = 0, sayilan = 0;
+    for (let a = 0; a <= 5; a++) for (let b = 0; b <= 3; b++)
+      if (!R.ulasilan.has(a + ',' + b)){ sayilan++;
+        if (!((b === 1 || b === 2) && a > 0 && a < 5)) uymayan++; }
+    iddia('sayılan ulaşılamaz durum', 8, sayilan, 0);
+    iddia('hepsinde B de 1-2 litre ve A ne dolu ne boş', 0, uymayan, 0);
+  }
+  /* cozum */
+  iddia('en kısa çözüm uzunluğu', 6, R.yol.length, 0);
+  iddia('çözümün vardığı durum A da 4 litre', 4, R.hedefDurum[0], 0);
+  /* cozum yolu gercekten gecerli mi · adim adim bagimsiz dogrulama */
+  {
+    const G = AU.gecisler(5, 3);
+    let s2 = [0, 0], ihlal = 0;
+    for (const a of R.yol){
+      s2 = G[a.gecis](s2);
+      if (s2[0] !== a.durum[0] || s2[1] !== a.durum[1]) ihlal++;
+      if (s2[0] < 0 || s2[0] > 5 || s2[1] < 0 || s2[1] > 3) ihlal++;
+    }
+    iddia('çözüm adımları kurallara uyuyor', 0, ihlal, 0);
+    iddia('son durumda 4 litre var', true, s2[0] === 4 || s2[1] === 4);
+  }
+  /* ziyaret kumesi · dersin asil olcumu */
+  iddia('açılan düğüm (ziyaret kümesiyle)', 16, R.acilan, 0);
+  iddia('açılan düğüm (ziyaret kümesi yok)', 15312, auZiyaretsiz(5, 3, 4, R.yol.length).acilan, 0);
+  iddia('kaç kat fark', 957, auZiyaretsiz(5, 3, 4, R.yol.length).acilan / R.acilan, 0);
+  iddia('defter olmadan da aynı derinlikte bulunuyor', 6,
+        auZiyaretsiz(5, 3, 4, R.yol.length).bulunan, 0);
+  /* agac ust siniri · 6 dallanma, 6 derinlik */
+  iddia('6 dallanma 6 derinlik ağaç sınırı', 55987, AU.agacSinir(6, 6), 0);
+  iddia('ziyaretsiz arama ağaç sınırının altında kalıyor', true,
+        auZiyaretsiz(5, 3, 4, 6).acilan < AU.agacSinir(6, 6));
+  iddia('ziyaret kümeli arama durum sayısını aşamaz', true, R.acilan <= R.toplam);
+  /* 6L/3L: cozum uzayda yok */
+  {
+    const R2 = auBfs(6, 3, 4);
+    iddia('6L-3L ulaşılabilir durum', 6, R2.ulasilan.size, 0);
+    iddia('6L-3L de 4 litre bulunamıyor', null, R2.hedefDurum, 0);
+    iddia('6 ve 3 ün EBOB u', 3, AU.ebob(6, 3), 0);
+    iddia('4 sayısı 3 e bölünmüyor', 1, 4 % AU.ebob(6, 3), 0);
+    /* ulasilabilir her durumda su miktari EBOB un kati mi */
+    let ihlal = 0;
+    R2.ulasilan.forEach(k => { const [a, b] = k.split(',').map(Number);
+      if (a % 3 !== 0 || b % 3 !== 0) ihlal++; });
+    iddia('6L-3L de her durumda miktarlar EBOB un katı', 0, ihlal, 0);
+  }
+  /* 5L/3L: EBOB 1 oldugu icin her miktar olculebilir · hepsini sina */
+  {
+    iddia('5 ve 3 ün EBOB u', 1, AU.ebob(5, 3), 0);
+    let bulunamayan = 0;
+    for (let h = 0; h <= 5; h++) if (!auBfs(5, 3, h).hedefDurum) bulunamayan++;
+    iddia('5L-3L ile 0..5 arası her miktar ölçülebiliyor', 0, bulunamayan, 0);
+  }
+  /* EBOB kurali baska kap ciftlerinde de tutuyor mu */
+  {
+    let ihlal = 0;
+    for (const [x, y] of [[5,3],[6,3],[4,3],[8,6],[7,3],[6,4],[9,6],[10,4]]){
+      const olur = auBfs(x, y, 4).hedefDurum !== null;
+      const beklenen = 4 % AU.ebob(x, y) === 0 && 4 <= Math.max(x, y);
+      if (olur !== beklenen) ihlal++;
+    }
+    iddia('EBOB kuralı sekiz kap çiftinin hepsinde tutuyor', 0, ihlal, 0);
+  }
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

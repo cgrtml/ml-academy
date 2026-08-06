@@ -3453,6 +3453,153 @@ VIZ.ucKaldirac = s => {
   satir(706, 'ÜÇÜ BİRDEN', NS.kazanc(2, 400, 2000).toFixed(1) + '×', K.green);
 };
 
+
+/* ═══════════ ARAMA UZAYI · DURUM VE GEÇİŞ ═══════════
+   Su kabı problemi: iki kapla tam bir miktar ölçmek.
+   Problemi durum ve geçiş olarak yazınca arama uzayı kendiliğinden ortaya çıkıyor. */
+const AU = {};
+AU.gecisAd = ['A yı doldur', 'B yi doldur', 'A yı boşalt', 'B yi boşalt',
+              'A dan B ye dök', 'B den A ya dök'];
+AU.gecisler = (A, B) => [
+  ([a, b]) => [A, b],
+  ([a, b]) => [a, B],
+  ([a, b]) => [0, b],
+  ([a, b]) => [a, 0],
+  ([a, b]) => { const d = Math.min(a, B - b); return [a - d, b + d]; },
+  ([a, b]) => { const d = Math.min(b, A - a); return [a + d, b - d]; },
+];
+AU.anah = s => s[0] + ',' + s[1];
+const _auCache = {};
+/* ziyaret kumesiyle genislik once arama · hem cozum hem ulasilabilir kume */
+function auBfs(A, B, hedefL){
+  const k = 'b' + A + ':' + B + ':' + hedefL;
+  if (_auCache[k]) return _auCache[k];
+  const G = AU.gecisler(A, B), bas = [0, 0];
+  const kuyruk = [bas], gor = new Set([AU.anah(bas)]);
+  const ata = { [AU.anah(bas)]: null }, kenar = [];
+  let acilan = 0, hedefDurum = null;
+  while (kuyruk.length){
+    const d = kuyruk.shift(); acilan++;
+    if (hedefDurum === null && (d[0] === hedefL || d[1] === hedefL)) hedefDurum = d;
+    G.forEach((f, gi) => {
+      const y = f(d);
+      if (AU.anah(y) !== AU.anah(d)) kenar.push([d, y, gi]);
+      if (!gor.has(AU.anah(y))){ gor.add(AU.anah(y));
+        ata[AU.anah(y)] = [d, gi]; kuyruk.push(y); }
+    });
+  }
+  /* hedefe giden yolu geri sar */
+  const yol = [];
+  if (hedefDurum){ let cur = AU.anah(hedefDurum);
+    while (ata[cur]){ const [onceki, gi] = ata[cur];
+      yol.unshift({ durum: cur.split(',').map(Number), gecis: gi, onceki });
+      cur = AU.anah(onceki); } }
+  const R = { acilan, ulasilan: gor, yol, hedefDurum, kenar,
+              toplam: (A + 1) * (B + 1) };
+  return (_auCache[k] = R);
+}
+/* ziyaret kumesi OLMADAN ayni aramayi yap · kac dugum aciliyor */
+function auZiyaretsiz(A, B, hedefL, maxD){
+  const k = 'z' + A + ':' + B + ':' + hedefL + ':' + maxD;
+  if (_auCache[k] !== undefined) return _auCache[k];
+  const G = AU.gecisler(A, B);
+  let kuyruk = [[[0, 0], 0]], acilan = 0, bulunan = null;
+  while (kuyruk.length){
+    const [d, dr] = kuyruk.shift(); acilan++;
+    if (d[0] === hedefL || d[1] === hedefL){ bulunan = dr; break; }
+    if (dr >= maxD) continue;
+    for (const f of G) kuyruk.push([f(d), dr + 1]);
+  }
+  return (_auCache[k] = { acilan, bulunan });
+}
+AU.ebob = (p, q) => q ? AU.ebob(q, p % q) : p;
+/* dallanma carpani b ve derinlik d icin agac ust siniri */
+AU.agacSinir = (b, d) => { let t = 0; for (let k = 0; k <= d; k++) t += Math.pow(b, k); return t; };
+
+VIZ.aramaUzayi = s => {
+  clear();
+  const A = s.A === undefined ? 5 : s.A, B = s.B === undefined ? 3 : s.B;
+  const hedefL = s.hedef === undefined ? 4 : s.hedef;
+  const R = auBfs(A, B, hedefL);
+  const ziyaretsiz = s.ziyaretsiz ? 1 : 0;
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 26);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+  baslikSerit('ARAMA UZAYI · DURUM VE GEÇİŞ',
+    A + ' litrelik ve ' + B + ' litrelik kapla tam ' + hedefL + ' litre ölçmek.', []);
+
+  /* sol: durum grafigi · yatay a, dikey b */
+  const gx = 150, gy = 210, gw = 560, gh = 330;
+  const sx = a => gx + (A === 0 ? 0 : a / A) * gw;
+  const sy = b => gy + gh - (B === 0 ? 0 : b / B) * gh;
+  /* kenarlar */
+  cx.strokeStyle = 'rgba(120,200,255,.16)'; cx.lineWidth = 1.4;
+  R.kenar.forEach(([d, y2]) => {
+    if (!R.ulasilan.has(AU.anah(d))) return;
+    cx.beginPath(); cx.moveTo(sx(d[0]), sy(d[1])); cx.lineTo(sx(y2[0]), sy(y2[1])); cx.stroke();
+  });
+  /* cozum yolu */
+  if (R.yol.length){
+    cx.strokeStyle = K.green; cx.lineWidth = 4; cx.beginPath();
+    cx.moveTo(sx(0), sy(0));
+    R.yol.forEach(a => cx.lineTo(sx(a.durum[0]), sy(a.durum[1])));
+    cx.stroke();
+  }
+  /* dugumler */
+  for (let a = 0; a <= A; a++) for (let b = 0; b <= B; b++){
+    const ula = R.ulasilan.has(a + ',' + b);
+    const hed = a === hedefL || b === hedefL;
+    dot(sx(a), sy(b), hed ? 11 : 8,
+        !ula ? 'rgba(255,255,255,.10)' : hed ? K.green : 'rgba(120,200,255,.55)',
+        hed ? K.green : null, 2);
+  }
+  dot(sx(0), sy(0), 9, K.yellow);
+  txt('A kabındaki litre →', gx + gw/2, gy + gh + 62, K.mut, 18);
+  /* lejant iki satir · tek satirda ortada cakisiyorlardi */
+  txt('sarı: başlangıç (0,0)   ·   içi boş daire: ulaşılamayan durum',
+      gx, gy - 48, K.mut, 17, 'left');
+  txt('yeşil halka: ' + hedefL + ' litre içeren durumlar',
+      gx, gy - 24, K.green, 17, 'left');
+  for (let a = 0; a <= A; a++) txt(String(a), sx(a), gy + gh + 34, K.mut, 16);
+  for (let b = 0; b <= B; b++) txt(String(b), gx - 26, sy(b) + 6, K.mut, 16, 'right');
+  txt('B', gx - 60, gy + gh/2, K.mut, 18);
+
+  /* sag: kartlar ve cozum */
+  const bx = 780;
+  kart(bx, 200, 270, 'OLASI DURUM', String(R.toplam), K.mut, '(' + (A+1) + ' × ' + (B+1) + ')');
+  kart(bx + 290, 200, 270, 'ULAŞILABİLİR', String(R.ulasilan.size),
+       R.ulasilan.size < R.toplam ? K.orange : K.green,
+       (R.toplam - R.ulasilan.size) + ' durum erişilmez');
+  const cozuldu = R.yol.length > 0 || R.hedefDurum;
+  kart(bx, 330, 270, 'EN KISA ÇÖZÜM',
+       cozuldu ? R.yol.length + ' adım' : 'yok', cozuldu ? K.green : K.red,
+       cozuldu ? '' : 'bu uzayda ' + hedefL + ' litre yok');
+  kart(bx + 290, 330, 270, 'AÇILAN DÜĞÜM',
+       ziyaretsiz ? auZiyaretsiz(A, B, hedefL, R.yol.length).acilan.toLocaleString('tr-TR')
+                  : String(R.acilan),
+       ziyaretsiz ? K.red : K.green,
+       ziyaretsiz ? 'ziyaret kümesi yok' : 'ziyaret kümesiyle');
+  /* cozum adimlari */
+  box(bx, 460, 560, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+  if (cozuldu){
+    txt('ÇÖZÜM ADIMLARI', bx + 280, 494, K.mut, 18);
+    R.yol.forEach((a, i) => {
+      txt((i + 1) + '. ' + AU.gecisAd[a.gecis], bx + 20, 528 + i * 29, K.txt, 18, 'left');
+      txt('(' + a.durum[0] + ', ' + a.durum[1] + ')', bx + 540, 528 + i * 29, K.green, 18, 'right');
+    });
+  } else {
+    txt('BU UZAYDA ÇÖZÜM YOK', bx + 280, 500, K.red, 20);
+    txt(A + ' ve ' + B + ' sayılarının EBOB u: ' + AU.ebob(A, B), bx + 20, 545, K.txt, 19, 'left');
+    txt(hedefL + ' sayısı ' + AU.ebob(A, B) + ' e tam bölünmüyor.', bx + 20, 578, K.txt, 19, 'left');
+    txt('Ulaşılabilir her durumda su miktarı', bx + 20, 616, K.mut, 18, 'left');
+    txt('EBOB un katı olmak zorunda. Arama ne kadar', bx + 20, 646, K.mut, 18, 'left');
+    txt('iyi olursa olsun bu duvarı aşamaz.', bx + 20, 676, K.mut, 18, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
