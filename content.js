@@ -107,7 +107,7 @@ const ROTALAR = [
     {id:'kvcache',   ad:'Bağlam penceresi ve KV cache',           sure:14, durum:'hazir'},
     {id:'cot',            ad:'Chain-of-Thought: cevaptan önce düşünmek',       sure:12, durum:'planli'},
     {id:'self-cons',      ad:'Self-consistency: çoğunluğa güvenmek',           sure:10, durum:'planli'},
-    {id:'oz-gozetim',     ad:'Kendi kendine gözetim: etiketi veriden üretmek',  sure:12, durum:'planli'},
+    {id:'oz-gozetim',     ad:'Kendi kendine gözetim: etiketi veriden üretmek',  sure:17, durum:'hazir'},
     {id:'olcek-yasalari',  ad:'Ölçek yasaları: büyütmenin getirisi ve bedeli',  sure:16, durum:'hazir'},
     {id:'perplexity',     ad:'Perplexity: bir modelin şaşkınlığını ölçmek',    sure:16, durum:'hazir'},
     {id:'talimat-ayar',   ad:'İtaat öğretmek: talimat ince ayarı',             sure:14, durum:'planli'},
@@ -9731,6 +9731,157 @@ DERSLER['olcek-yasalari'] = {
       'geçerli.<br><br>' +
       'En önemlisi: <b>L∞ her zaman orada.</b> Büyütmek azaltılabilir kaybı düşürür, ' +
       'indirgenemez kaybı düşürmez.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── KENDİ KENDİNE GÖZETİM ─────────────── */
+DERSLER['oz-gozetim'] = {
+  ad:'Kendi kendine gözetim: etiketi veriden üretmek',
+  alt:'Etiket yoksa uydur. Bu dersteki kurulumda ham sayımlar konu hakkında kanıtlanabilir biçimde sıfır bilgi taşıyor, dolayısıyla kazancın tamamı ön-görevden geliyor.',
+  kaynaklar:[
+    {y:'Devlin, J. ve ark.', t:'2019', b:'BERT: Pre-training of Deep Bidirectional Transformers', n:'NAACL 2019'},
+    {y:'Chen, T. ve ark.', t:'2020', b:'A Simple Framework for Contrastive Learning of Visual Representations', n:'ICML 2020'},
+    {y:'Balestriero, R. ve ark.', t:'2023', b:'A Cookbook of Self-Supervised Learning', n:'arXiv:2304.12210'},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'Etiketi verinin kendisinden üretmek',
+    goal:'Ön-görev fikrini ve bu dersin neden adil bir sınama olduğunu göreceksin.',
+    todo:'Etiket sayısını artır. Turuncu eğri rastgele çizgisinden ayrılıyor mu?',
+    kind:'controls', viz:'ozGozetim', h:770, state:{sahne:'etiket'},
+    controls:[{k:'ki', lb:'ETİKETLİ ÖRNEK', min:0, max:4, step:1, val:0,
+               fmt:v => OZ.etiketler[v] + ' / konu'}],
+    derive:s => ({d: OZ.dogruluk('ikili', OZ.etiketler[Math.round(s.ki)], 40)}),
+    live:s => [['ÖN-GÖREV', '%' + (100*s.d).toFixed(1), K.green],
+               ['TEK-SİMGE', '%' + (100*OZ.dogruluk('tek', OZ.etiketler[Math.round(s.ki)], 40)).toFixed(1), K.orange],
+               ['HEDEF', 'ön-görevi %95 üstüne çıkar']],
+    unlock:s => s.d > 0.95,
+    unlockMsg:'Ön-görev temsilini %95 doğruluğun üstüne çıkar',
+    body:'<p>Etiketli veri pahalı, etiketsiz veri bol. Kendi kendine gözetimin fikri şu: ' +
+      '<b>etiketi verinin kendisinden üret</b>.</p>' +
+      '<p>Dil modellerinde bu "sıradaki simgeyi tahmin et" biçimini alır. 40 simgelik bir ' +
+      'belge, hiç insan emeği harcamadan <b>39 gözetimli örnek</b> verir. Milyonlarca belge ' +
+      'için sayı astronomik olur ve hiçbiri etiketlenmemiştir.</p>' +
+      '<p>Ama asıl soru şu: bu ön-görevi çözmek, <b>işine yarayan</b> bir şey öğretir mi?</p>' +
+      '<p>Sınamayı adil kurduk. Üç konu var, her biri farklı bir geçiş matrisiyle metin ' +
+      'üretiyor. Üç matris de <b>çift stokastik</b>: satır ve sütun toplamlarının 1’den ' +
+      'sapması tam olarak <b>0</b>.</p>' +
+      '<p>Bunun sonucu kritik: çift stokastik bir zincirin durağan dağılımı <b>tekdüzedir</b>. ' +
+      'Yani üç konu da her simgeyi eşit sıklıkta üretir ve <b>tek-simge sayımları konu ' +
+      'hakkında sıfır bilgi taşır</b>. Bu bir varsayım değil, kurulumun matematiksel sonucu.</p>' +
+      '<p>Ölçüm bunu doğruluyor: tek-simge temsiliyle doğruluk 20 etikete kadar ' +
+      '<b>%31 ile %39</b> arasında geziniyor. Rastgele tahmin <b>%33.3</b>. ' +
+      'Etiket eklemek hiçbir şey değiştirmiyor, çünkü ortada öğrenilecek sinyal yok.</p>' +
+      '<p>Ön-görev temsili ise (ikili geçiş istatistikleri) konu başına <b>5 etiketle %98.0</b>.</p>',
+    learned:'<b>Ön-görev, etiket olmadan gözetim sinyali üretir.</b><br><br>' +
+      '40 simgelik bir belge <b>39</b> gözetimli örnek verir ve hiçbiri etiketlenmemiştir.<br><br>' +
+      'Bu kurulumda tek-simge sayımları kanıtlanabilir biçimde sıfır bilgi taşıyor ' +
+      '(çift stokastik geçişler, tekdüze durağan dağılım) ve ölçüm bunu doğruluyor: ' +
+      '20 etikete kadar <b>%31-39</b>, yani rastgele. Ön-görev temsili <b>5 etiketle %98.0</b>.',
+    xp:25,
+  },
+  {
+    t:'Az etiket yetiyor',
+    goal:'Ön eğitimin asıl kazancının nerede olduğunu ölçeceksin.',
+    todo:'Etiket sayısını 1’den 5’e çıkar. Yeşil eğri nereye gidiyor?',
+    kind:'controls', viz:'ozGozetim', h:770, state:{sahne:'etiket'},
+    controls:[{k:'ki', lb:'ETİKETLİ ÖRNEK', min:0, max:4, step:1, val:0,
+               fmt:v => OZ.etiketler[v] + ' / konu'}],
+    live:s => [['ÖN-GÖREV', '%' + (100*OZ.dogruluk('ikili', OZ.etiketler[Math.round(s.ki)], 40)).toFixed(1), K.green],
+               ['1 ETİKETLE', '%' + (100*OZ.dogruluk('ikili', 1, 40)).toFixed(1), K.mut],
+               ['5 ETİKETLE', '%' + (100*OZ.dogruluk('ikili', 5, 40)).toFixed(1), K.mut]],
+    body:'<p>Ön-görev temsiliyle etiket sayısına göre doğruluk:</p>' +
+      '<p>1 etiket &rarr; <b>%69.0</b> &nbsp;·&nbsp; 2 &rarr; <b>%90.7</b> &nbsp;·&nbsp; ' +
+      '5 &rarr; <b>%98.0</b> &nbsp;·&nbsp; 10 &rarr; <b>%97.7</b> &nbsp;·&nbsp; ' +
+      '20 &rarr; <b>%97.7</b></p>' +
+      '<p>Konu başına <b>iki</b> etiketle %90’ı geçiyor, <b>beş</b> etiketle doyuyor. ' +
+      'Beşten sonrası hiçbir şey eklemiyor.</p>' +
+      '<p>Aynı sütunda tek-simge temsili: %34.3, %36.0, %38.7, %37.7, %31.0. ' +
+      'Yani <b>20 etiket bile</b> onu rastgeleden kurtarmıyor.</p>' +
+      '<p>Buradaki asimetri kendi kendine gözetimin bütün ekonomisi. Ön eğitim ' +
+      '<b>etiketsiz</b> veriyle yapıldı ve pahalı olan kısmı, yani temsili, o hallletti. ' +
+      'Geriye kalan iş, o temsilin üstüne birkaç etiketle bir sınıflandırıcı oturtmak.</p>' +
+      '<p>Transfer öğrenme dersindeki fikrin aynısı, ama bu sefer kaynak görev bile ' +
+      '<b>etiketsiz</b>. Etiket maliyeti sıfır.</p>' +
+      '<p>Ve dikkat: temsil konuyu <b>bilmeden</b> öğrenildi. Ön-görev yalnızca "sırada ne ' +
+      'gelir" diye soruyordu. Konu bilgisi, o soruyu iyi cevaplamanın <b>yan ürünü</b>.</p>',
+    learned:'<b>Ön eğitimin kazancı, aşağı akış görevinin ihtiyaç duyduğu etiket sayısını düşürmesidir.</b><br><br>' +
+      'Ön-görev temsiliyle: 1 etiket <b>%69.0</b>, 2 etiket <b>%90.7</b>, 5 etiket <b>%98.0</b>. ' +
+      'Beşten sonrası doyuyor.<br><br>' +
+      'Tek-simge temsili 20 etiketle bile <b>%31.0</b>. Temsil konuyu bilmeden öğrenildi: ' +
+      'konu bilgisi, ön-görevi çözmenin <b>yan ürünü</b>.',
+    xp:50,
+  },
+  {
+    t:'Ne kadar ham veri gerekiyor',
+    goal:'Ön-görevin de bir veri iştahı olduğunu göreceksin.',
+    todo:'Belge uzunluğunu artır. Ön-görev temsili ne zaman kusursuz oluyor?',
+    kind:'controls', viz:'ozGozetim', h:770, state:{sahne:'uzunluk'},
+    controls:[{k:'ti', lb:'BELGE UZUNLUĞU', min:0, max:4, step:1, val:0,
+               fmt:v => OZ.uzunluklar[v] + ' simge'}],
+    derive:s => ({d: OZ.dogruluk('ikili', 1, OZ.uzunluklar[Math.round(s.ti)])}),
+    live:s => [['ÖN-GÖREV', '%' + (100*s.d).toFixed(1), K.green],
+               ['BELGE UZUNLUĞU', String(OZ.uzunluklar[Math.round(s.ti)])],
+               ['HEDEF', '%95 üstüne çıkar']],
+    unlock:s => s.d > 0.95,
+    unlockMsg:'Ön-görev doğruluğunu %95 üstüne çıkaran uzunluğu bul',
+    body:'<p>Etiket sayısını konu başına <b>bire</b> sabitleyip belge uzunluğunu ' +
+      'değiştiriyoruz. Yani etiketli veri en azda, etiketsiz veri değişken.</p>' +
+      '<p>10 simge &rarr; <b>%54.7</b> &nbsp;·&nbsp; 20 &rarr; <b>%69.3</b> &nbsp;·&nbsp; ' +
+      '80 &rarr; <b>%84.0</b> &nbsp;·&nbsp; 200 &rarr; <b>%100.0</b></p>' +
+      '<p>Ön-görev temsilinin de bir veri iştahı var. Kısa belgelerde geçiş istatistikleri ' +
+      'gürültülü tahmin ediliyor: 10 simgelik bir belgeden 9 geçiş çıkıyor ve 16 olası ' +
+      'geçiş türünü tahmin etmeye yetmiyor.</p>' +
+      '<p>200 simgede 199 geçiş var ve temsil <b>kusursuz</b> hâle geliyor: tek etiketle ' +
+      '%100.</p>' +
+      '<p>Tek-simge temsili ise uzunluktan hiç etkilenmiyor: %40.7, %39.0, %34.3, %35.0, ' +
+      '%36.0. Daha çok veri, olmayan bir sinyali var etmiyor. Bu, ölçek yasaları dersindeki ' +
+      'indirgenemez kaybın bir başka yüzü.</p>' +
+      '<p>Pratikteki karşılığı şu: kendi kendine gözetim <b>çok</b> etiketsiz veri ister. ' +
+      'Dil modellerinin trilyonlarca simgeyle eğitilmesinin sebebi budur. Etiket bedava ' +
+      'ama <b>ham veri bedava değil</b>.</p>',
+    learned:'<b>Ön-görev de veri ister; etiket bedava olması ham verinin bedava olması demek değil.</b><br><br>' +
+      'Konu başına tek etiketle, belge uzunluğuna göre: 10 simgede <b>%54.7</b>, ' +
+      '80’de <b>%84.0</b>, 200’de <b>%100.0</b>.<br><br>' +
+      'Tek-simge temsili uzunluktan hiç etkilenmiyor (%40.7 ile %36.0 arası): ' +
+      '<b>daha çok veri, olmayan bir sinyali var etmez</b>.',
+    xp:50,
+  },
+  {
+    t:'Ön-görev yanlış soruyu sorarsa',
+    goal:'Temsilin neyi öğrenip neyi öğrenmediğini göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'ozGozetim', h:770, state:{sahne:'basarisiz'},
+    body:'<p>Aşağı akış görevini değiştirelim: belgenin <b>ilk</b> simgesi 0 mı?</p>' +
+      '<p>Bu görev de veriden okunabilir, üstelik çok kolay. Ama ölçüm:</p>' +
+      '<p>ön-görev temsili: <b>%56.7</b> &nbsp;·&nbsp; tek-simge: <b>%59.0</b> &nbsp;·&nbsp; ' +
+      'hep "hayır" demek: <b>%74.0</b></p>' +
+      '<p>İkisi de <b>hiç öğrenmeyen</b> bir tahminciden kötü. Yirmi etiketle bile.</p>' +
+      '<p>Sebebi yapısal. Her iki temsil de <b>frekans</b> temsili: hangi simge ya da ' +
+      'hangi geçiş ne sıklıkta görülüyor. Sıklık, <b>konum</b> bilgisi taşımaz. ' +
+      'Belgeyi baştan sona karıştırsan geçiş sayıları neredeyse aynı kalır.</p>' +
+      '<p>Ön-görev "sırada ne gelir" diye sordu ve tam olarak bunun cevabını öğrendi: ' +
+      'geçiş istatistikleri. "Nerede" diye sormadığı için konum öğrenmedi.</p>' +
+      '<p>Genel ders şu: <b>kendi kendine gözetimin öğrettiği şey, ön-görevin sorduğu ' +
+      'soruyla belirlenir</b>. Ön-görev iyi seçilmişse aşağı akış görevi neredeyse bedava ' +
+      'gelir; kötü seçilmişse temsil zararsız değil, <b>yanıltıcı</b> olur, çünkü ' +
+      'ölçtüğün doğruluk taban çizgisinin altında kalır.</p>' +
+      '<p>Bu yüzden pratikte ön-görev seçimi bir mimari kararı kadar önemlidir ve ' +
+      'sonucu ancak <b>ölçülerek</b> bilinir.</p>',
+    quiz:{ q:'Bir tıbbi görüntü veri kümeniz var: 500.000 etiketsiz görüntü, 200 etiketli. Kendi kendine gözetimle ön eğitim yapmayı planlıyorsunuz. Ön-görev olarak "görüntüyü 90 derecelik katlarla döndür, kaç derece döndürüldüğünü tahmin et" seçmeyi düşünüyorsunuz. Aşağı akış görevi tümör var mı yok mu. Neye dikkat etmelisiniz?',
+      opts:[
+        {t:'Ön-görevin öğreteceği şey onun sorduğu soruyla belirlenir: dönme tahmini yön ve yerleşim öğretir, doku dokusu öğretmeyebilir, bu yüzden ölçmek şart', why:'Doğru. Bu derste ön-görev "sırada ne gelir" diye sorduğu için geçiş istatistiklerini öğrendi ve konu sınıflandırmasında 5 etiketle %98 e çıktı; ama "ilk simge ne" görevinde çoğunluk sınıfı tabanının bile altında kaldı, %56.7 ye karşı %74.0. Ön-görev ile aşağı akış görevi arasındaki uyum ölçülmeden bilinemez. Tıbbi görüntülerde ayrıca birçok doku dönmeye karşı zaten değişmezdir, dolayısıyla ön-görev çözülemez ya da kısayolla çözülebilir hale gelebilir.'},
+        {t:'500.000 etiketsiz görüntü çok fazla, ön eğitim kesinlikle işe yarar', why:'Ham veri miktarı gerekli ama yeterli değil. Bu derste tek-simge temsili, belge uzunluğu 20 kat artsa bile rastgele seviyede kaldı: veri, olmayan bir sinyali var etmiyor. Sinyalin olup olmadığını belirleyen şey ön-görevin sorduğu sorudur.'},
+        {t:'200 etiket çok az, önce daha fazla etiket toplamak gerekir', region:'', why:'Kendi kendine gözetimin bütün amacı tam olarak bu durumu çözmek. Bu derste ön-görev temsiliyle konu başına 2 etiket %90.7 e, 5 etiket %98.0 e ulaşıyordu. 200 etiket, doğru bir temsilin üstünde fazlasıyla yeterli olabilir.'},
+        {t:'Ön eğitim yerine doğrudan 200 etiketle eğitmek daha güvenli', why:'Bu, kaybedilecek en çok şeyin olduğu seçenek. Bu derste doğru temsille 5 etiket %98 veriyordu, yanlış temsille 20 etiket bile %31 de kalıyordu. Fark temsilden geliyor ve 200 etiketle sıfırdan eğitmek o temsili kurmaya yetmez.'},
+      ], correct:0 },
+    learned:'<b>Kendi kendine gözetimin öğrettiği şey, ön-görevin sorduğu soruyla belirlenir.</b><br><br>' +
+      '"İlk simge 0 mı" görevinde ön-görev temsili <b>%56.7</b>, çoğunluk sınıfı tabanı ise ' +
+      '<b>%74.0</b>: taban çizgisinin <b>altında</b>.<br><br>' +
+      'Her iki temsil de frekans temsili olduğu için konum bilgisi taşımıyor. ' +
+      'Ön-görev ile aşağı akış görevi arasındaki uyum <b>ölçülmeden bilinemez</b>.',
     xp:50,
   },
 ]};

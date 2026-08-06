@@ -2137,6 +2137,88 @@ console.log('═══ ÖLÇEK YASALARI ═══');
   iddia('küçük uydurma tam uydurmadan daha gürültülü', true, K2.r2 < F.r2);
 }
 
+console.log('═══ KENDİ KENDİNE GÖZETİM ═══');
+{
+  /* KURULUMUN ADALETI · uc konu da cift stokastik olmali */
+  iddia('konu 0 çift stokastik', 0, OZ.ciftStokastik(0), 12);
+  iddia('konu 1 çift stokastik', 0, OZ.ciftStokastik(1), 12);
+  iddia('konu 2 çift stokastik', 0, OZ.ciftStokastik(2), 12);
+  /* dolayisiyla duragan dagilim tekduze · dogrudan sinayalim */
+  {
+    let enBuyuk = 0;
+    for (let k = 0; k < 3; k++){
+      let p = [0.25, 0.25, 0.25, 0.25];
+      for (let it = 0; it < 500; it++){
+        const q = [0,0,0,0];
+        for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) q[j] += p[i]*OZ.konular[k][i][j];
+        p = q; }
+      for (const v of p) enBuyuk = Math.max(enBuyuk, Math.abs(v - 0.25)); }
+    iddia('üç konunun da durağan dağılımı tekdüze', 0, enBuyuk, 12);
+  }
+  /* konular gercekten FARKLI mi · gecis matrisleri ayrisiyor mu */
+  {
+    let enKucuk = 1e9;
+    for (let a = 0; a < 3; a++) for (let b = a+1; b < 3; b++){
+      let f = 0;
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++)
+        f += Math.abs(OZ.konular[a][i][j] - OZ.konular[b][i][j]);
+      enKucuk = Math.min(enKucuk, f); }
+    iddia('konu çiftleri geçişlerde belirgin farklı', true, enKucuk > 1);
+  }
+  /* TEK-SIMGE TEMSILI SIFIR BILGI · etiket sayisindan bagimsiz rastgele */
+  iddia('tek-simge 1 etiket', 0.343, OZ.dogruluk('tek', 1, 40), 3);
+  iddia('tek-simge 5 etiket', 0.387, OZ.dogruluk('tek', 5, 40), 3);
+  iddia('tek-simge 20 etiket', 0.310, OZ.dogruluk('tek', 20, 40), 3);
+  {
+    let enBuyuk = 0;
+    for (const k of OZ.etiketler) enBuyuk = Math.max(enBuyuk, OZ.dogruluk('tek', k, 40));
+    iddia('tek-simge hiçbir etiket sayısında %45 i geçemiyor', true, enBuyuk < 0.45);
+    iddia('tek-simge rastgeleden anlamlı biçimde iyi değil', true, enBuyuk - 1/3 < 0.06);
+  }
+  /* ON-GOREV TEMSILI · az etiketle yuksek dogruluk */
+  iddia('ön-görev 1 etiket', 0.690, OZ.dogruluk('ikili', 1, 40), 3);
+  iddia('ön-görev 2 etiket', 0.907, OZ.dogruluk('ikili', 2, 40), 3);
+  iddia('ön-görev 5 etiket', 0.980, OZ.dogruluk('ikili', 5, 40), 3);
+  iddia('ön-görev 20 etiket', 0.977, OZ.dogruluk('ikili', 20, 40), 3);
+  iddia('5 etiketten sonra doyuyor', true,
+        Math.abs(OZ.dogruluk('ikili', 20, 40) - OZ.dogruluk('ikili', 5, 40)) < 0.02);
+  iddia('ön-görev her etiket sayısında tek-simgeden iyi', true,
+        OZ.etiketler.every(k => OZ.dogruluk('ikili', k, 40) > OZ.dogruluk('tek', k, 40)));
+  iddia('5 etiketteki fark (puan)', 59.3,
+        100*(OZ.dogruluk('ikili', 5, 40) - OZ.dogruluk('tek', 5, 40)), 1);
+  /* HAM VERI IHTIYACI · belge uzunlugu */
+  iddia('T=10 ön-görev', 0.547, OZ.dogruluk('ikili', 1, 10), 3);
+  iddia('T=80 ön-görev', 0.840, OZ.dogruluk('ikili', 1, 80), 3);
+  iddia('T=200 ön-görev', 1.000, OZ.dogruluk('ikili', 1, 200), 3);
+  iddia('uzunlukla ön-görev doğruluğu artıyor', true,
+        OZ.dogruluk('ikili', 1, 200) > OZ.dogruluk('ikili', 1, 10));
+  {
+    /* tek-simge uzunluktan etkilenmiyor · sinyal yoksa veri yaratmaz */
+    let mn = 1, mx = 0;
+    for (const T of OZ.uzunluklar){ const d2 = OZ.dogruluk('tek', 1, T);
+      mn = Math.min(mn, d2); mx = Math.max(mx, d2); }
+    iddia('tek-simge uzunluk aralığı dar', true, mx - mn < 0.10);
+    iddia('tek-simge hiçbir uzunlukta %45 i geçmiyor', true, mx < 0.45);
+  }
+  /* BASARISIZLIK · konum gerektiren gorev */
+  {
+    const taban = OZ.konumTaban(40);
+    iddia('çoğunluk sınıfı tabanı', 0.740, taban, 3);
+    iddia('konum görevinde ön-görev temsili', 0.567, OZ.dogruluk('ikili', 20, 40, true), 3);
+    iddia('konum görevinde tek-simge', 0.590, OZ.dogruluk('tek', 20, 40, true), 3);
+    iddia('ikisi de çoğunluk tabanının altında', true,
+          OZ.dogruluk('ikili', 20, 40, true) < taban &&
+          OZ.dogruluk('tek', 20, 40, true) < taban);
+    /* asil iddia: ayni temsil bir gorevde muhtesem, digerinde tabanin altinda */
+    iddia('aynı temsil bir görevde %98, diğerinde tabanın altında', true,
+          OZ.dogruluk('ikili', 5, 40) > 0.95 &&
+          OZ.dogruluk('ikili', 20, 40, true) < taban);
+  }
+  /* on-gorev sinyali sayisi · belge basina T-1 */
+  iddia('40 simgelik belgeden çıkan gözetim örneği', 39, 40 - 1, 0);
+  iddia('200 simgelik belgeden', 199, 200 - 1, 0);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

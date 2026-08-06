@@ -6412,6 +6412,209 @@ VIZ.olcekYasalari = s => {
   }
 };
 
+
+/* ═══════════ KENDİ KENDİNE GÖZETİM ═══════════
+   Üç konu da çift stokastik geçişlere sahip: durağan dağılım hepsinde tekdüze.
+   Yani tek-simge sayımları konu hakkında SIFIR bilgi taşıyor. */
+const OZ = {};
+OZ.konular = [
+  [[0.70,0.15,0.10,0.05],[0.05,0.70,0.15,0.10],[0.10,0.05,0.70,0.15],[0.15,0.10,0.05,0.70]],
+  [[0.10,0.40,0.10,0.40],[0.40,0.10,0.40,0.10],[0.10,0.40,0.10,0.40],[0.40,0.10,0.40,0.10]],
+  [[0.25,0.25,0.25,0.25],[0.25,0.25,0.25,0.25],[0.25,0.25,0.25,0.25],[0.25,0.25,0.25,0.25]],
+];
+OZ.uzunluklar = [10, 20, 40, 80, 200];
+OZ.etiketler = [1, 2, 5, 10, 20];
+OZ.belge = (k, T, r) => {
+  const P = OZ.konular[k];
+  let s = Math.floor(4*r());
+  const out = [];
+  for (let t = 0; t < T; t++){ out.push(s);
+    let v2 = r(), a = 0, nx = 3;
+    for (let j = 0; j < 4; j++){ a += P[s][j]; if (v2 < a){ nx = j; break; } }
+    s = nx; }
+  return out;
+};
+OZ.kume = (n, T, seed) => {
+  const r = rng(seed), X = [], Y = [];
+  for (let i = 0; i < n; i++){ const k = i % 3; X.push(OZ.belge(k, T, r)); Y.push(k); }
+  return { X, Y };
+};
+OZ.tekSimge = d => { const c = [0,0,0,0];
+  for (const x of d) c[x]++;
+  return c.map(v2 => v2/d.length); };
+OZ.ikili = d => { const c = new Array(16).fill(0);
+  for (let t = 1; t < d.length; t++) c[d[t-1]*4 + d[t]]++;
+  const n = d.length - 1;
+  return c.map(v2 => v2/n); };
+const _ozCache = {};
+OZ.dogruluk = (tur, kEtiket, T, konum) => {
+  const key = tur + kEtiket + ':' + T + ':' + (konum ? 'k' : 'n');
+  if (_ozCache[key] !== undefined) return _ozCache[key];
+  const ozellik = tur === 'ikili' ? OZ.ikili : OZ.tekSimge;
+  const EG = OZ.kume(kEtiket*3, T, 11), TS = OZ.kume(300, T, 511);
+  const et = d => konum ? (d[0] === 0 ? 'e' : 'h') : null;
+  const eg = konum ? EG.X.map(et) : EG.Y;
+  const ts = konum ? TS.X.map(et) : TS.Y;
+  const siniflar = [...new Set(eg)];
+  const merkez = {};
+  for (const k of siniflar){
+    const uy = EG.X.filter((_, i) => String(eg[i]) === String(k)).map(ozellik);
+    if (!uy.length) continue;
+    const m = new Array(uy[0].length).fill(0);
+    for (const v2 of uy) for (let j = 0; j < m.length; j++) m[j] += v2[j]/uy.length;
+    merkez[k] = m; }
+  let dg = 0;
+  for (let i = 0; i < TS.X.length; i++){
+    const f = ozellik(TS.X[i]);
+    let en = null, ed = 1e18;
+    for (const k of Object.keys(merkez)){ let s = 0;
+      for (let j = 0; j < f.length; j++) s += (f[j] - merkez[k][j])**2;
+      if (s < ed){ ed = s; en = k; } }
+    if (String(en) === String(ts[i])) dg++; }
+  return (_ozCache[key] = dg/TS.X.length);
+};
+/* konum gorevinde cogunluk sinifi tabani */
+OZ.konumTaban = T => {
+  const TS = OZ.kume(300, T, 511);
+  const e = TS.X.filter(d => d[0] === 0).length;
+  return Math.max(e, TS.X.length - e) / TS.X.length;
+};
+OZ.ciftStokastik = k => {
+  const P = OZ.konular[k];
+  let en = 0;
+  for (let i = 0; i < 4; i++) en = Math.max(en, Math.abs(P[i].reduce((s, v2) => s + v2, 0) - 1));
+  for (let j = 0; j < 4; j++) en = Math.max(en, Math.abs(P.reduce((s, r2) => s + r2[j], 0) - 1));
+  return en;
+};
+
+VIZ.ozGozetim = s => {
+  clear();
+  const sahne = s.sahne || 'etiket';
+  const ki = Math.max(0, Math.min(4, s.ki === undefined ? 0 : Math.round(s.ki)));
+  const ti = Math.max(0, Math.min(4, s.ti === undefined ? 2 : Math.round(s.ti)));
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+  const egriler = (P, xler, f1, f2, xlog) => {
+    [[f1, K.orange, 'tek-simge'], [f2, K.green, 'ön-görev temsili']].forEach(([f, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = 3.4; cx.beginPath();
+      xler.forEach((x, i) => { const y = P.sy(f(x));
+        const px = P.sx(xlog ? Math.log10(x) : i);
+        i ? cx.lineTo(px, y) : cx.moveTo(px, y); });
+      cx.stroke();
+      xler.forEach((x, i) => dot(P.sx(xlog ? Math.log10(x) : i), P.sy(f(x)), 5, renk)); });
+  };
+
+  if (sahne === 'uzunluk'){
+    const T = OZ.uzunluklar[ti];
+    baslikSerit('KENDİ KENDİNE GÖZETİM · NE KADAR HAM VERİ GEREKİYOR',
+      'Konu başına tek etiket. Değişen tek şey belge uzunluğu.', []);
+    const P = plot(rect(140, 200, 640, 400), 0.9, 2.4, 0.25, 1.05);
+    frame(P, 'log₁₀ belge uzunluğu', 'test doğruluğu', [1, 1.5, 2], [0.33, 0.5, 0.75, 1]);
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.sx(0.9), P.sy(1/3)); cx.lineTo(P.sx(2.4), P.sy(1/3)); cx.stroke();
+    cx.setLineDash([]);
+    txt('rastgele: %33.3', P.sx(0.95), P.sy(1/3) - 12, K.mut, 17, 'left');
+    egriler(P, OZ.uzunluklar, T2 => OZ.dogruluk('tek', 1, T2), T2 => OZ.dogruluk('ikili', 1, T2), true);
+    dot(P.sx(Math.log10(T)), P.sy(OZ.dogruluk('ikili', 1, T)), 9, K.yellow);
+    txt('ön-görev temsili', P.R.x + 16, P.R.y + P.R.h*0.46, K.green, 17, 'left');
+    txt('tek-simge', P.R.x + 16, P.R.y + P.R.h*0.46 + 26, K.orange, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'BELGE UZUNLUĞU', String(T), K.blue, 'simge');
+    kart(bx + 280, 200, 260, 'ÖN-GÖREV SİNYALİ', String(T - 1), K.green,
+         'belge başına tahmin');
+    kart(bx, 330, 260, 'ÖN-GÖREV DOĞRULUĞU',
+         '%' + (100*OZ.dogruluk('ikili', 1, T)).toFixed(1), K.green, 'konu başına 1 etiket');
+    kart(bx + 280, 330, 260, 'TEK-SİMGE',
+         '%' + (100*OZ.dogruluk('tek', 1, T)).toFixed(1), K.orange, 'rastgele: %33.3');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('UZUNLUĞA GÖRE', bx + 270, 494, K.mut, 18);
+    OZ.uzunluklar.forEach((T2, i) => {
+      txt('T = ' + T2, bx + 18, 532 + i*34, K.txt, 17, 'left');
+      txt('%' + (100*OZ.dogruluk('tek', 1, T2)).toFixed(1), bx + 330, 532 + i*34, K.orange, 17, 'right');
+      txt('%' + (100*OZ.dogruluk('ikili', 1, T2)).toFixed(1), bx + 522, 532 + i*34, K.green, 17, 'right'); });
+    txt('tek-simge', bx + 330, 512, K.orange, 15, 'right');
+    txt('ön-görev', bx + 522, 512, K.green, 15, 'right');
+  }
+
+  else if (sahne === 'basarisiz'){
+    const T = 40;
+    baslikSerit('KENDİ KENDİNE GÖZETİM · NE ZAMAN İŞE YARAMAZ',
+      'Görev değişti: belgenin İLK simgesi 0 mı? Konum bilgisi gerekiyor.', []);
+    const P = plot(rect(200, 210, 560, 380), -0.5, 2.5, 0.4, 0.85);
+    frame(P, '', 'test doğruluğu', [], [0.5, 0.6, 0.7, 0.8]);
+    const taban = OZ.konumTaban(T);
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.sx(-0.5), P.sy(taban)); cx.lineTo(P.sx(2.5), P.sy(taban)); cx.stroke();
+    cx.setLineDash([]);
+    txt('hep "hayır" demek: %' + (100*taban).toFixed(1), P.sx(2.4), P.sy(taban) - 12, K.mut, 17, 'right');
+    [[0, OZ.dogruluk('tek', 20, T, true), K.orange, 'tek-simge'],
+     [1, OZ.dogruluk('ikili', 20, T, true), K.green, 'ön-görev temsili']].forEach(([x, val, renk, ad]) => {
+      const y0 = P.sy(0.4), y1 = P.sy(val);
+      cx.fillStyle = renk + '55'; cx.fillRect(P.sx(x) - 60, y1, 120, y0 - y1);
+      cx.strokeStyle = renk; cx.lineWidth = 2; cx.strokeRect(P.sx(x) - 60, y1, 120, y0 - y1);
+      txt('%' + (100*val).toFixed(1), P.sx(x), y1 - 16, renk, 22);
+      txt(ad, P.sx(x), P.R.y + P.R.h + 34, renk, 19); });
+    const bx = 830;
+    kart(bx, 210, 260, 'ÖN-GÖREV TEMSİLİ',
+         '%' + (100*OZ.dogruluk('ikili', 20, T, true)).toFixed(1), K.red, '20 etiketle');
+    kart(bx + 280, 210, 260, 'ÇOĞUNLUK SINIFI', '%' + (100*taban).toFixed(1), K.mut,
+         'hiç öğrenmeden');
+    kart(bx, 340, 260, 'TEK-SİMGE',
+         '%' + (100*OZ.dogruluk('tek', 20, T, true)).toFixed(1), K.red);
+    kart(bx + 280, 340, 260, 'İKİSİ DE', 'tabanın altında', K.red, 'zararlı');
+    box(bx, 470, 540, 240, 'rgba(7,10,15,.55)', K.red, 2);
+    txt('NEDEN', bx + 270, 504, K.mut, 18);
+    txt('Her iki temsil de FREKANS temsili: hangi simge', bx + 18, 544, K.txt, 18, 'left');
+    txt('ne sıklıkta geçiyor. Konum bilgisi taşımıyorlar.', bx + 18, 574, K.txt, 18, 'left');
+    txt('Ön-görev "sırada ne gelir" sorusunu çözdüğü için', bx + 18, 614, K.orange, 18, 'left');
+    txt('geçiş istatistiği öğrendi. "Nerede" sorusunu', bx + 18, 644, K.orange, 18, 'left');
+    txt('sormadığı için konum öğrenmedi.', bx + 18, 674, K.orange, 18, 'left');
+  }
+
+  else {
+    const T = 40, k = OZ.etiketler[ki];
+    baslikSerit('KENDİ KENDİNE GÖZETİM · ETİKETSİZ VERİDEN TEMSİL',
+      'Üç konu da aynı simge dağılımına sahip. Fark yalnızca geçişlerde.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.3, 4.3, 0.25, 1.05);
+    frame(P, 'konu başına etiketli örnek', 'test doğruluğu', [], [0.33, 0.5, 0.75, 1]);
+    OZ.etiketler.forEach((v2, i) => txt(String(v2), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.sx(-0.3), P.sy(1/3)); cx.lineTo(P.sx(4.3), P.sy(1/3)); cx.stroke();
+    cx.setLineDash([]);
+    txt('rastgele: %33.3', P.sx(-0.2), P.sy(1/3) - 12, K.mut, 17, 'left');
+    [[q => OZ.dogruluk('tek', q, T), K.orange], [q => OZ.dogruluk('ikili', q, T), K.green]]
+      .forEach(([f, renk]) => {
+        cx.strokeStyle = renk; cx.lineWidth = 3.4; cx.beginPath();
+        OZ.etiketler.forEach((q, i) => { const y = P.sy(f(q));
+          i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+        cx.stroke();
+        OZ.etiketler.forEach((q, i) => dot(P.sx(i), P.sy(f(q)), 5, renk)); });
+    dot(P.sx(ki), P.sy(OZ.dogruluk('ikili', k, T)), 9, K.yellow);
+    txt('ön-görev temsili', P.R.x + 16, P.R.y + P.R.h*0.46, K.green, 17, 'left');
+    txt('tek-simge', P.R.x + 16, P.R.y + P.R.h*0.46 + 26, K.orange, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'ETİKET SAYISI', k + ' / konu', K.blue, 'toplam ' + (3*k));
+    kart(bx + 280, 200, 260, 'ÖN-GÖREV', '%' + (100*OZ.dogruluk('ikili', k, T)).toFixed(1), K.green);
+    kart(bx, 330, 260, 'TEK-SİMGE', '%' + (100*OZ.dogruluk('tek', k, T)).toFixed(1), K.orange,
+         'rastgele: %33.3');
+    kart(bx + 280, 330, 260, 'FARK',
+         (100*(OZ.dogruluk('ikili', k, T) - OZ.dogruluk('tek', k, T))).toFixed(1) + ' puan',
+         K.purple);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('KURULUM NEDEN ADİL', bx + 270, 494, K.mut, 18);
+    txt('Üç konunun geçiş matrisi de çift stokastik.', bx + 18, 534, K.txt, 18, 'left');
+    txt('Satır ve sütun toplamlarının 1 den sapması: ' +
+        Math.max(...[0,1,2].map(OZ.ciftStokastik)).toFixed(0), bx + 18, 564, K.txt, 18, 'left');
+    txt('Dolayısıyla durağan dağılım hepsinde tekdüze ve', bx + 18, 604, K.orange, 18, 'left');
+    txt('tek-simge sayımları SIFIR bilgi taşıyor.', bx + 18, 634, K.orange, 18, 'left');
+    txt('Kazancın tamamı ön-görevden geliyor.', bx + 18, 674, K.green, 18, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
