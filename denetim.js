@@ -1334,6 +1334,82 @@ console.log('═══ AĞIRLIK İLKLEME ═══');
         ilEgit(1,60).son / ilEgit(S2,60).son, 1);
 }
 
+console.log('═══ PATLAYAN GRADYAN VE KLİPLEME ═══');
+{
+  /* dagilim · geri besleme yok, bu yuzden motordan bagimsiz tekrarlanabilir */
+  const D = PG.dagilim(1.5, 'relu');
+  iddia('ReLU c=1.5 ortanca norm', 15.4, D.ortanca, 1);
+  iddia('ReLU c=1.5 %99 dilim (log10)', 7.737, Math.log10(D.p99), 3);
+  iddia('ReLU c=1.5 en büyük (log10)', 8.534, Math.log10(D.enBuyuk), 3);
+  iddia('ReLU c=1.5 kuyruk oranı (log10)', 7.346, Math.log10(D.kuyrukOrani), 3);
+  iddia('en büyük parti ortancanın 10 milyon katından fazla', true, D.kuyrukOrani > 1e7);
+  {
+    const ort = D.g.reduce((s, x) => s + x, 0) / D.g.length;
+    iddia('ortalama ortancadan çok büyük (çarpık dağılım)', true, ort > 100 * D.ortanca);
+  }
+  iddia('tanh c=1.5 kuyruk oranı', 22.9, PG.dagilim(1.5, 'tanh').kuyrukOrani, 1);
+  iddia('tanh kuyruğu ReLU dan çok daha kısa', true,
+        PG.dagilim(1.5,'tanh').kuyrukOrani < 1e-4 * PG.dagilim(1.5,'relu').kuyrukOrani);
+  {
+    let ihlal = 0; const cs = [0.8, 1.0, 1.2, 1.5, 1.8, 2.0];
+    for (let i = 1; i < cs.length; i++)
+      if (PG.dagilim(cs[i],'relu').ortanca <= PG.dagilim(cs[i-1],'relu').ortanca) ihlal++;
+    iddia('ReLU ortanca norm c ile tekdüze artıyor', 0, ihlal, 0);
+  }
+
+  /* ── KAOS ÖLÇÜSÜ ──
+     Kararsız kosularin son kaybi JS motoruna gore degisiyor (Node ile Chrome
+     farkli sonuc veriyor), cunku tek bir sicrama yorungeyi ceviriyor. Bu yuzden
+     kararsiz kosularin son kaybi ASLA sayi olarak iddia edilmiyor; onun yerine
+     bir agirligi 1e-12 oynatinca sonucun ne kadar degistigini olcuyoruz. */
+  {
+    const H_kararsiz = PG.hassasiyet(1.6, 0.02, 0, 100);
+    const H_kararli  = PG.hassasiyet(1.6, 0.01, 0, 100);
+    const H_klipli   = PG.hassasiyet(1.6, 0.02, 3, 100);
+    iddia('lr=0.01 klipsiz koşu 1e-12 e duyarsız (sapma < 1e-6)', true, H_kararli.sapma < 1e-6);
+    iddia('lr=0.02 klipsiz koşu 1e-12 e aşırı duyarlı', true, H_kararsiz.sapma > 0.5);
+    iddia('klipleme duyarlılığı yüzde birin altına indiriyor', true, H_klipli.sapma < 0.01);
+    iddia('klipleme duyarlılığı en az 100 kat azaltıyor', true,
+          H_kararsiz.sapma > 100 * H_klipli.sapma);
+  }
+
+  /* ── SADECE TEKRARLANABİLİR KOŞULARIN SAYILARI ── */
+  iddia('c=1.6 lr=0.01 klipsiz son kayıp', 0.045884, pgEgit(1.6, 0.01, 0, 100).son, 6);
+  iddia('c=1.6 lr=0.01 klipsiz kliplenen adım', 0, pgEgit(1.6, 0.01, 0, 100).kliplenen, 0);
+  iddia('c=1.6 lr=0.02 klipli son kayıp', 0.017182, pgEgit(1.6, 0.02, 3, 100).son, 6);
+  iddia('c=1.6 lr=0.02 klipli kliplenen adım', 40, pgEgit(1.6, 0.02, 3, 100).kliplenen, 0);
+  iddia('klipleme, lr düşürmekten daha iyi sonuç veriyor', true,
+        pgEgit(1.6, 0.02, 3, 100).son < pgEgit(1.6, 0.01, 0, 100).son);
+  iddia('kaç kat daha iyi', 2.7,
+        pgEgit(1.6, 0.01, 0, 100).son / pgEgit(1.6, 0.02, 3, 100).son, 1);
+  iddia('adımların çoğuna dokunulmuyor', true, pgEgit(1.6, 0.02, 3, 100).kliplenen < 50);
+
+  /* ── KLİPLEME ZARAR VEREBİLİR · her ikisi de kararlı, dolayısıyla sayı iddia edilebilir ── */
+  {
+    const R0 = pgEgit(1.2, 0.05, 0, 100), R1 = pgEgit(1.2, 0.05, 3, 100);
+    iddia('c=1.2 lr=0.05 klipsiz koşu kararlı (sapma < 1e-6)', true,
+          PG.hassasiyet(1.2, 0.05, 0, 100).sapma < 1e-6);
+    iddia('c=1.2 lr=0.05 klipsiz son kayıp', 0.029976, R0.son, 6);
+    iddia('c=1.2 lr=0.05 klipli son kayıp', 0.076579, R1.son, 6);
+    iddia('bu ayarda klipleme zarar veriyor', true, R1.son > R0.son);
+    iddia('kaç kat zarar', 2.6, R1.son / R0.son, 1);
+    iddia('üstelik adımların sadece 16 sı kliplenmişken', 16, R1.kliplenen, 0);
+    iddia('klipleme her zaman kazandırmıyor', true,
+          pgEgit(1.6,0.02,3,100).son < pgEgit(1.6,0.01,0,100).son &&
+          pgEgit(1.2,0.05,3,100).son > pgEgit(1.2,0.05,0,100).son);
+  }
+
+  /* klipleme yonu koruyor mu · saf aritmetik, her motorda ayni */
+  {
+    const g = [3, -4, 12], tau = 6.5;
+    const n = Math.hypot(...g), s2 = tau / n;
+    const kg = g.map(x => x * s2);
+    iddia('kliplenmiş normun tam eşiğe indiği', tau, Math.hypot(...kg), 9);
+    const kosinus = g.reduce((s3, x, i) => s3 + x * kg[i], 0) / (n * Math.hypot(...kg));
+    iddia('klipleme yönü değiştirmiyor (kosinüs 1)', 1, kosinus, 9);
+  }
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

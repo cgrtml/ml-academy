@@ -4011,6 +4011,223 @@ VIZ.agirlikIlkleme = s => {
   }
 };
 
+
+/* ═══════════ PATLAYAN GRADYAN VE KLİPLEME ═══════════
+   Tekrarlı çarpım gradyanı ağır kuyruklu yapıyor: partilerin çoğu iyi,
+   bir kısmı milyonlarca kat büyük. Klipleme bu kuyruğu kesiyor. */
+const PG = {};
+PG.H = 24; PG.T = 40;
+const _pgCache = {};
+/* tek bir rastgele diziden T adim sonra basa ulasan gradyanin normu */
+function pgGradNorm(c, akt, seed){
+  const { H, T } = PG, r = rng(seed), W = [];
+  for (let i = 0; i < H; i++){ const row = [];
+    for (let j = 0; j < H; j++) row.push(c * omNormal(r) / Math.sqrt(H)); W.push(row); }
+  let h = new Array(H).fill(0).map(() => 0.05 * omNormal(r));
+  const Zs = [];
+  for (let t = 0; t < T; t++){
+    const z = new Array(H).fill(0), y = new Array(H).fill(0);
+    for (let i = 0; i < H; i++){ let s = 0.05 * omNormal(r);
+      for (let j = 0; j < H; j++) s += W[i][j] * h[j];
+      z[i] = s; y[i] = akt === 'relu' ? Math.max(0, s) : Math.tanh(s); }
+    Zs.push(z); h = y;
+  }
+  let d = new Array(H).fill(1 / Math.sqrt(H));
+  for (let t = T - 1; t >= 0; t--){
+    const dz = d.map((u, i) => akt === 'relu' ? (Zs[t][i] > 0 ? u : 0)
+                                              : u * (1 - Math.tanh(Zs[t][i]) ** 2));
+    const nd = new Array(H).fill(0);
+    for (let j = 0; j < H; j++){ let s = 0;
+      for (let i = 0; i < H; i++) s += W[i][j] * dz[i]; nd[j] = s; }
+    d = nd;
+  }
+  return Math.sqrt(d.reduce((s, x) => s + x * x, 0));
+}
+PG.dagilim = (c, akt) => {
+  const k = 'd' + c.toFixed(2) + akt;
+  if (_pgCache[k]) return _pgCache[k];
+  const g = [];
+  for (let s = 0; s < 300; s++) g.push(pgGradNorm(c, akt, 1000 + s * 37));
+  const sirali = [...g].sort((a, b) => a - b);
+  const yz = p => sirali[Math.min(sirali.length - 1, Math.floor(p * sirali.length))];
+  const R = { g, ortanca: yz(0.5), p90: yz(0.9), p99: yz(0.99),
+              enBuyuk: sirali[sirali.length - 1] };
+  R.kuyrukOrani = R.enBuyuk / R.ortanca;
+  return (_pgCache[k] = R);
+};
+/* KUCUK RNN · diziyi T adim sonra hatirlamak */
+PG.rH = 16; PG.rT = 20; PG.rB = 24;
+function pgEgit(c, lr, klip, adim, bozulma){
+  const eps = bozulma || 0;
+  const k = 'e' + c + ':' + lr + ':' + klip + ':' + adim + ':' + eps;
+  if (_pgCache[k]) return _pgCache[k];
+  const { rH: H, rT: T, rB: B } = PG;
+  const r = rng(21), W = [];
+  for (let i = 0; i < H; i++){ const row = [];
+    for (let j = 0; j < H; j++) row.push(c * omNormal(r) / Math.sqrt(H)); W.push(row); }
+  if (eps) W[0][0] += eps;               /* tek bir agirligi eps kadar oynat */
+  const u = new Array(H).fill(0).map(() => omNormal(r) / Math.sqrt(H));
+  const v2 = new Array(H).fill(0).map(() => omNormal(r) / Math.sqrt(H));
+  const r2 = rng(22), X = [], Y = [];
+  for (let b = 0; b < B; b++){ const dizi = [];
+    for (let t = 0; t < T; t++) dizi.push(omNormal(r2));
+    X.push(dizi); Y.push(dizi[0] + dizi[1]); }
+  const ileri = b => { let h = new Array(H).fill(0);
+    const Zs = [], Hs = [h.slice()];
+    for (let t = 0; t < T; t++){
+      const z = new Array(H).fill(0), y = new Array(H).fill(0);
+      for (let i = 0; i < H; i++){ let s = u[i] * X[b][t];
+        for (let j = 0; j < H; j++) s += W[i][j] * h[j];
+        z[i] = s; y[i] = Math.tanh(s); }
+      Zs.push(z); h = y; Hs.push(h.slice()); }
+    return { h, Zs, Hs }; };
+  const kayip = () => { let s = 0;
+    for (let b = 0; b < B; b++){ const { h } = ileri(b);
+      const p = h.reduce((t, x, j) => t + x * v2[j], 0); s += (p - Y[b]) ** 2; }
+    return s / B; };
+  const iz = [kayip()], normlar = [];
+  let kliplenen = 0;
+  for (let it = 0; it < adim; it++){
+    const gW = W.map(row => row.map(() => 0));
+    const gu = new Array(H).fill(0), gv = new Array(H).fill(0);
+    for (let b = 0; b < B; b++){
+      const { h, Zs, Hs } = ileri(b);
+      const p = h.reduce((t, x, j) => t + x * v2[j], 0), e = 2 * (p - Y[b]) / B;
+      for (let j = 0; j < H; j++) gv[j] += e * h[j];
+      let d = v2.map(x => e * x);
+      for (let t = T - 1; t >= 0; t--){
+        const dz = d.map((x, i) => x * (1 - Math.tanh(Zs[t][i]) ** 2));
+        for (let i = 0; i < H; i++){ gu[i] += dz[i] * X[b][t];
+          for (let j = 0; j < H; j++) gW[i][j] += dz[i] * Hs[t][j]; }
+        const nd = new Array(H).fill(0);
+        for (let j = 0; j < H; j++){ let s = 0;
+          for (let i = 0; i < H; i++) s += W[i][j] * dz[i]; nd[j] = s; }
+        d = nd; }
+    }
+    let n2 = 0;
+    for (const row of gW) for (const g of row) n2 += g * g;
+    for (const g of gu) n2 += g * g;
+    for (const g of gv) n2 += g * g;
+    const n = Math.sqrt(n2); normlar.push(n);
+    let olcek = 1;
+    if (klip > 0 && n > klip){ olcek = klip / n; kliplenen++; }
+    for (let i = 0; i < H; i++){ gu[i] *= olcek; gv[i] *= olcek;
+      for (let j = 0; j < H; j++) gW[i][j] *= olcek; }
+    for (let i = 0; i < H; i++){ u[i] -= lr * gu[i]; v2[i] -= lr * gv[i];
+      for (let j = 0; j < H; j++) W[i][j] -= lr * gW[i][j]; }
+    if ((it + 1) % 10 === 0) iz.push(kayip());
+  }
+  const R = { iz, son: iz[iz.length - 1], normlar, kliplenen,
+              maxNorm: Math.max(...normlar) };
+  return (_pgCache[k] = R);
+}
+
+/* kaos olcusu: tek bir agirligi 1e-12 oynatinca son kayip ne kadar degisiyor */
+PG.hassasiyet = (c, lr, klip, adim) => {
+  const a = pgEgit(c, lr, klip, adim, 0).son;
+  const b = pgEgit(c, lr, klip, adim, 1e-12).son;
+  return { a, b, sapma: Math.abs(a - b) / Math.max(1e-12, a) };
+};
+
+VIZ.patlayanGradyan = s => {
+  clear();
+  const sahne = s.sahne || 'dagilim';
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 25);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'dagilim'){
+    const c = s.c === undefined ? 1.5 : s.c;
+    const akt = s.akt || 'relu';
+    const D = PG.dagilim(c, akt);
+    baslikSerit('PATLAYAN GRADYAN · PARTİLERİN DAĞILIMI',
+      '300 rastgele dizi, ' + PG.T + ' adımlık tekrarlı ağ. Her biri için gradyan normu.', []);
+    /* log olcekte histogram */
+    const alt = -10, ust = 14;
+    const kova = new Array(48).fill(0);
+    D.g.forEach(x => { const l = Math.log10(Math.max(1e-12, x));
+      const i = Math.floor((l - alt) / (ust - alt) * 48);
+      if (i >= 0 && i < 48) kova[i]++; });
+    const enCok = Math.max(...kova);
+    const P = plot(rect(140, 200, 640, 400), alt, ust, 0, enCok * 1.15);
+    frame(P, 'log₁₀ gradyan normu', 'parti sayısı', [-10, -5, 0, 5, 10], []);
+    kova.forEach((v2, i) => { if (!v2) return;
+      const x0 = P.sx(alt + (ust-alt)*i/48), x1 = P.sx(alt + (ust-alt)*(i+1)/48);
+      cx.fillStyle = 'rgba(120,200,255,.45)';
+      cx.fillRect(x0, P.sy(v2), x1 - x0 - 1, P.sy(0) - P.sy(v2)); });
+    const isaret = (x, ad, renk) => {
+      const px = P.sx(Math.max(alt, Math.min(ust, Math.log10(x))));
+      cx.strokeStyle = renk; cx.lineWidth = 2.5; cx.setLineDash([6, 5]);
+      cx.beginPath(); cx.moveTo(px, P.R.y); cx.lineTo(px, P.R.y + P.R.h); cx.stroke();
+      cx.setLineDash([]);
+      txt(ad, px, P.R.y - 12, renk, 17);
+    };
+    isaret(D.ortanca, 'ortanca', K.green);
+    isaret(D.p99, '%99', K.orange);
+    isaret(D.enBuyuk, 'en büyük', K.red);
+    const bx = 830;
+    kart(bx, 200, 260, 'AKTİVASYON', akt === 'relu' ? 'ReLU' : 'tanh', K.blue,
+         'tekrarlı ölçek c = ' + c.toFixed(1));
+    kart(bx + 280, 200, 260, 'ORTANCA NORM', D.ortanca.toExponential(2), K.green);
+    kart(bx, 330, 260, '%99 DİLİM', D.p99.toExponential(2), K.orange);
+    kart(bx + 280, 330, 260, 'EN BÜYÜK', D.enBuyuk.toExponential(2), K.red);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.red, 2);
+    txt('KUYRUK NE KADAR AĞIR', bx + 270, 494, K.mut, 18);
+    txt('en büyük / ortanca:', bx + 18, 536, K.txt, 19, 'left');
+    txt(D.kuyrukOrani.toExponential(2) + ' kat', bx + 522, 536, K.red, 21, 'right');
+    txt('Partilerin çoğu sorunsuz. Bir kısmı', bx + 18, 578, K.mut, 18, 'left');
+    txt('milyonlarca kat büyük gradyan üretiyor.', bx + 18, 608, K.mut, 18, 'left');
+    txt('Ortalama bir sayı değil, dağılım var:', bx + 18, 648, K.txt, 18, 'left');
+    txt('ve kuyruk eğitimi öldüren şey.', bx + 18, 678, K.txt, 18, 'left');
+  }
+
+  else { /* egitim: klipsiz vs klipli */
+    const c = s.c === undefined ? 1.6 : s.c;
+    const lr = s.lr === undefined ? 0.1 : s.lr;
+    const klip = s.klip ? 3 : 0;
+    const A = 100;
+    const R = pgEgit(c, lr, klip, A), R0 = pgEgit(c, lr, 0, A), R1 = pgEgit(c, lr, 3, A);
+    baslikSerit('PATLAYAN GRADYAN · KLİPLEME',
+      'Aynı ağ, aynı veri, aynı öğrenme oranı. Tek fark gradyan normunun kesilip kesilmediği.', []);
+    const P = plot(rect(140, 200, 640, 400), 0, A, -1.6, 1.2);
+    frame(P, 'eğitim adımı', 'log₁₀ kayıp', [0, 25, 50, 75, 100], [-1, 0, 1]);
+    [[R0, K.red, 'klipsiz'], [R1, K.green, 'klipli τ = 3']].forEach(([RR, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = (klip > 0) === (renk === K.green) ? 3.8 : 2;
+      cx.globalAlpha = (klip > 0) === (renk === K.green) ? 1 : 0.45;
+      cx.beginPath();
+      RR.iz.forEach((k2, i) => { const y = P.sy(Math.max(-1.6, Math.min(1.2, Math.log10(Math.max(1e-3, k2)))));
+        i ? cx.lineTo(P.sx(i * 10), y) : cx.moveTo(P.sx(i * 10), y); });
+      cx.stroke(); cx.globalAlpha = 1; });
+    txt('klipsiz', P.R.x + P.R.w - 14, P.sy(Math.log10(R0.son)) - 14, K.red, 18, 'right');
+    txt('klipli τ = 3', P.R.x + P.R.w - 14, P.sy(Math.max(-1.55, Math.log10(R1.son))) - 16, K.green, 18, 'right');
+    const bx = 830;
+    const H0 = PG.hassasiyet(c, lr, 0, A), H1 = PG.hassasiyet(c, lr, 3, A);
+    kart(bx, 200, 260, 'ÖĞRENME ORANI', lr.toString(), K.blue, 'tekrarlı ölçek c = ' + c.toFixed(1));
+    kart(bx + 280, 200, 260, 'KLİPLENEN ADIM', R1.kliplenen + ' / ' + A, K.purple);
+    kart(bx, 330, 260, 'KLİPSİZ SON KAYIP', R0.son.toFixed(4),
+         R0.son < R1.son ? K.green : K.red);
+    kart(bx + 280, 330, 260, 'KLİPLİ SON KAYIP', R1.son.toFixed(4),
+         R1.son < R0.son ? K.green : K.red);
+    /* kaos olcusu: tek bir agirligi 1e-12 oynatinca sonuc ne kadar degisiyor */
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', H0.sapma > 0.1 ? K.red : K.axis, 2);
+    txt('AYNI KOŞU TEKRARLANABİLİR Mİ', bx + 270, 494, K.mut, 18);
+    txt('bir ağırlığı 10⁻¹² oynatınca son kayıp:', bx + 18, 532, K.txt, 18, 'left');
+    txt('klipsiz', bx + 18, 570, K.red, 19, 'left');
+    txt('%' + (100 * H0.sapma).toFixed(2) + ' değişiyor', bx + 522, 570,
+        H0.sapma > 0.1 ? K.red : K.green, 20, 'right');
+    txt('klipli', bx + 18, 606, K.green, 19, 'left');
+    txt('%' + (100 * H1.sapma).toFixed(2) + ' değişiyor', bx + 522, 606,
+        H1.sapma > 0.1 ? K.red : K.green, 20, 'right');
+    txt(H0.sapma > 0.1 ? 'Klipsiz koşu kaotik: sonucu son bitteki'
+                       : 'Bu ayarda klipsiz koşu da kararlı, çünkü', bx + 18, 648, K.mut, 18, 'left');
+    txt(H0.sapma > 0.1 ? 'yuvarlamaya bile bağlı. Klipleme bunu kaldırıyor.'
+                       : 'kırpılacak sivri adım neredeyse yok.', bx + 18, 678, K.mut, 18, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

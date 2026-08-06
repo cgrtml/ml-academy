@@ -79,7 +79,7 @@ const ROTALAR = [
     {id:'embed',    ad:'Gömme uzayları (embeddings)',      sure:12, durum:'hazir'},
     {id:'transfer', ad:'Transfer öğrenme',                 sure:14, durum:'hazir'},
     {id:'ilkleme',        ad:'Ağırlık ilkleme: Xavier ve He',                  sure:17, durum:'hazir'},
-    {id:'patlayan',       ad:'Patlayan gradyan ve klipleme',                   sure:10, durum:'planli'},
+    {id:'patlayan',       ad:'Patlayan gradyan ve klipleme',                   sure:17, durum:'hazir'},
     {id:'kisayol',        ad:'Kısayol bağlantıları: ResNet fikri',             sure:12, durum:'planli'},
     {id:'havuzlama',      ad:'Havuzlama: görüntüyü özetlemek',                 sure:10, durum:'planli'},
     {id:'rnn',            ad:'RNN: sırayı hafızada tutmak',                    sure:14, durum:'planli'},
@@ -7998,6 +7998,164 @@ DERSLER['ilkleme'] = {
       'Xavier ile <b>0.5995</b>, He ile <b>0.0420</b>, c = 2 ile <b>NaN</b>.<br><br>' +
       'Doğru ölçek fan_in’e bağlıdır: ReLU için <b>σ² = 2/fan_in</b>. ' +
       'Sabit bir standart sapma, katman genişliği değiştiğinde yanlışa döner.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── PATLAYAN GRADYAN ─────────────── */
+DERSLER['patlayan'] = {
+  ad:'Patlayan gradyan: sorun ortalama değil, kuyruk',
+  alt:'Gradyan normu bir sayı değil, bir dağılım. Partilerin çoğu sorunsuz, bir avucu eğitimi tek adımda bozuyor.',
+  kaynaklar:[
+    {y:'Pascanu, R., Mikolov, T. & Bengio, Y.', t:'2013', b:'On the Difficulty of Training Recurrent Neural Networks', n:'ICML 2013'},
+    {y:'Bengio, Y., Simard, P. & Frasconi, P.', t:'1994', b:'Learning Long-Term Dependencies with Gradient Descent is Difficult', n:'IEEE Trans. Neural Networks 5(2)'},
+    {y:'Zhang, J. ve ark.', t:'2020', b:'Why Gradient Clipping Accelerates Training', n:'ICLR 2020'},
+  ],
+  rota:2,
+  adimlar:[
+  {
+    t:'Gradyan normu tek bir sayı değil',
+    goal:'Aynı ağda partiden partiye gradyanın ne kadar değişebildiğini göreceksin.',
+    todo:'Tekrarlı ölçeği büyüt. Kuyruk oranı kaça çıkıyor?',
+    kind:'controls', viz:'patlayanGradyan', h:770, state:{sahne:'dagilim', akt:'relu'},
+    controls:[{k:'c', lb:'TEKRARLI ÖLÇEK c', min:0.8, max:2.0, step:0.1, val:0.8,
+               fmt:v => 'c = ' + v.toFixed(1)}],
+    derive:s => ({ko: PG.dagilim(s.c, 'relu').kuyrukOrani}),
+    live:s => [['ORTANCA', PG.dagilim(s.c,'relu').ortanca.toExponential(2), K.green],
+               ['EN BÜYÜK', PG.dagilim(s.c,'relu').enBuyuk.toExponential(2), K.red],
+               ['KUYRUK ORANI', s.ko.toExponential(2)], ['HEDEF', '> 10⁶']],
+    unlock:s => s.ko > 1e6,
+    unlockMsg:'Kuyruk oranını bir milyonun üstüne çıkar',
+    body:'<p>İlkleme dersinde tek bir ağın içinde sinyalin ne olduğuna baktık. Şimdi aynı ağa ' +
+      '<b>300 farklı rastgele dizi</b> verip her biri için gradyan normunu ölçüyoruz.</p>' +
+      '<p>Ağ 40 adımlık tekrarlı bir yapı: aynı matris 40 kere uygulanıyor. ' +
+      'RNN derslerinde göreceğin yapının ta kendisi.</p>' +
+      '<p>Beklenti tek bir sayı görmek olurdu. Gördüğümüz bir <b>dağılım</b>, üstelik ' +
+      'aşırı çarpık. ReLU ile c = 1.5’te:</p>' +
+      '<p>ortanca <b>15.4</b> &nbsp;·&nbsp; %99 dilim <b>5.46 × 10⁷</b> &nbsp;·&nbsp; ' +
+      'en büyük <b>3.42 × 10⁸</b></p>' +
+      '<p>En büyük parti, ortancanın <b>22 milyon katı</b> gradyan üretiyor. ' +
+      'Histograma bak: kütlenin neredeyse tamamı solda toplanmış, sağda uzun ince bir kuyruk var.</p>' +
+      '<p>Bu neden böyle: gradyan 40 tane matris çarpımının çarpımı. Çarpımların dağılımı ' +
+      'toplamların dağılımına benzemez, log ölçekte yayılır. Birkaç adımda üst üste gelen ' +
+      'yüksek kazançlar sonucu katlanarak büyütür.</p>' +
+      '<p>Aktivasyon da fark ediyor. tanh ile aynı ayarda kuyruk oranı <b>22.9</b> kalıyor, ' +
+      'çünkü tanh doyarak kendini sınırlıyor. ReLU’nun sınırı yok.</p>',
+    learned:'<b>Gradyan normu bir sayı değil, ağır kuyruklu bir dağılımdır.</b><br><br>' +
+      'ReLU ve c = 1.5 ile: ortanca <b>15.4</b>, %99 dilim <b>5.46 × 10⁷</b>, ' +
+      'en büyük <b>3.42 × 10⁸</b>. Kuyruk oranı <b>2.22 × 10⁷</b>.<br><br>' +
+      'Sebebi çarpımların katlanması. tanh doyduğu için kuyruğu kendiliğinden kesiyor ' +
+      '(oran 22.9), ReLU kesmiyor.',
+    xp:25,
+  },
+  {
+    t:'Öğrenme oranını düşürmek neden çözmez',
+    goal:'Sivri partileri tolere etmenin bedelini göreceksin.',
+    todo:'Öğrenme oranını değiştir. Klipsiz koşu ne zaman tekrarlanabilir kalıyor?',
+    kind:'controls', viz:'patlayanGradyan', h:770, state:{sahne:'egitim', c:1.6, klip:0},
+    controls:[{k:'lr', lb:'ÖĞRENME ORANI', min:0, max:1, step:1, val:1,
+               fmt:v => [0.02, 0.01][v]}],
+    body:'<p>Sivri gradyanlar eğitimi bozuyorsa akla gelen ilk çözüm adımı küçültmek.</p>' +
+      '<p>20 adımlık küçük bir RNN eğitiyoruz: dizinin ilk iki elemanının toplamını sonunda ' +
+      'hatırlaması gerekiyor. Tekrarlı ölçek c = 1.6, 100 adım.</p>' +
+      '<p><b>lr = 0.01:</b> son kayıp <b>0.0459</b>. En büyük gradyan normu 18.9. ' +
+      'Eğitim sakin ilerliyor.</p>' +
+      '<p><b>lr = 0.02:</b> burada işler değişiyor ve dersin en ilginç ölçümü ortaya çıkıyor.</p>' +
+      '<p>Kartlardaki son kutuya bak. Ağın <b>tek bir ağırlığını 10⁻¹² kadar</b> oynatıp ' +
+      'eğitimi baştan çalıştırıyoruz. Bu, bir sayının on ikinci ondalık basamağında yapılan ' +
+      'bir değişiklik.</p>' +
+      '<p><b>lr = 0.01’de sonuç %0.00 değişiyor.</b> Aynı sayı, aynı basamağa kadar.<br>' +
+      '<b>lr = 0.02’de sonuç yüzde yüzler mertebesinde değişiyor.</b></p>' +
+      '<p>Bu sayfada göreceğin kesin yüzde, kullandığın tarayıcıya göre bile değişir. ' +
+      'Bu bir hata değil, ölçülen olgunun kendisi.</p>' +
+      '<p>Yani lr = 0.02’de koşu <b>kaotik</b>: bir gradyan sıçraması yörüngeyi öyle savuruyor ki ' +
+      'sonucu son ondalık basamaktaki yuvarlamaya bağlı hâle geliyor. Bu koşunun son kaybını ' +
+      'bir sayı olarak yazmanın anlamı yok, çünkü aynı kodu başka bir bilgisayarda ' +
+      'çalıştırdığında başka bir sayı görürsün.</p>' +
+      '<p>Öğrenme oranını düşürmek bunu çözüyor, ama bedeli var: <b>bütün partiler</b> için ' +
+      'adımı küçültmüş oluyorsun. Sorunlu olan yüzde birlik dilim yüzünden geri kalanını ' +
+      'yavaşlatıyorsun.</p>',
+    learned:'<b>Kararsız eğitim sadece kötü sonuç vermez, tekrarlanabilir sonuç da vermez.</b><br><br>' +
+      'Tek bir ağırlığı 10⁻¹² oynatınca son kayıp lr = 0.01’de <b>%0.00</b>, ' +
+      'lr = 0.02’de <b>yüzlerce kat fazla</b> değişiyor.<br><br>' +
+      'Öğrenme oranını düşürmek kararlılığı geri getirir ama bedelini bütün partilere ödetir. ' +
+      'Doğru araç, adımı değil <b>kuyruğu</b> hedefleyen bir şey olmalı.',
+    xp:50,
+  },
+  {
+    t:'Klipleme: sadece kuyruğu kesmek',
+    goal:'Gradyan kliplemenin hem kaybı hem tekrarlanabilirliği nasıl düzelttiğini ölçeceksin.',
+    todo:'Kliplemeyi aç. Kayıp ve duyarlılık ne oluyor?',
+    kind:'controls', viz:'patlayanGradyan', h:770, state:{sahne:'egitim', c:1.6, lr:0.02},
+    controls:[{k:'klip', lb:'GRADYAN KLİPLEME', min:0, max:1, step:1, val:0,
+               fmt:v => v ? 'açık (τ = 3)' : 'kapalı'}],
+    derive:s => ({sp: PG.hassasiyet(1.6, 0.02, s.klip ? 3 : 0, 100).sapma}),
+    live:s => [['1e-12 DUYARLILIĞI', '%' + (100 * s.sp).toFixed(2), s.sp < 0.01 ? K.green : K.red],
+               ['KLİPLİ SON KAYIP', pgEgit(1.6, 0.02, 3, 100).son.toFixed(4), K.green],
+               ['HEDEF', 'duyarlılık < %1']],
+    unlock:s => s.sp < 0.01,
+    unlockMsg:'Duyarlılığı yüzde birin altına indir',
+    body:'<p>Gradyan kliplemesi tek bir kural: bütün gradyanın normu bir eşiği aşarsa, ' +
+      'gradyanı <b>ölçekleyip</b> normu tam o eşiğe indir. Yönü değişmez, sadece boyu kısalır.</p>' +
+      '<p style="text-align:center;font-size:1.1em">‖g‖ > τ ise &nbsp; g &larr; g · τ / ‖g‖</p>' +
+      '<p>Eşiğin altındaki adımlar <b>hiç dokunulmadan</b> geçer. Tipik partiler tam adım ' +
+      'atmaya devam eder.</p>' +
+      '<p>Aynı kurulum, lr = 0.02, τ = 3. İki şey birden düzeliyor:</p>' +
+      '<p><b>Kayıp:</b> klipli son kayıp <b>0.0172</b>. Bu, lr = 0.01 ile elde edilen ' +
+      '<b>0.0459</b>’dan da <b>2.7 kat</b> daha iyi. Yani klipleme, öğrenme oranını ' +
+      'düşürmenin verdiğinden fazlasını veriyor.</p>' +
+      '<p><b>Tekrarlanabilirlik:</b> 10⁻¹² duyarlılığı yüzde yüzler mertebesinden ' +
+      '<b>%0.08</b>’e iniyor, yani en az <b>bin kat</b> azalıyor. ' +
+      'Kaotik koşu, kararlı bir koşuya dönüşüyor.</p>' +
+      '<p>100 adımın <b>40</b>’ı kliplenmiş, yani 60’ı dokunulmadan geçmiş. Klipleme ' +
+      'burada bir hız sınırı gibi çalışıyor: normal sürüşe karışmıyor, sadece savrulmayı ' +
+      'engelliyor.</p>' +
+      '<p>İkinci sonuç genelde daha az konuşulur ama pratikte çok değerlidir: kliplenmiş bir ' +
+      'eğitim <b>tekrar çalıştırıldığında aynı sonucu verir</b>. Hata ayıklayabilirsin, ' +
+      'karşılaştırma yapabilirsin, bir değişikliğin gerçekten işe yarayıp yaramadığını ' +
+      'ölçebilirsin.</p>',
+    learned:'<b>Klipleme gradyanın yönünü korur, sadece boyunu keser.</b><br><br>' +
+      'lr = 0.02’de klipli son kayıp <b>0.0172</b>: lr = 0.01 ile elde edilen 0.0459’dan ' +
+      '<b>2.7 kat</b> daha iyi.<br><br>' +
+      'Ve 10⁻¹² duyarlılığı yüzde yüzler mertebesinden <b>%0.08</b>’e iniyor. ' +
+      'Klipleme sadece kaybı düşürmüyor, ' +
+      'koşuyu <b>tekrarlanabilir</b> hâle getiriyor.',
+    xp:50,
+  },
+  {
+    t:'Klipleme bedava değil',
+    goal:'Kliplemenin zarar verdiği bir durumu ölçeceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'patlayanGradyan', h:770, state:{sahne:'egitim', c:1.2, lr:0.05, klip:1},
+    body:'<p>Şimdi tekrarlı ölçeği <b>c = 1.2</b>’ye indirip öğrenme oranını 0.05 yapalım. ' +
+      'Aynı klipleme, aynı eşik.</p>' +
+      '<p><b>klipsiz: 0.0300</b> &nbsp;·&nbsp; <b>klipli: 0.0766</b></p>' +
+      '<p>Klipleme bu sefer <b>zarar verdi</b>, üstelik <b>2.6 kat</b>.</p>' +
+      '<p>Sebebi kartlarda: bu ayarda klipsiz koşunun 10⁻¹² duyarlılığı <b>%0.00</b>. ' +
+      'Yani ortada kaos yok, kırpılacak sivri adım yok. Klipleme yine de 100 adımın ' +
+      '<b>16</b>’sına dokunuyor ve dokunduğu her adımda gradyanın büyüklük bilgisini atıyor.</p>' +
+      '<p>Gradyanın normu bir bilgidir: "buradaki eğim dik" der. Kararlı bir eğitimde bu ' +
+      'bilgiyi atmak sadece kayıptır.</p>' +
+      '<p>Doğru eşik seçimi bu yüzden ölçüme dayanmalı. Pratik kural: birkaç yüz adım ' +
+      'boyunca gradyan normlarını kaydet, eşiği tipik normun belirgin şekilde üstüne koy. ' +
+      'Hiçbir adım kliplenmiyorsa klipleme zaten devrede değildir; çoğu adım kliplendiyse ' +
+      'yöntem sabit boyutlu adıma dönüşmüştür.</p>' +
+      '<p>Bir de kliplemenin <b>çözmediği</b> şey var: kuyruğun kendisi. Kuyruğu üreten ' +
+      'şey tekrarlı çarpım. Kısayol bağlantıları, LSTM kapıları ve normalleştirme katmanları ' +
+      'kuyruğu <b>kaynağında</b> küçültür. Klipleme semptomu tedavi eder, sebebi değil.</p>',
+    quiz:{ q:'Bir dil modeli eğitiyorsun. Gradyan normlarını kaydettin: ortanca 0.8, %95 dilim 1.4, ama her 200 adımda bir 60 civarında bir değer geliyor ve o adımlardan sonra kayıp sıçrıyor. Eşiği kaça koyarsın?',
+      opts:[
+        {t:'1.5 civarına: tipik adımların neredeyse tamamı dokunulmadan geçer, sadece sıçramalar kesilir', why:'Doğru. %95 dilim 1.4 olduğuna göre 1.5 eşiği adımların yaklaşık yirmide birini etkiler, yani tipik eğitim hiç değişmez ve 60 gibi bir değer 40 kat küçültülerek zararsız hâle gelir. Bu derste ölçtüğün desen buydu: 40/100 kliplenme oranıyla hem kayıp düştü hem koşu tekrarlanabilir oldu.'},
+        {t:'0.5 e: ne kadar düşükse o kadar güvenli', why:'Ortanca 0.8 olduğu için 0.5 eşiği adımların yarısından fazlasını kliplerdi. Bu derste ölçtüğün gibi, kırpılacak bir şey yokken klipleme zarar veriyor: c = 1.2 ayarında kayıp 0.0300 den 0.0766 ya çıktı, üstelik adımların sadece 16 sı kliplenmişken.'},
+        {t:'50 ye: sadece gerçekten uç değerler kesilsin', why:'60 civarındaki değerleri 50 ye indirmek onları hâlâ ortancanın 60 katı bırakır, yani sıçrama devam eder. Eşik, tipik ölçeğe göre seçilmelidir; uç değere göre değil.'},
+        {t:'Klipleme yerine öğrenme oranını 40 kat düşürürüm', why:'Bu, kuyruğun bedelini bütün adımlara ödetmek olur. Bu derste ölçtüğün gibi klipleme, öğrenme oranını düşürmenin verdiğinden daha iyisini verdi: 0.0172 karşı 0.0459.'},
+      ], correct:0 },
+    learned:'<b>Klipleme yanlış ayarlanırsa yardım etmez, zarar verir.</b><br><br>' +
+      'c = 1.2 ve lr = 0.05 ile klipsiz kayıp <b>0.0300</b>, klipli <b>0.0766</b>: ' +
+      '<b>2.6 kat</b> kötü. Bu ayarda klipsiz koşunun duyarlılığı zaten <b>%0.00</b>, ' +
+      'yani kırpılacak kaos yok.<br><br>' +
+      'Eşik ölçülerek seçilmeli. Ve klipleme <b>semptomu</b> tedavi eder: kuyruğu üreten ' +
+      'tekrarlı çarpımı kısayol bağlantıları ve kapılar azaltır.',
     xp:50,
   },
 ]};
