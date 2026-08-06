@@ -80,7 +80,7 @@ const ROTALAR = [
     {id:'transfer', ad:'Transfer öğrenme',                 sure:14, durum:'hazir'},
     {id:'ilkleme',        ad:'Ağırlık ilkleme: Xavier ve He',                  sure:17, durum:'hazir'},
     {id:'patlayan',       ad:'Patlayan gradyan ve klipleme',                   sure:17, durum:'hazir'},
-    {id:'kisayol',        ad:'Kısayol bağlantıları: ResNet fikri',             sure:12, durum:'planli'},
+    {id:'kisayol',        ad:'Kısayol bağlantıları: ResNet fikri',             sure:17, durum:'hazir'},
     {id:'havuzlama',      ad:'Havuzlama: görüntüyü özetlemek',                 sure:10, durum:'planli'},
     {id:'rnn',            ad:'RNN: sırayı hafızada tutmak',                    sure:14, durum:'planli'},
     {id:'lstm',           ad:'LSTM: unutmayı ve hatırlamayı öğrenen ağ',       sure:16, durum:'planli'},
@@ -8156,6 +8156,155 @@ DERSLER['patlayan'] = {
       'yani kırpılacak kaos yok.<br><br>' +
       'Eşik ölçülerek seçilmeli. Ve klipleme <b>semptomu</b> tedavi eder: kuyruğu üreten ' +
       'tekrarlı çarpımı kısayol bağlantıları ve kapılar azaltır.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── KISAYOL BAĞLANTILARI ─────────────── */
+DERSLER['kisayol'] = {
+  ad:'Kısayol bağlantıları: derinliği ücretsiz hâle getirmek',
+  alt:'Derin düz ağlar sığ olanlardan daha kötü eğitiliyor. Sebep aşırı uyum değil, gradyanın yolu. Tek bir toplama işareti bunu değiştiriyor.',
+  kaynaklar:[
+    {y:'He, K., Zhang, X., Ren, S. & Sun, J.', t:'2016', b:'Deep Residual Learning for Image Recognition', n:'CVPR 2016'},
+    {y:'He, K. ve ark.', t:'2016', b:'Identity Mappings in Deep Residual Networks', n:'ECCV 2016'},
+    {y:'Zhang, H., Dauphin, Y. & Ma, T.', t:'2019', b:'Fixup Initialization: Residual Learning Without Normalization', n:'ICLR 2019'},
+  ],
+  rota:2,
+  adimlar:[
+  {
+    t:'Derin ağ neden daha kötü eğitiliyor',
+    goal:'Derinliğin eğitimi zorlaştırdığını, aşırı uyumdan bağımsız olarak göreceksin.',
+    todo:'Katman sayısını artır. Kırmızı eğri hangi yöne gidiyor?',
+    kind:'controls', viz:'kisayolBaglanti', h:770, state:{sahne:'derinlik'},
+    controls:[{k:'di', lb:'KATMAN SAYISI', min:0, max:3, step:1, val:0,
+               fmt:v => KS2.derinlikler[v] + ' katman'}],
+    derive:s => ({dz: ks2Egit(KS2.derinlikler[Math.round(s.di)], 0, 40, 0).son}),
+    live:s => [['DÜZ AĞ KAYBI', s.dz.toFixed(4), s.dz < 0.1 ? K.green : K.red],
+               ['HEDEF', 'kaybı 0.5 üstüne çıkar']],
+    unlock:s => s.dz > 0.5,
+    unlockMsg:'Düz ağın eğitim kaybını 0.5 üstüne çıkaran derinliği bul',
+    body:'<p>Dört ayrı ağ eğitiyoruz: 4, 8, 16 ve 32 katmanlı. Hepsi ReLU, hepsi He ' +
+      'ilklemesiyle, aynı veri, aynı öğrenme oranı, aynı 40 adım.</p>' +
+      '<p>Ölçtüğümüz şey <b>eğitim kaybı</b>. Test değil. Yani burada aşırı uyum ' +
+      'tartışması yok: model kendi eğitim verisine bile uyamıyorsa sorun genelleme ' +
+      'değildir.</p>' +
+      '<p>Sonuçlar:</p>' +
+      '<p>4 katman <b>0.0020</b> &nbsp;·&nbsp; 8 katman <b>0.1109</b> &nbsp;·&nbsp; ' +
+      '16 katman <b>0.1530</b> &nbsp;·&nbsp; 32 katman <b>0.9882</b></p>' +
+      '<p>32 katmanlı ağ, 4 katmanlıdan <b>487 kat</b> daha kötü. Ve bu ağ daha güçlü: ' +
+      '4 katmanlının yapabildiği her şeyi yapabilir, fazladan 28 katmanı kimlik ' +
+      'fonksiyonuna ayarlaması yeterdi.</p>' +
+      '<p>Yani bu bir <b>ifade gücü</b> sorunu değil, bir <b>optimizasyon</b> sorunu. ' +
+      'Çözüm uzayda var ama gradyan inişi oraya varamıyor.</p>' +
+      '<p>Patlayan gradyan dersindeki mekanizmanın aynısı: geri gelen gradyan her katmanda ' +
+      'bir matrisle çarpılıyor ve 32 çarpımın çarpımı ya sönüyor ya patlıyor.</p>',
+    learned:'<b>Derinlik eğitim kaybını da kötüleştirebilir, sadece test kaybını değil.</b><br><br>' +
+      'Aynı kurulumda 4 katman <b>0.0020</b>, 32 katman <b>0.9882</b>: <b>487 kat</b> kötü.<br><br>' +
+      'Daha derin ağ daha zayıf değil, tam tersine daha güçlü. Fazladan katmanları kimliğe ' +
+      'ayarlasa sığ ağa eşit olurdu. <b>Sorun modelin ne yapabildiği değil, ' +
+      'eğitimin oraya varabilmesi.</b>',
+    xp:25,
+  },
+  {
+    t:'Tek bir toplama işareti',
+    goal:'Kısayol bağlantısının derinlikle ilişkiyi nasıl tersine çevirdiğini ölçeceksin.',
+    todo:'Katman sayısını artır ve iki eğriyi karşılaştır. Oran ne zaman kısayol lehine dönüyor?',
+    kind:'controls', viz:'kisayolBaglanti', h:770, state:{sahne:'derinlik'},
+    controls:[{k:'di', lb:'KATMAN SAYISI', min:0, max:3, step:1, val:0,
+               fmt:v => KS2.derinlikler[v] + ' katman'}],
+    derive:s => { const d = KS2.derinlikler[Math.round(s.di)];
+      return {oran: ks2Egit(d,0,40,0).son / ks2Egit(d,1,40,0).son}; },
+    live:s => [['ORAN', s.oran.toFixed(2) + '×', s.oran > 1 ? K.green : K.red],
+               ['HEDEF', 'oran > 10×']],
+    unlock:s => s.oran > 10,
+    unlockMsg:'Kısayolun 10 kattan fazla kazandırdığı derinliği bul',
+    body:'<p>Değişiklik tek satır. Katman şöyleyken:</p>' +
+      '<p style="text-align:center;font-size:1.15em">h &larr; ReLU(W h)</p>' +
+      '<p>şöyle yazıyoruz:</p>' +
+      '<p style="text-align:center;font-size:1.15em">h &larr; h + 0.1 · ReLU(W h)</p>' +
+      '<p>Katman artık girdinin yerine geçmiyor, girdiye bir <b>düzeltme</b> ekliyor. ' +
+      'ResNet fikri bu.</p>' +
+      '<p>Ölçüm:</p>' +
+      '<p>4 katman <b>0.0898</b> &nbsp;·&nbsp; 8 katman <b>0.1555</b> &nbsp;·&nbsp; ' +
+      '16 katman <b>0.0971</b> &nbsp;·&nbsp; 32 katman <b>0.0412</b></p>' +
+      '<p>Derinlik arttıkça kayıp <b>düşüyor</b>. 32 katmanda kısayollu ağ düz ağdan ' +
+      '<b>24 kat</b> daha iyi.</p>' +
+      '<p>Ama dürüst olalım, çünkü buradan sık yanlış sonuç çıkarılıyor: <b>4 katmanda ' +
+      'düz ağ kısayollu ağdan 44 kat daha iyi</b> (0.0020 karşı 0.0898). Kısayol bedava ' +
+      'bir iyileştirme değil, derinliğin yarattığı bir sorunun çözümü. Sorun yoksa ' +
+      'çözüm de bir maliyet.</p>' +
+      '<p>Dönüm noktası 16 katman civarında: orada oran ilk kez kısayol lehine geçiyor ' +
+      '(<b>1.58 kat</b>).</p>',
+    learned:'<b>Kısayol, derinlik ile kayıp arasındaki ilişkiyi tersine çevirir.</b><br><br>' +
+      'Düz ağ 4 → 32 katmanda <b>0.0020 → 0.9882</b> (kötüleşiyor). ' +
+      'Kısayollu ağ <b>0.0898 → 0.0412</b> (iyileşiyor).<br><br>' +
+      '32 katmanda kısayol <b>24 kat</b> kazandırıyor. Ama 4 katmanda düz ağ ' +
+      '<b>44 kat</b> önde. <b>Kısayol derinliğin bedelini öder, derinlik yoksa ödeyecek ' +
+      'bir şey de yoktur.</b>',
+    xp:50,
+  },
+  {
+    t:'Neden işe yarıyor: kimlik yolu',
+    goal:'Gradyanın kısayol üzerinden nasıl bozulmadan geçtiğini ölçeceksin.',
+    todo:'Grafikte iki eğrinin yönüne bak. Derinlikle hangisi büyüyor?',
+    kind:'static', viz:'kisayolBaglanti', h:770, state:{sahne:'gradyan'},
+    body:'<p>Geri yayılımda gradyan katmanları ters yönde geçer. Düz bir katmanda ' +
+      'her geçişte <b>Wᵀ</b> ile çarpılır. Otuz iki katman, otuz iki çarpım.</p>' +
+      '<p>Kısayollu katmanda ise türev şu biçimdedir:</p>' +
+      '<p style="text-align:center;font-size:1.15em">I + 0.1 · J</p>' +
+      '<p>Buradaki <b>I</b> kimlik matrisi. Yani gradyanın bir kopyası <b>hiçbir şeyle ' +
+      'çarpılmadan</b> geçer. Katman ne yaparsa yapsın, o kopya bozulmadan geriye ulaşır.</p>' +
+      '<p>İlk eğitim adımındaki gradyan normunu ölçtük:</p>' +
+      '<p><b>düz ağ:</b> 4 katmanda <b>8.475</b>, 32 katmanda <b>1.203</b>. Derinlikle ' +
+      '<b>küçülüyor</b>.<br>' +
+      '<b>kısayollu:</b> 4 katmanda <b>0.476</b>, 32 katmanda <b>4.622</b>. Derinlikle ' +
+      '<b>büyüyor</b>.</p>' +
+      '<p>Yönler tam ters. Düz ağda katman eklemek gradyanın kaynağa ulaşma şansını ' +
+      'azaltıyor; kısayollu ağda her katman kimlik yoluyla kendi katkısını ekliyor.</p>' +
+      '<p>Bu aynı zamanda dersin başındaki gözlemi açıklıyor: 32 katmanlı düz ağın ' +
+      'çözümü bulamamasının sebebi çözümün olmaması değil, gradyanın oraya haber ' +
+      'götürememesiydi.</p>',
+    learned:'<b>Kısayol, gradyana çarpılmadan geçen bir yol açar.</b><br><br>' +
+      'Türev I + 0.1·J biçimindedir ve I terimi derinlikten etkilenmez.<br><br>' +
+      'İlk adım gradyan normu düz ağda <b>8.475 → 1.203</b> (küçülüyor), ' +
+      'kısayollu ağda <b>0.476 → 4.622</b> (büyüyor). ' +
+      'Aynı derinlik değişimi, ters yönler.',
+    xp:50,
+  },
+  {
+    t:'h + F(h) yazmak yetmiyor',
+    goal:'Kısayolun kendi getirdiği sorunu ve çözümünü göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'kisayolBaglanti', h:770, state:{sahne:'baslangic'},
+    body:'<p>Şimdiye kadar kısayolu <b>h + 0.1 · F(h)</b> olarak yazdık. Peki o 0.1 ' +
+      'neden orada?</p>' +
+      '<p>Ölçelim. 32 katmanlı ağın <b>henüz hiç eğitilmemiş</b> hâlindeki kaybı:</p>' +
+      '<p><b>düz ağ:</b> 1.181 &nbsp;·&nbsp; <b>kısayol, dal ölçeği 1.0:</b> ' +
+      '<b>5.19 × 10¹¹</b> &nbsp;·&nbsp; <b>kısayol, dal ölçeği 0.1:</b> 3.705</p>' +
+      '<p>Sönümleme olmadan kısayollu ağ daha ilk anda patlıyor.</p>' +
+      '<p>Sebebi ilkleme dersindeki hesabın aynısı. h + F(h) yazdığında çıktının varyansı ' +
+      'girdinin varyansı <b>artı</b> dalın varyansı olur. Yani her katman varyansı ' +
+      'büyütür. Otuz iki katman boyunca bu birikir.</p>' +
+      '<p>Gerçek ResNet’lerde bu sorunu üç yoldan biri çözer: dalın içine ' +
+      '<b>normalleştirme katmanı</b> koymak (orijinal ResNet böyle yapar), dalın son ' +
+      'katmanını <b>sıfırla ilklemek</b>, ya da burada yaptığımız gibi dalı sabit bir ' +
+      'çarpanla <b>sönümlemek</b>.</p>' +
+      '<p>Üçünün ortak amacı aynı: ağ <b>kimliğe yakın başlasın</b>. Böylece 32 katmanlı ' +
+      'ağ eğitime, 32 katmanlı bir karmaşa olarak değil, sığ bir ağa yakın bir yerden ' +
+      'başlar ve katmanlar gerektiği kadar devreye girer.</p>',
+    quiz:{ q:'50 katmanlı bir ağa kısayol bağlantıları eklediniz ama eğitim ilk adımdan itibaren NaN veriyor. Kısayolları çıkarınca NaN gitmiyor ama kayıp da hiç düşmüyor. Ne yaparsınız?',
+      opts:[
+        {t:'Kısayolları tutup dalı sönümlerim: normalleştirme eklerim ya da dalın son katmanını sıfırla ilklerim', why:'Doğru. İki belirti iki ayrı sorunu gösteriyor. Kısayolsuz haldeki "kayıp düşmüyor" durumu bu dersin ilk adımındaki ölçüm: 32 katmanlı düz ağ 0.9882 de takılıyordu. Kısayollu haldeki NaN ise son adımdaki ölçüm: sönümsüz kısayolla 32 katmanda başlangıç kaybı 5.19e11 e çıkıyordu. Kısayol doğru araç ama dalın katkısı ölçeklenmeden çalışmıyor.'},
+        {t:'Öğrenme oranını düşürürüm', why:'NaN ilk adımdan itibaren geliyorsa sorun adım büyüklüğü değil, ağın başlangıç çıktısının kendisi. Bu derste ölçtüğün gibi sönümsüz kısayollu ağın başlangıç kaybı, hiç eğitilmeden 5.19e11 idi. Hiç adım atmadan patlamış bir ağı daha küçük adımlarla kurtaramazsın.'},
+        {t:'Katman sayısını 50 den 10 a indiririm', why:'Sorunu ortadan kaldırmak yerine kaçınmak olur ve bu dersin bütün konusu derinliğin ücretsiz hale getirilebilmesi. Üstelik 10 katman da düz halde sorun çıkarabilir: burada 16 katmanda bile düz ağ 0.1530 da kalmıştı.'},
+        {t:'Gradyan kliplemesi eklerim', why:'Klipleme gradyanı kırpar ama buradaki patlama ileri geçişte, daha gradyan hesaplanmadan oluyor. Patlayan gradyan dersinde de belirtildiği gibi klipleme semptomu tedavi eder; buradaki sebep başlangıç ölçeği.'},
+      ], correct:0 },
+    learned:'<b>Kısayol eklemek, ağı kimliğe yakın başlatmakla birlikte anlam kazanır.</b><br><br>' +
+      '32 katmanda başlangıç kaybı: düz <b>1.181</b>, sönümsüz kısayol <b>5.19 × 10¹¹</b>, ' +
+      'sönümlü kısayol <b>3.705</b>.<br><br>' +
+      'h + F(h) her katmanda varyansı büyütür. Normalleştirme, sıfır ilkleme ya da dal ' +
+      'sönümlemesi bunu engeller. Üçünün de amacı aynı: <b>derin ağ eğitime sığ bir ağ ' +
+      'gibi başlasın</b>.',
     xp:50,
   },
 ]};

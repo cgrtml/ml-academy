@@ -1410,6 +1410,88 @@ console.log('═══ PATLAYAN GRADYAN VE KLİPLEME ═══');
   }
 }
 
+console.log('═══ KISAYOL BAĞLANTILARI ═══');
+{
+  /* Patlayan gradyan dersinde ogrendigimiz kural: sayi olarak iddia edilen her kosu
+     once 1e-12 bozulmaya karsi kararli olmali. Once onu siniyoruz. */
+  {
+    let enBuyuk = 0;
+    for (const D of KS2.derinlikler) for (const ks of [0, 1])
+      enBuyuk = Math.max(enBuyuk, KS2.hassasiyet(D, ks, 40));
+    iddia('asserted edilen bütün koşular 1e-12 bozulmaya kararlı', true, enBuyuk < 1e-9);
+  }
+  /* duz ag derinlikle kotulesiyor */
+  iddia('düz ağ 4 katman eğitim kaybı', 0.0020, ks2Egit(4, 0, 40, 0).son, 4);
+  iddia('düz ağ 8 katman', 0.1109, ks2Egit(8, 0, 40, 0).son, 4);
+  iddia('düz ağ 16 katman', 0.1530, ks2Egit(16, 0, 40, 0).son, 4);
+  iddia('düz ağ 32 katman', 0.9882, ks2Egit(32, 0, 40, 0).son, 4);
+  iddia('düz ağ 4 ten 32 ye kaç kat kötüleşiyor', 487,
+        ks2Egit(32,0,40,0).son / ks2Egit(4,0,40,0).son, 0);
+  {
+    let ihlal = 0;
+    for (let i = 1; i < KS2.derinlikler.length; i++)
+      if (ks2Egit(KS2.derinlikler[i],0,40,0).son <= ks2Egit(KS2.derinlikler[i-1],0,40,0).son) ihlal++;
+    iddia('düz ağın kaybı her derinlik artışında büyüyor', 0, ihlal, 0);
+  }
+  /* kisayollu ag derinlikle iyilesiyor */
+  iddia('kısayollu 4 katman', 0.0898, ks2Egit(4, 1, 40, 0).son, 4);
+  iddia('kısayollu 8 katman', 0.1555, ks2Egit(8, 1, 40, 0).son, 4);
+  iddia('kısayollu 16 katman', 0.0971, ks2Egit(16, 1, 40, 0).son, 4);
+  iddia('kısayollu 32 katman', 0.0412, ks2Egit(32, 1, 40, 0).son, 4);
+  iddia('kısayollu ağ 4 ten 32 ye kaç kat iyileşiyor', 2.18,
+        ks2Egit(4,1,40,0).son / ks2Egit(32,1,40,0).son, 2);
+  /* asil iddia: derinlik ile kayip iliskisi ters yonlerde */
+  iddia('derinlik artınca düz ağ kötüleşiyor, kısayollu iyileşiyor', true,
+        ks2Egit(32,0,40,0).son > ks2Egit(4,0,40,0).son &&
+        ks2Egit(32,1,40,0).son < ks2Egit(4,1,40,0).son);
+  iddia('32 katmanda kısayolun kazancı', 24.0,
+        ks2Egit(32,0,40,0).son / ks2Egit(32,1,40,0).son, 1);
+  /* durustluk: 4 katmanda duz ag onde */
+  iddia('4 katmanda düz ağ kısayollu ağdan iyi', true,
+        ks2Egit(4,0,40,0).son < ks2Egit(4,1,40,0).son);
+  iddia('4 katmanda düz ağın üstünlüğü', 44.2,
+        ks2Egit(4,1,40,0).son / ks2Egit(4,0,40,0).son, 1);
+  /* donum noktasi 16 katman */
+  {
+    let ilkKisayolLehine = -1;
+    for (const D of KS2.derinlikler)
+      if (ilkKisayolLehine < 0 && ks2Egit(D,1,40,0).son < ks2Egit(D,0,40,0).son) ilkKisayolLehine = D;
+    iddia('kısayolun ilk öne geçtiği derinlik', 16, ilkKisayolLehine, 0);
+    iddia('16 katmanda oran', 1.58, ks2Egit(16,0,40,0).son / ks2Egit(16,1,40,0).son, 2);
+  }
+  /* gradyan · kimlik yolu */
+  iddia('düz ağ D=4 ilk gradyan normu', 8.475, ks2Egit(4, 0, 1, 0).ilkGradNorm, 3);
+  iddia('düz ağ D=32 ilk gradyan normu', 1.203, ks2Egit(32, 0, 1, 0).ilkGradNorm, 3);
+  iddia('kısayollu D=4 ilk gradyan normu', 0.476, ks2Egit(4, 1, 1, 0).ilkGradNorm, 3);
+  iddia('kısayollu D=32 ilk gradyan normu', 4.622, ks2Egit(32, 1, 1, 0).ilkGradNorm, 3);
+  iddia('düz ağda gradyan derinlikle küçülüyor', true,
+        ks2Egit(32,0,1,0).ilkGradNorm < ks2Egit(4,0,1,0).ilkGradNorm);
+  iddia('kısayollu ağda gradyan derinlikle büyüyor', true,
+        ks2Egit(32,1,1,0).ilkGradNorm > ks2Egit(4,1,1,0).ilkGradNorm);
+  {
+    let ihlal = 0;
+    for (let i = 1; i < KS2.derinlikler.length; i++)
+      if (ks2Egit(KS2.derinlikler[i],1,1,0).ilkGradNorm <=
+          ks2Egit(KS2.derinlikler[i-1],1,1,0).ilkGradNorm) ihlal++;
+    iddia('kısayollu ağda gradyan her adımda tekdüze büyüyor', 0, ihlal, 0);
+  }
+  /* dal olcegi · sonumsuz kisayol patliyor */
+  iddia('D=32 düz ağ başlangıç kaybı', 1.181, ks2Egit(32, 0, 0, 0).ilk, 3);
+  iddia('D=32 sönümsüz kısayol başlangıç kaybı (log10)', 11.715,
+        Math.log10(ks2Egit(32, 1, 0, 0, 1).ilk), 3);
+  iddia('D=32 sönümlü kısayol başlangıç kaybı', 3.705, ks2Egit(32, 1, 0, 0, 0.1).ilk, 3);
+  iddia('sönümsüz kısayol daha ilk adımda patlıyor', true, ks2Egit(32, 1, 0, 0, 1).ilk > 1e10);
+  iddia('sönümleme başlangıcı düz ağla aynı mertebeye getiriyor', true,
+        ks2Egit(32, 1, 0, 0, 0.1).ilk < 10 * ks2Egit(32, 0, 0, 0).ilk);
+  /* dal olcegi kucuklukce baslangic kaybi tekduze duşuyor */
+  {
+    let ihlal = 0; const dl = [1, 0.7, 0.4, 0.2, 0.1];
+    for (let i = 1; i < dl.length; i++)
+      if (ks2Egit(32,1,0,0,dl[i]).ilk >= ks2Egit(32,1,0,0,dl[i-1]).ilk) ihlal++;
+    iddia('dal ölçeği küçüldükçe başlangıç kaybı düşüyor', 0, ihlal, 0);
+  }
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

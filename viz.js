@@ -4228,6 +4228,181 @@ VIZ.patlayanGradyan = s => {
   }
 };
 
+
+/* ═══════════ KISAYOL BAĞLANTILARI ═══════════
+   Derin düz ağlar eğitilemiyor. Sebep aşırı uyum değil, optimizasyon.
+   h → h + F(h) yazmak gradyana bir kimlik yolu açıyor. */
+const KS2 = {};
+KS2.G = 24; KS2.B = 24; KS2.derinlikler = [4, 8, 16, 32]; KS2.DAL = 0.1;
+const _ks2Cache = {};
+function ks2Egit(derinlik, kisayol, adim, eps, dalOlcek){
+  const DO = dalOlcek === undefined ? KS2.DAL : dalOlcek;
+  const k = 'k' + derinlik + ':' + kisayol + ':' + adim + ':' + (eps || 0) + ':' + DO;
+  if (_ks2Cache[k]) return _ks2Cache[k];
+  const { G, B } = KS2, r = rng(7), W = [];
+  for (let kk = 0; kk < derinlik; kk++){ const M = [];
+    for (let i = 0; i < G; i++){ const row = [];
+      for (let j = 0; j < G; j++) row.push(Math.SQRT2 * omNormal(r) / Math.sqrt(G));
+      M.push(row); }
+    W.push(M); }
+  if (eps) W[0][0][0] += eps;
+  const v2 = new Array(G).fill(0).map(() => omNormal(r) / Math.sqrt(G));
+  const r2 = rng(8), X = [], Y = [];
+  for (let b = 0; b < B; b++){ const x = [];
+    for (let j = 0; j < G; j++) x.push(omNormal(r2));
+    X.push(x); Y.push(Math.tanh(1.4*x[0]) + 0.6*x[1]*x[2] - 0.4*x[3]); }
+  const lr = 0.05;
+  const ileri = b => { let h = X[b]; const Zs = [], Hs = [h.slice()];
+    for (let kk = 0; kk < derinlik; kk++){
+      const z = new Array(G).fill(0), y = new Array(G).fill(0);
+      for (let i = 0; i < G; i++){ let s = 0;
+        for (let j = 0; j < G; j++) s += W[kk][i][j] * h[j];
+        z[i] = s; y[i] = kisayol ? h[i] + DO * Math.max(0, s) : Math.max(0, s); }
+      Zs.push(z); h = y; Hs.push(h.slice()); }
+    return { h, Zs, Hs }; };
+  const kayip = () => { let s = 0;
+    for (let b = 0; b < B; b++){ const { h } = ileri(b);
+      const p = h.reduce((t, x, j) => t + x * v2[j], 0); s += (p - Y[b]) ** 2; }
+    return s / B; };
+  const iz = [kayip()];
+  let ilkGradNorm = null;
+  for (let t = 0; t < adim; t++){
+    const gW = W.map(M => M.map(row => row.map(() => 0))), gv = new Array(G).fill(0);
+    for (let b = 0; b < B; b++){
+      const { h, Zs, Hs } = ileri(b);
+      const p = h.reduce((t2, x, j) => t2 + x * v2[j], 0), e = 2 * (p - Y[b]) / B;
+      for (let j = 0; j < G; j++) gv[j] += e * h[j];
+      let d = v2.map(x => e * x);
+      for (let kk = derinlik - 1; kk >= 0; kk--){
+        const dz = d.map((x, i) => Zs[kk][i] > 0 ? (kisayol ? DO * x : x) : 0);
+        for (let i = 0; i < G; i++) for (let j = 0; j < G; j++)
+          gW[kk][i][j] += dz[i] * Hs[kk][j];
+        const nd = new Array(G).fill(0);
+        for (let j = 0; j < G; j++){ let s = 0;
+          for (let i = 0; i < G; i++) s += W[kk][i][j] * dz[i];
+          nd[j] = kisayol ? d[j] + s : s; }   /* kimlik yolu: d[j] olduğu gibi geçiyor */
+        d = nd; }
+    }
+    if (t === 0){ let n2 = 0;
+      for (const M of gW) for (const row of M) for (const g of row) n2 += g * g;
+      ilkGradNorm = Math.sqrt(n2); }
+    for (let kk = 0; kk < derinlik; kk++) for (let i = 0; i < G; i++)
+      for (let j = 0; j < G; j++) W[kk][i][j] -= lr * gW[kk][i][j];
+    for (let j = 0; j < G; j++) v2[j] -= lr * gv[j];
+    if ((t + 1) % 10 === 0) iz.push(kayip());
+  }
+  const R = { iz, ilk: iz[0], son: iz[iz.length - 1], ilkGradNorm };
+  return (_ks2Cache[k] = R);
+}
+KS2.hassasiyet = (d, ks, adim) => {
+  const a = ks2Egit(d, ks, adim, 0).son, b = ks2Egit(d, ks, adim, 1e-12).son;
+  return Math.abs(a - b) / Math.max(1e-12, a);
+};
+
+VIZ.kisayolBaglanti = s => {
+  clear();
+  const sahne = s.sahne || 'derinlik';
+  const D = KS2.derinlikler[Math.max(0, Math.min(3, s.di === undefined ? 0 : Math.round(s.di)))];
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 25);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'gradyan'){
+    baslikSerit('KISAYOL · GRADYANIN KİMLİK YOLU',
+      'h → h + 0.1·F(h). Geri yayılımda h nin türevi 1, yani gradyan bir yoldan olduğu gibi geçiyor.', []);
+    const P = plot(rect(140, 200, 640, 400), 3, 34, -0.5, 1.1);
+    frame(P, 'derinlik', 'log₁₀ ilk adım gradyan normu', [4, 8, 16, 32], [-0.5, 0, 0.5, 1]);
+    [[0, K.red, 'düz ağ'], [1, K.green, 'kısayollu']].forEach(([ks, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = 3.4; cx.beginPath();
+      KS2.derinlikler.forEach((d, i) => {
+        const y = P.sy(Math.max(-0.5, Math.min(1.1, Math.log10(ks2Egit(d, ks, 1, 0).ilkGradNorm))));
+        i ? cx.lineTo(P.sx(d), y) : cx.moveTo(P.sx(d), y); });
+      cx.stroke();
+      KS2.derinlikler.forEach(d => dot(P.sx(d),
+        P.sy(Math.max(-0.5, Math.min(1.1, Math.log10(ks2Egit(d, ks, 1, 0).ilkGradNorm)))), 5, renk));
+    });
+    txt('düz ağ', P.sx(32) - 14, P.sy(Math.log10(ks2Egit(32,0,1,0).ilkGradNorm)) + 30, K.red, 18, 'right');
+    txt('kısayollu', P.sx(32) - 14, P.sy(Math.log10(ks2Egit(32,1,1,0).ilkGradNorm)) - 16, K.green, 18, 'right');
+    const bx = 830;
+    kart(bx, 200, 260, 'D=4 DÜZ', ks2Egit(4,0,1,0).ilkGradNorm.toFixed(3), K.red);
+    kart(bx + 280, 200, 260, 'D=32 DÜZ', ks2Egit(32,0,1,0).ilkGradNorm.toFixed(3), K.red,
+         'derinlikle küçülüyor');
+    kart(bx, 330, 260, 'D=4 KISAYOL', ks2Egit(4,1,1,0).ilkGradNorm.toFixed(3), K.green);
+    kart(bx + 280, 330, 260, 'D=32 KISAYOL', ks2Egit(32,1,1,0).ilkGradNorm.toFixed(3), K.green,
+         'derinlikle büyüyor');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('NEDEN', bx + 270, 494, K.mut, 18);
+    txt('Düz katmanda gradyan her adımda Wᵀ ile çarpılır.', bx + 18, 534, K.txt, 17, 'left');
+    txt('32 çarpımın çarpımı ya söner ya patlar.', bx + 18, 564, K.txt, 17, 'left');
+    txt('Kısayolda türev I + 0.1·J biçiminde: gradyanın', bx + 18, 604, K.green, 17, 'left');
+    txt('bir kopyası hiç çarpılmadan geçer. Bu yol', bx + 18, 634, K.green, 17, 'left');
+    txt('derinlikten etkilenmez.', bx + 18, 664, K.green, 17, 'left');
+  }
+
+  else if (sahne === 'baslangic'){
+    baslikSerit('KISAYOL · DAL ÖLÇEĞİ',
+      'h + F(h) yazmak yetmiyor. F nin ne kadar katkı yaptığı da ayarlanmalı.', []);
+    const bx = 150, satir = (y, ad, deger, rnk, alt) => {
+      box(bx, y, 1200, 96, 'rgba(7,10,15,.6)', rnk, 2);
+      txt(ad, bx + 24, y + 58, rnk, 24, 'left');
+      txt(deger, bx + 900, y + 58, K.txt, 26, 'right');
+      if (alt) txt(alt, bx + 1176, y + 58, K.mut, 17, 'right'); };
+    txt('32 KATMANLI AĞIN BAŞLANGIÇ KAYBI (henüz hiç eğitilmemiş)', 750, 210, K.mut, 19);
+    satir(240, 'düz ağ', ks2Egit(32, 0, 0, 0).ilk.toFixed(3), K.blue, 'referans');
+    satir(356, 'kısayol · dal ölçeği 1.0', ks2Egit(32, 1, 0, 0, 1).ilk.toExponential(2), K.red,
+          'sinyal patladı');
+    satir(472, 'kısayol · dal ölçeği 0.1', ks2Egit(32, 1, 0, 0, 0.1).ilk.toFixed(3), K.green,
+          'sağlıklı');
+    box(bx, 596, 1200, 130, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('h + F(h) yazdığında her katman varyansı büyütür: h nin varyansı üstüne F ninki eklenir.',
+        bx + 24, 636, K.txt, 19, 'left');
+    txt('32 katman boyunca bu çarpılarak birikir. İlkleme dersindeki patlamanın aynısı,',
+        bx + 24, 670, K.mut, 18, 'left');
+    txt('bu sefer kısayolun kendisi yüzünden. Çözüm dalı sönümlemek ya da normalleştirmek.',
+        bx + 24, 702, K.mut, 18, 'left');
+  }
+
+  else { /* derinlik: duz vs kisayol egitim kaybi */
+    baslikSerit('KISAYOL · DERİNLİK EĞİTİMİ ZORLAŞTIRIYOR',
+      'Aynı veri, aynı adım sayısı. Ölçülen şey eğitim kaybı, yani aşırı uyum değil.', []);
+    const P = plot(rect(140, 200, 640, 400), 3, 34, -2.9, 0.2);
+    frame(P, 'katman sayısı', 'log₁₀ eğitim kaybı', [4, 8, 16, 32], [-2, -1, 0]);
+    [[0, K.red], [1, K.green]].forEach(([ks, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = 3.4; cx.beginPath();
+      KS2.derinlikler.forEach((d, i) => {
+        const y = P.sy(Math.max(-2.9, Math.min(0.2, Math.log10(ks2Egit(d, ks, 40, 0).son))));
+        i ? cx.lineTo(P.sx(d), y) : cx.moveTo(P.sx(d), y); });
+      cx.stroke();
+      KS2.derinlikler.forEach(d => dot(P.sx(d),
+        P.sy(Math.max(-2.9, Math.min(0.2, Math.log10(ks2Egit(d, ks, 40, 0).son)))), 5, renk));
+    });
+    dot(P.sx(D), P.sy(Math.max(-2.9, Math.min(0.2, Math.log10(ks2Egit(D, 0, 40, 0).son)))), 9, K.yellow);
+    txt('düz ağ', P.sx(32) - 14, P.sy(Math.log10(ks2Egit(32,0,40,0).son)) - 16, K.red, 18, 'right');
+    txt('kısayollu', P.sx(32) - 14, P.sy(Math.log10(ks2Egit(32,1,40,0).son)) + 30, K.green, 18, 'right');
+    const bx = 830;
+    const dz = ks2Egit(D, 0, 40, 0).son, ky = ks2Egit(D, 1, 40, 0).son;
+    kart(bx, 200, 260, 'KATMAN SAYISI', String(D), K.blue);
+    kart(bx + 280, 200, 260, 'ORAN', (dz / ky).toFixed(2) + '×',
+         dz > ky ? K.green : K.red, dz > ky ? 'kısayol lehine' : 'düz ağ lehine');
+    kart(bx, 330, 260, 'DÜZ AĞ KAYBI', dz.toFixed(4), dz < ky ? K.green : K.red);
+    kart(bx + 280, 330, 260, 'KISAYOLLU KAYIP', ky.toFixed(4), ky < dz ? K.green : K.red);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('DERİNLİKLE NE OLUYOR', bx + 270, 494, K.mut, 18);
+    const sat = (y, ad, a, b) => {
+      txt(ad, bx + 18, y, K.mut, 17, 'left');
+      txt(a.toFixed(4), bx + 330, y, K.red, 18, 'right');
+      txt(b.toFixed(4), bx + 522, y, K.green, 18, 'right'); };
+    txt('katman', bx + 18, 532, K.mut, 16, 'left');
+    txt('düz', bx + 330, 532, K.red, 16, 'right');
+    txt('kısayol', bx + 522, 532, K.green, 16, 'right');
+    KS2.derinlikler.forEach((d, i) =>
+      sat(566 + i*36, String(d), ks2Egit(d, 0, 40, 0).son, ks2Egit(d, 1, 40, 0).son));
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
