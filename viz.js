@@ -6615,6 +6615,159 @@ VIZ.ozGozetim = s => {
   }
 };
 
+
+/* ═══════════ BAĞLAM İÇİ ÖĞRENME ═══════════
+   Ağırlıklar sabit. Bağlamdan hangi görev olduğu çıkarılıyor.
+   Görülmemiş bir görevde sonsal yine keskinleşiyor ama yanlış yere. */
+const IC = {};
+IC.bilinen = OZ.konular;                                   /* ön eğitimde görülenler */
+IC.gorulmeyen = [[0.05,0.05,0.45,0.45],[0.05,0.05,0.45,0.45],
+                 [0.45,0.45,0.05,0.05],[0.45,0.45,0.05,0.05]];
+IC.kler = [0, 1, 2, 4, 8, 16, 32, 64];
+IC.dizi = (P, T, r) => { let s = Math.floor(4*r()); const o = [];
+  for (let t = 0; t < T; t++){ o.push(s);
+    let v2 = r(), a = 0, nx = 3;
+    for (let j = 0; j < 4; j++){ a += P[s][j]; if (v2 < a){ nx = j; break; } }
+    s = nx; }
+  return o; };
+/* baglam ici ogrenme: agirliklar (bilinen matrisler) SABIT,
+   yalnizca hangi gorev oldugu baglamdan cikariliyor */
+IC.tahmin = (baglam, simdi) => {
+  const logp = [0, 0, 0];
+  for (let k = 0; k < 3; k++)
+    for (let t = 1; t < baglam.length; t++)
+      logp[k] += Math.log(IC.bilinen[k][baglam[t-1]][baglam[t]]);
+  const mx = Math.max(...logp), ex = logp.map(v2 => Math.exp(v2 - mx));
+  const sum = ex.reduce((s, v2) => s + v2, 0);
+  const post = ex.map(v2 => v2/sum);
+  const p = [0, 0, 0, 0];
+  for (let k = 0; k < 3; k++) for (let j = 0; j < 4; j++)
+    p[j] += post[k]*IC.bilinen[k][simdi][j];
+  return { p, post };
+};
+IC.entropi = p => -p.reduce((s, v2) => s + (v2 > 1e-12 ? v2*Math.log(v2) : 0), 0);
+const _icCache = {};
+/* ICL ve kahin AYNI orneklerde olculuyor */
+IC.olc = (gorulmus, k) => {
+  const key = (gorulmus ? 'g' : 'y') + k;
+  if (_icCache[key]) return _icCache[key];
+  const kaynak = gorulmus ? IC.bilinen[0] : IC.gorulmeyen;
+  const r = rng(gorulmus ? 5 : 9);
+  let nllI = 0, nllK = 0, dgI = 0, dgK = 0, ent = 0, n = 0;
+  for (let d = 0; d < 6000; d++){
+    const uzun = IC.dizi(kaynak, k + 2, r);
+    const baglam = uzun.slice(0, k + 1), simdi = uzun[k], sonraki = uzun[k+1];
+    const { p, post } = IC.tahmin(baglam, simdi);
+    const pk = kaynak[simdi];
+    nllI += -Math.log(Math.max(1e-12, p[sonraki]));
+    nllK += -Math.log(Math.max(1e-12, pk[sonraki]));
+    let eI = 0, eK = 0;
+    for (let j = 1; j < 4; j++){ if (p[j] > p[eI]) eI = j; if (pk[j] > pk[eK]) eK = j; }
+    if (eI === sonraki) dgI++;
+    if (eK === sonraki) dgK++;
+    ent += IC.entropi(post); n++;
+  }
+  return (_icCache[key] = { nll: nllI/n, kahin: nllK/n, fazla: (nllI - nllK)/n,
+                            dogruluk: dgI/n, kahinDogruluk: dgK/n, entropi: ent/n });
+};
+
+VIZ.baglamIciOgrenme = s => {
+  clear();
+  const gorulmus = s.gorulmus === undefined ? true : !!s.gorulmus;
+  const ki = Math.max(0, Math.min(7, s.ki === undefined ? 0 : Math.round(s.ki)));
+  const k = IC.kler[ki];
+  const sahne = s.sahne || 'kayip';
+  const R = IC.olc(gorulmus, k);
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+  const xk = i => i;
+
+  if (sahne === 'sonsal'){
+    baslikSerit('BAĞLAM İÇİ ÖĞRENME · SONSAL DAĞILIM KESKİNLEŞİYOR',
+      'Ağırlıklar hiç değişmiyor. Değişen tek şey hangi görevde olduğuna dair inanç.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.3, 7.3, -0.05, 1.2);
+    frame(P, 'bağlamdaki örnek sayısı', 'sonsal entropi (nat)', [], [0, 0.5, 1]);
+    IC.kler.forEach((v2, i) => txt(String(v2), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.sx(-0.3), P.sy(Math.log(3)));
+    cx.lineTo(P.sx(7.3), P.sy(Math.log(3))); cx.stroke();
+    cx.setLineDash([]);
+    txt('ln 3 = 1.0986 · tam belirsizlik', P.sx(7.2), P.sy(Math.log(3)) - 12, K.mut, 17, 'right');
+    [[true, K.green, 'görülen görev'], [false, K.red, 'görülmeyen görev']].forEach(([g, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = g === gorulmus ? 3.6 : 2;
+      cx.globalAlpha = g === gorulmus ? 1 : 0.5;
+      cx.beginPath();
+      IC.kler.forEach((q, i) => { const y = P.sy(IC.olc(g, q).entropi);
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      IC.kler.forEach((q, i) => dot(P.sx(i), P.sy(IC.olc(g, q).entropi), 4, renk));
+      cx.globalAlpha = 1; });
+    dot(P.sx(ki), P.sy(R.entropi), 9, K.yellow);
+    txt('görülen görev', P.R.x + 16, P.R.y + P.R.h*0.30, K.green, 17, 'left');
+    txt('görülmeyen görev', P.R.x + 16, P.R.y + P.R.h*0.30 + 26, K.red, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'BAĞLAM', k + ' örnek', K.blue);
+    kart(bx + 280, 200, 260, 'SONSAL ENTROPİ', R.entropi.toFixed(4),
+         R.entropi < 0.1 ? K.green : K.orange, 'başlangıç: 1.0986');
+    kart(bx, 330, 260, 'GÖRÜLEN · 64 ÖRNEK', IC.olc(true, 64).entropi.toFixed(4), K.green,
+         'kesin');
+    kart(bx + 280, 330, 260, 'GÖRÜLMEYEN · 64', IC.olc(false, 64).entropi.toFixed(4), K.red,
+         'yine kesin');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.red, 2);
+    txt('EMİN OLMAK DOĞRU OLMAK DEĞİL', bx + 270, 494, K.mut, 18);
+    txt('Görülmeyen görevde de sonsal keskinleşiyor:', bx + 18, 534, K.txt, 18, 'left');
+    txt('entropi 1.0986 dan ' + IC.olc(false, 64).entropi.toFixed(4) + ' e iniyor.',
+        bx + 18, 564, K.txt, 18, 'left');
+    txt('Yani model hangi görevde olduğuna karar veriyor', bx + 18, 604, K.red, 18, 'left');
+    txt('ve kararından emin. Ama seçtiği görev yanlış,', bx + 18, 634, K.red, 18, 'left');
+    txt('çünkü doğrusu seçenekler arasında yok.', bx + 18, 664, K.red, 18, 'left');
+  }
+
+  else {
+    baslikSerit('BAĞLAM İÇİ ÖĞRENME · AĞIRLIKLAR SABİT',
+      'Bağlamdaki örnek sayısı arttıkça tahmin iyileşiyor. Hiçbir ağırlık güncellenmiyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.3, 7.3, -0.03, 0.68);
+    frame(P, 'bağlamdaki örnek sayısı', 'kâhine göre fazla kayıp', [], [0, 0.2, 0.4, 0.6]);
+    IC.kler.forEach((v2, i) => txt(String(v2), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.sx(-0.3), P.sy(0)); cx.lineTo(P.sx(7.3), P.sy(0)); cx.stroke();
+    cx.setLineDash([]);
+    txt('0 = görevi bilen tahminciyle aynı', P.sx(-0.2), P.sy(0) - 12, K.mut, 17, 'left');
+    [[true, K.green], [false, K.red]].forEach(([g, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = g === gorulmus ? 3.6 : 2;
+      cx.globalAlpha = g === gorulmus ? 1 : 0.5;
+      cx.beginPath();
+      IC.kler.forEach((q, i) => { const y = P.sy(Math.min(0.68, IC.olc(g, q).fazla));
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      IC.kler.forEach((q, i) => dot(P.sx(i), P.sy(Math.min(0.68, IC.olc(g, q).fazla)), 4, renk));
+      cx.globalAlpha = 1; });
+    dot(P.sx(ki), P.sy(Math.min(0.68, R.fazla)), 9, K.yellow);
+    txt('görülen görev', P.R.x + P.R.w - 14, P.sy(0.04), K.green, 17, 'right');
+    txt('görülmeyen görev', P.R.x + P.R.w - 14, P.sy(0.40), K.red, 17, 'right');
+    const bx = 830;
+    kart(bx, 200, 260, 'BAĞLAM', k + ' örnek', K.blue,
+         gorulmus ? 'görülen görev' : 'görülmeyen görev');
+    kart(bx + 280, 200, 260, 'FAZLA KAYIP', R.fazla.toFixed(4),
+         R.fazla < 0.01 ? K.green : K.red);
+    kart(bx, 330, 260, 'ICL NLL', R.nll.toFixed(4), K.blue);
+    kart(bx + 280, 330, 260, 'KÂHİN NLL', R.kahin.toFixed(4), K.mut, 'görevi bilseydi');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('64 ÖRNEKTE NEREYE VARIYOR', bx + 270, 494, K.mut, 18);
+    txt('görülen görev', bx + 18, 534, K.green, 18, 'left');
+    txt(IC.olc(true, 64).fazla.toFixed(4), bx + 522, 534, K.green, 19, 'right');
+    txt('görülmeyen görev', bx + 18, 570, K.red, 18, 'left');
+    txt(IC.olc(false, 64).fazla.toFixed(4), bx + 522, 570, K.red, 19, 'right');
+    txt('Görülen görevde fazla kayıp sıfıra iniyor:', bx + 18, 612, K.txt, 18, 'left');
+    txt('ICL, görevi bilen tahminciyi yakalıyor.', bx + 18, 642, K.txt, 18, 'left');
+    txt('Görülmeyen görevde bir tabanda takılıyor.', bx + 18, 680, K.red, 18, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

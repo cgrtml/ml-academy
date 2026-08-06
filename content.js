@@ -111,7 +111,7 @@ const ROTALAR = [
     {id:'olcek-yasalari',  ad:'Ölçek yasaları: büyütmenin getirisi ve bedeli',  sure:16, durum:'hazir'},
     {id:'perplexity',     ad:'Perplexity: bir modelin şaşkınlığını ölçmek',    sure:16, durum:'hazir'},
     {id:'talimat-ayar',   ad:'İtaat öğretmek: talimat ince ayarı',             sure:14, durum:'planli'},
-    {id:'icl',            ad:'Örnekle öğretmek: in-context learning',          sure:12, durum:'planli'},
+    {id:'icl',            ad:'Örnekle öğretmek: in-context learning',          sure:17, durum:'hazir'},
     {id:'zincir-prompt',  ad:'Problemi bölmek: zincirleme promptlar',          sure:12, durum:'planli'},
     {id:'gramer',         ad:'Çıktıyı kalıba sıkıştırmak: gramer ve şema',     sure:12, durum:'planli'},
     {id:'hafiza',         ad:'Konuşma hafızası: model neyi hatırlar',          sure:12, durum:'planli'},
@@ -9882,6 +9882,156 @@ DERSLER['oz-gozetim'] = {
       '<b>%74.0</b>: taban çizgisinin <b>altında</b>.<br><br>' +
       'Her iki temsil de frekans temsili olduğu için konum bilgisi taşımıyor. ' +
       'Ön-görev ile aşağı akış görevi arasındaki uyum <b>ölçülmeden bilinemez</b>.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── BAĞLAM İÇİ ÖĞRENME ─────────────── */
+DERSLER['icl'] = {
+  ad:'Örnekle öğretmek: bağlam içi öğrenme',
+  alt:'Ağırlıklar hiç değişmeden davranışın değişmesi. Ölçtüğümüzde bunun bir öğrenme değil, bir seçim olduğu çıkıyor.',
+  kaynaklar:[
+    {y:'Brown, T. ve ark.', t:'2020', b:'Language Models are Few-Shot Learners', n:'NeurIPS 2020'},
+    {y:'Xie, S. M. ve ark.', t:'2022', b:'An Explanation of In-context Learning as Implicit Bayesian Inference', n:'ICLR 2022'},
+    {y:'Min, S. ve ark.', t:'2022', b:'Rethinking the Role of Demonstrations', n:'EMNLP 2022'},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'Ağırlıklar sabit, davranış değişiyor',
+    goal:'Bağlam içi öğrenmenin ölçülebilir tanımını göreceksin.',
+    todo:'Bağlamdaki örnek sayısını artır. Fazla kayıp nereye iniyor?',
+    kind:'controls', viz:'baglamIciOgrenme', h:770, state:{sahne:'kayip', gorulmus:1},
+    controls:[{k:'ki', lb:'BAĞLAMDAKİ ÖRNEK', min:0, max:7, step:1, val:0,
+               fmt:v => IC.kler[v] + ' örnek'}],
+    derive:s => ({f: IC.olc(true, IC.kler[Math.round(s.ki)]).fazla}),
+    live:s => [['FAZLA KAYIP', s.f.toFixed(4), s.f < 0.01 ? K.green : K.orange],
+               ['KÂHİN', IC.olc(true, IC.kler[Math.round(s.ki)]).kahin.toFixed(4), K.mut],
+               ['HEDEF', 'fazla kaybı 0.01 altına indir']],
+    unlock:s => s.f < 0.01,
+    unlockMsg:'Fazla kaybı 0.01 altına indir',
+    body:'<p>Bağlam içi öğrenme, bir modelin <b>hiçbir ağırlığı güncellenmeden</b> ' +
+      'promptaki örneklere göre davranış değiştirmesidir. Şaşırtıcı olan da bu: eğitim yok, ' +
+      'ama uyum var.</p>' +
+      '<p>Bunu ölçebilmek için kurulumu tam kontrol ediyoruz. Ön eğitimde üç görev görülmüş ' +
+      'olsun: kendi kendine gözetim dersindeki üç konu. Model bu üç geçiş matrisini biliyor ' +
+      've bunlar <b>hiç değişmeyecek</b>.</p>' +
+      '<p>Şimdi modele bir bağlam veriyoruz: bu üç görevden birinden gelen k tane örnek. ' +
+      'Model hangi görev olduğunu bilmiyor. Yapabileceği tek şey bağlamdan çıkarım yapmak.</p>' +
+      '<p>Ölçüt <b>fazla kayıp</b>: modelin kaybı eksi görevi <b>bilen</b> bir tahmincinin ' +
+      'kaybı. Sıfır demek "sanki görevi biliyormuş gibi iyi" demek. İkisi de birebir aynı ' +
+      'örneklerde ölçülüyor.</p>' +
+      '<p>Sonuç:</p>' +
+      '<p>0 örnek &rarr; <b>0.2833</b> &nbsp;·&nbsp; 4 &rarr; <b>0.0743</b> &nbsp;·&nbsp; ' +
+      '16 &rarr; <b>0.0090</b> &nbsp;·&nbsp; 64 &rarr; <b>0.0000</b></p>' +
+      '<p>64 örnekle fazla kayıp <b>sıfır</b>. Model, görevi bilen tahminciyi tam olarak ' +
+      'yakalıyor. Ve tek bir ağırlık bile değişmedi.</p>',
+    learned:'<b>Bağlam içi öğrenme, ağırlıklar sabitken bağlamdan uyum sağlamaktır.</b><br><br>' +
+      'Görevi bilen tahminciye göre fazla kayıp: 0 örnekte <b>0.2833</b>, 4’te <b>0.0743</b>, ' +
+      '16’da <b>0.0090</b>, 64’te <b>0.0000</b>.<br><br>' +
+      'ICL ile kâhin birebir aynı örneklerde ölçüldü. 64 örnekte fark <b>kalmıyor</b>.',
+    xp:25,
+  },
+  {
+    t:'Mekanizma: hangi görevdeyim',
+    goal:'Bağlam içi öğrenmenin aslında ne yaptığını göreceksin.',
+    todo:'Örnek sayısını artır. Sonsal entropi nereye iniyor?',
+    kind:'controls', viz:'baglamIciOgrenme', h:770, state:{sahne:'sonsal', gorulmus:1},
+    controls:[{k:'ki', lb:'BAĞLAMDAKİ ÖRNEK', min:0, max:7, step:1, val:0,
+               fmt:v => IC.kler[v] + ' örnek'}],
+    derive:s => ({e: IC.olc(true, IC.kler[Math.round(s.ki)]).entropi}),
+    live:s => [['SONSAL ENTROPİ', s.e.toFixed(4), s.e < 0.1 ? K.green : K.orange],
+               ['BAŞLANGIÇ', Math.log(3).toFixed(4), K.mut],
+               ['HEDEF', 'entropiyi 0.01 altına indir']],
+    unlock:s => s.e < 0.01,
+    unlockMsg:'Sonsal entropiyi 0.01 altına indir',
+    body:'<p>Fazla kaybın sıfıra inmesi güzel ama <b>nasıl</b> oluyor?</p>' +
+      '<p>Model her adımda üç görev üzerinde bir <b>inanç dağılımı</b> tutuyor. Bağlamdaki ' +
+      'her yeni örnek bu inancı güncelliyor. Bunun ölçüsü sonsal entropi: yüksekse ' +
+      '"hangisi olduğunu bilmiyorum", düşükse "eminim".</p>' +
+      '<p>Bağlam boşken entropi <b>1.0986</b>. Bu tam olarak <b>ln 3</b>: üç görev arasında ' +
+      'hiçbir tercih yok, tam belirsizlik.</p>' +
+      '<p>Örnek eklendikçe: 4 örnekte <b>0.4649</b>, 16’da <b>0.0629</b>, 64’te ' +
+      '<b>0.0001</b>.</p>' +
+      '<p>Yani bağlam içi öğrenme, adı üstünde bir <b>öğrenme değil</b>. Model yeni bir şey ' +
+      'öğrenmiyor; zaten sahip olduğu görevler arasından <b>hangisinde olduğunu çıkarıyor</b>. ' +
+      'Teknik adı örtük Bayesçi çıkarım.</p>' +
+      '<p>Bu, olasılık dersindeki Bayes hesabının aynısı: ön dağılım bütün görevler ' +
+      'üzerinde tekdüze, bağlam ise kanıt. Her örnek sonsalı biraz daha keskinleştiriyor.</p>' +
+      '<p>Ve bu ayrım pratikte önemli: bir modelin bir görevi promptla "öğrenmesi", ' +
+      'o görevin ön eğitimde <b>zaten bir yerde bulunduğunun</b> işaretidir.</p>',
+    learned:'<b>Bağlam içi öğrenme bir öğrenme değil, bir seçimdir.</b><br><br>' +
+      'Model görevler üzerinde bir inanç dağılımı tutuyor. Bağlam boşken entropi ' +
+      '<b>1.0986 = ln 3</b> (tam belirsizlik), 64 örnekte <b>0.0001</b>.<br><br>' +
+      'Yeni bir yetenek kazanılmıyor; <b>var olanlar arasından seçim yapılıyor</b>. ' +
+      'Bu, örtük Bayesçi çıkarımdır.',
+    xp:50,
+  },
+  {
+    t:'Ön eğitimde olmayan görev',
+    goal:'Bağlam içi öğrenmenin sınırını ölçeceksin.',
+    todo:'Görevi değiştir ve örnek sayısını artır. Fazla kayıp sıfıra iniyor mu?',
+    kind:'controls', viz:'baglamIciOgrenme', h:770, state:{sahne:'kayip'},
+    controls:[{k:'gorulmus', lb:'GÖREV', min:0, max:1, step:1, val:1,
+               fmt:v => v ? 'ön eğitimde görüldü' : 'görülmedi'},
+              {k:'ki', lb:'BAĞLAMDAKİ ÖRNEK', min:0, max:7, step:1, val:7,
+               fmt:v => IC.kler[v] + ' örnek'}],
+    derive:s => ({f: IC.olc(!!s.gorulmus, IC.kler[Math.round(s.ki)]).fazla}),
+    live:s => [['FAZLA KAYIP', s.f.toFixed(4), s.f < 0.01 ? K.green : K.red],
+               ['64 ÖRNEKTE · GÖRÜLEN', IC.olc(true, 64).fazla.toFixed(4), K.green],
+               ['64 ÖRNEKTE · GÖRÜLMEYEN', IC.olc(false, 64).fazla.toFixed(4), K.red]],
+    unlock:s => s.f > 0.3,
+    unlockMsg:'Fazla kaybın 0.3 üstünde takıldığı durumu bul',
+    body:'<p>Şimdi modele, ön eğitimde <b>hiç görmediği</b> bir görevden bağlam veriyoruz. ' +
+      'Dördüncü bir geçiş matrisi, yine çift stokastik, ama üçünden de farklı.</p>' +
+      '<p>Fazla kayıp:</p>' +
+      '<p>0 örnek &rarr; <b>0.6023</b> &nbsp;·&nbsp; 8 &rarr; <b>0.4074</b> &nbsp;·&nbsp; ' +
+      '32 &rarr; <b>0.3686</b> &nbsp;·&nbsp; 64 &rarr; <b>0.3690</b></p>' +
+      '<p>Bir miktar iyileşiyor, sonra <b>0.369 civarında takılıyor</b>. Ne kadar örnek ' +
+      'verirsen ver oradan aşağı inmiyor.</p>' +
+      '<p>Doğruluk tarafında da aynı: 64 örnekle ICL <b>%25.0</b>, görevi bilen tahminci ' +
+      '<b>%45.1</b>. Aradaki 20 puan kapanmıyor.</p>' +
+      '<p>Sebep açık: model üç görev arasından seçim yapıyor ve doğru cevap o üçünün ' +
+      'içinde değil. Bağlam ne kadar uzarsa uzasın, olmayan bir seçeneği seçemez.</p>' +
+      '<p>Bir önceki adımdaki mekanizma bunu zaten söylüyordu: ICL bir seçimdir, ' +
+      've seçim ancak seçenekler arasından yapılır.</p>',
+    learned:'<b>Bağlam içi öğrenme yalnızca modelin zaten sahip olduğu görevleri seçebilir.</b><br><br>' +
+      'Görülmemiş bir görevde fazla kayıp <b>0.369</b> civarında takılıyor ve 64 örnekle ' +
+      'bile inmiyor. Görülen görevde aynı sayı <b>0.0000</b>.<br><br>' +
+      'Doğrulukta da 20 puanlık fark kapanmıyor: ICL <b>%25.0</b>, kâhin <b>%45.1</b>.',
+    xp:50,
+  },
+  {
+    t:'Emin olmak doğru olmak değil',
+    goal:'Bağlam içi öğrenmenin en tehlikeli özelliğini göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'baglamIciOgrenme', h:770, state:{sahne:'sonsal', gorulmus:0, ki:7},
+    body:'<p>Görülmeyen görevde bir şey daha oluyor ve bu, dersin en önemli ölçümü.</p>' +
+      '<p>Sonsal entropiye bak: bağlam boşken <b>1.0986</b>, 64 örnekte <b>0.0123</b>.</p>' +
+      '<p>Yani model, <b>görülmemiş</b> bir görevde bile hangi görevde olduğuna karar veriyor ' +
+      've kararından <b>emin</b> oluyor. Sonsal neredeyse tekil bir noktaya çöküyor.</p>' +
+      '<p>Ama fazla kayıp 0.369’da takılı. Model emin ve yanılıyor.</p>' +
+      '<p>Bu, Gaussian Process ve Bayesçi ağ derslerinde ölçtüğümüz desenin aynısı: ' +
+      'belirsizlik tahmini de bir modeldir ve model sınırlarının dışında belirsizliği ' +
+      '<b>hafife alır</b>. Burada üç görev üzerinde tanımlı bir sonsal, dördüncü bir ' +
+      'görevin varlığını hesaba katamaz, çünkü onu ifade edecek bir yeri yoktur.</p>' +
+      '<p>Pratik sonucu şu: bir modelin promptla verdiğin görevi "anladığı" ve kararlı ' +
+      'cevaplar ürettiği izlenimi, o görevi <b>doğru</b> yaptığının kanıtı değildir. ' +
+      'Emin görünmek, ön eğitimde en yakın gördüğü şeye kilitlenmiş olmaktan da gelebilir.</p>' +
+      '<p>Bu yüzden az örnekli promptların çıktısı, o görevde <b>ayrı bir değerlendirme ' +
+      'kümesiyle</b> ölçülmeden kabul edilmemelidir.</p>',
+    quiz:{ q:'Bir şirkette çok özel bir belge tipini sınıflandırmak için promptta 30 örnek veriyorsunuz. Model tutarlı, kendinden emin ve hızlı cevaplar üretiyor. Yöneticiniz "model görevi öğrenmiş" diyor. Nasıl yanıt verirsiniz?',
+      opts:[
+        {t:'Tutarlılık ve kendinden eminlik doğruluğun kanıtı değil; ayrı bir değerlendirme kümesinde ölçmemiz gerekir', why:'Doğru. Bu derste görülmemiş bir görevde bile sonsal entropinin 1.0986 dan 0.0123 e indiğini ölçtük: model hangi görevde olduğuna karar verdi ve emin oldu. Ama fazla kayıp 0.369 da takılı kaldı ve doğruluk %25.0 da, kâhinin %45.1 inin çok altında. Yani emin görünmek, ön eğitimde en yakın gördüğü şeye kilitlenmiş olmaktan da gelebilir. Tek ayırt edici yol ölçmek.'},
+        {t:'Doğru, 30 örnek yeterli bir kanıt', why:'Bu derste 64 örneğe kadar çıktık ve görülmemiş görevde fazla kayıp 0.369 da sabit kaldı. Örnek sayısı, görev modelin repertuarında yoksa sorunu çözmüyor; sadece yanlış seçeneğe olan güveni artırıyor.'},
+        {t:'Prompta daha çok örnek eklersek kesinleşir', region:'', why:'Bu derste ölçtüğün gibi görülmemiş bir görevde 8 örnekten 64 e çıkmak fazla kaybı 0.4074 ten 0.3690 a getirdi, yani neredeyse hiç. Örnek eklemek var olmayan bir seçeneği yaratmıyor.'},
+        {t:'Modelin ağırlıklarını bu örneklerle güncellemeliyiz', why:'İnce ayar gerçekten görevi modelin repertuarına ekleyebilir ve makul bir öneri olabilir. Ama sorulan soru modelin şu anda görevi öğrenip öğrenmediğiydi ve buna verilecek cevap ölçmektir. Ölçmeden ince ayara geçmek, sorunun var olup olmadığını bilmeden çözüm uygulamak olur.'},
+      ], correct:0 },
+    learned:'<b>Bağlam içi öğrenmede eminlik, doğruluğun kanıtı değildir.</b><br><br>' +
+      'Görülmemiş bir görevde sonsal entropi <b>1.0986 → 0.0123</b> iniyor: model emin. ' +
+      'Ama fazla kayıp <b>0.369</b>’da, doğruluk <b>%25.0</b>’de takılı (kâhin %45.1).<br><br>' +
+      'Model, ön eğitimde en yakın gördüğü göreve kilitleniyor. Az örnekli promptlar ' +
+      '<b>ayrı bir değerlendirme kümesiyle</b> ölçülmeden kabul edilmemeli.',
     xp:50,
   },
 ]};

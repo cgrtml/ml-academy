@@ -2219,6 +2219,74 @@ console.log('═══ KENDİ KENDİNE GÖZETİM ═══');
   iddia('200 simgelik belgeden', 199, 200 - 1, 0);
 }
 
+console.log('═══ BAĞLAM İÇİ ÖĞRENME ═══');
+{
+  /* kurulum: gorulmeyen gorev de cift stokastik olmali ki karsilastirma adil olsun */
+  {
+    let en = 0;
+    for (let i = 0; i < 4; i++) en = Math.max(en, Math.abs(IC.gorulmeyen[i].reduce((s, p) => s + p, 0) - 1));
+    for (let j = 0; j < 4; j++) en = Math.max(en, Math.abs(IC.gorulmeyen.reduce((s, r) => s + r[j], 0) - 1));
+    iddia('görülmeyen görev de çift stokastik', 0, en, 12);
+    /* ve bilinen ucunden de farkli */
+    let enYakin = 1e9;
+    for (let k = 0; k < 3; k++){ let f = 0;
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++)
+        f += Math.abs(IC.gorulmeyen[i][j] - IC.bilinen[k][i][j]);
+      enYakin = Math.min(enYakin, f); }
+    iddia('görülmeyen görev bilinenlerin hepsinden uzak', true, enYakin > 1);
+  }
+  /* baglam bosken sonsal tam belirsiz · ln 3 */
+  iddia('bağlam boşken sonsal entropi', 1.0986, IC.olc(true, 0).entropi, 4);
+  iddia('bu tam olarak ln 3', 0, Math.abs(IC.olc(true, 0).entropi - Math.log(3)), 9);
+  iddia('görülmeyen görevde de başlangıç aynı', 1.0986, IC.olc(false, 0).entropi, 4);
+  /* GORULEN GOREV · fazla kayip sifira iniyor */
+  iddia('görülen · 0 örnek fazla kayıp', 0.2833, IC.olc(true, 0).fazla, 4);
+  iddia('görülen · 4 örnek', 0.0743, IC.olc(true, 4).fazla, 4);
+  iddia('görülen · 16 örnek', 0.0090, IC.olc(true, 16).fazla, 4);
+  iddia('görülen · 64 örnek', 0.0000, IC.olc(true, 64).fazla, 4);
+  iddia('64 örnekte ICL kâhinle aynı', true, IC.olc(true, 64).fazla < 0.001);
+  {
+    let ihlal = 0;
+    for (let i = 1; i < IC.kler.length; i++)
+      if (IC.olc(true, IC.kler[i]).fazla > IC.olc(true, IC.kler[i-1]).fazla + 1e-9) ihlal++;
+    iddia('görülen görevde fazla kayıp tekdüze azalıyor', 0, ihlal, 0);
+  }
+  /* sonsal keskinlesiyor */
+  iddia('görülen · 16 örnek sonsal entropi', 0.0629, IC.olc(true, 16).entropi, 4);
+  iddia('görülen · 64 örnek sonsal entropi', 0.0001, IC.olc(true, 64).entropi, 4);
+  {
+    let ihlal = 0;
+    for (let i = 1; i < IC.kler.length; i++)
+      if (IC.olc(true, IC.kler[i]).entropi > IC.olc(true, IC.kler[i-1]).entropi + 1e-9) ihlal++;
+    iddia('sonsal entropi tekdüze azalıyor', 0, ihlal, 0);
+  }
+  /* GORULMEYEN GOREV · fazla kayip TAKILIYOR */
+  iddia('görülmeyen · 0 örnek fazla kayıp', 0.6023, IC.olc(false, 0).fazla, 4);
+  iddia('görülmeyen · 8 örnek', 0.4074, IC.olc(false, 8).fazla, 4);
+  iddia('görülmeyen · 32 örnek', 0.3686, IC.olc(false, 32).fazla, 4);
+  iddia('görülmeyen · 64 örnek', 0.3690, IC.olc(false, 64).fazla, 4);
+  iddia('görülmeyen görevde fazla kayıp sıfıra inmiyor', true, IC.olc(false, 64).fazla > 0.3);
+  iddia('32 den 64 e neredeyse hiç iyileşme yok', true,
+        Math.abs(IC.olc(false, 64).fazla - IC.olc(false, 32).fazla) < 0.01);
+  /* asil karsilastirma: ayni baglam uzunlugunda iki gorev */
+  iddia('64 örnekte görülen ile görülmeyen arasındaki uçurum', 0.3690,
+        IC.olc(false, 64).fazla - IC.olc(true, 64).fazla, 4);
+  /* dogrulukta da fark kapanmiyor */
+  iddia('görülen · 64 örnek ICL doğruluğu', 0.703, IC.olc(true, 64).dogruluk, 3);
+  iddia('görülen · kâhin doğruluğu', 0.703, IC.olc(true, 64).kahinDogruluk, 3);
+  iddia('görülen görevde ICL kâhini yakalıyor', true,
+        Math.abs(IC.olc(true, 64).dogruluk - IC.olc(true, 64).kahinDogruluk) < 0.005);
+  iddia('görülmeyen · 64 örnek ICL doğruluğu', 0.250, IC.olc(false, 64).dogruluk, 3);
+  iddia('görülmeyen · kâhin doğruluğu', 0.451, IC.olc(false, 64).kahinDogruluk, 3);
+  iddia('görülmeyen görevde 20 puanlık fark kapanmıyor', true,
+        IC.olc(false, 64).kahinDogruluk - IC.olc(false, 64).dogruluk > 0.15);
+  /* EN ONEMLI OLCUM: gorulmeyen gorevde de sonsal keskinlesiyor · emin ve yanlis */
+  iddia('görülmeyen · 64 örnek sonsal entropi', 0.0123, IC.olc(false, 64).entropi, 4);
+  iddia('görülmeyen görevde model yine kesinleşiyor', true, IC.olc(false, 64).entropi < 0.05);
+  iddia('emin ama yanlış: entropi düşük, fazla kayıp yüksek', true,
+        IC.olc(false, 64).entropi < 0.05 && IC.olc(false, 64).fazla > 0.3);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
