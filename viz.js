@@ -5317,6 +5317,192 @@ VIZ.otokodlayici = s => {
   }
 };
 
+
+/* ═══════════ HESAPLAMA ÇİZGESİ ═══════════
+   Her işlem bir düğüm. Türev, çizgede geriye doğru zincir kuralı uygulayarak
+   akıyor. Sonucu üç ayrı yoldan doğruluyoruz. */
+const HC = {};
+HC.dugumSayaci = 0;
+function hcD(v, ebe, geri, ad, sembol){
+  return { v, g: 0, ebe: ebe || [], _geri: geri || (() => {}), ad, sembol };
+}
+const hcOp = (v, ebe, geri, sembol) => { HC.dugumSayaci++;
+  return hcD(v, ebe, geri, null, sembol); };
+HC.carp = (a, b) => { const o = hcOp(a.v*b.v, [a,b], () => { a.g += b.v*o.g; b.g += a.v*o.g; }, '×'); return o; };
+HC.topla = (a, b) => { const o = hcOp(a.v+b.v, [a,b], () => { a.g += o.g; b.g += o.g; }, '+'); return o; };
+HC.cikar = (a, b) => { const o = hcOp(a.v-b.v, [a,b], () => { a.g += o.g; b.g -= o.g; }, '−'); return o; };
+HC.bol   = (a, b) => { const o = hcOp(a.v/b.v, [a,b], () => { a.g += o.g/b.v; b.g -= a.v*o.g/(b.v*b.v); }, '÷'); return o; };
+HC.sin   = a => { const o = hcOp(Math.sin(a.v), [a], () => { a.g += Math.cos(a.v)*o.g; }, 'sin'); return o; };
+HC.exp   = a => { const o = hcOp(Math.exp(a.v), [a], () => { a.g += Math.exp(a.v)*o.g; }, 'exp'); return o; };
+HC.log   = a => { const o = hcOp(Math.log(a.v), [a], () => { a.g += o.g/a.v; }, 'log'); return o; };
+HC.kare  = a => { const o = hcOp(a.v*a.v, [a], () => { a.g += 2*a.v*o.g; }, 'x²'); return o; };
+HC.geriYayil = kok => {
+  const sira = [], gorulen = new Set();
+  (function gez(n){ if (gorulen.has(n)) return; gorulen.add(n); n.ebe.forEach(gez); sira.push(n); })(kok);
+  sira.forEach(n => n.g = 0);
+  kok.g = 1;
+  for (let i = sira.length - 1; i >= 0; i--) sira[i]._geri();
+  return sira.length;
+};
+/* f = sin(x₁·x₂) + exp(x₂/x₃) − log(1 + x₁²) · x₂ iki dalda birden geçiyor */
+HC.NOKTA = [0.7, 1.3, 2.1];
+HC.ifade = (x1v, x2v, x3v) => {
+  HC.dugumSayaci = 0;
+  const x1 = hcD(x1v, [], null, 'x₁'), x2 = hcD(x2v, [], null, 'x₂'),
+        x3 = hcD(x3v, [], null, 'x₃'), bir = hcD(1, [], null, '1');
+  const a = HC.carp(x1, x2), b = HC.sin(a), c = HC.bol(x2, x3), d = HC.exp(c);
+  const e = HC.kare(x1), f = HC.topla(bir, e), g = HC.log(f);
+  const h = HC.topla(b, d), out = HC.cikar(h, g);
+  return { out, x1, x2, x3, bir, a, b, c, d, e, f, g, h, islem: HC.dugumSayaci };
+};
+HC.otomatik = () => { const M = HC.ifade(...HC.NOKTA);
+  const gezilen = HC.geriYayil(M.out);
+  return { deger: M.out.v, g: [M.x1.g, M.x2.g, M.x3.g], islem: M.islem, gezilen, M }; };
+/* merkezi fark · adim buyuklugu degistirilebilir */
+HC.sayisal = h => HC.NOKTA.map((_, i) => {
+  const P1 = [...HC.NOKTA], P2 = [...HC.NOKTA];
+  P1[i] += h; P2[i] -= h;
+  return (HC.ifade(...P1).out.v - HC.ifade(...P2).out.v) / (2*h); });
+/* elle turetilmis analitik turev · ucuncu bagimsiz yol */
+HC.elle = () => { const [a, b, c] = HC.NOKTA;
+  return [Math.cos(a*b)*b - 2*a/(1 + a*a),
+          Math.cos(a*b)*a + Math.exp(b/c)/c,
+          -Math.exp(b/c)*b/(c*c)]; };
+/* ileri mod vs ters mod maliyeti · MLP [d,h,h,1] */
+HC.parametre = (d, h) => d*h + h*h + h;
+HC.ileriGecis = (d, h) => d*h + h*h + h;
+HC.ileriMod = (d, h) => HC.parametre(d, h) * 2 * HC.ileriGecis(d, h);
+HC.tersMod = (d, h) => 3 * HC.ileriGecis(d, h);
+HC.aglar = [[4,4], [10,16], [64,64], [256,256], [784,512]];
+
+VIZ.hesapCizge = s => {
+  clear();
+  const sahne = s.sahne || 'cizge';
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'maliyet'){
+    baslikSerit('HESAPLAMA ÇİZGESİ · İLERİ MOD MU TERS MOD MU',
+      'Aynı türevi iki yoldan hesaplayabilirsin. Maliyetleri aynı değil.', []);
+    const P = plot(rect(140, 200, 620, 400), 1.4, 6.0, 1.8, 12.5);
+    frame(P, 'log₁₀ parametre sayısı', 'log₁₀ işlem sayısı', [2, 3, 4, 5, 6], [3, 6, 9, 12]);
+    [[HC.ileriMod, K.red, 'ileri mod'], [HC.tersMod, K.green, 'ters mod']].forEach(([f, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = 3.4; cx.beginPath();
+      HC.aglar.forEach(([d, h], i) => {
+        const x = Math.log10(HC.parametre(d, h)), y = P.sy(Math.log10(f(d, h)));
+        i ? cx.lineTo(P.sx(x), y) : cx.moveTo(P.sx(x), y); });
+      cx.stroke();
+      HC.aglar.forEach(([d, h]) => dot(P.sx(Math.log10(HC.parametre(d, h))),
+        P.sy(Math.log10(f(d, h))), 5, renk)); });
+    txt('ileri mod', P.R.x + P.R.w - 14, P.sy(Math.log10(HC.ileriMod(784,512))) + 28, K.red, 18, 'right');
+    txt('ters mod', P.R.x + P.R.w - 14, P.sy(Math.log10(HC.tersMod(784,512))) - 14, K.green, 18, 'right');
+    const bx = 810;
+    const [d0, h0] = HC.aglar[HC.aglar.length - 1], P0 = HC.parametre(d0, h0);
+    kart(bx, 200, 260, 'PARAMETRE', P0.toLocaleString('tr-TR'), K.blue, d0 + '→' + h0 + '→' + h0 + '→1');
+    kart(bx + 280, 200, 260, 'ORAN', (HC.ileriMod(d0,h0)/HC.tersMod(d0,h0)).toExponential(2),
+         K.purple, 'ileri / ters');
+    kart(bx, 330, 260, 'İLERİ MOD', HC.ileriMod(d0,h0).toExponential(2), K.red, 'işlem');
+    kart(bx + 280, 330, 260, 'TERS MOD', HC.tersMod(d0,h0).toExponential(2), K.green, 'işlem');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('NEDEN', bx + 270, 494, K.mut, 18);
+    txt('İleri mod her seferinde tek bir GİRDİ yönünde', bx + 18, 534, K.txt, 18, 'left');
+    txt('türev taşır: P parametre için P geçiş.', bx + 18, 564, K.txt, 18, 'left');
+    txt('Ters mod her seferinde tek bir ÇIKTI yönünde', bx + 18, 604, K.green, 18, 'left');
+    txt('taşır: kayıp tek sayı olduğu için 1 geçiş.', bx + 18, 634, K.green, 18, 'left');
+    txt('Oran tam olarak 2P/3 çıkıyor.', bx + 18, 676, K.purple, 18, 'left');
+  }
+
+  else if (sahne === 'bellek'){
+    const L = Math.max(4, Math.min(64, s.L === undefined ? 4 : Math.round(s.L)));
+    const h = 512, yigin = 32;
+    const tam = L * h * yigin, kn = Math.ceil(Math.sqrt(L)) * h * yigin;
+    baslikSerit('HESAPLAMA ÇİZGESİ · TERS MODUN BEDELİ',
+      'Geri geçiş, ileri geçişteki ara değerlere ihtiyaç duyar. Onlar saklanmak zorunda.', []);
+    const P = plot(rect(140, 200, 620, 400), 0, 64, 3, 6.2);
+    frame(P, 'katman sayısı', 'log₁₀ saklanan değer', [4, 16, 32, 48, 64], [4, 5, 6]);
+    [[q => q*h*yigin, K.red], [q => Math.ceil(Math.sqrt(q))*h*yigin, K.green]].forEach(([f, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = 3.4; cx.beginPath();
+      for (let q = 4; q <= 64; q++){ const y = P.sy(Math.log10(f(q)));
+        q === 4 ? cx.moveTo(P.sx(q), y) : cx.lineTo(P.sx(q), y); }
+      cx.stroke(); });
+    dot(P.sx(L), P.sy(Math.log10(tam)), 8, K.yellow);
+    txt('hepsini sakla', P.R.x + P.R.w - 14, P.sy(Math.log10(64*h*yigin)) - 14, K.red, 18, 'right');
+    txt('kontrol noktası (√L)', P.R.x + P.R.w - 14,
+        P.sy(Math.log10(Math.ceil(Math.sqrt(64))*h*yigin)) + 28, K.green, 18, 'right');
+    const bx = 810;
+    kart(bx, 200, 260, 'KATMAN', String(L), K.blue, 'genişlik ' + h + ', yığın ' + yigin);
+    kart(bx + 280, 200, 260, 'HEPSİNİ SAKLA', tam.toLocaleString('tr-TR'), K.red, 'değer');
+    kart(bx, 330, 260, 'KONTROL NOKTALI', kn.toLocaleString('tr-TR'), K.green, 'değer');
+    kart(bx + 280, 330, 260, 'KAZANÇ', (tam/kn).toFixed(1) + '×', K.purple, 'bellekte');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('TAKAS', bx + 270, 494, K.mut, 18);
+    txt('Kontrol noktası, saklanmayan ara değerleri geri', bx + 18, 534, K.txt, 18, 'left');
+    txt('geçiş sırasında yeniden hesaplar.', bx + 18, 564, K.txt, 18, 'left');
+    txt('Bellek √L kat azalır, hesap yaklaşık 1.3 kat', bx + 18, 604, K.green, 18, 'left');
+    txt('artar. Model belleğe sığmıyorsa iyi bir takas.', bx + 18, 634, K.green, 18, 'left');
+    txt('Kombinatorik dersindeki gibi: sınıfı değil,', bx + 18, 674, K.mut, 18, 'left');
+    txt('hangi kaynağı harcadığını değiştiriyor.', bx + 18, 702, K.mut, 18, 'left');
+  }
+
+  else { /* cizge: ifade agaci + uc yoldan dogrulama */
+    const A = HC.otomatik(), M = A.M, elle = HC.elle(), say = HC.sayisal(s.h || 1e-5);
+    baslikSerit('HESAPLAMA ÇİZGESİ · HER İŞLEM BİR DÜĞÜM',
+      'f = sin(x₁·x₂) + exp(x₂/x₃) − log(1 + x₁²)', []);
+    /* cizge yerlesimi */
+    const yer = {
+      'x₁': [180, 250], 'x₂': [180, 360], 'x₃': [180, 470], '1': [180, 605],
+      '×': [340, 300], 'sin': [470, 300], '÷': [340, 415], 'exp': [470, 415],
+      'x²': [340, 530], '+1': [470, 530], 'log': [600, 530],
+      '+': [620, 355], '−': [740, 420],
+    };
+    const dugumler = [
+      ['x₁', M.x1], ['x₂', M.x2], ['x₃', M.x3], ['1', M.bir],
+      ['×', M.a], ['sin', M.b], ['÷', M.c], ['exp', M.d],
+      ['x²', M.e], ['+1', M.f], ['log', M.g], ['+', M.h], ['−', M.out],
+    ];
+    const kenarlar = [['x₁','×'],['x₂','×'],['×','sin'],['x₂','÷'],['x₃','÷'],['÷','exp'],
+                      ['x₁','x²'],['1','+1'],['x²','+1'],['+1','log'],
+                      ['sin','+'],['exp','+'],['+','−'],['log','−']];
+    cx.strokeStyle = 'rgba(120,200,255,.35)'; cx.lineWidth = 2;
+    kenarlar.forEach(([a, b]) => { const p = yer[a], q = yer[b];
+      cx.beginPath(); cx.moveTo(p[0] + 36, p[1]); cx.lineTo(q[0] - 36, q[1]); cx.stroke(); });
+    dugumler.forEach(([ad, n]) => { const p = yer[ad];
+      const girdi = ['x₁','x₂','x₃','1'].includes(ad);
+      dot(p[0], p[1], 34, girdi ? 'rgba(120,200,255,.20)' : 'rgba(60,220,160,.18)',
+          girdi ? K.blue : K.green, 2);
+      txt(ad, p[0], p[1] + 6, girdi ? K.blue : K.green, 17);
+      if (ad !== '1') txt(n.v.toFixed(3), p[0], p[1] - 44, K.mut, 15);
+      if (girdi && ad !== '1') txt('∂ ' + n.g.toFixed(3), p[0], p[1] + 52, K.yellow, 15); });
+    txt('üstteki sayı: değer  ·  altta sarı: türev', 470, 680, K.mut, 17);
+    const bx = 850;
+    kart(bx, 200, 250, 'İŞLEM DÜĞÜMÜ', String(A.islem), K.green);
+    kart(bx + 270, 200, 250, 'GEZİLEN DÜĞÜM', String(A.gezilen), K.green, 'girdiler dahil');
+    kart(bx, 330, 250, 'f DEĞERİ', A.deger.toFixed(6), K.blue);
+    kart(bx + 270, 330, 250, 'GEÇİŞ SAYISI', '1', K.purple, 'üç türev birden');
+    box(bx, 460, 520, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('TÜREV ÜÇ AYRI YOLDAN', bx + 260, 494, K.mut, 18);
+    txt('', 0, 0, K.mut, 1);
+    const sat = (y, ad, vals, renk) => {
+      txt(ad, bx + 16, y, renk, 17, 'left');
+      vals.forEach((v2, i) => txt(v2.toFixed(6), bx + 220 + i*150, y, renk, 16, 'right')); };
+    txt('∂/∂x₁', bx + 220, 524, K.mut, 15, 'right');
+    txt('∂/∂x₂', bx + 370, 524, K.mut, 15, 'right');
+    txt('∂/∂x₃', bx + 520, 524, K.mut, 15, 'right');
+    sat(556, 'otomatik', A.g, K.green);
+    sat(590, 'elle', elle, K.blue);
+    sat(624, 'sayısal', say, K.orange);
+    const enBuyuk = Math.max(...A.g.map((v2, i) => Math.abs(v2 - elle[i])));
+    txt('otomatik ile elle farkı: ' + (enBuyuk === 0 ? '0 (tam)' : enBuyuk.toExponential(1)),
+        bx + 16, 664, K.green, 17, 'left');
+    txt('sayısal farkı: ' + Math.max(...A.g.map((v2, i) => Math.abs(v2 - say[i]))).toExponential(1),
+        bx + 16, 694, K.orange, 17, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

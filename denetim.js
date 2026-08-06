@@ -1765,6 +1765,82 @@ console.log('═══ OTOKODLAYICI ═══');
         (1 - okAe(4,false,0)/OK.pca(4)) < (1 - okAe(3,false,0)/OK.pca(3)));
 }
 
+console.log('═══ HESAPLAMA ÇİZGESİ ═══');
+{
+  const A = HC.otomatik(), elle = HC.elle();
+  iddia('çizgedeki işlem düğümü', 9, A.islem, 0);
+  iddia('gezilen düğüm (girdiler dahil)', 13, A.gezilen, 0);
+  iddia('f(0.7, 1.3, 2.1)', 2.247886, A.deger, 6);
+  /* OTOMATIK TUREV = ELLE TURETILMIS · tam esitlik, yaklasiklik degil */
+  iddia('∂f/∂x₁ otomatik', -0.1417278411, A.g[0], 9);
+  iddia('∂f/∂x₂ otomatik', 1.3139832042, A.g[1], 9);
+  iddia('∂f/∂x₃ otomatik', -0.5474616826, A.g[2], 9);
+  iddia('otomatik ile elle türev farkı tam sıfır', 0,
+        Math.max(...A.g.map((v, i) => Math.abs(v - elle[i]))), 15);
+  /* SAYISAL TUREVLE UYUM · yaklasik yontem oldugu icin kucuk bir fark bekleniyor */
+  {
+    const s = HC.sayisal(1e-5);
+    const fark = Math.max(...A.g.map((v, i) => Math.abs(v - s[i])));
+    iddia('sayısal türevle en büyük fark (log10)', -10.6, Math.log10(fark), 1);
+    iddia('sayısal fark 1e-9 un altında', true, fark < 1e-9);
+    /* fark sayisal yontemin kendi hatasi: adim kucuklukce once azalip sonra artiyor */
+    const h1 = Math.max(...A.g.map((v,i)=>Math.abs(v - HC.sayisal(1e-2)[i])));
+    const h2 = Math.max(...A.g.map((v,i)=>Math.abs(v - HC.sayisal(1e-5)[i])));
+    const h3 = Math.max(...A.g.map((v,i)=>Math.abs(v - HC.sayisal(1e-9)[i])));
+    iddia('büyük adımda sayısal hata daha büyük', true, h1 > h2);
+    iddia('çok küçük adımda yuvarlama hatası geri geliyor', true, h3 > h2);
+    iddia('hata otomatik türevde değil sayısal yöntemde', true, h2 < h1 && h2 < h3);
+  }
+  /* x₂ iki dala birden gidiyor · gradyanlar toplaniyor mu */
+  {
+    const M = HC.ifade(...HC.NOKTA);
+    HC.geriYayil(M.out);
+    const [a, b, c] = HC.NOKTA;
+    const dal1 = Math.cos(a*b)*a;        /* sin(x₁x₂) dalı */
+    const dal2 = Math.exp(b/c)/c;        /* exp(x₂/x₃) dalı */
+    iddia('x₂ nin türevi iki dalın toplamı', dal1 + dal2, M.x2.g, 12);
+    iddia('tek dal tek başına yetmiyor', true, Math.abs(dal1 - M.x2.g) > 0.1);
+  }
+  /* zincir kurali gercekten uygulaniyor mu: ara dugumlerin turevleri de dogru */
+  {
+    const M = HC.ifade(...HC.NOKTA);
+    HC.geriYayil(M.out);
+    iddia('sin düğümünün türevi 1 (doğrudan toplama giriyor)', 1, M.b.g, 12);
+    iddia('log düğümünün türevi −1 (çıkarma)', -1, M.g.g, 12);
+    iddia('çarpım düğümünün türevi cos(x₁x₂)', Math.cos(HC.NOKTA[0]*HC.NOKTA[1]), M.a.g, 12);
+  }
+  /* ILERI MOD vs TERS MOD · oran tam olarak 2P/3 */
+  {
+    let ihlal = 0;
+    for (const [d2, h2] of HC.aglar){
+      const P = HC.parametre(d2, h2);
+      if (Math.abs(HC.ileriMod(d2,h2)/HC.tersMod(d2,h2) - 2*P/3) > 1e-6) ihlal++; }
+    iddia('ileri/ters oranı her ağda tam olarak 2P/3', 0, ihlal, 0);
+  }
+  iddia('36 parametrede oran', 24, HC.ileriMod(4,4)/HC.tersMod(4,4), 0);
+  iddia('8256 parametrede oran', 5504, HC.ileriMod(64,64)/HC.tersMod(64,64), 0);
+  iddia('664064 parametrede oran', 442709, HC.ileriMod(784,512)/HC.tersMod(784,512), 0);
+  iddia('664064 parametre sayısı', 664064, HC.parametre(784,512), 0);
+  iddia('oran parametre sayısıyla doğru orantılı', true,
+        Math.abs((HC.ileriMod(784,512)/HC.tersMod(784,512)) /
+                 (HC.ileriMod(64,64)/HC.tersMod(64,64)) -
+                 HC.parametre(784,512)/HC.parametre(64,64)) < 1e-6);
+  /* BELLEK · kontrol noktasi kazanci */
+  {
+    const bel = L => L * 512 * 32, kn = L => Math.ceil(Math.sqrt(L)) * 512 * 32;
+    iddia('4 katman saklanan değer', 65536, bel(4), 0);
+    iddia('64 katman saklanan değer', 1048576, bel(64), 0);
+    iddia('64 katmanda kontrol noktası kazancı', 8, bel(64)/kn(64), 0);
+    iddia('48 katmanda kazanç', 6.9, bel(48)/kn(48), 1);
+    iddia('bellek katman sayısıyla doğrusal', true,
+          Math.abs(bel(64)/bel(4) - 16) < 1e-9);
+    /* kazanc √L ile buyuyor */
+    let ihlal = 0;
+    for (const L of [4, 16, 36, 64]) if (Math.abs(bel(L)/kn(L) - Math.sqrt(L)) > 1e-9) ihlal++;
+    iddia('kontrol noktası kazancı tam kare katman sayılarında √L', 0, ihlal, 0);
+  }
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

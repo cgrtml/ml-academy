@@ -85,7 +85,7 @@ const ROTALAR = [
     {id:'rnn',            ad:'RNN: sırayı hafızada tutmak',                    sure:17, durum:'hazir'},
     {id:'lstm',           ad:'LSTM: unutmayı ve hatırlamayı öğrenen ağ',       sure:18, durum:'hazir'},
     {id:'otokodlayici',   ad:'Otokodlayıcı: etiketsiz veriden öğrenmek',       sure:16, durum:'hazir'},
-    {id:'hesap-cizge',    ad:'Hesaplama çizgesi: türev nasıl akar',            sure:12, durum:'planli'},
+    {id:'hesap-cizge',    ad:'Hesaplama çizgesi: türev nasıl akar',            sure:16, durum:'hazir'},
     {id:'mdn',            ad:'Tek cevap yetmediğinde: karışım yoğunluk ağı',   sure:14, durum:'planli'},
     {id:'bayes-ag',       ad:'Bayesçi ağ: ağırlıklara da şüpheyle bakmak',     sure:16, durum:'planli'},
     {id:'enc-dec',        ad:'Kodlayıcı mı çözücü mü: anlamak mı, üretmek mi',  sure:12, durum:'planli'},
@@ -8897,6 +8897,140 @@ DERSLER['otokodlayici'] = {
       '<b>hiçbir şey</b> öğretmez.<br><br>' +
       'Bu yüzden pratikteki varyantların hepsi ek bir kısıt koyar: gürültü gidermeli, ' +
       'seyrek ve değişimsel otokodlayıcılar. Hepsinin amacı <b>kolay çözümü kapatmak</b>.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── HESAPLAMA ÇİZGESİ ─────────────── */
+DERSLER['hesap-cizge'] = {
+  ad:'Hesaplama çizgesi: türev nasıl akar',
+  alt:'Geri yayılım sihir değil, bir çizgede zincir kuralını geriye doğru uygulamak. Bu sayfadaki türevleri üç ayrı yoldan hesaplayıp karşılaştırıyoruz.',
+  kaynaklar:[
+    {y:'Griewank, A. & Walther, A.', t:'2008', b:'Evaluating Derivatives: Principles and Techniques of Algorithmic Differentiation, 2. baskı', n:'SIAM'},
+    {y:'Baydin, A. G. ve ark.', t:'2018', b:'Automatic Differentiation in Machine Learning: A Survey', n:'JMLR 18(153)'},
+    {y:'Chen, T. ve ark.', t:'2016', b:'Training Deep Nets with Sublinear Memory Cost', n:'arXiv:1604.06174'},
+  ],
+  rota:2,
+  adimlar:[
+  {
+    t:'Her işlem bir düğüm',
+    goal:'Bir formülün nasıl bir çizgeye dönüştüğünü göreceksin.',
+    todo:'Çizgeye bak. x₂ düğümünden kaç ok çıkıyor?',
+    kind:'static', viz:'hesapCizge', h:770, state:{sahne:'cizge'},
+    body:'<p>Şu formülü ele alalım:</p>' +
+      '<p style="text-align:center;font-size:1.15em">f = sin(x₁·x₂) + exp(x₂/x₃) &minus; log(1 + x₁²)</p>' +
+      '<p>Bilgisayar bunu tek parça olarak görmez. Her temel işlemi bir <b>düğüm</b> yapar ve ' +
+      'aralarına veri akışını gösteren oklar çeker. Soldaki resim tam olarak bu çizge.</p>' +
+      '<p>Toplam <b>9 işlem düğümü</b> var. Girdilerle birlikte gezilen düğüm sayısı <b>13</b>.</p>' +
+      '<p>Dikkat edilecek nokta: <b>x₂ düğümünden iki ok çıkıyor</b>. Hem çarpıma hem bölmeye ' +
+      'gidiyor. Yani f, x₂’ye iki ayrı yoldan bağlı.</p>' +
+      '<p>Zincir kuralının çizge üstündeki hâli bunu doğal olarak halleder: bir düğüme birden ' +
+      'çok yoldan gradyan geliyorsa, gelenler <b>toplanır</b>. Kodda bu, gradyanı atamak ' +
+      'yerine <b>üstüne eklemek</b> demek. Motorun her işlemi bu yüzden g += ... biçiminde ' +
+      'yazılmıştır.</p>' +
+      '<p>x₁ = 0.7, x₂ = 1.3, x₃ = 2.1 noktasında f = <b>2.247886</b>.</p>',
+    learned:'<b>Bir formül, her temel işlemin bir düğüm olduğu bir çizgedir.</b><br><br>' +
+      'Bu ifadede <b>9 işlem düğümü</b> var, girdilerle birlikte <b>13</b>.<br><br>' +
+      'Bir düğümden birden çok ok çıkıyorsa, geri gelen gradyanlar <b>toplanır</b>. ' +
+      'x₂ hem çarpıma hem bölmeye gittiği için türevi iki katkının toplamıdır.',
+    xp:25,
+  },
+  {
+    t:'Türev üç yoldan aynı çıkıyor',
+    goal:'Otomatik türevin doğruluğunu bağımsız iki yolla sınayacaksın.',
+    todo:'Sağdaki üç satırı karşılaştır. Hangi ikisi tam olarak aynı?',
+    kind:'static', viz:'hesapCizge', h:770, state:{sahne:'cizge'},
+    body:'<p>Geri yayılım çizgeyi sondan başa gezer. En sondaki düğüme türev 1 verilir ' +
+      '(f’nin kendine göre türevi), sonra her düğüm kendi girdilerine düşen payı geriye ' +
+      'aktarır.</p>' +
+      '<p>Bu sayfadaki motor bunu gerçekten yapıyor. Sonucu iki bağımsız yolla sınıyoruz.</p>' +
+      '<p><b>Birinci sınama: elle türetilmiş formül.</b> Kağıt üstünde türev alıp doğrudan ' +
+      'yazdık: &part;f/&part;x₁ = cos(x₁x₂)·x₂ &minus; 2x₁/(1+x₁²) ve benzerleri. ' +
+      'Otomatik türevle farkı <b>tam olarak 0</b>. Son bit dahil aynı sayı.</p>' +
+      '<p><b>İkinci sınama: sayısal türev.</b> Merkezi fark ile, yani noktayı ileri geri ' +
+      'oynatıp eğimi ölçerek. Fark <b>2.4 × 10⁻¹¹</b>.</p>' +
+      '<p>Bu kalan farkın nereden geldiği önemli: hata otomatik türevde değil, ' +
+      '<b>sayısal yöntemde</b>. Merkezi fark yaklaşık bir yöntemdir ve adım boyutu ' +
+      'küçüldükçe yuvarlama hatası büyür. Otomatik türev ise yaklaşık değil, ' +
+      'zincir kuralının birebir uygulanmasıdır.</p>' +
+      '<p>Ve hepsi <b>tek bir geri geçişte</b>: üç türev birden.</p>',
+    learned:'<b>Otomatik türev yaklaşık değil, kesindir.</b><br><br>' +
+      'Elle türetilmiş formülle farkı <b>tam olarak 0</b>. Sayısal türevle farkı ' +
+      '<b>2.4 × 10⁻¹¹</b> ve bu fark sayısal yöntemin kendi hatasıdır.<br><br>' +
+      'Üç türev de <b>tek bir geri geçişte</b> hesaplanıyor. Sıradaki adımda bunun neden ' +
+      'önemli olduğunu ölçeceğiz.',
+    xp:50,
+  },
+  {
+    t:'Neden ters mod',
+    goal:'İki türev alma yönü arasındaki maliyet farkını ölçeceksin.',
+    todo:'Grafikteki iki eğrinin açısına bak. Fark neden büyüyor?',
+    kind:'static', viz:'hesapCizge', h:770, state:{sahne:'maliyet'},
+    body:'<p>Çizgede türev iki yönde taşınabilir.</p>' +
+      '<p><b>İleri mod</b> baştan sona gider. Her geçişte tek bir <b>girdi</b> yönündeki ' +
+      'türevi taşır. P parametren varsa P geçiş gerekir.</p>' +
+      '<p><b>Ters mod</b> sondan başa gider. Her geçişte tek bir <b>çıktı</b> yönündeki ' +
+      'türevi taşır. Kayıp tek bir sayı olduğu için <b>tek geçiş</b> yeter.</p>' +
+      '<p>Fark burada: sinir ağlarında girdi (parametre) sayısı milyonlarca, çıktı (kayıp) ' +
+      'sayısı bir.</p>' +
+      '<p>Ölçelim. Bir MLP için toplam işlem sayısı:</p>' +
+      '<p>36 parametre &rarr; oran <b>24×</b><br>' +
+      '8.256 parametre &rarr; <b>5.504×</b><br>' +
+      '664.064 parametre &rarr; <b>442.709×</b></p>' +
+      '<p>Oran tam olarak <b>2P/3</b> çıkıyor: parametre sayısıyla doğru orantılı. ' +
+      'Yani model büyüdükçe ileri mod orantılı olarak daha kötü hâle geliyor.</p>' +
+      '<p>Bu, derin öğrenmenin neden mümkün olduğunun sessiz cevaplarından biri. ' +
+      'İleri modla eğitim yapmak, aynı işi milyonlarca kat pahalıya yapmak olurdu.</p>' +
+      '<p>Ters modun her zaman kazandığını sanma: çıktı sayısı girdi sayısından fazlaysa ' +
+      'ileri mod kazanır. Kural, <b>az olan tarafın yönünde ilerlemektir</b>.</p>',
+    learned:'<b>Ters mod, çıktı sayısı girdi sayısından az olduğunda kazanır.</b><br><br>' +
+      'İleri mod parametre başına bir geçiş ister, ters mod çıktı başına. ' +
+      'Kayıp tek sayı olduğu için ters modda <b>tek geçiş</b> yeter.<br><br>' +
+      'Ölçülen oran tam olarak <b>2P/3</b>: 8.256 parametrede <b>5.504 kat</b>, ' +
+      '664.064 parametrede <b>442.709 kat</b>.',
+    xp:50,
+  },
+  {
+    t:'Ters modun bedeli: bellek',
+    goal:'Hesap ile bellek arasındaki takası göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'controls', viz:'hesapCizge', h:770, state:{sahne:'bellek'},
+    controls:[{k:'L', lb:'KATMAN SAYISI', min:4, max:64, step:4, val:4,
+               fmt:v => v + ' katman'}],
+    derive:s => { const L = Math.round(s.L);
+      return {kz: (L*512*32) / (Math.ceil(Math.sqrt(L))*512*32)}; },
+    live:s => [['BELLEK KAZANCI', s.kz.toFixed(1) + '×', K.green],
+               ['HEDEF', '> 6×']],
+    unlock:s => s.kz > 6,
+    unlockMsg:'Bellek kazancını 6 katın üstüne çıkar',
+    body:'<p>Ters modun bir bedeli var. Geri geçiş, ileri geçişte hesaplanan ara değerlere ' +
+      'ihtiyaç duyar: örneğin çarpımın türevi için iki çarpanın da değeri gerekir.</p>' +
+      '<p>Yani ileri geçişteki bütün ara değerler <b>saklanmak zorunda</b>. İleri mod bu ' +
+      'sorunu yaşamaz, çünkü türevi ileri geçişle birlikte taşır.</p>' +
+      '<p>512 genişliğinde ve 32 yığın boyutunda bir ağda:</p>' +
+      '<p>4 katman &rarr; <b>65.536</b> değer<br>' +
+      '64 katman &rarr; <b>1.048.576</b> değer</p>' +
+      '<p>Katman sayısıyla doğrusal büyüyor. Çok derin ağlarda bu, modelin belleğe ' +
+      'sığmamasının başlıca sebebidir.</p>' +
+      '<p><b>Kontrol noktası</b> (gradient checkpointing) çözümü: bütün ara değerleri ' +
+      'saklamak yerine sadece belirli aralıklardakileri sakla, aradakileri geri geçiş ' +
+      'sırasında <b>yeniden hesapla</b>.</p>' +
+      '<p>&radic;L aralıkla saklandığında bellek &radic;L kat azalır. 64 katmanda ' +
+      '<b>8 kat</b>. Karşılığında hesap yaklaşık <b>1.3 kat</b> artar.</p>' +
+      '<p>Kombinatorik dersindeki desenin aynısı: sorunun sınıfı değişmiyor, hangi kaynağı ' +
+      'harcadığın değişiyor. Bellek darsa hesapla ödersin.</p>',
+    quiz:{ q:'Bir modeli eğitirken bellek yetmiyor ve yığın boyutunu 32’den 4’e indirmek zorunda kaldın, bu da eğitimi yavaşlattı ve gradyanları gürültülü yaptı. Elinde 48 katmanlı bir ağ var. Ne yaparsın?',
+      opts:[
+        {t:'Kontrol noktası açarım: bellek yaklaşık 7 kat azalır ve yığın boyutunu geri büyütebilirim', why:'Doğru. Bu derste ölçtüğün gibi 48 katmanda √L aralıkla saklamak bellekte yaklaşık 7 kat kazandırıyor, karşılığında hesap yaklaşık 1.3 kat artıyor. Yığın boyutunu 4 ten 32 ye geri çıkarabilmek hem gradyan gürültüsünü azaltır hem donanımı daha verimli kullanır, dolayısıyla 1.3 katlık hesap artışı fazlasıyla geri kazanılır. Takas bilinçli yapıldığında doğru takas.'},
+        {t:'İleri moda geçerim, o ara değerleri saklamıyor', why:'İleri mod gerçekten bellek saklamaz ama bu derste ölçtüğün gibi maliyeti 2P/3 kat daha yüksek: 664 bin parametreli bir ağda 442 bin kat. Belleği kurtarmak için hesabı milyonlarca katına çıkarmak takas değil, teslim olmak.'},
+        {t:'Katman sayısını 48 den 24 e indiririm', why:'Belleği yarıya indirir ama modeli küçültür. Kontrol noktası aynı belleği modelden hiçbir şey vermeden kazandırıyor, üstelik daha fazlasını: 48 katmanda yaklaşık 7 kat.'},
+        {t:'Gradyan kliplemesi eklerim', why:'Klipleme gradyan büyüklüğüyle ilgilidir, bellekle değil. Belirtiler bellek yetersizliğini gösteriyor ve klipleme saklanan ara değer sayısını değiştirmez.'},
+      ], correct:0 },
+    learned:'<b>Ters mod hesabı ucuzlatır, belleği pahalılaştırır.</b><br><br>' +
+      'Bütün ara değerler saklanmak zorunda: 512 genişlik ve 32 yığında 64 katman için ' +
+      '<b>1.048.576</b> değer.<br><br>' +
+      '<b>Kontrol noktası</b> bunları √L aralıkla saklayıp arasını yeniden hesaplar: ' +
+      '64 katmanda bellek <b>8 kat</b> azalır, hesap yaklaşık <b>1.3 kat</b> artar.',
     xp:50,
   },
 ]};
