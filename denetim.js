@@ -1631,6 +1631,73 @@ console.log('═══ RNN · HAFIZA VE UFUK ═══');
         Math.abs(RN.girdiEtkisi(16)[0] - RN.girdiEtkisi(16)[0]), 12);
 }
 
+console.log('═══ LSTM · KAPILAR VE HÜCRE ═══');
+{
+  /* sigmoid degerleri · saf aritmetik */
+  const sg = z => 1/(1+Math.exp(-z));
+  iddia('σ(0)', 0.5000, sg(0), 4);
+  iddia('σ(1)', 0.7311, sg(1), 4);
+  iddia('σ(2)', 0.8808, sg(2), 4);
+  /* olculen ortalama unutma kapisi · yanliligin actigi kapi */
+  iddia('yanlılık 0 · ortalama kapı', 0.5004, LS.etki(0).ortKapi, 4);
+  iddia('yanlılık 1 · ortalama kapı', 0.7251, LS.etki(1).ortKapi, 4);
+  iddia('yanlılık 2 · ortalama kapı', 0.8753, LS.etki(2).ortKapi, 4);
+  iddia('yanlılık arttıkça kapı açılıyor', true,
+        LS.etki(0).ortKapi < LS.etki(1).ortKapi && LS.etki(1).ortKapi < LS.etki(2).ortKapi);
+  /* adim basina sonum orani · dersin cekirdegi */
+  iddia('yanlılık 0 · adım başına sönüm', 0.7072, LS.etki(0).oran, 4);
+  iddia('yanlılık 1 · adım başına sönüm', 0.9197, LS.etki(1).oran, 4);
+  iddia('yanlılık 2 · adım başına sönüm', 1.0205, LS.etki(2).oran, 4);
+  iddia('yanlılık 2 de oran 1 i geçiyor', true, LS.etki(2).oran > 1);
+  /* ayni ayarlarda duz RNN · karsilastirma tabani */
+  iddia('RNN adım başına sönüm', 0.5919, LS.rnnEtki().oran, 4);
+  iddia('LSTM sönümü RNN den her yanlılıkta daha yavaş', true,
+        [0,1,2].every(b => LS.etki(b).oran > LS.rnnEtki().oran));
+  /* 31 adim oncesinin etkisi */
+  {
+    const R = LS.rnnEtki(), rOran = R.etki[0] / R.etki[31];
+    iddia('RNN · 31 adım öncesi (log10)', -6.793, Math.log10(rOran), 3);
+    const L0 = LS.etki(0), L1 = LS.etki(1), L2 = LS.etki(2);
+    const o = L => L.etki[0] / L.etki[31];
+    iddia('LSTM yanlılık 0 · 31 adım öncesi (log10)', -4.681, Math.log10(o(L0)), 3);
+    iddia('LSTM yanlılık 1 · 31 adım öncesi (log10)', -1.041, Math.log10(o(L1)), 3);
+    iddia('LSTM yanlılık 2 · 31 adım öncesi', 3.50, o(L2), 2);
+    iddia('yanlılık 1 · RNN e göre kaç kat (log10)', 5.752, Math.log10(o(L1)/rOran), 3);
+    iddia('yanlılık 2 · RNN e göre kaç kat (log10)', 7.336, Math.log10(o(L2)/rOran), 3);
+    iddia('yanlılık 2 de uzak girdi son adımdan bile etkili', true, o(L2) > 1);
+  }
+  /* parametre bedeli */
+  iddia('RNN parametre', 80, LS.parametre('rnn'), 0);
+  iddia('LSTM parametre', 328, LS.parametre('lstm'), 0);
+  iddia('LSTM kaç kat parametre', 4.1, LS.parametre('lstm')/LS.parametre('rnn'), 1);
+  /* EGITIM · once kararlilik, sonra sayi */
+  {
+    let enBuyuk = 0;
+    for (const T of LS.uzunluklar){
+      enBuyuk = Math.max(enBuyuk, LS.hassasiyet(T, 'rnn', 0));
+      enBuyuk = Math.max(enBuyuk, LS.hassasiyet(T, 'lstm', 1)); }
+    iddia('aktarılan eğitim koşuları 1e-12 bozulmaya kararlı', true, enBuyuk < 1e-9);
+  }
+  iddia('T=4 · RNN açıklanan oran', 0.739, lsEgit(4, 'rnn', 0, 0).aciklanan, 3);
+  iddia('T=4 · LSTM açıklanan oran', 0.293, lsEgit(4, 'lstm', 1, 0).aciklanan, 3);
+  iddia('T=8 · RNN açıklanan oran', -0.107, lsEgit(8, 'rnn', 0, 0).aciklanan, 3);
+  iddia('T=8 · LSTM açıklanan oran', 0.250, lsEgit(8, 'lstm', 1, 0).aciklanan, 3);
+  iddia('T=8 farkı (puan)', 35.7,
+        100*(lsEgit(8,'lstm',1,0).aciklanan - lsEgit(8,'rnn',0,0).aciklanan), 1);
+  /* asil iddia: T=8 de RNN sifirin altinda, LSTM ustunde */
+  iddia('T=8 de RNN ortalamanın altında, LSTM üstünde', true,
+        lsEgit(8,'rnn',0,0).aciklanan < 0 && lsEgit(8,'lstm',1,0).aciklanan > 0);
+  /* durustluk: T=4 te RNN onde · kapilar bedava degil */
+  iddia('T=4 te RNN LSTM den iyi', true,
+        lsEgit(4,'rnn',0,0).aciklanan > lsEgit(4,'lstm',1,0).aciklanan);
+  iddia('sıralama uzunluğa göre tersine dönüyor', true,
+        (lsEgit(4,'rnn',0,0).aciklanan > lsEgit(4,'lstm',1,0).aciklanan) &&
+        (lsEgit(8,'rnn',0,0).aciklanan < lsEgit(8,'lstm',1,0).aciklanan));
+  /* daha uzun kosular kaotik · bu yuzden aktarilmiyor · bunu da sinayalim */
+  iddia('LSTM 16 adımlık koşu kaotik (bu yüzden sayı aktarılmıyor)', true,
+        LS.hassasiyet(16, 'lstm', 1) > 0.01);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

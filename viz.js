@@ -4786,6 +4786,349 @@ VIZ.rnnHafiza = s => {
   }
 };
 
+
+/* ═══════════ LSTM · KAPILAR VE HÜCRE ═══════════
+   c ← f·c + i·g. Unutma kapısı 1 e yakınken hücre olduğu gibi taşınır,
+   yani zaman boyunca çarpılmadan geçen bir yol açılır. */
+const LS = {};
+LS.H = 8; LS.B = 32; LS.BT = 32; LS.ADIM = 160; LS.LR = 0.03;
+LS.uzunluklar = [4, 8];   /* uzun kosular kaotik cikiyor · sayi olarak aktarilmiyor */
+const lsSig = z => 1 / (1 + Math.exp(-z));
+const _lsCache = {};
+LS.veri = T => {
+  const r = rng(6), X = [], Y = [], XT = [], YT = [];
+  for (let b = 0; b < LS.B; b++){ const d = [];
+    for (let t = 0; t < T; t++) d.push(omNormal(r)); X.push(d); Y.push(d[0]); }
+  for (let b = 0; b < LS.BT; b++){ const d = [];
+    for (let t = 0; t < T; t++) d.push(omNormal(r)); XT.push(d); YT.push(d[0]); }
+  return { X, Y, XT, YT };
+};
+function lsKur(unutmaB, eps){
+  const H = LS.H, r = rng(5);
+  const mk = () => { const M = [];
+    for (let i = 0; i < H; i++){ const row = [];
+      for (let j = 0; j < H + 1; j++) row.push(0.9 * omNormal(r) / Math.sqrt(H + 1));
+      M.push(row); }
+    return M; };
+  const W = { f: mk(), i: mk(), o: mk(), g: mk() };
+  if (eps) W.f[0][0] += eps;
+  const b = { f: new Array(H).fill(unutmaB), i: new Array(H).fill(0),
+              o: new Array(H).fill(0), g: new Array(H).fill(0) };
+  const v2 = new Array(H).fill(0).map(() => omNormal(r) / Math.sqrt(H));
+  return { W, b, v: v2 };
+}
+LS.ileri = (M, dizi, T) => {
+  const H = LS.H, { W, b } = M;
+  let h = new Array(H).fill(0), c = new Array(H).fill(0);
+  const kayit = [];
+  for (let t = 0; t < T; t++){
+    const z = [...h, dizi[t]], f = [], i2 = [], o = [], g = [];
+    for (let k = 0; k < H; k++){
+      let sf = b.f[k], si = b.i[k], so = b.o[k], sg = b.g[k];
+      for (let j = 0; j <= H; j++){ sf += W.f[k][j]*z[j]; si += W.i[k][j]*z[j];
+        so += W.o[k][j]*z[j]; sg += W.g[k][j]*z[j]; }
+      f.push(lsSig(sf)); i2.push(lsSig(si)); o.push(lsSig(so)); g.push(Math.tanh(sg)); }
+    const cy = c.map((cv, k) => f[k]*cv + i2[k]*g[k]);
+    const hy = cy.map((cv, k) => o[k]*Math.tanh(cv));
+    kayit.push({ f, i: i2, o, g, c: c.slice(), cy, z });
+    c = cy; h = hy; }
+  return { h, kayit };
+};
+/* egitimsiz duyarlilik: cikitinin t adim oncesindeki girdiye turevi */
+LS.etki = unutmaB => {
+  const k = 'e' + unutmaB;
+  if (_lsCache[k]) return _lsCache[k];
+  const H = LS.H, T = 32, M = lsKur(unutmaB, 0), { W, v } = M;
+  const { X } = LS.veri(T);
+  const toplam = new Array(T).fill(0);
+  let kapiTop = 0;
+  for (const dizi of X){
+    const { kayit } = LS.ileri(M, dizi, T);
+    kapiTop += kayit.reduce((s, K) => s + K.f.reduce((a, x) => a + x, 0) / H, 0) / T;
+    let dh = v.slice(), dc = new Array(H).fill(0);
+    for (let t = T - 1; t >= 0; t--){
+      const K = kayit[t];
+      const dcy = dh.map((x, q) => x * K.o[q] * (1 - Math.tanh(K.cy[q])**2) + dc[q]);
+      const dg = dcy.map((x, q) => x * K.i[q] * (1 - K.g[q]**2));
+      const di = dcy.map((x, q) => x * K.g[q] * K.i[q] * (1 - K.i[q]));
+      const df = dcy.map((x, q) => x * K.c[q] * K.f[q] * (1 - K.f[q]));
+      const dor = dh.map((x, q) => x * Math.tanh(K.cy[q]) * K.o[q] * (1 - K.o[q]));
+      let dx = 0;
+      for (let q = 0; q < H; q++)
+        dx += dg[q]*W.g[q][H] + di[q]*W.i[q][H] + df[q]*W.f[q][H] + dor[q]*W.o[q][H];
+      toplam[t] += Math.abs(dx);
+      const ndh = new Array(H).fill(0);
+      for (let j = 0; j < H; j++){ let s = 0;
+        for (let q = 0; q < H; q++)
+          s += dg[q]*W.g[q][j] + di[q]*W.i[q][j] + df[q]*W.f[q][j] + dor[q]*W.o[q][j];
+        ndh[j] = s; }
+      dc = dcy.map((x, q) => x * K.f[q]);
+      dh = ndh; }
+  }
+  const etki = toplam.map(x => x / X.length);
+  const oran = (() => { const o = [];
+    for (let q = 1; q <= 24; q++) o.push(etki[31-q] / etki[31-q+1]);
+    return Math.exp(o.reduce((s, x) => s + Math.log(x), 0) / o.length); })();
+  return (_lsCache[k] = { etki, ortKapi: kapiTop / X.length, oran });
+};
+/* karsilastirma icin ayni ayarlarda duz RNN */
+LS.rnnEtki = () => {
+  if (_lsCache['r']) return _lsCache['r'];
+  const H = LS.H, T = 32, r = rng(5), W = [];
+  for (let i = 0; i < H; i++){ const row = [];
+    for (let j = 0; j < H; j++) row.push(0.9 * omNormal(r) / Math.sqrt(H)); W.push(row); }
+  const u = new Array(H).fill(0).map(() => omNormal(r));
+  const v2 = new Array(H).fill(0).map(() => omNormal(r) / Math.sqrt(H));
+  const { X } = LS.veri(T);
+  const toplam = new Array(T).fill(0);
+  for (const dizi of X){
+    let h = new Array(H).fill(0); const Zs = [];
+    for (let t = 0; t < T; t++){
+      const z = new Array(H).fill(0), y = new Array(H).fill(0);
+      for (let i = 0; i < H; i++){ let s = u[i]*dizi[t];
+        for (let j = 0; j < H; j++) s += W[i][j]*h[j];
+        z[i] = s; y[i] = Math.tanh(s); }
+      Zs.push(z); h = y; }
+    let d = v2.slice();
+    for (let t = T - 1; t >= 0; t--){
+      const dz = d.map((x, i) => x * (1 - Math.tanh(Zs[t][i])**2));
+      toplam[t] += Math.abs(dz.reduce((s, x, i) => s + x*u[i], 0));
+      const nd = new Array(H).fill(0);
+      for (let j = 0; j < H; j++){ let s = 0;
+        for (let i = 0; i < H; i++) s += W[i][j]*dz[i]; nd[j] = s; }
+      d = nd; }
+  }
+  const etki = toplam.map(x => x / X.length);
+  const oran = (() => { const o = [];
+    for (let q = 1; q <= 24; q++) o.push(etki[31-q] / etki[31-q+1]);
+    return Math.exp(o.reduce((s, x) => s + Math.log(x), 0) / o.length); })();
+  return (_lsCache['r'] = { etki, oran });
+};
+LS.parametre = tur => tur === 'lstm' ? 4*LS.H*(LS.H+1) + 4*LS.H + LS.H : LS.H*LS.H + 2*LS.H;
+
+/* egitim · LSTM ve ayni ayarlarda duz RNN */
+function lsEgit(T, tur, unutmaB, eps){
+  const key = 't' + T + tur + unutmaB + (eps || 0);
+  if (_lsCache[key]) return _lsCache[key];
+  const H = LS.H, { X, Y, XT, YT } = LS.veri(T);
+  const ort = YT.reduce((s, x) => s + x, 0) / YT.length;
+  const temel = YT.reduce((s, x) => s + (x - ort) ** 2, 0) / YT.length;
+  let son, egitim;
+  if (tur === 'lstm'){
+    const M = lsKur(unutmaB, eps), { W, b, v } = M;
+    const kayip = (XX, YY) => { let s = 0;
+      for (let q = 0; q < XX.length; q++){ const { h } = LS.ileri(M, XX[q], T);
+        const p = h.reduce((t, x, j) => t + x * v[j], 0); s += (p - YY[q]) ** 2; }
+      return s / XX.length; };
+    for (let it = 0; it < LS.ADIM; it++){
+      const gW = { f: W.f.map(r2 => r2.map(() => 0)), i: W.i.map(r2 => r2.map(() => 0)),
+                   o: W.o.map(r2 => r2.map(() => 0)), g: W.g.map(r2 => r2.map(() => 0)) };
+      const gb = { f: new Array(H).fill(0), i: new Array(H).fill(0),
+                   o: new Array(H).fill(0), g: new Array(H).fill(0) };
+      const gv = new Array(H).fill(0);
+      for (let q = 0; q < X.length; q++){
+        const { h, kayit } = LS.ileri(M, X[q], T);
+        const p = h.reduce((t, x, j) => t + x * v[j], 0), e = 2 * (p - Y[q]) / X.length;
+        for (let j = 0; j < H; j++) gv[j] += e * h[j];
+        let dh = v.map(x => e * x), dc = new Array(H).fill(0);
+        for (let t = T - 1; t >= 0; t--){
+          const K = kayit[t];
+          const dcy = dh.map((x, k) => x * K.o[k] * (1 - Math.tanh(K.cy[k])**2) + dc[k]);
+          const dg = dcy.map((x, k) => x * K.i[k] * (1 - K.g[k]**2));
+          const di = dcy.map((x, k) => x * K.g[k] * K.i[k] * (1 - K.i[k]));
+          const df = dcy.map((x, k) => x * K.c[k] * K.f[k] * (1 - K.f[k]));
+          const dor = dh.map((x, k) => x * Math.tanh(K.cy[k]) * K.o[k] * (1 - K.o[k]));
+          for (let k = 0; k < H; k++){
+            gb.f[k] += df[k]; gb.i[k] += di[k]; gb.o[k] += dor[k]; gb.g[k] += dg[k];
+            for (let j = 0; j <= H; j++){ gW.f[k][j] += df[k]*K.z[j]; gW.i[k][j] += di[k]*K.z[j];
+              gW.o[k][j] += dor[k]*K.z[j]; gW.g[k][j] += dg[k]*K.z[j]; } }
+          const ndh = new Array(H).fill(0);
+          for (let j = 0; j < H; j++){ let s = 0;
+            for (let k = 0; k < H; k++)
+              s += dg[k]*W.g[k][j] + di[k]*W.i[k][j] + df[k]*W.f[k][j] + dor[k]*W.o[k][j];
+            ndh[j] = s; }
+          dc = dcy.map((x, k) => x * K.f[k]); dh = ndh; }
+      }
+      let n2 = 0;
+      for (const kk of ['f','i','o','g']){
+        for (const row of gW[kk]) for (const g2 of row) n2 += g2*g2;
+        for (const g2 of gb[kk]) n2 += g2*g2; }
+      for (const g2 of gv) n2 += g2*g2;
+      const n = Math.sqrt(n2), sc = n > 3 ? 3/n : 1;
+      for (const kk of ['f','i','o','g']) for (let k = 0; k < H; k++){
+        b[kk][k] -= LS.LR * sc * gb[kk][k];
+        for (let j = 0; j <= H; j++) W[kk][k][j] -= LS.LR * sc * gW[kk][k][j]; }
+      for (let j = 0; j < H; j++) v[j] -= LS.LR * sc * gv[j];
+    }
+    son = kayip(XT, YT); egitim = kayip(X, Y);
+  } else {
+    const r = rng(5), W = [];
+    for (let i = 0; i < H; i++){ const row = [];
+      for (let j = 0; j < H; j++) row.push(0.9 * omNormal(r) / Math.sqrt(H)); W.push(row); }
+    if (eps) W[0][0] += eps;
+    const u = new Array(H).fill(0).map(() => omNormal(r));
+    const v = new Array(H).fill(0).map(() => omNormal(r) / Math.sqrt(H));
+    const ileri = d => { let h = new Array(H).fill(0); const Zs = [], Hs = [h.slice()];
+      for (let t = 0; t < T; t++){ const z = new Array(H).fill(0), y = new Array(H).fill(0);
+        for (let i = 0; i < H; i++){ let s = u[i]*d[t];
+          for (let j = 0; j < H; j++) s += W[i][j]*h[j]; z[i] = s; y[i] = Math.tanh(s); }
+        Zs.push(z); h = y; Hs.push(h.slice()); }
+      return { h, Zs, Hs }; };
+    const kayip = (XX, YY) => { let s = 0;
+      for (let q = 0; q < XX.length; q++){ const { h } = ileri(XX[q]);
+        const p = h.reduce((t, x, j) => t + x*v[j], 0); s += (p - YY[q])**2; }
+      return s / XX.length; };
+    for (let it = 0; it < LS.ADIM; it++){
+      const gW = W.map(r2 => r2.map(() => 0));
+      const gu = new Array(H).fill(0), gv = new Array(H).fill(0);
+      for (let q = 0; q < X.length; q++){
+        const { h, Zs, Hs } = ileri(X[q]);
+        const p = h.reduce((t, x, j) => t + x*v[j], 0), e = 2*(p - Y[q])/X.length;
+        for (let j = 0; j < H; j++) gv[j] += e*h[j];
+        let d = v.map(x => e*x);
+        for (let t = T - 1; t >= 0; t--){
+          const dz = d.map((x, i) => x * (1 - Math.tanh(Zs[t][i])**2));
+          for (let i = 0; i < H; i++){ gu[i] += dz[i]*X[q][t];
+            for (let j = 0; j < H; j++) gW[i][j] += dz[i]*Hs[t][j]; }
+          const nd = new Array(H).fill(0);
+          for (let j = 0; j < H; j++){ let s = 0;
+            for (let i = 0; i < H; i++) s += W[i][j]*dz[i]; nd[j] = s; }
+          d = nd; } }
+      let n2 = 0;
+      for (const row of gW) for (const g of row) n2 += g*g;
+      for (const g of gu) n2 += g*g;
+      for (const g of gv) n2 += g*g;
+      const n = Math.sqrt(n2), sc = n > 3 ? 3/n : 1;
+      for (let i = 0; i < H; i++){ u[i] -= LS.LR*sc*gu[i]; v[i] -= LS.LR*sc*gv[i];
+        for (let j = 0; j < H; j++) W[i][j] -= LS.LR*sc*gW[i][j]; } }
+    son = kayip(XT, YT); egitim = kayip(X, Y);
+  }
+  return (_lsCache[key] = { son, temel, egitim, aciklanan: 1 - son/temel });
+}
+LS.hassasiyet = (T, tur, bF) => {
+  const a = lsEgit(T, tur, bF, 0).son, b = lsEgit(T, tur, bF, 1e-12).son;
+  return Math.abs(a - b) / Math.max(1e-12, a);
+};
+
+VIZ.lstmKapilar = s => {
+  clear();
+  const sahne = s.sahne || 'sonum';
+  const bF = s.bF === undefined ? 1 : s.bF;
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 25);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'kapi'){
+    const R = LS.etki(bF);
+    baslikSerit('LSTM · UNUTMA KAPISI',
+      'c ← f · c + i · g. Kapı 1 e yakınken hücre olduğu gibi taşınıyor.', []);
+    /* hucre yolu semasi */
+    const y0 = 210, x0 = 180, dx = 250;
+    for (let t = 0; t < 5; t++){
+      const cx0 = x0 + t*dx;
+      box(cx0, y0, 150, 80, 'rgba(7,10,15,.7)', K.purple, 2);
+      txt('c' + (t+1), cx0 + 75, y0 + 52, K.purple, 26);
+      if (t < 4){
+        arw(cx0 + 150, y0 + 40, cx0 + dx - 4, y0 + 40, K.green, 4);
+        txt('× ' + R.ortKapi.toFixed(2), cx0 + 150 + (dx-150)/2, y0 + 26, K.green, 17); }
+    }
+    txt('hücre yolu: her adımda sadece unutma kapısıyla çarpılıyor', 750, y0 + 130, K.green, 20);
+    const bx = 180;
+    kart(bx, 400, 260, 'UNUTMA YANLILIĞI', bF.toFixed(1), K.blue, 'başlangıç değeri');
+    kart(bx + 280, 400, 260, 'ORTALAMA KAPI', R.ortKapi.toFixed(4), K.green);
+    kart(bx + 560, 400, 260, '32 ADIMDA', Math.pow(R.ortKapi, 31).toExponential(2), K.purple,
+         'kapı sabit olsa');
+    kart(bx + 840, 400, 260, 'ÖLÇÜLEN SÖNÜM', R.oran.toFixed(4), K.orange, 'adım başına');
+    box(bx, 540, 1140, 170, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('Unutma yanlılığı kapıyı açık başlatır. σ(0) = 0.50, σ(1) = 0.73, σ(2) = 0.88.',
+        bx + 24, 580, K.txt, 19, 'left');
+    txt('Kapı ne kadar açıksa hücre o kadar az sönümlenerek taşınır. Ölçülen adım başına oran',
+        bx + 24, 614, K.mut, 18, 'left');
+    txt('yanlılık 0 da ' + LS.etki(0).oran.toFixed(4) + ', yanlılık 2 de ' + LS.etki(2).oran.toFixed(4) + '.',
+        bx + 24, 646, K.mut, 18, 'left');
+    txt('Bu yüzden LSTM uygulamalarında unutma kapısına 1 yanlılık vermek standart bir alışkanlıktır.',
+        bx + 24, 682, K.green, 18, 'left');
+  }
+
+
+  else if (sahne === 'egitim'){
+    const T = LS.uzunluklar[Math.max(0, Math.min(1, s.ti === undefined ? 0 : Math.round(s.ti)))];
+    const A = lsEgit(T, 'rnn', 0, 0), B2 = lsEgit(T, 'lstm', 1, 0);
+    baslikSerit('LSTM · GÖREVDEKİ KARŞILIĞI',
+      'Aynı görev, aynı veri, aynı adım sayısı: ilk sayıyı T adım sonra hatırlamak.', []);
+    const P = plot(rect(200, 210, 560, 380), -0.5, 1.5, -0.35, 0.9);
+    frame(P, '', 'açıklanan oran', [], [-0.25, 0, 0.25, 0.5, 0.75]);
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.sx(-0.5), P.sy(0)); cx.lineTo(P.sx(1.5), P.sy(0)); cx.stroke();
+    cx.setLineDash([]);
+    txt('0 = ortalamayı söylemekle aynı', P.sx(-0.45), P.sy(0) - 12, K.mut, 16, 'left');
+    [[0, A.aciklanan, K.red, 'düz RNN'], [1, B2.aciklanan, K.green, 'LSTM']].forEach(([x, val, renk, ad]) => {
+      const y0 = P.sy(0), y1 = P.sy(val);
+      cx.fillStyle = renk + '55'; cx.fillRect(P.sx(x) - 70, Math.min(y0, y1), 140, Math.abs(y1 - y0));
+      cx.strokeStyle = renk; cx.lineWidth = 2;
+      cx.strokeRect(P.sx(x) - 70, Math.min(y0, y1), 140, Math.abs(y1 - y0));
+      txt(ad, P.sx(x), P.R.y + P.R.h + 34, renk, 20);
+      txt((100*val).toFixed(1) + '%', P.sx(x), y1 + (val >= 0 ? -16 : 28), renk, 22); });
+    const bx = 830;
+    kart(bx, 210, 260, 'DİZİ UZUNLUĞU', String(T), K.blue);
+    kart(bx + 280, 210, 260, 'ARADAKİ FARK',
+         (100*(B2.aciklanan - A.aciklanan)).toFixed(1) + ' puan',
+         B2.aciklanan > A.aciklanan ? K.green : K.red);
+    kart(bx, 340, 260, 'RNN PARAMETRE', String(LS.parametre('rnn')), K.red);
+    kart(bx + 280, 340, 260, 'LSTM PARAMETRE', String(LS.parametre('lstm')), K.green,
+         (LS.parametre('lstm')/LS.parametre('rnn')).toFixed(1) + ' kat');
+    box(bx, 470, 540, 240, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('İKİ UZUNLUKTA DA ÖLÇÜM', bx + 270, 500, K.mut, 18);
+    LS.uzunluklar.forEach((t, i) => {
+      const a = lsEgit(t, 'rnn', 0, 0).aciklanan, b3 = lsEgit(t, 'lstm', 1, 0).aciklanan;
+      txt('T = ' + t, bx + 18, 558 + i*42, K.txt, 19, 'left');
+      txt((100*a).toFixed(1) + '%', bx + 330, 558 + i*42, K.red, 19, 'right');
+      txt((100*b3).toFixed(1) + '%', bx + 522, 558 + i*42, K.green, 19, 'right'); });
+    txt('RNN', bx + 330, 528, K.red, 16, 'right');
+    txt('LSTM', bx + 522, 528, K.green, 16, 'right');
+    txt('Daha uzun dizilerde LSTM koşusu kaotik çıkıyor:', bx + 18, 648, K.mut, 17, 'left');
+    txt('sonuç tekrarlanabilir olmadığı için buraya yazılmıyor.', bx + 18, 676, K.mut, 17, 'left');
+  }
+
+  else { /* sonum: RNN vs LSTM */
+    const R = LS.etki(bF), RN2 = LS.rnnEtki();
+    baslikSerit('LSTM · ETKİ ARTIK SÖNMÜYOR',
+      'Aynı ölçüm, aynı görev: çıktının t adım öncesindeki girdiye duyarlılığı.', []);
+    const P = plot(rect(140, 200, 640, 400), 0, 31, -9, 0.5);
+    frame(P, 'sondan uzaklık (adım)', 'log₁₀ duyarlılık (son adıma oran)',
+          [0, 8, 16, 24, 31], [-8, -6, -4, -2, 0]);
+    const ciz = (E, renk, kalin) => {
+      const son = E[31];
+      cx.strokeStyle = renk; cx.lineWidth = kalin; cx.beginPath();
+      for (let k = 0; k <= 31; k++){
+        const y = P.sy(Math.max(-9, Math.log10(Math.max(1e-12, E[31-k] / son))));
+        k ? cx.lineTo(P.sx(k), y) : cx.moveTo(P.sx(k), y); }
+      cx.stroke(); };
+    ciz(RN2.etki, K.red, 3.2);
+    [0, 1, 2].forEach(b2 => ciz(LS.etki(b2).etki, b2 === bF ? K.green : K.mut, b2 === bF ? 3.6 : 1.6));
+    txt('düz RNN', P.R.x + P.R.w - 14, P.sy(Math.log10(RN2.etki[0]/RN2.etki[31])) + 26, K.red, 18, 'right');
+    txt('LSTM · yanlılık ' + bF, P.R.x + P.R.w - 14,
+        P.sy(Math.log10(R.etki[0]/R.etki[31])) - 14, K.green, 18, 'right');
+    const bx = 830;
+    kart(bx, 200, 260, 'RNN · 31 ADIM ÖNCE', (RN2.etki[0]/RN2.etki[31]).toExponential(1), K.red);
+    kart(bx + 280, 200, 260, 'LSTM · 31 ADIM ÖNCE', (R.etki[0]/R.etki[31]).toExponential(1),
+         K.green, 'yanlılık ' + bF);
+    kart(bx, 330, 260, 'RNN ADIM ORANI', RN2.oran.toFixed(4), K.red);
+    kart(bx + 280, 330, 260, 'LSTM ADIM ORANI', R.oran.toFixed(4), K.green);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('ARADAKİ FARK', bx + 270, 494, K.mut, 18);
+    txt('31 adım öncesinin etkisi kaç kat daha büyük:', bx + 18, 534, K.txt, 18, 'left');
+    txt(((R.etki[0]/R.etki[31]) / (RN2.etki[0]/RN2.etki[31])).toExponential(2) + ' kat',
+        bx + 522, 570, K.green, 24, 'right');
+    txt('RNN de gradyan her adımda W ve tanh türeviyle', bx + 18, 612, K.mut, 18, 'left');
+    txt('çarpılıyor. LSTM de hücre yolu sadece kapıyla', bx + 18, 642, K.mut, 18, 'left');
+    txt('çarpılıyor ve kapı 1 e yakın tutulabiliyor.', bx + 18, 672, K.mut, 18, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

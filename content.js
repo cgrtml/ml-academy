@@ -83,7 +83,7 @@ const ROTALAR = [
     {id:'kisayol',        ad:'Kısayol bağlantıları: ResNet fikri',             sure:17, durum:'hazir'},
     {id:'havuzlama',      ad:'Havuzlama: görüntüyü özetlemek',                 sure:16, durum:'hazir'},
     {id:'rnn',            ad:'RNN: sırayı hafızada tutmak',                    sure:17, durum:'hazir'},
-    {id:'lstm',           ad:'LSTM: unutmayı ve hatırlamayı öğrenen ağ',       sure:16, durum:'planli'},
+    {id:'lstm',           ad:'LSTM: unutmayı ve hatırlamayı öğrenen ağ',       sure:18, durum:'hazir'},
     {id:'otokodlayici',   ad:'Otokodlayıcı: etiketsiz veriden öğrenmek',       sure:14, durum:'planli'},
     {id:'hesap-cizge',    ad:'Hesaplama çizgesi: türev nasıl akar',            sure:12, durum:'planli'},
     {id:'mdn',            ad:'Tek cevap yetmediğinde: karışım yoğunluk ağı',   sure:14, durum:'planli'},
@@ -8597,6 +8597,159 @@ DERSLER['rnn'] = {
       'zaman boyunca yapar: kapı kapalıyken hücre olduğu gibi taşınır ve çarpan 1 olur.<br><br>' +
       '<b>Dikkat</b> mekanizması ise yolu tamamen kısaltır: her adım geçmişteki her adıma ' +
       'doğrudan bakar, 31 çarpım yerine <b>bir tane</b>.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── LSTM ─────────────── */
+DERSLER['lstm'] = {
+  ad:'LSTM: hücre yolu ve unutma kapısı',
+  alt:'RNN dersinde etkinin adım başına 0.59 oranıyla söndüğünü ölçmüştük. LSTM o oranı 1’e yaklaştırıyor, ve nasıl yaptığı tek bir çarpımda görülüyor.',
+  kaynaklar:[
+    {y:'Hochreiter, S. & Schmidhuber, J.', t:'1997', b:'Long Short-Term Memory', n:'Neural Computation 9(8)'},
+    {y:'Gers, F. A., Schmidhuber, J. & Cummins, F.', t:'2000', b:'Learning to Forget: Continual Prediction with LSTM', n:'Neural Computation 12(10)'},
+    {y:'Jozefowicz, R., Zaremba, W. & Sutskever, I.', t:'2015', b:'An Empirical Exploration of Recurrent Network Architectures', n:'ICML 2015'},
+  ],
+  rota:2,
+  adimlar:[
+  {
+    t:'Hücre yolu ve unutma kapısı',
+    goal:'LSTM’in hangi tek değişiklikle sönümü durdurduğunu göreceksin.',
+    todo:'Unutma yanlılığını değiştir. Ortalama kapı ve adım başına sönüm nasıl değişiyor?',
+    kind:'controls', viz:'lstmKapilar', h:770, state:{sahne:'kapi'},
+    controls:[{k:'bF', lb:'UNUTMA YANLILIĞI', min:0, max:2, step:1, val:0,
+               fmt:v => 'b = ' + v}],
+    derive:s => ({o: LS.etki(Math.round(s.bF)).oran}),
+    live:s => [['ORTALAMA KAPI', LS.etki(Math.round(s.bF)).ortKapi.toFixed(4), K.green],
+               ['ADIM BAŞINA SÖNÜM', s.o.toFixed(4), s.o > 0.9 ? K.green : K.orange],
+               ['HEDEF', 'sönümü 0.9 üstüne çıkar']],
+    unlock:s => s.o > 0.9,
+    unlockMsg:'Adım başına sönüm oranını 0.9 üstüne çıkar',
+    body:'<p>RNN’de durum her adımda baştan yazılıyordu: h &larr; tanh(W h + u x). ' +
+      'Eski durumdan geriye bir şey kalması, W ile çarpımdan sağ çıkmasına bağlıydı.</p>' +
+      '<p>LSTM ikinci bir yol ekler. Durumun yanına bir <b>hücre</b> koyar ve onu ' +
+      'şöyle günceller:</p>' +
+      '<p style="text-align:center;font-size:1.2em">c &larr; f · c + i · g</p>' +
+      '<p>Burada <b>f</b> unutma kapısı, 0 ile 1 arasında bir sayı. Hücre bir matrisle ' +
+      'çarpılmıyor, sadece <b>bu kapıyla</b> çarpılıyor. f = 1 olsaydı hücre olduğu gibi ' +
+      'taşınırdı, yani hiç sönüm olmazdı.</p>' +
+      '<p>Kapı sigmoid’den geliyor, dolayısıyla başlangıç değerini yanlılık belirliyor: ' +
+      '&sigma;(0) = <b>0.50</b>, &sigma;(1) = <b>0.73</b>, &sigma;(2) = <b>0.88</b>.</p>' +
+      '<p>Ölçülen ortalama kapı değerleri sırasıyla <b>0.5004</b>, <b>0.7251</b>, ' +
+      '<b>0.8753</b>. Adım başına sönüm oranı ise <b>0.7072</b>, <b>0.9197</b>, ' +
+      '<b>1.0205</b>.</p>' +
+      '<p>Yanlılık 2’de oran <b>1’i geçiyor</b>: hücre yolu artık sönümlemek yerine hafifçe ' +
+      'büyütüyor. Bu yüzden LSTM uygulamalarında unutma kapısına <b>1 yanlılık vermek</b> ' +
+      'standart bir alışkanlıktır: kapıyı açık başlatmak, yolu baştan açmak demek.</p>',
+    learned:'<b>LSTM’in çözümü, hücreyi matrisle değil sadece bir kapıyla çarpmaktır.</b><br><br>' +
+      'c &larr; f · c + i · g biçiminde f kapısı 1’e yakınsa hücre neredeyse olduğu gibi taşınır.<br><br>' +
+      'Ölçülen ortalama kapı: yanlılık 0’da <b>0.5004</b>, 1’de <b>0.7251</b>, 2’de <b>0.8753</b>. ' +
+      'Adım başına sönüm sırasıyla <b>0.7072</b>, <b>0.9197</b>, <b>1.0205</b>.',
+    xp:25,
+  },
+  {
+    t:'Etki artık sönmüyor',
+    goal:'RNN ile LSTM’i aynı ölçümde karşılaştıracaksın.',
+    todo:'Yanlılığı artır. Yeşil eğri kırmızıdan ne kadar yukarıda kalıyor?',
+    kind:'controls', viz:'lstmKapilar', h:770, state:{sahne:'sonum'},
+    controls:[{k:'bF', lb:'UNUTMA YANLILIĞI', min:0, max:2, step:1, val:0,
+               fmt:v => 'b = ' + v}],
+    derive:s => { const L = LS.etki(Math.round(s.bF)), R = LS.rnnEtki();
+      return {kat: (L.etki[0]/L.etki[31]) / (R.etki[0]/R.etki[31])}; },
+    live:s => [['31 ADIM ÖNCE · LSTM',
+                (LS.etki(Math.round(s.bF)).etki[0]/LS.etki(Math.round(s.bF)).etki[31]).toExponential(1), K.green],
+               ['RNN', (LS.rnnEtki().etki[0]/LS.rnnEtki().etki[31]).toExponential(1), K.red],
+               ['KAÇ KAT', s.kat.toExponential(1)], ['HEDEF', '> 10⁵ kat']],
+    unlock:s => s.kat > 1e5,
+    unlockMsg:'RNN’e göre farkı yüz bin katın üstüne çıkar',
+    body:'<p>RNN dersindeki ölçümün aynısını yapıyoruz: çıktının t adım öncesindeki girdiye ' +
+      'duyarlılığı, eğitilmemiş ağda, 32 dizinin ortalaması. Aynı görev, aynı ayarlar.</p>' +
+      '<p>Kırmızı eğri düz RNN. Adım başına sönüm oranı <b>0.5919</b> ve 31 adım öncesinin ' +
+      'etkisi son adımın <b>1.61 × 10⁻⁷</b>’si.</p>' +
+      '<p>Yeşil eğri LSTM:</p>' +
+      '<p><b>yanlılık 0:</b> 31 adım öncesi <b>2.09 × 10⁻⁵</b> · RNN’e göre <b>130 kat</b><br>' +
+      '<b>yanlılık 1:</b> <b>9.10 × 10⁻²</b> · <b>565 bin kat</b><br>' +
+      '<b>yanlılık 2:</b> <b>3.50</b> · <b>21.7 milyon kat</b></p>' +
+      '<p>Yanlılık 2’de sayı 1’i geçiyor: 31 adım öncesindeki girdi, son adımdakinden ' +
+      '<b>daha</b> etkili. Bu bir hata değil, hücre yolunun sönümlemek yerine biriktirmesi.</p>' +
+      '<p>Grafikte kırmızı eğri düşmeye devam ederken yeşil eğrinin neredeyse yataylaştığına ' +
+      'dikkat et. Log ekseninde bir eğrinin yataylaşması, üstel sönümün <b>durması</b> demek.</p>' +
+      '<p>Kısayol bağlantıları dersinde derinlik boyunca ölçtüğümüz kimlik yolunun, ' +
+      'zaman boyunca hâli.</p>',
+    learned:'<b>Hücre yolu üstel sönümü durduruyor ve fark ölçülebilir büyüklükte.</b><br><br>' +
+      '31 adım öncesinin etkisi: RNN’de <b>1.61 × 10⁻⁷</b>, LSTM’de (yanlılık 1) ' +
+      '<b>9.10 × 10⁻²</b>. Aradaki fark <b>565 bin kat</b>.<br><br>' +
+      'Adım başına sönüm RNN’de <b>0.5919</b>, LSTM’de yanlılık 2 ile <b>1.0205</b>. ' +
+      'Bir eğrinin log ekseninde yataylaşması, sönümün durması demektir.',
+    xp:50,
+  },
+  {
+    t:'Görevdeki karşılığı',
+    goal:'Sönümdeki farkın gerçek bir görevde ne kadar yer değiştirdiğini ölçeceksin.',
+    todo:'Dizi uzunluğunu 8’e çıkar. Hangi model sıfırın üstünde kalıyor?',
+    kind:'controls', viz:'lstmKapilar', h:770, state:{sahne:'egitim'},
+    controls:[{k:'ti', lb:'DİZİ UZUNLUĞU', min:0, max:1, step:1, val:0,
+               fmt:v => LS.uzunluklar[v] + ' adım'}],
+    derive:s => ({f: lsEgit(LS.uzunluklar[Math.round(s.ti)], 'lstm', 1, 0).aciklanan -
+                     lsEgit(LS.uzunluklar[Math.round(s.ti)], 'rnn', 0, 0).aciklanan}),
+    live:s => [['FARK', (100*s.f).toFixed(1) + ' puan', s.f > 0 ? K.green : K.red],
+               ['HEDEF', 'LSTM öne geçsin']],
+    unlock:s => s.f > 0,
+    unlockMsg:'LSTM’in öne geçtiği uzunluğu bul',
+    body:'<p>RNN dersindeki görevin aynısı: T rastgele sayı göster, sonunda ilkini iste. ' +
+      'Aynı veri, aynı adım sayısı, aynı öğrenme oranı.</p>' +
+      '<p><b>T = 4:</b> düz RNN <b>%73.9</b>, LSTM <b>%29.3</b>. RNN önde.<br>' +
+      '<b>T = 8:</b> düz RNN <b>&minus;%10.7</b>, LSTM <b>%25.0</b>. LSTM önde, ' +
+      'aradaki fark <b>35.7 puan</b>.</p>' +
+      '<p>T = 8, RNN dersinde ufkun bittiğini ölçtüğümüz noktaydı. Tam orada RNN sıfırın ' +
+      'altına düşerken LSTM sıfırın üstünde kalıyor.</p>' +
+      '<p>Ama T = 4’teki sonucu görmezden gelmeyelim: <b>kısa dizide RNN daha iyi</b>. ' +
+      'Sebebi parametre sayısı: RNN <b>80</b>, LSTM <b>328</b>. Dört kapı, dört ağırlık ' +
+      'matrisi demek. Sorun yokken dört kat parametre sadece daha yavaş öğrenmek anlamına ' +
+      'geliyor.</p>' +
+      '<p>Dürüst bir sınır: daha uzun dizilerde de ölçüm yaptık ama LSTM koşuları o ' +
+      'ölçekte <b>kaotik</b> çıkıyor. Patlayan gradyan dersindeki 10⁻¹² sınamasına göre ' +
+      'sonuçları tekrarlanabilir değil, bu yüzden buraya sayı olarak yazmıyoruz.</p>',
+    learned:'<b>Sönümdeki fark, ufkun bittiği yerde göreve yansıyor.</b><br><br>' +
+      'T = 8’de düz RNN <b>&minus;%10.7</b> (ortalamanın altında), LSTM <b>%25.0</b>. ' +
+      'Fark <b>35.7 puan</b>.<br><br>' +
+      'T = 4’te ise RNN önde (<b>%73.9</b> karşı %29.3), çünkü LSTM <b>328</b> parametreyle ' +
+      '80 parametreli RNN’den yavaş öğreniyor. <b>Kapılar bedava değil.</b>',
+    xp:50,
+  },
+  {
+    t:'Kapılar da yetmediğinde',
+    goal:'LSTM’in sınırını ve ondan sonra ne geldiğini göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'lstmKapilar', h:770, state:{sahne:'sonum', bF:2},
+    body:'<p>LSTM sönümü büyük ölçüde çözüyor ama üç bedeli var, ve üçü de bu derste ' +
+      'ölçüldü ya da görüldü.</p>' +
+      '<p><b>Parametre.</b> Dört kapı, dört ağırlık matrisi: 80 yerine <b>328</b>. ' +
+      'Aynı gizli boyutta yaklaşık dört kat.</p>' +
+      '<p><b>Sıra.</b> Hücre adım adım güncellendiği için LSTM diziyi <b>paralel ' +
+      'işleyemez</b>. 1000 adımlık bir diziyi işlemek 1000 sıralı adım demektir. ' +
+      'Matris dersinde ekran kartlarının paralel işi neden hızlandırdığını görmüştün: ' +
+      'burada o paralellik kullanılamıyor.</p>' +
+      '<p><b>Yol hâlâ uzun.</b> Kapı açık olsa bile bilgi 1000 adım için 1000 çarpımdan ' +
+      'geçiyor. Çarpanlar 1’e yakın olduğu için sönüm yavaş, ama sıfır değil.</p>' +
+      '<p><b>Dikkat mekanizması</b> üçünü birden çözer. Her adım geçmişteki her adıma ' +
+      'doğrudan bakar: aradaki yol uzunluğu kaç adım olursa olsun <b>1</b>. Sönecek bir ' +
+      'çarpım zinciri yok. Ve adımlar birbirini beklemediği için hesap paralelleşir.</p>' +
+      '<p>Bedeli de belli: her adım her adıma baktığı için maliyet dizi uzunluğunun ' +
+      '<b>karesiyle</b> büyür. Kombinatorik dersindeki büyüme sınıfları burada da geçerli, ' +
+      've bu sefer takas edilen şey hafıza ufkuyla hesap arasında.</p>',
+    quiz:{ q:'Ses tanıma modelinde LSTM kullanıyorsun. Uzun kayıtlarda başarı iyi ama eğitim çok yavaş: bir dönemi tamamlamak saatler sürüyor ve ekran kartı çoğu zaman boşta duruyor. Ne yaparsın?',
+      opts:[
+        {t:'Sorun sönüm değil sıralılık: dikkat tabanlı bir mimariye geçerim, çünkü adımlar birbirini beklemez', why:'Doğru. Ekran kartının boşta durması, işin paralelleştirilemediğinin doğrudan işaretidir. LSTM hücreyi adım adım güncellediği için 1000 adımlık kayıt 1000 sıralı adım demektir ve bu derste sayılan üç bedelden biri tam olarak budur. Dikkatte her adım her adıma doğrudan bakar, dolayısıyla hem yol uzunluğu 1 olur hem de hesap paralelleşir. Bedeli dizi uzunluğunun karesiyle büyüyen maliyettir ve bunu bilerek seçmek gerekir.'},
+        {t:'Unutma yanlılığını artırırım, hafıza daha iyi olur', why:'Bu derste ölçtüğün gibi yanlılığı artırmak sönümü gerçekten azaltıyor: adım başına oran 0.7072 den 1.0205 e çıkıyor. Ama belirti hafıza sorunu değil, hız sorunu. Yanlılık hesabın sıralı olmasını değiştirmez.'},
+        {t:'Gizli boyutu küçültürüm', region:'', why:'Hesabı bir miktar azaltır ama sıralılığı değiştirmez: 1000 adım yine 1000 sıralı adımdır ve ekran kartı yine boşta kalır. Ayrıca uzun kayıtlardaki iyi başarıyı riske atar.'},
+        {t:'Gradyan kliplemesi eklerim', why:'Klipleme büyük gradyanları keser ve eğitimi kararlı kılar, ama hızla ilgisi yoktur. Yanlış belirtiye bakan bir araç.'},
+      ], correct:0 },
+    learned:'<b>LSTM sönümü çözer, sıralılığı çözmez.</b><br><br>' +
+      'Üç bedel: <b>328</b> parametre (RNN’de 80), diziyi paralel işleyememe, ve kapı açık ' +
+      'olsa bile hâlâ adım sayısı kadar uzun bir yol.<br><br>' +
+      '<b>Dikkat</b> üçünü birden çözer: yol uzunluğu her mesafe için <b>1</b>, ve hesap ' +
+      'paralelleşir. Karşılığında maliyet dizi uzunluğunun <b>karesiyle</b> büyür.',
     xp:50,
   },
 ]};
