@@ -82,7 +82,7 @@ const ROTALAR = [
     {id:'patlayan',       ad:'Patlayan gradyan ve klipleme',                   sure:17, durum:'hazir'},
     {id:'kisayol',        ad:'Kısayol bağlantıları: ResNet fikri',             sure:17, durum:'hazir'},
     {id:'havuzlama',      ad:'Havuzlama: görüntüyü özetlemek',                 sure:16, durum:'hazir'},
-    {id:'rnn',            ad:'RNN: sırayı hafızada tutmak',                    sure:14, durum:'planli'},
+    {id:'rnn',            ad:'RNN: sırayı hafızada tutmak',                    sure:17, durum:'hazir'},
     {id:'lstm',           ad:'LSTM: unutmayı ve hatırlamayı öğrenen ağ',       sure:16, durum:'planli'},
     {id:'otokodlayici',   ad:'Otokodlayıcı: etiketsiz veriden öğrenmek',       sure:14, durum:'planli'},
     {id:'hesap-cizge',    ad:'Hesaplama çizgesi: türev nasıl akar',            sure:12, durum:'planli'},
@@ -8457,6 +8457,146 @@ DERSLER['havuzlama'] = {
       'artık konumu hiç taşımıyor.<br><br>' +
       'Sınıflandırmada bu kazançtır, tespit ve bölütlemede kayıptır. Modern mimariler ' +
       'küçültmeyi <b>adımlı evrişime</b> devrediyor, çünkü o nasıl özetleyeceğini öğreniyor.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── RNN ─────────────── */
+DERSLER['rnn'] = {
+  ad:'RNN: sırayı hafızada tutmak, ve hafızanın ufku',
+  alt:'Aynı ağırlıklar her adımda tekrar uygulanıyor ve bir durum ileri taşınıyor. Hafıza gerçek; ufku da ölçülebilir.',
+  kaynaklar:[
+    {y:'Elman, J. L.', t:'1990', b:'Finding Structure in Time', n:'Cognitive Science 14(2)'},
+    {y:'Bengio, Y., Simard, P. & Frasconi, P.', t:'1994', b:'Learning Long-Term Dependencies with Gradient Descent is Difficult', n:'IEEE Trans. Neural Networks 5(2)'},
+    {y:'Goodfellow, I., Bengio, Y. & Courville, A.', t:'2016', b:'Deep Learning, Bölüm 10', n:'MIT Press', u:'https://www.deeplearningbook.org/'},
+  ],
+  rota:2,
+  adimlar:[
+  {
+    t:'Aynı ağırlıklar, her adımda',
+    goal:'RNN’in neden dizi uzunluğundan bağımsız olduğunu göreceksin.',
+    todo:'Dizi uzunluğunu artır. Parametre sayısı değişiyor mu?',
+    kind:'controls', viz:'rnnHafiza', h:770, state:{sahne:'yapi'},
+    controls:[{k:'ti', lb:'DİZİ UZUNLUĞU', min:0, max:4, step:1, val:0,
+               fmt:v => RN.uzunluklar[v] + ' adım'}],
+    live:s => [['PARAMETRE', String(RN.parametre()), K.green],
+               ['DİZİ UZUNLUĞU', String(RN.uzunluklar[Math.round(s.ti)])],
+               ['DEĞİŞTİ Mİ', 'hayır', K.mut]],
+    body:'<p>Şimdiye kadarki bütün ağlar sabit boyutlu bir girdi bekliyordu. Ama bir cümle ' +
+      '5 kelime de olabilir 50 de. Sabit girdili bir ağa bunu nasıl verirsin?</p>' +
+      '<p>RNN’in cevabı basit: <b>diziyi tek seferde değil, adım adım oku</b>. Her adımda ' +
+      'bir sonraki girdiyi al, elindeki durumu güncelle:</p>' +
+      '<p style="text-align:center;font-size:1.15em">h &larr; tanh(W h + u x)</p>' +
+      '<p>Kritik nokta: <b>W her adımda aynı matris</b>. Yeni bir katman eklemiyoruz, ' +
+      'aynı katmanı tekrar tekrar uyguluyoruz.</p>' +
+      '<p>Sonucu kaydırıcıyla gör: dizi 2 adım da olsa 32 adım da olsa parametre sayısı ' +
+      '<b>168</b>. Çünkü sayılan şey W (' + '12×12 = 144), giriş ağırlıkları (12) ve ' +
+      'çıkış ağırlıkları (12).</p>' +
+      '<p>İleri beslemeli bir ağ olsaydı sadece girdi katmanı için T × 12 ağırlık gerekirdi ' +
+      've T değiştiğinde model baştan kurulurdu.</p>' +
+      '<p>Bedeli de burada: bütün geçmiş, <b>tek bir 12 boyutlu vektöre</b> sıkışmak zorunda. ' +
+      'Sıradaki adımlarda bu sıkışmanın neye mal olduğunu ölçeceğiz.</p>',
+    learned:'<b>RNN aynı ağırlıkları her adımda tekrar uygular.</b><br><br>' +
+      'Parametre sayısı dizi uzunluğundan bağımsızdır: burada 2 adımlık dizide de ' +
+      '32 adımlıkta da <b>168</b>.<br><br>' +
+      'Bu yüzden tek bir model her uzunluktaki diziyi işleyebilir. Karşılığında bütün geçmiş ' +
+      'tek bir <b>12 boyutlu duruma</b> sıkıştırılır.',
+    xp:25,
+  },
+  {
+    t:'Gerçekten hatırlıyor mu',
+    goal:'RNN’in hafızasının çalıştığını ve nerede çöktüğünü ölçeceksin.',
+    todo:'Dizi uzunluğunu artır. Açıklanan oran hangi uzunlukta sıfırın altına düşüyor?',
+    kind:'controls', viz:'rnnHafiza', h:770, state:{sahne:'ufuk'},
+    controls:[{k:'ti', lb:'DİZİ UZUNLUĞU', min:0, max:4, step:1, val:0,
+               fmt:v => RN.uzunluklar[v] + ' adım'}],
+    derive:s => ({a: rnEgit(RN.uzunluklar[Math.round(s.ti)], RN.ADIM, 0).aciklanan}),
+    live:s => [['AÇIKLANAN ORAN', (100*s.a).toFixed(1) + '%', s.a > 0.5 ? K.green : K.red],
+               ['HEDEF', 'oranı sıfırın altına düşür']],
+    unlock:s => s.a < 0,
+    unlockMsg:'Açıklanan oranı sıfırın altına düşüren uzunluğu bul',
+    body:'<p>Görev şu: T tane rastgele sayı gösteriyoruz, sonunda <b>ilkini</b> soruyoruz. ' +
+      'Aradaki her şey dikkat dağıtıcı. Model ilk sayıyı sonuna kadar taşımak zorunda.</p>' +
+      '<p>Ölçüt <b>açıklanan oran</b>: 1 kusursuz, 0 ise "hep ortalamayı söylemekle aynı", ' +
+      'negatif ise ortalamayı söylemekten bile kötü. Ve ölçüm <b>ayrı bir test kümesinde</b>, ' +
+      'çünkü eğitim kümesini ezberlemek bu görevde çok kolay.</p>' +
+      '<p><b>T = 2:</b> <b>%96.0</b>. Neredeyse kusursuz.<br>' +
+      '<b>T = 4:</b> <b>%88.8</b>. Hâlâ iyi.<br>' +
+      '<b>T = 8:</b> <b>&minus;%30.5</b>. Çöktü.</p>' +
+      '<p>Yani hafıza gerçek ama 4 ile 8 adım arasında bir yerde bitiyor.</p>' +
+      '<p>Kartlardaki eğitim kaybına da bak: T = 8’de eğitim kaybı <b>0.3017</b> iken test ' +
+      'kaybı <b>1.2905</b>. Model eğitim dizilerini ezberlemeyi başarıyor ama kuralı ' +
+      'öğrenemiyor. Bu, sorunun kapasite değil <b>bilgi akışı</b> olduğunun işareti: ' +
+      'ilk sayı sona ulaşmıyor.</p>' +
+      '<p>Uzunluğu daha da artırmak bir şey değiştirmiyor, çünkü sorun zaten oluşmuş durumda.</p>',
+    learned:'<b>RNN hafızası çalışır ama kısa bir ufku vardır.</b><br><br>' +
+      'İlk sayıyı hatırlama görevinde açıklanan oran: T = 2 için <b>%96.0</b>, ' +
+      'T = 4 için <b>%88.8</b>, T = 8 için <b>&minus;%30.5</b>.<br><br>' +
+      'T = 8’de eğitim kaybı 0.3017, test kaybı 1.2905: model ezberliyor ama genelleyemiyor. ' +
+      'Sorun kapasite değil, <b>bilginin sona ulaşamaması</b>.',
+    xp:50,
+  },
+  {
+    t:'Neden: etki uzaklıkla sönüyor',
+    goal:'Ufkun yerini belirleyen niceliği doğrudan ölçeceksin.',
+    todo:'Grafiğe bak. Duyarlılık kaç adımda yarıya iniyor?',
+    kind:'static', viz:'rnnHafiza', h:770, state:{sahne:'sonum'},
+    body:'<p>Şimdi eğitimi bir kenara bırakıp ağın kendisine bakalım. Soru şu: ' +
+      '<b>çıktı, t adım öncesindeki girdiye ne kadar duyarlı?</b></p>' +
+      '<p>Bu türev doğrudan hesaplanabilir ve <b>eğitim gerektirmez</b>. Ölçümü 48 farklı ' +
+      'dizide yapıp ortalamasını aldık.</p>' +
+      '<p>Sonuç, log ölçekte neredeyse düz bir çizgi. Yani sönüm <b>üstel</b>. ' +
+      'Adım başına ortalama oran <b>0.5866</b>.</p>' +
+      '<p>Duyarlılık <b>4 adımda yarıya</b>, <b>7 adımda onda bire</b>, <b>9 adımda ' +
+      'yüzde bire</b> iniyor. 8 adım öncesindeki girdinin etkisi son adımın <b>%2.74</b>’ü. ' +
+      '31 adım öncesinde <b>3.62 × 10⁻⁸</b>.</p>' +
+      '<p>Şimdi iki ölçümü yan yana koy. Bir önceki adımda eğitim T = 4 ile T = 8 arasında ' +
+      'çöküyordu. Burada da etki tam o aralıkta yüzde birkaça iniyor. <b>Birbirinden ' +
+      'bağımsız iki ölçüm aynı yeri gösteriyor.</b></p>' +
+      '<p>Sebebi patlayan gradyan dersinden tanıdık: her adımda tanh türeviyle (1’den küçük) ' +
+      've W ile çarpım var. 31 adım, 31 çarpım. Buradaki fark, çarpımların 1’in altında ' +
+      'kalması: patlama değil <b>sönme</b>.</p>',
+    learned:'<b>RNN’in ufkunu, girdinin çıktıya etkisinin üstel sönümü belirler.</b><br><br>' +
+      'Adım başına oran <b>0.5866</b>: duyarlılık <b>4 adımda yarıya</b>, ' +
+      '<b>9 adımda yüzde bire</b> iniyor. 8 adım öncesi <b>%2.74</b>, ' +
+      '31 adım öncesi <b>3.6 × 10⁻⁸</b>.<br><br>' +
+      'Bu ölçüm eğitilmemiş ağda yapıldı: sönüm bir eğitim kusuru değil, <b>yapının kendisi</b>.',
+    xp:50,
+  },
+  {
+    t:'Peki ne yapmalı',
+    goal:'Sönümü çözmenin hangi yöne baktığını göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'rnnHafiza', h:770, state:{sahne:'sonum'},
+    body:'<p>Sönümün kaynağı belli: her adımda bir çarpım var ve çarpanların çoğu 1’den küçük. ' +
+      'Öyleyse çözüm de belli olmalı: <b>bilgiye çarpılmadan geçebileceği bir yol açmak</b>.</p>' +
+      '<p>Bu cümle tanıdık gelmeli. Kısayol bağlantıları dersinde tam olarak bunu ölçmüştük: ' +
+      'h + F(h) yazmak türevi I + J biçimine sokuyor ve gradyanın bir kopyası hiç ' +
+      'çarpılmadan geçiyordu. Orada derinlik boyunca yaptığımızı, burada <b>zaman boyunca</b> ' +
+      'yapmak gerekiyor.</p>' +
+      '<p><b>LSTM</b>’in yaptığı tam olarak budur. Durumun yanına bir <b>hücre</b> ekler ve ' +
+      'onu her adımda yeniden yazmak yerine kapılarla <b>seçerek</b> günceller. Kapı kapalıysa ' +
+      'hücre olduğu gibi taşınır, yani çarpan 1 olur ve sönüm durur.</p>' +
+      '<p>Üç yaklaşım da aynı fikrin farklı biçimleri:</p>' +
+      '<p><b>Kapılar</b> (LSTM, GRU): bilgiyi ne zaman güncelleyeceğine model karar verir.<br>' +
+      '<b>Dikkat</b>: her adım geçmişteki her adıma <b>doğrudan</b> bakabilir, aradaki ' +
+      'mesafe kaç adım olursa olsun. Yol uzunluğu 1 olur.<br>' +
+      '<b>Kısayol</b>: zaman ekseninde atlamalı bağlantılar.</p>' +
+      '<p>Dikkat mekanizmasının RNN’i büyük ölçüde yerinden etmesinin sebebi bu ölçümde ' +
+      'saklı: RNN’de bilgi 31 adım için 31 çarpımdan geçmek zorunda, dikkatte ise ' +
+      '<b>bir tanesinden</b>.</p>',
+    quiz:{ q:'Bir belge sınıflandırma modelinde RNN kullanıyorsun. Kısa yorumlarda gayet iyi ama uzun raporlarda başlangıçtaki bilgiyi kaçırıyor. Gizli durumu 12 boyuttan 256 boyuta çıkarıyorsun ve neredeyse hiçbir şey değişmiyor. Neden?',
+      opts:[
+        {t:'Sorun kapasite değil bilgi akışı: etki uzaklıkla üstel sönüyor ve boyut bunu değiştirmiyor', why:'Doğru. Bu derste ölçtüğün gibi duyarlılık adım başına 0.5866 oranıyla sönüyor ve 9 adımda yüzde bire iniyor. Bu oran gizli durumun boyutundan değil, her adımda uygulanan çarpımdan geliyor. Nitekim T = 8 de eğitim kaybı 0.3017 iken test kaybı 1.2905 tı: model ezberleyebiliyordu, yani kapasitesi yetiyordu. Eksik olan bilginin sona ulaşması.'},
+        {t:'256 boyut da yetersiz, daha da büyütmek gerekir', why:'Aynı yanlışı büyüterek tekrarlamak olur. Sönüm oranı boyuta değil, her adımdaki çarpıma bağlı. Bu derste kapasitenin yeterli olduğu doğrudan ölçüldü: model eğitim dizilerini ezberleyebiliyordu.'},
+        {t:'Daha uzun eğitmek gerekir', why:'Gradyan başlangıçtaki adımlara neredeyse hiç ulaşmıyorsa daha çok adım atmak bunu değiştirmez. 31 adım öncesinin etkisi bu derste 3.6 × 10⁻⁸ ölçüldü ve bu eğitilmemiş ağda ölçüldü, yani yapının kendisinden geliyor.'},
+        {t:'Gradyan kliplemesi eklemek gerekir', why:'Klipleme çok büyük gradyanları keser; buradaki sorun ise gradyanın çok küçük olması. Yanlış yöne bakan bir araç. Patlayan gradyan dersinde ölçtüğün gibi klipleme kuyruğu keser, sönümü onarmaz.'},
+      ], correct:0 },
+    learned:'<b>Sönümün çözümü kapasite değil, bilgiye çarpılmadan geçecek bir yol açmak.</b><br><br>' +
+      'Kısayol bağlantıları bunu derinlik boyunca yapıyordu; <b>LSTM kapıları</b> aynı şeyi ' +
+      'zaman boyunca yapar: kapı kapalıyken hücre olduğu gibi taşınır ve çarpan 1 olur.<br><br>' +
+      '<b>Dikkat</b> mekanizması ise yolu tamamen kısaltır: her adım geçmişteki her adıma ' +
+      'doğrudan bakar, 31 çarpım yerine <b>bir tane</b>.',
     xp:50,
   },
 ]};

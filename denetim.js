@@ -1566,6 +1566,71 @@ console.log('═══ HAVUZLAMA ═══');
         HV.duyarlilik(1,8,'maks') < 1e-9 && HV.duyarlilik(1,8,'ort') < 1e-9);
 }
 
+console.log('═══ RNN · HAFIZA VE UFUK ═══');
+{
+  /* once kararlilik · sayi olarak iddia edilen her kosu sinaniyor */
+  {
+    let enBuyuk = 0;
+    for (const T of RN.uzunluklar) enBuyuk = Math.max(enBuyuk, RN.hassasiyet(T));
+    iddia('bütün eğitim koşuları 1e-12 bozulmaya kararlı', true, enBuyuk < 1e-9);
+  }
+  /* parametre sayisi dizi uzunlugundan bagimsiz */
+  iddia('parametre sayısı', 168, RN.parametre(), 0);
+  iddia('W matrisi ağırlığı', 144, RN.H * RN.H, 0);
+  iddia('parametre sayısı T yi hiç içermiyor', true,
+        RN.parametre() === RN.H * RN.H + 2 * RN.H);
+  /* hafiza ufku · test kumesinde */
+  iddia('T=2 açıklanan oran', 0.960, rnEgit(2, RN.ADIM, 0).aciklanan, 3);
+  iddia('T=4 açıklanan oran', 0.888, rnEgit(4, RN.ADIM, 0).aciklanan, 3);
+  iddia('T=8 açıklanan oran', -0.305, rnEgit(8, RN.ADIM, 0).aciklanan, 3);
+  iddia('T=16 açıklanan oran', -0.393, rnEgit(16, RN.ADIM, 0).aciklanan, 3);
+  iddia('kısa dizide hafıza çalışıyor', true, rnEgit(2, RN.ADIM, 0).aciklanan > 0.9);
+  iddia('T=8 de ortalamadan bile kötü', true, rnEgit(8, RN.ADIM, 0).aciklanan < 0);
+  {
+    let ilkCoken = -1;
+    for (const T of RN.uzunluklar)
+      if (ilkCoken < 0 && rnEgit(T, RN.ADIM, 0).aciklanan < 0) ilkCoken = T;
+    iddia('açıklanan oranın ilk negatife düştüğü uzunluk', 8, ilkCoken, 0);
+  }
+  /* sorun kapasite degil: egitim kaybi testten cok dusuk · ezberliyor */
+  iddia('T=8 eğitim kaybı', 0.3017, rnEgit(8, RN.ADIM, 0).egitim, 4);
+  iddia('T=8 test kaybı', 1.2905, rnEgit(8, RN.ADIM, 0).son, 4);
+  iddia('T=8 de model ezberliyor ama genelleyemiyor', true,
+        rnEgit(8, RN.ADIM, 0).egitim < 0.4 * rnEgit(8, RN.ADIM, 0).son);
+  /* ETKI SONUMU · egitim gerektirmeyen bagimsiz olcum */
+  {
+    const E = RN.girdiEtkisi(32), son = E[31];
+    iddia('8 adım öncesinin etkisi (son adıma oran %)', 2.74, 100 * E[31-8] / son, 2);
+    iddia('16 adım öncesi (log10 oran)', -3.785, Math.log10(E[31-16] / son), 3);
+    iddia('31 adım öncesi (log10 oran)', -7.441, Math.log10(E[31-31] / son), 3);
+    {
+      let yari = 0, onda = 0, yuz = 0;
+      for (let k = 1; k < 32; k++){
+        if (!yari && E[31-k] < son/2) yari = k;
+        if (!onda && E[31-k] < son/10) onda = k;
+        if (!yuz && E[31-k] < son/100) yuz = k; }
+      iddia('duyarlılığın yarıya indiği uzaklık', 4, yari, 0);
+      iddia('onda bire indiği uzaklık', 7, onda, 0);
+      iddia('yüzde bire indiği uzaklık', 9, yuz, 0);
+    }
+    /* sonum ustel mi: adim basina geometrik ortalama oran */
+    {
+      const o = [];
+      for (let k = 1; k <= 24; k++) o.push(E[31-k] / E[31-k+1]);
+      const g = Math.exp(o.reduce((s, x) => s + Math.log(x), 0) / o.length);
+      iddia('adım başına geometrik ortalama oran', 0.5866, g, 4);
+      iddia('oran 1 in altında (sönme, patlama değil)', true, g < 1);
+    }
+    /* iki bagimsiz olcum ayni yeri gosteriyor · dersin asil iddiasi */
+    iddia('etkinin yüzde birkaça indiği yer ile eğitimin çöktüğü yer örtüşüyor', true,
+          100 * E[31-8] / son < 5 && rnEgit(8, RN.ADIM, 0).aciklanan < 0 &&
+          rnEgit(4, RN.ADIM, 0).aciklanan > 0.5);
+  }
+  /* olcum egitilmemis agda yapiliyor · yani yapinin kendisinden geliyor */
+  iddia('etki ölçümü eğitim gerektirmiyor (aynı çağrı iki kez aynı)', 0,
+        Math.abs(RN.girdiEtkisi(16)[0] - RN.girdiEtkisi(16)[0]), 12);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

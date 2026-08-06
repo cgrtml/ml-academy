@@ -4572,6 +4572,220 @@ VIZ.havuzlama = s => {
   }
 };
 
+
+/* ═══════════ RNN · SIRAYI HAFIZADA TUTMAK ═══════════
+   Aynı ağırlıklar her adımda tekrar uygulanıyor, durum ileri taşınıyor.
+   Hafıza gerçek ama ufku var, ve ufkun yerini gradyanın sönümü belirliyor. */
+const RN = {};
+RN.H = 12; RN.B = 48; RN.BT = 48;
+RN.uzunluklar = [2, 4, 8, 16, 32];
+RN.ADIM = 120;
+const _rnCache = {};
+function rnKur(T, eps){
+  const { H, B, BT } = RN, r = rng(5), W = [];
+  for (let i = 0; i < H; i++){ const row = [];
+    for (let j = 0; j < H; j++) row.push(0.9 * omNormal(r) / Math.sqrt(H)); W.push(row); }
+  if (eps) W[0][0] += eps;
+  const u = new Array(H).fill(0).map(() => omNormal(r));
+  const v2 = new Array(H).fill(0).map(() => omNormal(r) / Math.sqrt(H));
+  const r2 = rng(6), X = [], Y = [], XT = [], YT = [];
+  for (let b = 0; b < B; b++){ const d = [];
+    for (let t = 0; t < T; t++) d.push(omNormal(r2)); X.push(d); Y.push(d[0]); }
+  for (let b = 0; b < BT; b++){ const d = [];
+    for (let t = 0; t < T; t++) d.push(omNormal(r2)); XT.push(d); YT.push(d[0]); }
+  return { W, u, v: v2, X, Y, XT, YT, T };
+}
+function rnEgit(T, adim, eps){
+  const k = 'e' + T + ':' + adim + ':' + (eps || 0);
+  if (_rnCache[k]) return _rnCache[k];
+  const { H } = RN, M = rnKur(T, eps), { W, u, v, X, Y, XT, YT } = M;
+  const lr = 0.05;
+  const ileri = dizi => { let h = new Array(H).fill(0);
+    const Zs = [], Hs = [h.slice()];
+    for (let t = 0; t < T; t++){
+      const z = new Array(H).fill(0), y = new Array(H).fill(0);
+      for (let i = 0; i < H; i++){ let s = u[i] * dizi[t];
+        for (let j = 0; j < H; j++) s += W[i][j] * h[j];
+        z[i] = s; y[i] = Math.tanh(s); }
+      Zs.push(z); h = y; Hs.push(h.slice()); }
+    return { h, Zs, Hs }; };
+  const kayip = (XX, YY) => { let s = 0;
+    for (let b = 0; b < XX.length; b++){ const { h } = ileri(XX[b]);
+      const p = h.reduce((t, x, j) => t + x * v[j], 0); s += (p - YY[b]) ** 2; }
+    return s / XX.length; };
+  const iz = [kayip(XT, YT)];
+  for (let it = 0; it < adim; it++){
+    const gW = W.map(row => row.map(() => 0));
+    const gu = new Array(H).fill(0), gv = new Array(H).fill(0);
+    for (let b = 0; b < X.length; b++){
+      const { h, Zs, Hs } = ileri(X[b]);
+      const p = h.reduce((t, x, j) => t + x * v[j], 0), e = 2 * (p - Y[b]) / X.length;
+      for (let j = 0; j < H; j++) gv[j] += e * h[j];
+      let d = v.map(x => e * x);
+      for (let t = T - 1; t >= 0; t--){
+        const dz = d.map((x, i) => x * (1 - Math.tanh(Zs[t][i]) ** 2));
+        for (let i = 0; i < H; i++){ gu[i] += dz[i] * X[b][t];
+          for (let j = 0; j < H; j++) gW[i][j] += dz[i] * Hs[t][j]; }
+        const nd = new Array(H).fill(0);
+        for (let j = 0; j < H; j++){ let s = 0;
+          for (let i = 0; i < H; i++) s += W[i][j] * dz[i]; nd[j] = s; }
+        d = nd; }
+    }
+    /* klipleme: patlayan gradyan dersinde olctugumuz sebeple */
+    let n2 = 0;
+    for (const row of gW) for (const g of row) n2 += g * g;
+    for (const g of gu) n2 += g * g;
+    for (const g of gv) n2 += g * g;
+    const n = Math.sqrt(n2), olcek = n > 3 ? 3 / n : 1;
+    for (let i = 0; i < H; i++){ gu[i] *= olcek; gv[i] *= olcek;
+      for (let j = 0; j < H; j++) gW[i][j] *= olcek; }
+    for (let i = 0; i < H; i++){ u[i] -= lr * gu[i]; v[i] -= lr * gv[i];
+      for (let j = 0; j < H; j++) W[i][j] -= lr * gW[i][j]; }
+    if ((it + 1) % 20 === 0) iz.push(kayip(XT, YT));
+  }
+  const ort = YT.reduce((s, x) => s + x, 0) / YT.length;
+  const temel = YT.reduce((s, x) => s + (x - ort) ** 2, 0) / YT.length;
+  const R = { iz, son: iz[iz.length-1], temel, egitim: kayip(X, Y) };
+  R.aciklanan = 1 - R.son / R.temel;
+  return (_rnCache[k] = R);
+}
+RN.hassasiyet = T => { const a = rnEgit(T, RN.ADIM, 0).son, b = rnEgit(T, RN.ADIM, 1e-12).son;
+  return Math.abs(a - b) / Math.max(1e-12, a); };
+/* egitilmemis agda cikitinin t. girdiye duyarliligi */
+/* Tek bir dizide olcum gurultulu cikiyor · butun dizilerde ortalama aliyoruz. */
+RN.girdiEtkisi = T => {
+  const k = 'g' + T;
+  if (_rnCache[k]) return _rnCache[k];
+  const { H } = RN, { W, u, v, X } = rnKur(T, 0);
+  const toplam = new Array(T).fill(0);
+  for (const dizi of X){
+    let h = new Array(H).fill(0); const Zs = [];
+    for (let t = 0; t < T; t++){
+      const z = new Array(H).fill(0), y = new Array(H).fill(0);
+      for (let i = 0; i < H; i++){ let s = u[i] * dizi[t];
+        for (let j = 0; j < H; j++) s += W[i][j] * h[j];
+        z[i] = s; y[i] = Math.tanh(s); }
+      Zs.push(z); h = y; }
+    let d = v.slice();
+    for (let t = T - 1; t >= 0; t--){
+      const dz = d.map((x, i) => x * (1 - Math.tanh(Zs[t][i]) ** 2));
+      toplam[t] += Math.abs(dz.reduce((s, x, i) => s + x * u[i], 0));
+      const nd = new Array(H).fill(0);
+      for (let j = 0; j < H; j++){ let s = 0;
+        for (let i = 0; i < H; i++) s += W[i][j] * dz[i]; nd[j] = s; }
+      d = nd; }
+  }
+  return (_rnCache[k] = toplam.map(x => x / X.length));
+};
+RN.parametre = () => RN.H * RN.H + 2 * RN.H;
+
+VIZ.rnnHafiza = s => {
+  clear();
+  const sahne = s.sahne || 'ufuk';
+  const T = RN.uzunluklar[Math.max(0, Math.min(4, s.ti === undefined ? 0 : Math.round(s.ti)))];
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 25);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'yapi'){
+    baslikSerit('RNN · AYNI AĞIRLIKLAR, HER ADIMDA',
+      'h ← tanh(W h + u x). Aynı W her adımda tekrar uygulanıyor.', []);
+    const n = Math.min(8, T), x0 = 160, dx = 1180 / Math.max(1, n), y0 = 250;
+    for (let t = 0; t < n; t++){
+      const cx0 = x0 + t * dx;
+      box(cx0, y0, dx - 26, 90, 'rgba(7,10,15,.7)', K.blue, 2);
+      txt('h' + (t+1), cx0 + (dx-26)/2, y0 + 56, K.blue, 26);
+      txt('x' + (t+1), cx0 + (dx-26)/2, y0 - 20, K.mut, 18);
+      arw(cx0 + (dx-26)/2, y0 - 8, cx0 + (dx-26)/2, y0 - 2, K.mut, 2);
+      if (t < n - 1){
+        arw(cx0 + dx - 26, y0 + 45, cx0 + dx - 4, y0 + 45, K.green, 3);
+        txt('W', cx0 + dx - 15, y0 + 30, K.green, 17); }
+    }
+    if (T > 8) txt('… ' + T + ' adım', x0 + 8*dx - 40, y0 + 56, K.mut, 20, 'left');
+    txt('durum ileri taşınıyor · her okta AYNI W matrisi var', 750, y0 + 140, K.green, 20);
+    const bx = 200;
+    kart(bx, 460, 260, 'DİZİ UZUNLUĞU', String(T), K.blue);
+    kart(bx + 280, 460, 260, 'PARAMETRE SAYISI', String(RN.parametre()), K.green,
+         'T den bağımsız');
+    kart(bx + 560, 460, 260, 'W MATRİSİ', RN.H + '×' + RN.H, K.green,
+         String(RN.H * RN.H) + ' ağırlık');
+    kart(bx + 840, 460, 260, 'İLERİ BESLEMELİ OLSA',
+         String(T * RN.H), K.orange, 'sadece girdi katmanı');
+    box(bx, 600, 1100, 110, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('Ağırlık sayısı dizi uzunluğuna bakmıyor: 2 adımlık dizide de 32 adımlıkta da ' + RN.parametre() + '.',
+        bx + 24, 640, K.txt, 19, 'left');
+    txt('Bu yüzden RNN her uzunluktaki diziyi aynı modelle işleyebilir. Bedeli, bütün geçmişi',
+        bx + 24, 672, K.mut, 18, 'left');
+    txt('tek bir ' + RN.H + ' boyutlu vektörde sıkıştırmak zorunda olması.', bx + 24, 700, K.mut, 18, 'left');
+  }
+
+  else if (sahne === 'sonum'){
+    baslikSerit('RNN · ETKİ UZAKLIKLA SÖNÜYOR',
+      'Çıktının, t adım öncesindeki girdiye duyarlılığı. Eğitim yok, sadece ağın kendisi.', []);
+    const E = RN.girdiEtkisi(32), son = E[31];
+    const P = plot(rect(140, 200, 640, 400), 0, 31, -11, 0.5);
+    frame(P, 'sondan uzaklık (adım)', 'log₁₀ duyarlılık', [0, 8, 16, 24, 31], [-10, -6, -2]);
+    cx.strokeStyle = K.orange; cx.lineWidth = 3.4; cx.beginPath();
+    for (let k = 0; k <= 31; k++){ const y = P.sy(Math.max(-11, Math.log10(Math.max(1e-12, E[31-k]))));
+      k ? cx.lineTo(P.sx(k), y) : cx.moveTo(P.sx(k), y); }
+    cx.stroke();
+    for (let k = 0; k <= 31; k += 2) dot(P.sx(k), P.sy(Math.max(-11, Math.log10(Math.max(1e-12, E[31-k])))), 4, K.orange);
+    txt('düz bir çizgi: sönüm üstel', P.R.x + P.R.w - 14, P.R.y + 28, K.orange, 17, 'right');
+    const bx = 830;
+    let yari = 0; for (let k = 1; k < 32; k++) if (E[31-k] < son/2){ yari = k; break; }
+    let onda = 0; for (let k = 1; k < 32; k++) if (E[31-k] < son/10){ onda = k; break; }
+    kart(bx, 200, 260, 'YARIYA İNME', yari + ' adım', K.orange);
+    kart(bx + 280, 200, 260, 'ONDA BİRE İNME', onda + ' adım', K.orange);
+    kart(bx, 330, 260, '8 ADIM ÖNCE', (100 * E[31-8] / son).toFixed(2) + '%', K.orange,
+         'son adıma göre');
+    kart(bx + 280, 330, 260, '24 ADIM ÖNCE', (E[31-24] / son).toExponential(1), K.red,
+         'son adıma göre');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('EĞİTİMDEN ÖNCE BİLE BÖYLE', bx + 270, 494, K.mut, 18);
+    txt('Bu ölçüm eğitilmemiş bir ağda yapıldı. Yani', bx + 18, 534, K.txt, 18, 'left');
+    txt('sönüm bir eğitim kusuru değil, yapının kendisi.', bx + 18, 564, K.txt, 18, 'left');
+    txt('Her adımda tanh türevi (1 den küçük) ve W ile', bx + 18, 604, K.mut, 18, 'left');
+    txt('çarpım var. 24 adım, 24 çarpım.', bx + 18, 634, K.mut, 18, 'left');
+    txt('Ufkun nerede bittiğini bu eğri belirliyor.', bx + 18, 674, K.green, 18, 'left');
+  }
+
+  else { /* ufuk: uzunluga gore test kaybi */
+    baslikSerit('RNN · HAFIZANIN UFKU',
+      'Görev: dizinin ilk sayısını T adım sonra hatırlamak. Ölçülen şey test kaybı.', []);
+    const P = plot(rect(140, 200, 640, 400), 0, 33, -1.0, 1.05);
+    frame(P, 'dizi uzunluğu T', 'açıklanan oran', [2, 8, 16, 24, 32], [-1, -0.5, 0, 0.5, 1]);
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.sx(0), P.sy(0)); cx.lineTo(P.sx(33), P.sy(0)); cx.stroke();
+    cx.setLineDash([]);
+    txt('0 = ortalamayı söylemekle aynı', P.sx(0) + 12, P.sy(0) - 14, K.mut, 17, 'left');
+    cx.strokeStyle = K.green; cx.lineWidth = 3.4; cx.beginPath();
+    RN.uzunluklar.forEach((t, i) => { const y = P.sy(Math.max(-1.0, Math.min(1.05, rnEgit(t, RN.ADIM, 0).aciklanan)));
+      i ? cx.lineTo(P.sx(t), y) : cx.moveTo(P.sx(t), y); });
+    cx.stroke();
+    RN.uzunluklar.forEach(t => dot(P.sx(t),
+      P.sy(Math.max(-1.0, Math.min(1.05, rnEgit(t, RN.ADIM, 0).aciklanan))), 5, K.green));
+    dot(P.sx(T), P.sy(Math.max(-1.0, Math.min(1.05, rnEgit(T, RN.ADIM, 0).aciklanan))), 9, K.yellow);
+    const R = rnEgit(T, RN.ADIM, 0);
+    const bx = 830;
+    kart(bx, 200, 260, 'DİZİ UZUNLUĞU', String(T), K.blue);
+    kart(bx + 280, 200, 260, 'AÇIKLANAN ORAN', (100 * R.aciklanan).toFixed(1) + '%',
+         R.aciklanan > 0.5 ? K.green : R.aciklanan > 0 ? K.orange : K.red);
+    kart(bx, 330, 260, 'TEST KAYBI', R.son.toFixed(4), R.aciklanan > 0 ? K.green : K.red);
+    kart(bx + 280, 330, 260, 'EĞİTİM KAYBI', R.egitim.toFixed(4), K.orange,
+         R.egitim < R.son ? 'ezberliyor' : '');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('UZUNLUĞA GÖRE AÇIKLANAN ORAN', bx + 270, 494, K.mut, 18);
+    RN.uzunluklar.forEach((t, i) => {
+      const a = rnEgit(t, RN.ADIM, 0).aciklanan;
+      txt('T = ' + t, bx + 18, 532 + i*36, K.txt, 18, 'left');
+      txt((100*a).toFixed(1) + '%', bx + 522, 532 + i*36,
+          a > 0.5 ? K.green : a > 0 ? K.orange : K.red, 19, 'right'); });
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
