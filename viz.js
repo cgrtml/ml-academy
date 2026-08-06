@@ -3600,6 +3600,205 @@ VIZ.aramaUzayi = s => {
   }
 };
 
+
+/* ═══════════ KOMBİNATORİK PATLAMA ═══════════
+   Kaba kuvvet neden çöker: büyüme sınıfı, gerçek ölçüm ve
+   "daha hızlı bilgisayar" ile "daha iyi algoritma" arasındaki fark. */
+const KP = {};
+KP.fakt = n => { let s = 1; for (let i = 2; i <= n; i++) s *= i; return s; };
+KP.heldKarp = n => n * n * Math.pow(2, n);
+KP.kabaTur = n => KP.fakt(n - 1);
+KP.HIZ = 1e9;
+KP.EVREN = 1.38e10;               /* evrenin yasi, yil */                                    /* saniyede islem varsayimi */
+KP.sure = ops => {
+  const s = ops / KP.HIZ;
+  if (s < 1e-6) return (s * 1e9).toFixed(1) + ' ns';
+  if (s < 1e-3) return (s * 1e6).toFixed(1) + ' µs';
+  if (s < 1) return (s * 1e3).toFixed(1) + ' ms';
+  if (s < 60) return s.toFixed(1) + ' sn';
+  if (s < 3600) return (s / 60).toFixed(1) + ' dakika';
+  if (s < 86400) return (s / 3600).toFixed(1) + ' saat';
+  if (s < 3.156e7) return (s / 86400).toFixed(1) + ' gün';
+  if (s < 3.156e10) return (s / 3.156e7).toFixed(1) + ' yıl';
+  return (s / 3.156e7).toExponential(2) + ' yıl';
+};
+/* verilen butceyle cozulebilen en buyuk n */
+KP.cozulebilen = (f, butce) => {
+  let lo = 1, hi = 1e7;
+  while (lo < hi){ const m = Math.floor((lo + hi + 1) / 2);
+    if (f(m) <= butce) lo = m; else hi = m - 1; }
+  return lo;
+};
+KP.sinif = [['n²', n => n*n], ['n³', n => n**3],
+            ['2ⁿ', n => Math.pow(2, n)], ['n!', n => KP.fakt(n)]];
+/* gercek gezgin satici · kaba kuvvet */
+KP.sehir = (() => { const r = rng(5), S = [];
+  for (let i = 0; i < 12; i++) S.push([r()*100, r()*100]); return S; })();
+KP.d = (a, b) => Math.hypot(KP.sehir[a][0]-KP.sehir[b][0], KP.sehir[a][1]-KP.sehir[b][1]);
+const _kpCache = {};
+function kpKabaKuvvet(n){
+  if (_kpCache['t' + n]) return _kpCache['t' + n];
+  let enIyi = 1e18, sayac = 0, enIyiYol = null;
+  const git = (yol, kalan, mes) => {
+    if (!kalan.length){ sayac++;
+      const t = mes + KP.d(yol[yol.length-1], 0);
+      if (t < enIyi){ enIyi = t; enIyiYol = [...yol, 0]; }
+      return; }
+    for (let i = 0; i < kalan.length; i++){ const s = kalan[i];
+      git([...yol, s], kalan.filter((_, j) => j !== i), mes + KP.d(yol[yol.length-1], s)); }
+  };
+  git([0], [...Array(n-1).keys()].map(i => i+1), 0);
+  return (_kpCache['t' + n] = { enIyi, sayac, yol: enIyiYol });
+}
+
+VIZ.kombinatorikPatlama = s => {
+  clear();
+  const sahne = s.sahne || 'buyume';
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 25);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'tsp'){
+    const n = Math.max(4, Math.min(10, s.n === undefined ? 4 : Math.round(s.n)));
+    const R = kpKabaKuvvet(n);
+    baslikSerit('KOMBİNATORİK · GEZGİN SATICI',
+      'Bütün turları tek tek deniyoruz. Şehir sayısını bir artır, işe bak.', []);
+    const P = plot(rect(140, 200, 520, 420), -6, 106, -6, 106);
+    frame(P, '', '', [], []);
+    cx.strokeStyle = K.green; cx.lineWidth = 3;
+    cx.beginPath();
+    R.yol.forEach((c, i) => { const p = KP.sehir[c];
+      i ? cx.lineTo(P.sx(p[0]), P.sy(p[1])) : cx.moveTo(P.sx(p[0]), P.sy(p[1])); });
+    cx.stroke();
+    for (let i = 0; i < n; i++) dot(P.sx(KP.sehir[i][0]), P.sy(KP.sehir[i][1]), 8,
+                                    i === 0 ? K.yellow : K.blue);
+    txt('sarı: başlangıç şehri', P.R.x + 14, P.R.y + 28, K.mut, 17, 'left');
+    txt('yeşil: bulunan en kısa tur', P.R.x + 14, P.R.y + 52, K.green, 17, 'left');
+    const bx = 720;
+    kart(bx, 200, 310, 'ŞEHİR SAYISI', String(n), K.blue);
+    kart(bx + 330, 200, 310, 'DENENEN TUR', R.sayac.toLocaleString('tr-TR'), K.orange,
+         '(n−1)! = ' + KP.kabaTur(n).toLocaleString('tr-TR'));
+    kart(bx, 330, 310, 'EN KISA TUR', R.enIyi.toFixed(1), K.green, 'uzunluk');
+    kart(bx + 330, 330, 310, 'BİR ŞEHİR DAHA', (n).toLocaleString('tr-TR') + ' kat',
+         K.red, 'tur sayısı bu kadar artar');
+    box(bx, 460, 640, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('AYNI YÖNTEMLE DEVAM EDERSEK', bx + 320, 494, K.mut, 18);
+    [12, 15, 20, 25].forEach((m, i) => {
+      txt(m + ' şehir', bx + 22, 534 + i*42, K.txt, 19, 'left');
+      txt(KP.kabaTur(m).toExponential(2) + ' tur', bx + 330, 534 + i*42, K.orange, 18, 'right');
+      txt(KP.sure(KP.kabaTur(m)), bx + 618, 534 + i*42,
+          KP.kabaTur(m) / KP.HIZ > 3.156e7 ? K.red : K.mut, 18, 'right');
+    });
+  }
+
+  else if (sahne === 'donanim'){
+    baslikSerit('KOMBİNATORİK · DAHA HIZLI BİLGİSAYAR NE KAZANDIRIR',
+      'Bilgisayarı 1000 kat hızlandırdık. Her büyüme sınıfı ne kadar ilerledi?', []);
+    const y0 = 220, sh = 118;
+    KP.sinif.forEach(([ad, f], i) => {
+      const a = KP.cozulebilen(f, 1e9), b = KP.cozulebilen(f, 1e12);
+      const ustel = i >= 2;
+      const y = y0 + i * sh;
+      box(150, y, 1200, 96, 'rgba(7,10,15,.6)', ustel ? K.red : K.green, 2);
+      txt(ad, 205, y + 60, ustel ? K.red : K.green, 34);
+      txt('10⁹ işlemle', 400, y + 34, K.mut, 16);
+      txt('n = ' + a.toLocaleString('tr-TR'), 400, y + 70, K.txt, 24);
+      txt('10¹² işlemle', 680, y + 34, K.mut, 16);
+      txt('n = ' + b.toLocaleString('tr-TR'), 680, y + 70, K.txt, 24);
+      txt(ustel ? 'KAZANÇ: TOPLAMA' : 'KAZANÇ: ÇARPMA', 1080, y + 34, K.mut, 16);
+      txt(ustel ? '+' + (b - a) : '×' + (b / a).toFixed(1), 1080, y + 70,
+          ustel ? K.red : K.green, 28);
+    });
+    box(150, y0 + 4*sh + 6, 1200, 118, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('Polinom büyümede bilgisayarı 1000 kat hızlandırmak çözebildiğin boyutu çarpar.',
+        180, y0 + 4*sh + 48, K.txt, 19, 'left');
+    txt('Üstel büyümede aynı hızlanma sadece birkaç birim ekler. n! için topu topu iki.',
+        180, y0 + 4*sh + 82, K.txt, 19, 'left');
+  }
+
+  else if (sahne === 'algoritma'){
+    baslikSerit('KOMBİNATORİK · ÜSSÜ DEĞİŞTİRMEK',
+      'Kaba kuvvet (n−1)! tur dener. Dinamik programlama n²·2ⁿ işlem yapar.', []);
+    const P = plot(rect(140, 200, 640, 400), 8, 32, 3, 34);
+    frame(P, 'şehir sayısı', 'log₁₀ işlem', [10, 15, 20, 25, 30], [10, 20, 30]);
+    const ciz = (f, c, kalin) => { cx.strokeStyle = c; cx.lineWidth = kalin; cx.beginPath();
+      for (let n = 8; n <= 32; n++){ const y = P.sy(Math.min(34, Math.log10(f(n))));
+        n === 8 ? cx.moveTo(P.sx(n), y) : cx.lineTo(P.sx(n), y); }
+      cx.stroke(); };
+    /* bir yilda bitebilecek is · yatay esik */
+    const esik = Math.log10(KP.HIZ * 3.156e7);
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([7, 6]);
+    cx.beginPath(); cx.moveTo(P.sx(8), P.sy(esik)); cx.lineTo(P.sx(32), P.sy(esik)); cx.stroke();
+    cx.setLineDash([]);
+    txt('bir yılda bitebilecek iş', P.sx(8) + 12, P.sy(esik) - 12, K.mut, 17, 'left');
+    ciz(KP.kabaTur, K.red, 3.4);
+    ciz(KP.heldKarp, K.green, 3.4);
+    txt('kaba kuvvet (n−1)!', P.sx(9), P.sy(31), K.red, 18, 'left');
+    txt('dinamik programlama n²·2ⁿ', P.sx(32) - 12,
+        P.sy(Math.log10(KP.heldKarp(32))) - 14, K.green, 18, 'right');
+    const bx = 830;
+    kart(bx, 200, 250, '20 ŞEHİR · KABA', KP.kabaTur(20).toExponential(2), K.red,
+         KP.sure(KP.kabaTur(20)));
+    kart(bx + 270, 200, 250, '20 ŞEHİR · DP', KP.heldKarp(20).toExponential(2), K.green,
+         KP.sure(KP.heldKarp(20)));
+    kart(bx, 330, 250, 'ARADAKİ ORAN',
+         (KP.kabaTur(20) / KP.heldKarp(20)).toExponential(2) + '×', K.purple);
+    kart(bx + 270, 330, 250, 'BİR YILDA · KABA',
+         String(KP.cozulebilen(KP.kabaTur, KP.HIZ * 3.156e7)) + ' şehir', K.red);
+    box(bx, 460, 520, 250, 'rgba(7,10,15,.55)', K.orange, 2);
+    txt('AMA DP DE ÜSTEL', bx + 260, 494, K.orange, 19);
+    [30, 40, 50].forEach((m, i) => {
+      txt(m + ' şehir', bx + 22, 534 + i*40, K.txt, 19, 'left');
+      txt(KP.sure(KP.heldKarp(m)), bx + 498, 534 + i*40,
+          KP.heldKarp(m) / KP.HIZ > 3.156e7 ? K.red : K.mut, 19, 'right');
+    });
+    txt('Üs küçüldü, üstellik kalktı değil.', bx + 22, 668, K.mut, 18, 'left');
+    txt('Bir yılda en fazla ' + KP.cozulebilen(KP.heldKarp, KP.HIZ * 3.156e7) + ' şehir.',
+        bx + 22, 696, K.mut, 18, 'left');
+  }
+
+  else { /* buyume siniflari */
+    baslikSerit('KOMBİNATORİK · BÜYÜME SINIFLARI',
+      'Aynı eksende üç büyüme. Fark, "biraz daha yavaş" değil.', []);
+    const P = plot(rect(140, 200, 640, 400), 4, 31, 0, 34);
+    frame(P, 'n', 'log₁₀ işlem sayısı', [5, 10, 15, 20, 25, 30], [0, 10, 20, 30]);
+    const esik = Math.log10(KP.HIZ * 3.156e7);
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([7, 6]);
+    cx.beginPath(); cx.moveTo(P.sx(4), P.sy(esik)); cx.lineTo(P.sx(31), P.sy(esik)); cx.stroke();
+    cx.setLineDash([]);
+    txt('bir yılda bitebilecek iş', P.sx(4) + 12, P.sy(esik) - 12, K.mut, 17, 'left');
+    [[n => n*n, K.green, 'n²'], [n => Math.pow(2, n), K.orange, '2ⁿ'],
+     [KP.fakt, K.red, 'n!']].forEach(([f, c, ad]) => {
+      cx.strokeStyle = c; cx.lineWidth = 3.4; cx.beginPath();
+      for (let n = 4; n <= 31; n++){ const y = P.sy(Math.min(34, Math.log10(f(n))));
+        n === 4 ? cx.moveTo(P.sx(n), y) : cx.lineTo(P.sx(n), y); }
+      cx.stroke();
+      const son = Math.min(34, Math.log10(f(31)));
+      txt(ad, P.sx(31) + 16, P.sy(son) + 7, c, 22, 'left');
+    });
+    const bx = 850;
+    txt('n = 20 İÇİN', bx + 250, 226, K.mut, 18);
+    const sat = (y, ad, deger, s2, c) => {
+      box(bx, y, 500, 76, 'rgba(7,10,15,.6)', c, 2);
+      txt(ad, bx + 20, y + 48, c, 24, 'left');
+      txt(deger, bx + 250, y + 34, K.txt, 19);
+      txt(s2, bx + 250, y + 62, K.mut, 17);
+    };
+    sat(244, 'n²', '400 işlem', KP.sure(400), K.green);
+    sat(334, '2ⁿ', '1.05 × 10⁶ işlem', KP.sure(Math.pow(2,20)), K.orange);
+    sat(424, 'n!', '2.43 × 10¹⁸ işlem', KP.sure(KP.fakt(20)), K.red);
+    box(bx, 530, 500, 180, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('Saniyede bir milyar işlem yapan bir makinede:', bx + 20, 566, K.txt, 18, 'left');
+    txt('n² 400 nanosaniye sürer.', bx + 20, 600, K.green, 18, 'left');
+    txt('2ⁿ bir milisaniye sürer.', bx + 20, 632, K.orange, 18, 'left');
+    txt('n! 77 yıl sürer. Üçü de sadece n = 20 için.', bx + 20, 664, K.red, 18, 'left');
+    txt('n! evrenin yaşını n = 27 de aşıyor.', bx + 20, 696, K.mut, 18, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

@@ -1174,6 +1174,86 @@ console.log('═══ ARAMA UZAYI (SU KABI) ═══');
   }
 }
 
+console.log('═══ KOMBİNATORİK PATLAMA ═══');
+{
+  /* n=20 icin uc buyume sinifi */
+  iddia('n=20 · n² işlem', 400, 20*20, 0);
+  iddia('n=20 · 2ⁿ işlem (milyon)', 1.05, Math.pow(2,20)/1e6, 2);
+  iddia('n=20 · n! işlem (log10)', 18.386, Math.log10(KP.fakt(20)), 3);
+  iddia('n=20 · n! süresi yıl olarak', 77.1, KP.fakt(20)/KP.HIZ/3.156e7, 1);
+  iddia('n=20 · 2ⁿ süresi ms olarak', 1.0, Math.pow(2,20)/KP.HIZ*1e3, 1);
+  iddia('n=20 · n² süresi ns olarak', 400, 400/KP.HIZ*1e9, 0);
+  /* Ders "n! evrenin yasini n=27 de asiyor" diyor · taslakta bu n=20 icin yazilmisti */
+  {
+    let ilk = null;
+    for (let n = 15; n <= 40 && ilk === null; n++)
+      if (KP.fakt(n)/KP.HIZ/3.156e7 > KP.EVREN) ilk = n;
+    iddia('n! süresinin evren yaşını aştığı ilk n', 27, ilk, 0);
+    iddia('n=26 evren yaşının altında', true, KP.fakt(26)/KP.HIZ/3.156e7 < KP.EVREN);
+    iddia('n=27 evren yaşının üstünde', true, KP.fakt(27)/KP.HIZ/3.156e7 > KP.EVREN);
+  }
+  /* gercek kaba kuvvet · denenen tur sayisi tam olarak (n-1)! mi */
+  {
+    let ihlal = 0;
+    for (let n = 4; n <= 10; n++) if (kpKabaKuvvet(n).sayac !== KP.kabaTur(n)) ihlal++;
+    iddia('her n için denenen tur sayısı tam olarak (n−1)!', 0, ihlal, 0);
+  }
+  iddia('4 şehir tur sayısı', 6, kpKabaKuvvet(4).sayac, 0);
+  iddia('7 şehir tur sayısı', 720, kpKabaKuvvet(7).sayac, 0);
+  iddia('10 şehir tur sayısı', 362880, kpKabaKuvvet(10).sayac, 0);
+  /* bulunan tur gercekten gecerli mi: her sehir bir kez, basa donuyor */
+  {
+    const R = kpKabaKuvvet(10);
+    iddia('tur başlangıca dönüyor', true, R.yol[0] === 0 && R.yol[R.yol.length-1] === 0);
+    iddia('tur 10 şehri de bir kez geziyor', 10, new Set(R.yol).size, 0);
+    /* uzunluk bagimsiz yeniden hesaplansin */
+    let uz = 0;
+    for (let i = 1; i < R.yol.length; i++) uz += KP.d(R.yol[i-1], R.yol[i]);
+    iddia('tur uzunluğu bağımsız hesapla aynı', R.enIyi, uz, 9);
+  }
+  /* her yeni sehir tur sayisini n katina cikariyor */
+  {
+    let ihlal = 0;
+    for (let n = 5; n <= 10; n++)
+      if (Math.abs(KP.kabaTur(n) / KP.kabaTur(n-1) - (n-1)) > 1e-9) ihlal++;
+    iddia('n den n+1 e tur sayısı n katına çıkıyor', 0, ihlal, 0);
+  }
+  /* 1000 kat hizli bilgisayar · dersin asil olcumu */
+  {
+    const kz = f => [KP.cozulebilen(f, 1e9), KP.cozulebilen(f, 1e12)];
+    const [a2, b2] = kz(n => n*n), [a3, b3] = kz(n => n**3);
+    const [ae, be] = kz(n => Math.pow(2, n)), [af, bf] = kz(KP.fakt);
+    iddia('n² · 10⁹ bütçesiyle n', 31622, a2, 0);
+    iddia('n² · 10¹² bütçesiyle n', 1000000, b2, 0);
+    iddia('n² kazancı (çarpan)', 31.6, b2 / a2, 1);
+    iddia('n³ kazancı (çarpan)', 10.0, b3 / a3, 1);
+    iddia('2ⁿ · 10⁹ bütçesiyle n', 29, ae, 0);
+    iddia('2ⁿ kazancı (toplam)', 10, be - ae, 0);
+    iddia('n! · 10⁹ bütçesiyle n', 12, af, 0);
+    iddia('n! kazancı (toplam)', 2, bf - af, 0);
+    /* asil iddia: polinomda carpan, ustelde toplam */
+    iddia('polinomda kazanç çarpansal, üstelde toplamsal',
+          true, b2 / a2 > 30 && be - ae < 15 && bf - af < 5);
+  }
+  /* Held-Karp · ussu degistirmek */
+  iddia('20 şehir kaba kuvvet işlem (log10)', 17.085, Math.log10(KP.kabaTur(20)), 3);
+  iddia('20 şehir Held-Karp işlem (log10)', 8.623, Math.log10(KP.heldKarp(20)), 3);
+  iddia('20 şehir oran (log10)', 8.462, Math.log10(KP.kabaTur(20)/KP.heldKarp(20)), 3);
+  iddia('20 şehir kaba kuvvet süresi yıl', 3.9, KP.kabaTur(20)/KP.HIZ/3.156e7, 1);
+  iddia('20 şehir Held-Karp süresi ms', 419.4, KP.heldKarp(20)/KP.HIZ*1e3, 1);
+  {
+    const yil = KP.HIZ * 3.156e7;
+    iddia('bir yılda kaba kuvvetle çözülebilen şehir', 19, KP.cozulebilen(KP.kabaTur, yil), 0);
+    iddia('bir yılda Held-Karp ile çözülebilen şehir', 43, KP.cozulebilen(KP.heldKarp, yil), 0);
+  }
+  /* dersin dürüstlük notu: Held-Karp da üstel, o da coküyor */
+  iddia('Held-Karp 30 şehir süresi dakika', 16.1, KP.heldKarp(30)/KP.HIZ/60, 1);
+  iddia('Held-Karp 40 şehir süresi gün', 20.4, KP.heldKarp(40)/KP.HIZ/86400, 1);
+  iddia('Held-Karp 50 şehir süresi yıl', 89.2, KP.heldKarp(50)/KP.HIZ/3.156e7, 1);
+  iddia('Held-Karp da üstel: 50 şehirde bir yılı aşıyor',
+        true, KP.heldKarp(50)/KP.HIZ/3.156e7 > 1);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

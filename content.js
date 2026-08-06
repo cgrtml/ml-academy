@@ -23,7 +23,7 @@ const ROTALAR = [
     {id:'mat-olasilik',   ad:'Olasılık: modelin belirsizlikle dansı',          sure:16, durum:'hazir'},
     {id:'neden-simdi',    ad:'Neden şimdi patladı: veri, hesap, algoritma',    sure:16, durum:'hazir'},
     {id:'arama-uzayi',    ad:'Arama uzayı: problemi düğüm ve kenara çevirmek',  sure:15, durum:'hazir'},
-    {id:'kombinatorik',   ad:'Kombinatorik patlama: kaba kuvvet neden çöker',  sure:10, durum:'planli'},
+    {id:'kombinatorik',   ad:'Kombinatorik patlama: kaba kuvvet neden çöker',  sure:15, durum:'hazir'},
   ],
 },
 {
@@ -7722,6 +7722,134 @@ DERSLER['arama-uzayi'] = {
       'çünkü EBOB <b>3</b> ve 4 sayısı 3’e bölünmüyor.<br><br>' +
       '5 ve 3 kaplarında EBOB <b>1</b> olduğu için her miktar ölçülebiliyor. ' +
       'İlk sorulacak soru hangi algoritma değil, <b>cevabın uzayda olup olmadığıdır</b>.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── KOMBİNATORİK PATLAMA ─────────────── */
+DERSLER['kombinatorik'] = {
+  ad:'Kombinatorik patlama: kaba kuvvet neden çöker',
+  alt:'Hepsini denemek her zaman kusursuz bir plandır ve neredeyse her zaman imkânsızdır. Bu dersteki sayılar bunun nedenini gösteriyor.',
+  kaynaklar:[
+    {y:'Cormen, T. H. ve ark.', t:'2022', b:'Introduction to Algorithms, 4. baskı, Bölüm 3', n:'MIT Press'},
+    {y:'Garey, M. R. & Johnson, D. S.', t:'1979', b:'Computers and Intractability', n:'W. H. Freeman'},
+    {y:'Held, M. & Karp, R. M.', t:'1962', b:'A Dynamic Programming Approach to Sequencing Problems', n:'SIAM Journal 10(1)'},
+  ],
+  rota:0,
+  adimlar:[
+  {
+    t:'Üç büyüme, üç ayrı dünya',
+    goal:'"Daha yavaş" ile "imkânsız" arasındaki farkı sayılarla göreceksin.',
+    todo:'Grafiğe bak. n! eğrisi bir yıl çizgisini kaçta kesiyor?',
+    kind:'static', viz:'kombinatorikPatlama', h:770, state:{sahne:'buyume'},
+    body:'<p>Bir problemi çözmenin en dürüst yolu bütün olasılıkları denemektir. Cevabı ' +
+      'kesin bulur. Sorun şu ki "bütün olasılıklar" çoğu zaman sayılamayacak kadar çoktur.</p>' +
+      '<p>Üç büyüme sınıfını aynı eksende karşılaştıralım. Saniyede bir milyar işlem yapan ' +
+      'bir makine varsayıyoruz ve <b>n = 20</b> için bakıyoruz:</p>' +
+      '<p><b>n²</b> = 400 işlem &rarr; <b>400 nanosaniye</b><br>' +
+      '<b>2ⁿ</b> = 1.05 milyon işlem &rarr; <b>1 milisaniye</b><br>' +
+      '<b>n!</b> = 2.43 × 10¹⁸ işlem &rarr; <b>77 yıl</b></p>' +
+      '<p>Üçü de aynı n için. Aradaki fark "biraz daha yavaş" değil.</p>' +
+      '<p>Grafikteki kesikli çizgi bir yılda bitebilecek iş miktarı. n² o çizgiye ' +
+      'grafiğin sağ ucunda bile yaklaşamıyor. n! ise <b>19 şehirde</b> kesip geçiyor.</p>' +
+      '<p>Ölçek duygusu için: n! ile geçen süre <b>n = 27</b>’de evrenin yaşını aşıyor. ' +
+      'Yirmi yediden yirmi sekize geçmek o süreyi 28 katına çıkarıyor.</p>',
+    learned:'<b>Üstel ve çarpınımsal büyüme, polinom büyümeden derece değil tür olarak farklıdır.</b><br><br>' +
+      'n = 20 için: n² <b>400 nanosaniye</b>, 2ⁿ <b>1 milisaniye</b>, n! <b>77 yıl</b>.<br><br>' +
+      'Kaba kuvvetle bir yılda çözülebilen en büyük gezgin satıcı problemi <b>19 şehir</b>. ' +
+      'n! süresi <b>n = 27</b>’de evrenin yaşını geçiyor.',
+    xp:25,
+  },
+  {
+    t:'Gerçekten çalıştıralım',
+    goal:'Patlamayı tablodan değil, kendi tarayıcında hissedeceksin.',
+    todo:'Şehir sayısını birer birer artır. Denenen tur sayısına bak.',
+    kind:'controls', viz:'kombinatorikPatlama', h:770, state:{sahne:'tsp'},
+    controls:[{k:'n', lb:'ŞEHİR SAYISI', min:4, max:10, step:1, val:4, fmt:v => v+' şehir'}],
+    derive:s => ({tur: kpKabaKuvvet(Math.round(s.n)).sayac}),
+    live:s => [['DENENEN TUR', s.tur.toLocaleString('tr-TR'), s.tur > 1e5 ? K.red : K.orange],
+               ['HEDEF', '100.000 turu geç']],
+    unlock:s => s.tur > 1e5,
+    unlockMsg:'Denenen tur sayısını 100.000 üstüne çıkar',
+    body:'<p>Gezgin satıcı problemi: n şehri bir kez ziyaret edip başladığın yere dön, ' +
+      'toplam yolu en kısa yap.</p>' +
+      '<p>Kaba kuvvet bütün turları deniyor. Başlangıç şehri sabit olduğu için kalan ' +
+      'n&minus;1 şehrin bütün sıralamalarına bakılıyor: <b>(n&minus;1)!</b> tur.</p>' +
+      '<p>Bu sayfa bunu gerçekten çalıştırıyor. Kaydırıcıyı oynattıkça tarayıcın turları ' +
+      'tek tek deniyor:</p>' +
+      '<p>4 şehir &rarr; <b>6</b> tur &nbsp;·&nbsp; 7 şehir &rarr; <b>720</b> &nbsp;·&nbsp; ' +
+      '10 şehir &rarr; <b>362.880</b></p>' +
+      '<p>Her yeni şehir tur sayısını <b>n katına</b> çıkarıyor. 10’dan 11’e geçmek onu ' +
+      'on katına, 11’den 12’ye on bir katına.</p>' +
+      '<p>Kaydırıcı 10’da duruyor ve bunun bir sebebi var: 11 şehirde hesap bu sayfayı ' +
+      'gözle görülür şekilde bekletmeye başlıyor. 12’de sayfa donardı. ' +
+      'Oysa 12 şehir hiç de büyük bir problem değil.</p>',
+    learned:'<b>Kaba kuvvet gezgin satıcıda (n−1)! tur dener.</b><br><br>' +
+      '4 şehirde 6 tur, 10 şehirde <b>362.880</b>. Her yeni şehir sayıyı n katına çıkarır.<br><br>' +
+      'Bu sayfanın 10 şehirde durmasının sebebi teorik değil: 12 şehirde tarayıcı donardı. ' +
+      '<b>Patlama, küçük gördüğün sayılarda başlar.</b>',
+    xp:50,
+  },
+  {
+    t:'Daha hızlı bilgisayar kurtarır mı',
+    goal:'Donanımın üstel büyümeye karşı neden çaresiz kaldığını ölçeceksin.',
+    todo:'Dört satırı karşılaştır. Kazanç sütununda ne fark var?',
+    kind:'static', viz:'kombinatorikPatlama', h:790, state:{sahne:'donanim'},
+    body:'<p>Akla gelen ilk çözüm daha güçlü donanım. Ölçelim.</p>' +
+      '<p>Bilgisayarı <b>1000 kat</b> hızlandırıyoruz: 10⁹ işlem yerine 10¹² işlem. ' +
+      'Her büyüme sınıfında çözebildiğimiz en büyük n ne kadar artıyor?</p>' +
+      '<p><b>n²:</b> 31.622’den 1.000.000’a. Kazanç <b>31.6 kat</b>.<br>' +
+      '<b>n³:</b> 1.000’den 10.000’e. Kazanç <b>10 kat</b>.<br>' +
+      '<b>2ⁿ:</b> 29’dan 39’a. Kazanç <b>+10</b>.<br>' +
+      '<b>n!:</b> 12’den 14’e. Kazanç <b>+2</b>.</p>' +
+      '<p>Farkı gördün mü: polinom büyümede hızlanma çözebildiğin boyutu <b>çarpıyor</b>. ' +
+      'Üstel büyümede sadece <b>topluyor</b>.</p>' +
+      '<p>Sebebi basit. 2ⁿ için bütçeyi 1000 katına çıkarmak n’i log₂(1000) &asymp; 10 birim ' +
+      'artırır, çünkü üs doğrudan n’dir. n! daha da acımasız: her yeni birim öncekinden ' +
+      'daha pahalı, bu yüzden 1000 kat hız topu topu iki birim veriyor.</p>' +
+      '<p>Pratik sonuç: n! büyüyen bir problemde bilgisayarı bin kat hızlandırmak, ' +
+      'iki şehir daha eklemene izin verir. <b>Donanım bu yarışı kaybediyor.</b></p>',
+    learned:'<b>Donanım hızı polinom büyümede çarpan, üstel büyümede toplam kazandırır.</b><br><br>' +
+      '1000 kat hızlanma: n² için <b>×31.6</b>, n³ için <b>×10</b>, ' +
+      '2ⁿ için <b>+10</b>, n! için <b>+2</b>.<br><br>' +
+      'Üstel bir problemde daha hızlı makine almak, çözebildiğin boyutu birkaç birim ' +
+      'ileri taşır ve orada durur.',
+    xp:50,
+  },
+  {
+    t:'Kurtaran şey: üssü değiştirmek',
+    goal:'Algoritmanın neden donanımdan farklı bir kaldıraç olduğunu göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'kombinatorikPatlama', h:790, state:{sahne:'algoritma'},
+    body:'<p>Donanım büyüme sınıfını değiştiremez. Algoritma değiştirebilir.</p>' +
+      '<p>Gezgin satıcı için <b>Held-Karp</b> yöntemi, aynı alt yolları tekrar tekrar ' +
+      'hesaplamak yerine bir kere hesaplayıp saklıyor. Arama uzayı dersindeki ziyaret ' +
+      'kümesinin daha güçlü bir akrabası. Maliyet <b>(n&minus;1)!</b> yerine ' +
+      '<b>n²·2ⁿ</b> oluyor.</p>' +
+      '<p>20 şehir için: kaba kuvvet <b>1.22 × 10¹⁷</b> işlem, yani <b>3.9 yıl</b>. ' +
+      'Held-Karp <b>4.19 × 10⁸</b> işlem, yani <b>419 milisaniye</b>. ' +
+      'Oran <b>2.90 × 10⁸</b>.</p>' +
+      '<p>Bir yılda çözülebilen en büyük problem <b>19 şehirden 43 şehre</b> çıkıyor. ' +
+      'Bu, bin kat hızlı bilgisayarın verdiği +2’nin yanında bambaşka bir şey.</p>' +
+      '<p>Ama dürüst olalım, çünkü buradan sık yanlış sonuç çıkarılıyor: ' +
+      '<b>Held-Karp da üstel.</b> 30 şehirde 16 dakika, 40 şehirde 20 gün, 50 şehirde ' +
+      '<b>89 yıl</b>. Üs küçüldü, üstellik kalkmadı.</p>' +
+      '<p>Gerçek hayatta binlerce şehirlik turlar çözülüyor, ama kesin en iyi cevapla değil. ' +
+      'Yaklaşık yöntemlerle, "en iyisinden en fazla şu kadar kötü" garantisiyle. ' +
+      'A* dersindeki sezgisel fonksiyon fikri de aynı ailedendir: kesinlikten biraz ' +
+      'vazgeçip çözülebilirlik satın almak.</p>',
+    quiz:{ q:'Bir kargo şirketinde günlük rota planlaması yazıyorsun. Şu an 12 duraklı rotaları kaba kuvvetle çözüyorsun ve saniyeler içinde bitiyor. Yönetim durak sayısını 20’ye çıkarmak istiyor. Ne yaparsın?',
+      opts:[
+        {t:'Kesin çözüm gerekiyorsa dinamik programlamaya geçerim; gerekmiyorsa yaklaşık bir yönteme', why:'Doğru. 12’den 20’ye geçmek kaba kuvvette tur sayısını 11! den 19! e çıkarır, yani saniyeler yerine yaklaşık 4 yıl. Aynı problemi Held-Karp 419 milisaniyede bitiriyor. Kesin en iyi cevaba ihtiyaç yoksa yaklaşık yöntemler çok daha ileri gider, çünkü Held-Karp da 50 durakta 89 yıla çıkıyor. Doğru soru "hangi kod daha hızlı" değil, "kesin cevaba gerçekten ihtiyacım var mı".'},
+        {t:'Sunucuyu güçlendiririm, 12 durak saniyeler sürüyorsa 20 de makul sürer', why:'Bu dersteki ölçüm bunun neden çalışmadığını gösteriyor: bilgisayarı 1000 kat hızlandırmak n! büyümede topu topu +2 durak kazandırıyor. 12’den 20’ye 8 durak eklemek için gereken hızlanma bin kat değil, yaklaşık on beş milyar kat.'},
+        {t:'Kodu paralelleştirip bütün çekirdekleri kullanırım', why:'Paralellik sabit bir çarpandır, tipik olarak 8 ya da 64 kat. n! büyümede bu bir durak bile kazandırmaz. Donanımın verdiği kazanç toplama, ihtiyacın olan ise büyüme sınıfını değiştirmek.'},
+        {t:'20 durağı iki gruba bölüp her birini ayrı çözerim', why:'Bu aslında pratikte kullanılan bir fikir ve maliyeti gerçekten düşürür, ama artık kesin en iyi çözümü bulmuyorsun: gruplar arası daha iyi bir tur olabilir. Bunu bilerek yapmak makul, kesin çözüm sanmak değil. Cevap seçeneklerinden biri bu ödünü açıkça söylüyor.'},
+      ], correct:0 },
+    learned:'<b>Algoritma büyüme sınıfını değiştirir, donanım değiştiremez.</b><br><br>' +
+      '20 şehirde kaba kuvvet <b>3.9 yıl</b>, Held-Karp <b>419 milisaniye</b>. ' +
+      'Bir yılda çözülebilen boyut <b>19 şehirden 43 şehre</b> çıkıyor.<br><br>' +
+      'Ama Held-Karp da üstel: 50 şehirde <b>89 yıl</b>. Gerçek ölçekte kullanılan şey ' +
+      'kesin çözüm değil, <b>garantili yaklaşımlar</b>.',
     xp:50,
   },
 ]};
