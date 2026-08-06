@@ -1901,6 +1901,64 @@ console.log('═══ KARIŞIM YOĞUNLUK AĞI ═══');
         MD.mdnKararlilik() > 1e9 * MD.mseKararlilik());
 }
 
+console.log('═══ BAYESÇİ AĞ · TOPLULUK ═══');
+{
+  /* once kararlilik · her uye tekrarlanabilir olmali */
+  iddia('topluluk üyeleri 1e-12 bozulmaya kararlı', true, BA.kararlilik() < 1e-9);
+  iddia('üye kararlılığı (log10)', -12.7, Math.log10(BA.kararlilik()), 1);
+  /* yayilim veri bitince aciliyor */
+  iddia('veri içi ortalama sd', 0.0224, BA.icSd(), 4);
+  iddia('x=4 te sd', 0.1478, BA.ist(4).sd, 4);
+  iddia('x=5 te sd', 0.1899, BA.ist(5).sd, 4);
+  iddia('x=4 kaç kat geniş', 6.6, BA.ist(4).sd / BA.icSd(), 1);
+  iddia('x=5 kaç kat geniş', 8.5, BA.ist(5).sd / BA.icSd(), 1);
+  {
+    let ihlal = 0;
+    for (const x of [2.5, 3, 3.5, 4, 4.5, 5])
+      if (BA.ist(x).sd <= BA.icSd()) ihlal++;
+    iddia('veri dışındaki her noktada yayılım veri içinden büyük', 0, ihlal, 0);
+  }
+  /* AMA KALIBRE DEGIL · dersin asil olcumu */
+  iddia('veri içi ±2σ kapsaması', 0.778, BA.kapsama(-2, 2), 3);
+  iddia('hemen dışı kapsaması', 0.095, BA.kapsama(2, 3), 3);
+  iddia('uzak bölge kapsaması', 0.195, BA.kapsama(3, 5), 3);
+  iddia('veri içinde bile %95 in altında', true, BA.kapsama(-2, 2) < 0.95);
+  iddia('dışarıda kapsama çöküyor', true, BA.kapsama(2, 3) < 0.2);
+  /* sapma kac sigma */
+  iddia('x=0 da sapma (σ)', 3.28, BA.sapmaSigma(0), 2);
+  iddia('x=2.5 ta sapma (σ)', 3.91, BA.sapmaSigma(2.5), 2);
+  iddia('x=4 te sapma (σ)', 6.43, BA.sapmaSigma(4), 2);
+  iddia('x=5 te sapma (σ)', 13.61, BA.sapmaSigma(5), 2);
+  iddia('uzaklaştıkça sapma büyüyor', true,
+        BA.sapmaSigma(5) > BA.sapmaSigma(4) && BA.sapmaSigma(4) > BA.sapmaSigma(2.5));
+  /* GP dersiyle karsilastirma · orada x=5 te 2.77σ olculmustu */
+  iddia('GP dersindeki x=5 sapması', 2.77,
+        Math.abs(gpModel(1.0, 6)(5).ort - GP.f0(5)) / gpModel(1.0, 6)(5).sd, 2);
+  iddia('topluluk GP den kaç kat kötü', 4.9,
+        BA.sapmaSigma(5) / (Math.abs(gpModel(1.0,6)(5).ort - GP.f0(5)) / gpModel(1.0,6)(5).sd), 1);
+  iddia('ikisi de ±2σ nın dışında', true,
+        BA.sapmaSigma(5) > 2 &&
+        Math.abs(gpModel(1.0,6)(5).ort - GP.f0(5)) / gpModel(1.0,6)(5).sd > 2);
+  /* veri icinde de hemfikir ama yanlis · x=0 */
+  iddia('x=0 da yayılım çok küçük', 0.0075, BA.ist(0).sd, 4);
+  iddia('x=0 da hemfikir ama yanılıyorlar', true,
+        BA.ist(0).sd < 0.01 && BA.sapmaSigma(0) > 3);
+  /* uye sayisi tekduze etki yapmiyor */
+  iddia('2 üyeyle x=4 sd', 0.0803, BA.ist(4, 2).sd, 4);
+  iddia('4 üyeyle x=4 sd', 0.0674, BA.ist(4, 4).sd, 4);
+  iddia('10 üyeyle x=4 sd', 0.1478, BA.ist(4, 10).sd, 4);
+  iddia('üye sayısı arttıkça sd tekdüze artmıyor', true,
+        BA.ist(4, 4).sd < BA.ist(4, 2).sd);
+  /* topluluk ortalamasi tek uyeden daha mi iyi · bagimsiz kontrol */
+  {
+    let toplulukHata = 0, uyeHata = 0, n = 0;
+    for (let x = -2; x <= 2.0001; x += 0.1){
+      toplulukHata += (BA.ist(x).ort - BA.f0(x)) ** 2;
+      uyeHata += (BA.uyeler()[0](x) - BA.f0(x)) ** 2; n++; }
+    iddia('topluluk ortalaması tek üyeden daha doğru', true, toplulukHata < uyeHata);
+  }
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

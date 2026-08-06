@@ -5767,6 +5767,168 @@ VIZ.karisimYogunluk = s => {
   }
 };
 
+
+/* ═══════════ BAYESÇİ AĞ · AĞIRLIKLARA ŞÜPHEYLE BAKMAK ═══════════
+   Tek bir ağırlık kümesi yerine bir dağılım. Pratik yaklaşımı topluluk:
+   farklı başlangıçlardan eğitilmiş ağların yayılımı. */
+const BA = {};
+BA.N = 40; BA.SIG = 0.12; BA.H = 20; BA.M = 10; BA.ADIM = 3000;
+BA.f0 = x => Math.sin(1.5*x) + 0.3*x;
+BA.veri = (() => { const r = rng(9), X = [], Y = [];
+  for (let i = 0; i < BA.N; i++){ const x = -2 + 4*i/(BA.N-1);
+    X.push(x); Y.push(BA.f0(x) + BA.SIG*omNormal(r)); }
+  return { X, Y }; })();
+const _baCache = {};
+function baEgit(seed, eps){
+  const key = 'u' + seed + (eps || 0);
+  if (_baCache[key]) return _baCache[key];
+  const H = BA.H, N = BA.N, { X, Y } = BA.veri, r = rng(seed);
+  const W1 = [], b1 = [], W2 = []; let bo = 0;
+  for (let i = 0; i < H; i++){ W1.push(omNormal(r)*1.2); b1.push(omNormal(r)*1.2);
+    W2.push(omNormal(r)/Math.sqrt(H)); }
+  if (eps) W1[0] += eps;
+  const lr = 0.03;
+  for (let it = 0; it < BA.ADIM; it++){
+    const g1 = new Array(H).fill(0), gb1 = new Array(H).fill(0), g2 = new Array(H).fill(0);
+    let gbo = 0;
+    for (let i = 0; i < N; i++){
+      const h = W1.map((w, k) => Math.tanh(w*X[i] + b1[k]));
+      const y = h.reduce((s, val, k) => s + val*W2[k], 0) + bo;
+      const e = 2*(y - Y[i])/N; gbo += e;
+      for (let k = 0; k < H; k++){ g2[k] += e*h[k];
+        const d = e*W2[k]*(1 - h[k]*h[k]); g1[k] += d*X[i]; gb1[k] += d; } }
+    for (let k = 0; k < H; k++){ W1[k] -= lr*g1[k]; b1[k] -= lr*gb1[k]; W2[k] -= lr*g2[k]; }
+    bo -= lr*gbo;
+  }
+  const f = x => { const h = W1.map((w, k) => Math.tanh(w*x + b1[k]));
+    return h.reduce((s, val, k) => s + val*W2[k], 0) + bo; };
+  return (_baCache[key] = f);
+}
+BA.uyeler = m => { const u = [];
+  for (let i = 0; i < (m || BA.M); i++) u.push(baEgit(100 + i*13, 0));
+  return u; };
+BA.ist = (x, m) => { const u = BA.uyeler(m), M = u.length;
+  const v2 = u.map(f => f(x));
+  const ort = v2.reduce((s, q) => s + q, 0) / M;
+  return { ort, sd: Math.sqrt(v2.reduce((s, q) => s + (q - ort)**2, 0) / M), v: v2 };
+};
+BA.icSd = () => { if (_baCache['ic'] !== undefined) return _baCache['ic'];
+  let t = 0, n = 0;
+  for (let x = -2; x <= 2.0001; x += 0.1){ t += BA.ist(x).sd; n++; }
+  return (_baCache['ic'] = t/n); };
+BA.sapmaSigma = x => { const S = BA.ist(x);
+  return Math.abs(S.ort - BA.f0(x)) / Math.max(1e-12, S.sd); };
+BA.kapsama = (a, b) => { let ic = 0, n = 0;
+  for (let x = a; x <= b + 1e-9; x += 0.05){ const S = BA.ist(x);
+    if (Math.abs(S.ort - BA.f0(x)) <= 2*S.sd) ic++; n++; }
+  return ic/n; };
+BA.kararlilik = () => { if (_baCache['k'] !== undefined) return _baCache['k'];
+  let en = 0;
+  for (let m = 0; m < 3; m++){
+    const a = baEgit(100 + m*13, 0), b = baEgit(100 + m*13, 1e-12);
+    for (let x = -2; x <= 5; x += 0.5) en = Math.max(en, Math.abs(a(x) - b(x))); }
+  return (_baCache['k'] = en); };
+
+VIZ.bayesAg = s => {
+  clear();
+  const sahne = s.sahne || 'topluluk';
+  const M = Math.max(2, Math.min(10, s.m === undefined ? 10 : Math.round(s.m)));
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'kalibre'){
+    baslikSerit('BAYESÇİ AĞ · BANT GERÇEĞİ KAPSIYOR MU',
+      '±2 standart sapmalık bandın gerçek fonksiyonu içine aldığı noktaların oranı.', []);
+    const P = plot(rect(140, 200, 640, 400), 0, 15, 0, 1.05);
+    frame(P, '', 'kapsama oranı', [], [0, 0.25, 0.5, 0.75, 1]);
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.sx(0), P.sy(0.95)); cx.lineTo(P.sx(15), P.sy(0.95)); cx.stroke();
+    cx.setLineDash([]);
+    txt('kalibre olsaydı %95', P.sx(0.4), P.sy(0.95) - 12, K.mut, 17, 'left');
+    const bolge = [['veri içi\n(−2..2)', BA.kapsama(-2, 2), K.green],
+                   ['hemen dışı\n(2..3)', BA.kapsama(2, 3), K.orange],
+                   ['uzak\n(3..5)', BA.kapsama(3, 5), K.red]];
+    bolge.forEach(([ad, val, renk], i) => {
+      const x = 2.5 + i*5, y0 = P.sy(0), y1 = P.sy(val);
+      cx.fillStyle = renk + '55'; cx.fillRect(P.sx(x) - 65, y1, 130, y0 - y1);
+      cx.strokeStyle = renk; cx.lineWidth = 2; cx.strokeRect(P.sx(x) - 65, y1, 130, y0 - y1);
+      txt('%' + (100*val).toFixed(1), P.sx(x), y1 - 16, renk, 22);
+      ad.split('\n').forEach((sat, q) =>
+        txt(sat, P.sx(x), P.R.y + P.R.h + 32 + q*24, renk, 18)); });
+    const bx = 830;
+    kart(bx, 200, 260, 'VERİ İÇİ KAPSAMA', '%' + (100*BA.kapsama(-2,2)).toFixed(1), K.green,
+         'kalibre olsa %95');
+    kart(bx + 280, 200, 260, 'HEMEN DIŞI', '%' + (100*BA.kapsama(2,3)).toFixed(1), K.red);
+    kart(bx, 330, 260, 'x=4 TE SAPMA', BA.sapmaSigma(4).toFixed(2) + 'σ', K.red);
+    kart(bx + 280, 330, 260, 'x=5 TE SAPMA', BA.sapmaSigma(5).toFixed(2) + 'σ', K.red);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.red, 2);
+    txt('GAUSSIAN PROCESS DERSİYLE KARŞILAŞTIR', bx + 270, 494, K.mut, 17);
+    txt('Orada da bant veri bittiğinde gerçeği kaçırıyordu:', bx + 18, 534, K.txt, 17, 'left');
+    txt('x = 5 te sapma 2.77σ idi.', bx + 18, 562, K.txt, 18, 'left');
+    txt('Burada aynı noktada ' + BA.sapmaSigma(5).toFixed(2) + 'σ, yani yaklaşık ' +
+        (BA.sapmaSigma(5)/2.77).toFixed(1) + ' kat kötü.', bx + 18, 600, K.red, 18, 'left');
+    txt('Topluluk belirsizliği açıyor ama ölçeği yanlış:', bx + 18, 640, K.mut, 18, 'left');
+    txt('göreli bilgi veriyor, kalibre aralık vermiyor.', bx + 18, 670, K.mut, 18, 'left');
+  }
+
+  else {
+    const S4 = BA.ist(4, M), Sic = BA.icSd();
+    baslikSerit('BAYESÇİ AĞ · TOPLULUK YAYILIMI',
+      M + ' ağ, aynı veri, farklı başlangıç. Aralarındaki fark belirsizliğin ölçüsü.', []);
+    const P = plot(rect(140, 200, 640, 400), -2.5, 5.5, -2.2, 3.2);
+    frame(P, 'x', 'y', [-2, 0, 2, 4], [-2, 0, 2]);
+    /* veri araligi */
+    cx.fillStyle = 'rgba(120,200,255,.06)';
+    cx.fillRect(P.sx(-2), P.R.y, P.sx(2) - P.sx(-2), P.R.h);
+    txt('veri burada', P.sx(0), P.R.y + 26, K.mut, 17);
+    /* gercek fonksiyon */
+    cx.setLineDash([7, 6]); cx.strokeStyle = K.mut; cx.lineWidth = 2.4;
+    cx.beginPath();
+    for (let i = 0; i <= 200; i++){ const x = -2.5 + 8*i/200;
+      const y = Math.max(-2.2, Math.min(3.2, BA.f0(x)));
+      i ? cx.lineTo(P.sx(x), P.sy(y)) : cx.moveTo(P.sx(x), P.sy(y)); }
+    cx.stroke(); cx.setLineDash([]);
+    /* uyeler */
+    BA.uyeler(M).forEach(f => {
+      cx.strokeStyle = 'rgba(60,220,160,.45)'; cx.lineWidth = 1.6;
+      cx.beginPath();
+      for (let i = 0; i <= 200; i++){ const x = -2.5 + 8*i/200;
+        const y = Math.max(-2.2, Math.min(3.2, f(x)));
+        i ? cx.lineTo(P.sx(x), P.sy(y)) : cx.moveTo(P.sx(x), P.sy(y)); }
+      cx.stroke(); });
+    /* ±2σ bandi */
+    cx.fillStyle = 'rgba(60,220,160,.16)';
+    cx.beginPath();
+    for (let i = 0; i <= 100; i++){ const x = -2.5 + 8*i/100, S = BA.ist(x, M);
+      const y = Math.max(-2.2, Math.min(3.2, S.ort + 2*S.sd));
+      i ? cx.lineTo(P.sx(x), P.sy(y)) : cx.moveTo(P.sx(x), P.sy(y)); }
+    for (let i = 100; i >= 0; i--){ const x = -2.5 + 8*i/100, S = BA.ist(x, M);
+      const y = Math.max(-2.2, Math.min(3.2, S.ort - 2*S.sd));
+      cx.lineTo(P.sx(x), P.sy(y)); }
+    cx.closePath(); cx.fill();
+    BA.veri.X.forEach((x, i) => dot(P.sx(x), P.sy(BA.veri.Y[i]), 4, K.blue));
+    txt('kesikli: gerçek fonksiyon', P.R.x + 14, P.R.y + P.R.h - 20, K.mut, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'ÜYE SAYISI', String(M), K.blue);
+    kart(bx + 280, 200, 260, 'VERİ İÇİ sd', Sic.toFixed(4), K.green, 'ortalama');
+    kart(bx, 330, 260, 'x = 4 TE sd', S4.sd.toFixed(4), K.orange,
+         (S4.sd/Sic).toFixed(1) + '× daha geniş');
+    kart(bx + 280, 330, 260, 'x = 5 TE sd', BA.ist(5, M).sd.toFixed(4), K.orange,
+         (BA.ist(5,M).sd/Sic).toFixed(1) + '×');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('NEDEN AÇILIYOR', bx + 270, 494, K.mut, 18);
+    txt('Veri olan yerde bütün üyeler aynı noktalara', bx + 18, 534, K.txt, 18, 'left');
+    txt('uymak zorunda, dolayısıyla birbirlerine yakınlar.', bx + 18, 564, K.txt, 18, 'left');
+    txt('Veri bitince onları kısıtlayan bir şey kalmıyor', bx + 18, 604, K.green, 18, 'left');
+    txt('ve başlangıç farkları ayrışmaya dönüşüyor.', bx + 18, 634, K.green, 18, 'left');
+    txt('Üye kararlılığı (1e-12): ' + BA.kararlilik().toExponential(1), bx + 18, 676, K.mut, 17, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

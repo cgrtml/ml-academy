@@ -87,7 +87,7 @@ const ROTALAR = [
     {id:'otokodlayici',   ad:'Otokodlayıcı: etiketsiz veriden öğrenmek',       sure:16, durum:'hazir'},
     {id:'hesap-cizge',    ad:'Hesaplama çizgesi: türev nasıl akar',            sure:16, durum:'hazir'},
     {id:'mdn',            ad:'Tek cevap yetmediğinde: karışım yoğunluk ağı',   sure:17, durum:'hazir'},
-    {id:'bayes-ag',       ad:'Bayesçi ağ: ağırlıklara da şüpheyle bakmak',     sure:16, durum:'planli'},
+    {id:'bayes-ag',       ad:'Bayesçi ağ: ağırlıklara da şüpheyle bakmak',     sure:17, durum:'hazir'},
     {id:'enc-dec',        ad:'Kodlayıcı mı çözücü mü: anlamak mı, üretmek mi',  sure:12, durum:'planli'},
   ],
 },
@@ -9173,6 +9173,150 @@ DERSLER['mdn'] = {
       'oluyor; aynı sınamada MSE modeli <b>3.3 × 10⁻¹⁴</b> veriyordu.<br><br>' +
       'Bu yüzden bu dersteki MDN sayıları aktarılmadı. Pratikte fazladan bileşen, σ alt sınırı ' +
       've çok başlangıçlı eğitim kullanılır; değerlendirme <b>bileşen sırasından bağımsız</b> olmalıdır.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── BAYESÇİ AĞ ─────────────── */
+DERSLER['bayes-ag'] = {
+  ad:'Ağırlıklara şüpheyle bakmak: topluluk ve kalibrasyon',
+  alt:'Tek bir ağırlık kümesi yerine bir dağılım. Pratikteki karşılığı topluluk, ve ölçtüğümüzde belirsizliği doğru yönde ama yanlış ölçekte veriyor.',
+  kaynaklar:[
+    {y:'Lakshminarayanan, B., Pritzel, A. & Blundell, C.', t:'2017', b:'Simple and Scalable Predictive Uncertainty Estimation Using Deep Ensembles', n:'NeurIPS 2017'},
+    {y:'Blundell, C. ve ark.', t:'2015', b:'Weight Uncertainty in Neural Networks', n:'ICML 2015'},
+    {y:'Ovadia, Y. ve ark.', t:'2019', b:'Can You Trust Your Model’s Uncertainty?', n:'NeurIPS 2019'},
+  ],
+  rota:2,
+  adimlar:[
+  {
+    t:'Tek ağırlık kümesi yerine birçok',
+    goal:'Ağırlıklara belirsizlik koymanın en basit pratik yolunu göreceksin.',
+    todo:'Üye sayısını artır. Veri dışındaki bant nasıl değişiyor?',
+    kind:'controls', viz:'bayesAg', h:770, state:{sahne:'topluluk'},
+    controls:[{k:'m', lb:'ÜYE SAYISI', min:2, max:10, step:2, val:2,
+               fmt:v => v + ' ağ'}],
+    derive:s => ({sd: BA.ist(4, Math.round(s.m)).sd}),
+    live:s => [['x=4 TE sd', s.sd.toFixed(4), K.orange],
+               ['VERİ İÇİ sd', BA.icSd().toFixed(4), K.green],
+               ['HEDEF', '10 üyeye çık']],
+    unlock:s => Math.round(s.m) >= 10,
+    unlockMsg:'Üye sayısını 10 yap',
+    body:'<p>Şimdiye kadar bir ağın ağırlıkları tek bir sayı kümesiydi. Bayesçi bakışta ' +
+      'ağırlıklar da bir <b>dağılıma</b> sahiptir: veriyle uyumlu birden çok ağırlık kümesi ' +
+      'vardır ve hepsi birer aday açıklamadır.</p>' +
+      '<p>Bu dağılımı tam olarak hesaplamak milyonlarca parametreli bir ağda pratik değil. ' +
+      'En basit ve en çok işe yarayan yaklaşım <b>topluluk</b>: aynı veriye, farklı ' +
+      'başlangıçlardan birden çok ağ eğit ve aralarındaki farka bak.</p>' +
+      '<p>Grafikte 10 ağın hepsi çizili. Veri olan bölgede (mavi şerit) hepsi birbirinin ' +
+      'üstüne biniyor. Veri bittiği yerde ayrışıyorlar.</p>' +
+      '<p>Sebebi basit: veri olan yerde hepsi aynı noktalara uymak zorunda. Veri bitince ' +
+      'onları kısıtlayan bir şey kalmıyor ve başlangıçtaki farklar ortaya çıkıyor.</p>' +
+      '<p>Ölçüm: veri içindeki ortalama yayılım <b>0.0224</b>, x = 4’te <b>0.1478</b> ' +
+      '(<b>6.6 kat</b>), x = 5’te <b>0.1899</b> (<b>8.5 kat</b>).</p>' +
+      '<p>Gaussian Process dersindeki bandın aynısı, ama bu sefer bir sinir ağıyla ve ' +
+      'kapalı formül olmadan.</p>',
+    learned:'<b>Topluluk, ağırlık belirsizliğinin en basit pratik yaklaşımıdır.</b><br><br>' +
+      'Veri olan yerde üyeler birbirine uymak zorunda; veri bitince ayrışıyorlar.<br><br>' +
+      'Ölçülen yayılım: veri içinde <b>0.0224</b>, x = 4’te <b>0.1478</b> (6.6 kat), ' +
+      'x = 5’te <b>0.1899</b> (8.5 kat). Her üyenin eğitimi tekrarlanabilir: ' +
+      '10⁻¹² bozulmada değişim <b>2 × 10⁻¹³</b>.',
+    xp:25,
+  },
+  {
+    t:'Doğru yön, yanlış ölçek',
+    goal:'Belirsizliğin açılmasıyla doğru olmasının farklı şeyler olduğunu ölçeceksin.',
+    todo:'Kartlardaki sapma değerlerine bak. Kaç standart sapma uzakta?',
+    kind:'static', viz:'bayesAg', h:770, state:{sahne:'kalibre'},
+    body:'<p>Belirsizliğin veri bitince açılması iyi bir işaret. Ama asıl soru şu: ' +
+      '<b>açılan bant gerçeği kapsıyor mu?</b></p>' +
+      '<p>Ölçtük. ±2 standart sapmalık bandın gerçek fonksiyonu içine aldığı noktaların oranı:</p>' +
+      '<p>veri içinde (&minus;2 ile 2 arası): <b>%77.8</b><br>' +
+      'hemen dışında (2 ile 3 arası): <b>%9.5</b><br>' +
+      'uzakta (3 ile 5 arası): <b>%19.5</b></p>' +
+      '<p>Kalibre bir ±2σ bandının yaklaşık <b>%95</b> kapsaması beklenir. Veri içinde bile ' +
+      '%77.8’de kalıyor, hemen dışında ise neredeyse hiç kapsamıyor.</p>' +
+      '<p>Tek tek noktalara bakınca daha da net: x = 4’te gerçek fonksiyon topluluğun ' +
+      'ortalamasından <b>6.43 standart sapma</b> uzakta, x = 5’te <b>13.61</b>.</p>' +
+      '<p>Gaussian Process dersinde aynı türden bir dışarıya taşmayı ölçmüştük ve orada ' +
+      'x = 5’teki sapma <b>2.77σ</b> çıkmıştı. Yani o da bandın dışındaydı, ama buradaki ' +
+      'yaklaşık <b>5 kat</b> daha kötü.</p>' +
+      '<p>Sonuç şu: topluluk belirsizliği <b>doğru yönde</b> değiştiriyor (veri bitince açılıyor) ' +
+      'ama <b>ölçeği yanlış</b>. Göreli bir bilgi veriyor, kalibre bir aralık vermiyor.</p>',
+    learned:'<b>Belirsizliğin doğru yönde değişmesi, doğru büyüklükte olması demek değildir.</b><br><br>' +
+      '±2σ bandının kapsama oranı: veri içinde <b>%77.8</b>, hemen dışında <b>%9.5</b>, ' +
+      'uzakta <b>%19.5</b>. Kalibre olsaydı %95 beklenirdi.<br><br>' +
+      'x = 5’te gerçek değer <b>13.61σ</b> uzakta. Gaussian Process dersinde aynı noktada ' +
+      'bu sayı <b>2.77σ</b> idi: o da yetersizdi ama <b>5 kat</b> daha iyiydi.',
+    xp:50,
+  },
+  {
+    t:'Veri içinde bile emin olamıyor',
+    goal:'Sorunun sadece dışarıda olmadığını göreceksin.',
+    todo:'Üye sayısını 2’den 10’a çıkar. Yayılım tekdüze mi büyüyor?',
+    kind:'controls', viz:'bayesAg', h:770, state:{sahne:'topluluk'},
+    controls:[{k:'m', lb:'ÜYE SAYISI', min:2, max:10, step:2, val:10,
+               fmt:v => v + ' ağ'}],
+    live:s => [['x=4 TE sd', BA.ist(4, Math.round(s.m)).sd.toFixed(4), K.orange],
+               ['2 ÜYEYLE', BA.ist(4, 2).sd.toFixed(4), K.mut],
+               ['10 ÜYEYLE', BA.ist(4, 10).sd.toFixed(4), K.mut]],
+    body:'<p>Kapsama oranı veri içinde de %95 değil, <b>%77.8</b>. Yani sorun sadece ' +
+      'dışarıda değil.</p>' +
+      '<p>Sebebi görülebilir: x = 0 civarında bütün üyeler neredeyse aynı eğriyi buluyor, ' +
+      'yayılım <b>0.0075</b>’e kadar iniyor. Ama o noktada topluluğun ortalaması gerçek ' +
+      'değerden <b>3.28 standart sapma</b> uzakta.</p>' +
+      '<p>Yani topluluk orada birbiriyle hemfikir ama <b>hep birlikte yanılıyor</b>. ' +
+      'Üyeler aynı veriye, aynı mimariye ve aynı öğrenme yordamına sahip olduğu için ' +
+      'aynı yanlılığı paylaşıyorlar. Anlaşmazlık belirsizliğin bir ölçüsü, ama ' +
+      '<b>ortak yanlılığı ölçemez</b>.</p>' +
+      '<p>Üye sayısının etkisi de öğretici. x = 4’teki yayılım 2 üyeyle <b>0.0803</b>, ' +
+      '10 üyeyle <b>0.1478</b>. Ama arada tekdüze değil: 4 üyede <b>0.0674</b>’e düşüyor, ' +
+      '6 üyede <b>0.1735</b>’e sıçrıyor.</p>' +
+      '<p>Az sayıda üyeyle hesaplanan bir standart sapma, kendisi de gürültülü bir tahmindir. ' +
+      'Olasılık dersindeki 1/&radic;N kuralı burada da geçerli: az örnekle ölçülen yayılım ' +
+      'oynak olur.</p>',
+    learned:'<b>Topluluğun hemfikir olması, doğru olması anlamına gelmiyor.</b><br><br>' +
+      'x = 0’da yayılım <b>0.0075</b>’e iniyor ama ortalama gerçekten <b>3.28σ</b> uzakta: ' +
+      'üyeler aynı yanlılığı paylaşıyor.<br><br>' +
+      'Üye sayısı da tekdüze bir etki yapmıyor: x = 4’te yayılım 2 üyede <b>0.0803</b>, ' +
+      '4 üyede <b>0.0674</b>, 10 üyede <b>0.1478</b>. Az örnekle ölçülen yayılım oynaktır.',
+    xp:50,
+  },
+  {
+    t:'O zaman ne işe yarar',
+    goal:'Bu belirsizliğin hangi kararlarda kullanılabileceğini göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'bayesAg', h:770, state:{sahne:'kalibre'},
+    body:'<p>Ölçtüğümüz şey şu: topluluk belirsizliği <b>sıralamayı</b> doğru veriyor ' +
+      '(veri dışı, veri içinden 6-8 kat daha belirsiz) ama <b>büyüklüğü</b> vermiyor ' +
+      '(kapsama %95 yerine %10-78).</p>' +
+      '<p>Bu, hangi kararlar için yeterli olduğunu belirliyor.</p>' +
+      '<p><b>İşe yarar:</b> "bu girdi eğitim dağılımına benziyor mu" sorusu. Yayılımın ' +
+      'anormal büyük olduğu girdileri işaretleyip insana yönlendirmek. Aktif öğrenmede ' +
+      'bir sonraki etiketlenecek örneği seçmek. Gaussian Process dersindeki Bayesçi ' +
+      'optimizasyon fikri de bu sınıfta: sadece <b>nereye bakayım</b> sorusu soruluyor.</p>' +
+      '<p><b>İşe yaramaz:</b> "%95 olasılıkla değer şu aralıkta" demek. Ölçtüğümüz kapsama ' +
+      'buna izin vermiyor.</p>' +
+      '<p>Kalibrasyon istiyorsan ayrı bir adım gerekir ve bu adım <b>ayrılmış veriyle</b> ' +
+      'yapılır: bandı, tutulan bir doğrulama kümesinde istenen kapsamayı verecek şekilde ' +
+      'ölçeklemek. Buna kalibrasyon ya da uyumlu tahmin denir. Kritik nokta şu ki ' +
+      'bu da <b>eğitim dağılımı içinde</b> geçerlidir; dışarısı için garanti vermez, ' +
+      'çünkü dışarıda ölçülecek veri zaten yoktur.</p>' +
+      '<p>Bu dersin özeti: belirsizlik tahmini de bir modeldir ve <b>o da ölçülmeden ' +
+      'güvenilmez</b>. Gaussian Process dersinde aynı sonuca varmıştık, orada da ' +
+      'geniş bant "bilmiyorum" demekti, "gerçek burada" garantisi değil.</p>',
+    quiz:{ q:'Bir tıbbi görüntüleme modelinde topluluk kurdunuz. Modelin çıktısıyla birlikte "±2σ güven aralığı" da raporlanacak ve klinisyen bu aralığa göre karar verecek. Doğrulama kümesinde ölçtüğünüzde bandın gerçeği %78 oranında kapsadığını görüyorsunuz. Ne yaparsınız?',
+      opts:[
+        {t:'Bandı doğrulama kümesinde istenen kapsamaya ulaşacak şekilde ölçekler ve bunun yalnızca eğitim dağılımı içinde geçerli olduğunu raporlarım', why:'Doğru. %78 kapsama, bandın olduğu gibi rapor edilemeyeceği anlamına gelir: bu derste ölçtüğün gibi ham topluluk yayılımı doğru yönde ama yanlış ölçekte. Ayrılmış bir doğrulama kümesinde bandı ölçeklemek kapsamayı hedefe getirir. Ama bu ayarlama sadece o dağılım içinde geçerlidir ve bu derste dışarıda kapsamanın %9.5 e düştüğü ölçüldü, dolayısıyla sınırı açıkça yazmak zorunludur.'},
+        {t:'Üye sayısını artırırım, yayılım büyür ve kapsama düzelir', why:'Bu derste ölçtüğün gibi üye sayısının etkisi ne tekdüze ne de yeterli: x = 4 te yayılım 2 üyede 0.0803, 4 üyede 0.0674, 10 üyede 0.1478. Ayrıca üyeler aynı yanlılığı paylaştığı için hep birlikte yanılabiliyorlar; x = 0 da yayılım 0.0075 e inerken sapma 3.28σ idi.'},
+        {t:'Bandı olduğu gibi raporlarım, %78 makul bir kapsama', region:'', why:'Klinisyene ±2σ denildiğinde beklenen yaklaşık %95 tir. %78 kapsama, beşte birden fazla vakada gerçeğin bandın dışında kalması demek ve bu, aralığın vaat ettiğinden çok farklı bir şey.'},
+        {t:'Belirsizlik raporlamayı tamamen kaldırırım', why:'Ölçülen belirsizlik kalibre değil ama işe yaramaz da değil: bu derste veri dışında yayılımın 6 ile 8 kat büyüdüğü ölçüldü. Bu sıralama bilgisi, alışılmadık girdileri işaretleyip insana yönlendirmek için değerlidir. Doğru olan, neyi vaat ettiğini düzeltmek.'},
+      ], correct:0 },
+    learned:'<b>Kalibre olmayan belirsizlik işe yaramaz değil, sadece başka bir işe yarar.</b><br><br>' +
+      'Sıralama doğru: veri dışı yayılım veri içinin <b>6-8 katı</b>. Bu, alışılmadık girdileri ' +
+      'işaretlemek ve nereye bakılacağını seçmek için yeterli.<br><br>' +
+      'Büyüklük yanlış: kapsama <b>%95 yerine %78</b> (dışarıda <b>%9.5</b>). ' +
+      'Aralık raporlamak için ayrı bir <b>kalibrasyon adımı</b> ve o adımın ' +
+      '<b>yalnızca eğitim dağılımı içinde</b> geçerli olduğunun yazılması gerekir.',
     xp:50,
   },
 ]};
