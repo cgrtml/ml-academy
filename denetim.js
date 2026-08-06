@@ -1841,6 +1841,66 @@ console.log('═══ HESAPLAMA ÇİZGESİ ═══');
   }
 }
 
+console.log('═══ KARIŞIM YOĞUNLUK AĞI ═══');
+{
+  /* veri · iki dal ve kosullu ortalama sifir */
+  iddia('x=0 da dal', 0.400, MD.dal(0), 3);
+  iddia('x=0.8 de dal', 0.720, MD.dal(0.8), 3);
+  iddia('gürültü σ', 0.08, MD.SIG, 3);
+  iddia('x=0 da dal kaç σ uzakta', 5.00, MD.dal(0)/MD.SIG, 2);
+  iddia('x=1 de dal kaç σ uzakta', 11.25, MD.dal(1)/MD.SIG, 2);
+  /* kosullu ortalama gercekten sifir mi · simetri */
+  {
+    let enBuyuk = 0;
+    for (let x = -1; x <= 1.0001; x += 0.1){
+      const a = -3, b = 3, M = 4000, h = (b-a)/M;
+      let ort = 0;
+      for (let i = 0; i <= M; i++){ const y = a + i*h, w = (i===0||i===M)?0.5:1;
+        ort += w * y * MD.pGercek(y, x) * h; }
+      enBuyuk = Math.max(enBuyuk, Math.abs(ort)); }
+    iddia('koşullu ortalama her x için sıfır', 0, enBuyuk, 9);
+  }
+  /* MSE modeli · tamamen tekrarlanabilir olmali */
+  iddia('MSE modeli 1e-12 bozulmaya kararlı', true, MD.mseKararlilik() < 1e-9);
+  iddia('MSE kararlılığı (log10)', -13.5, Math.log10(MD.mseKararlilik()), 1);
+  iddia('MSE tahminlerinin mutlak ortalaması', 0.0782, MD.mseOlcum().mutlakOrt, 4);
+  iddia('en yakın geçerli cevaba ortalama uzaklık', 0.4918, MD.mseOlcum().ortalama, 4);
+  iddia('en iyi noktasında bile uzaklık', 0.3388, MD.mseOlcum().enAz, 4);
+  iddia('MSE hiçbir x te dala yaklaşamıyor', true, MD.mseOlcum().enAz > 3*MD.SIG);
+  iddia('MSE tahmini sıfıra yakın (koşullu ortalama)', true, MD.mseOlcum().mutlakOrt < 0.15);
+  /* KAPALI FORM · egitimden bagimsiz, dolayisiyla tam tekrarlanabilir */
+  iddia('x=0 da y=0 yoğunluğu (log10)', -4.731, Math.log10(MD.pGercek(0, 0)), 3);
+  iddia('x=0 da dal tepesindeki yoğunluk', 2.4934, MD.pGercek(MD.dal(0), 0), 4);
+  iddia('x=0 da oran (log10)', 5.128, Math.log10(MD.pGercek(MD.dal(0),0)/MD.pGercek(0,0)), 3);
+  iddia('x=0.8 de y=0 yoğunluğu (log10)', -16.891, Math.log10(MD.pGercek(0, 0.8)), 3);
+  iddia('x=0.8 de oran (log10)', 17.288,
+        Math.log10(MD.pGercek(MD.dal(0.8),0.8)/MD.pGercek(0,0.8)), 3);
+  iddia('dal tepesindeki yoğunluk x ten bağımsız', true,
+        Math.abs(MD.pGercek(MD.dal(0),0) - MD.pGercek(MD.dal(0.8),0.8)) < 1e-9);
+  /* bilgi kaybi · tek Gauss ile karisim arasinda */
+  iddia('tek Gauss bilgi kaybı (nat)', 1.2557, MD.bilgiKaybi(), 4);
+  iddia('karışım kaç kat daha olası', 3.51, Math.exp(MD.bilgiKaybi()), 2);
+  iddia('kayıp her x te pozitif', true, (() => {
+    for (let x = -1; x <= 1.0001; x += 0.2)
+      if (MD.beklenenLog(MD.pGercek, x) - MD.beklenenLog(MD.pTek, x) <= 0) return false;
+    return true; })());
+  /* gercek yogunluk gercekten iki tepeli mi · bagimsiz kontrol */
+  {
+    let tepe = 0;
+    const x = 0.5, d = MD.dal(x);
+    for (let y = -1.5; y <= 1.5; y += 0.001){
+      const a = MD.pGercek(y - 0.001, x), b = MD.pGercek(y, x), c2 = MD.pGercek(y + 0.001, x);
+      if (b > a && b > c2 && b > 0.01) tepe++; }
+    iddia('gerçek yoğunluk iki tepeli', 2, tepe, 0);
+    iddia('tepeler ±dal noktasında', true,
+          MD.pGercek(d, x) > 100 * MD.pGercek(0, x));
+  }
+  /* MDN · tanimlanabilir DEGIL · dersin dorduncu adimi */
+  iddia('MDN eğitimi 1e-12 bozulmaya duyarlı', true, MD.mdnKararlilik() > 0.01);
+  iddia('MDN kararsızlığı MSE den çok büyük', true,
+        MD.mdnKararlilik() > 1e9 * MD.mseKararlilik());
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

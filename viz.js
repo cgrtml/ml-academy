@@ -5503,6 +5503,270 @@ VIZ.hesapCizge = s => {
   }
 };
 
+
+/* ═══════════ KARIŞIM YOĞUNLUK AĞI ═══════════
+   Bir x için birden çok doğru cevap varsa, tek sayı veren model
+   ortalamayı söyler ve o ortalama hiçbir zaman doğru cevap değildir. */
+const MD = {};
+MD.N = 150; MD.SIG = 0.08; MD.H = 16; MD.G = 24;
+MD.dal = x => 0.4 + 0.5*x*x;
+MD.veri = (() => {
+  const r = rng(3), X = [], Y = [];
+  for (let i = 0; i < MD.N; i++){
+    const x = -1 + 2*r(), s = r() < 0.5 ? -1 : 1;
+    X.push(x); Y.push(s*MD.dal(x) + MD.SIG*omNormal(r)); }
+  return { X, Y };
+})();
+MD.N1 = (y, m, s) => Math.exp(-((y-m)**2)/(2*s*s)) / (s*Math.sqrt(2*Math.PI));
+MD.pGercek = (y, x) => 0.5*MD.N1(y, MD.dal(x), MD.SIG) + 0.5*MD.N1(y, -MD.dal(x), MD.SIG);
+/* tek Gauss ile en iyi yaklasim · ortalama 0, varyans d² + σ² */
+MD.pTek = (y, x) => { const d = MD.dal(x);
+  return MD.N1(y, 0, Math.sqrt(d*d + MD.SIG*MD.SIG)); };
+/* beklenen log olabilirlik · sayisal integral, tamamen deterministik */
+MD.beklenenLog = (p, x) => {
+  const a = -2, b = 2, M = 4000, h = (b-a)/M;
+  let s = 0;
+  for (let i = 0; i <= M; i++){ const y = a + i*h, w = (i === 0 || i === M) ? 0.5 : 1;
+    const pg = MD.pGercek(y, x);
+    if (pg < 1e-300) continue;
+    s += w * pg * Math.log(Math.max(1e-300, p(y, x))) * h; }
+  return s;
+};
+MD.bilgiKaybi = () => { let t = 0, n = 0;
+  for (let x = -1; x <= 1.0001; x += 0.05){
+    t += MD.beklenenLog(MD.pGercek, x) - MD.beklenenLog(MD.pTek, x); n++; }
+  return t / n; };
+const _mdCache = {};
+/* MSE modeli · tamamen kararli */
+MD.mse = eps => {
+  const key = 'm' + (eps || 0);
+  if (_mdCache[key]) return _mdCache[key];
+  const H = MD.H, { X, Y } = MD.veri, N = MD.N, r = rng(7);
+  const W1 = [], b1 = [], W2 = []; let bo = 0;
+  for (let i = 0; i < H; i++){ W1.push(omNormal(r)); b1.push(omNormal(r)*0.5);
+    W2.push(omNormal(r)/Math.sqrt(H)); }
+  if (eps) W1[0] += eps;
+  const lr = 0.06;
+  for (let it = 0; it < 3000; it++){
+    const g1 = new Array(H).fill(0), gb1 = new Array(H).fill(0), g2 = new Array(H).fill(0);
+    let gbo = 0;
+    for (let i = 0; i < N; i++){
+      const h = W1.map((w, q) => Math.tanh(w*X[i] + b1[q]));
+      const y = h.reduce((s, v2, q) => s + v2*W2[q], 0) + bo;
+      const e = 2*(y - Y[i])/N;
+      gbo += e;
+      for (let k = 0; k < H; k++){ g2[k] += e*h[k];
+        const d = e*W2[k]*(1 - h[k]*h[k]); g1[k] += d*X[i]; gb1[k] += d; } }
+    for (let k = 0; k < H; k++){ W1[k] -= lr*g1[k]; b1[k] -= lr*gb1[k]; W2[k] -= lr*g2[k]; }
+    bo -= lr*gbo;
+  }
+  const tah = x => { const h = W1.map((w, q) => Math.tanh(w*x + b1[q]));
+    return h.reduce((s, v2, q) => s + v2*W2[q], 0) + bo; };
+  return (_mdCache[key] = { tah });
+};
+MD.mseOlcum = () => {
+  if (_mdCache['mo']) return _mdCache['mo'];
+  const T = MD.mse(0);
+  let top = 0, n = 0, enAz = 9, mutlak = 0;
+  for (let x = -1; x <= 1.0001; x += 0.02){
+    const d = MD.dal(x), p = T.tah(x);
+    const u = Math.min(Math.abs(p - d), Math.abs(p + d));
+    top += u; enAz = Math.min(enAz, u); mutlak += Math.abs(p); n++; }
+  return (_mdCache['mo'] = { ortalama: top/n, enAz, mutlakOrt: mutlak/n });
+};
+MD.mseKararlilik = () => { const A = MD.mse(0), B = MD.mse(1e-12);
+  let en = 0;
+  for (let x = -1; x <= 1.0001; x += 0.02) en = Math.max(en, Math.abs(A.tah(x) - B.tah(x)));
+  return en; };
+/* MDN · gorsel icin · sayilari AKTARILMIYOR (cok modlu olabilirlik) */
+MD.mdn = eps => {
+  const key = 'd' + (eps || 0);
+  if (_mdCache[key]) return _mdCache[key];
+  const K = 2, G = MD.G, { X, Y } = MD.veri, N = MD.N, r = rng(11);
+  const W1 = [], b1 = [];
+  for (let i = 0; i < G; i++){ W1.push(omNormal(r)); b1.push(omNormal(r)*0.5); }
+  const cikis = 3*K, W2 = [], b2 = new Array(cikis).fill(0);
+  for (let o = 0; o < cikis; o++){ const row = [];
+    for (let i = 0; i < G; i++) row.push(omNormal(r)/Math.sqrt(G)); W2.push(row); }
+  for (let k = 0; k < K; k++){ b2[K+k] = -0.6 + 1.2*k; b2[2*K+k] = 0; }
+  if (eps) W1[0] += eps;
+  const lr = 0.02;
+  const ileri = x => {
+    const h = W1.map((w, i) => Math.tanh(w*x + b1[i]));
+    const z = W2.map((row, o) => row.reduce((s, w, i) => s + w*h[i], 0) + b2[o]);
+    const zp = z.slice(0, K), mu = z.slice(K, 2*K), zs = z.slice(2*K);
+    const mx = Math.max(...zp), ex = zp.map(val => Math.exp(val - mx));
+    const sum = ex.reduce((s, val) => s + val, 0);
+    return { h, pi: ex.map(val => val/sum), mu,
+             sg: zs.map(val => Math.exp(Math.max(-4, Math.min(2, val))) + 0.01) }; };
+  for (let it = 0; it < 2500; it++){
+    const g1 = new Array(G).fill(0), gb1 = new Array(G).fill(0);
+    const g2 = W2.map(r2 => r2.map(() => 0)), gb2 = new Array(cikis).fill(0);
+    for (let i = 0; i < N; i++){
+      const F = ileri(X[i]), y = Y[i], bil = [];
+      let p = 0;
+      for (let k = 0; k < K; k++){ const d = (y - F.mu[k])/F.sg[k];
+        const nk = Math.exp(-d*d/2)/(F.sg[k]*Math.sqrt(2*Math.PI));
+        bil.push(nk); p += F.pi[k]*nk; }
+      p = Math.max(1e-12, p);
+      const gz = new Array(cikis).fill(0);
+      for (let k = 0; k < K; k++){
+        const g = F.pi[k]*bil[k]/p, d = (y - F.mu[k])/F.sg[k];
+        gz[k] = (F.pi[k] - g)/N;
+        gz[K+k] = -g*d/F.sg[k]/N;
+        gz[2*K+k] = -g*(d*d - 1)/N; }
+      for (let o = 0; o < cikis; o++){ gb2[o] += gz[o];
+        for (let j = 0; j < G; j++) g2[o][j] += gz[o]*F.h[j]; }
+      for (let j = 0; j < G; j++){ let s = 0;
+        for (let o = 0; o < cikis; o++) s += W2[o][j]*gz[o];
+        const d = s*(1 - F.h[j]*F.h[j]); g1[j] += d*X[i]; gb1[j] += d; }
+    }
+    for (let j = 0; j < G; j++){ W1[j] -= lr*g1[j]; b1[j] -= lr*gb1[j]; }
+    for (let o = 0; o < cikis; o++){ b2[o] -= lr*gb2[o];
+      for (let j = 0; j < G; j++) W2[o][j] -= lr*g2[o][j]; }
+  }
+  return (_mdCache[key] = { ileri });
+};
+/* MDN'in tekrarlanabilirligi · dersin dorduncu adimi bunu olcuyor */
+MD.mdnKararlilik = () => {
+  if (_mdCache['dk']) return _mdCache['dk'];
+  const A = MD.mdn(0), B = MD.mdn(1e-12);
+  let en = 0;
+  for (let x = -1; x <= 1.0001; x += 0.05){
+    const a = A.ileri(x), b = B.ileri(x);
+    en = Math.max(en, Math.abs(Math.max(...a.mu) - Math.max(...b.mu)),
+                      Math.abs(Math.min(...a.mu) - Math.min(...b.mu))); }
+  return (_mdCache['dk'] = en);
+};
+
+VIZ.karisimYogunluk = s => {
+  clear();
+  const sahne = s.sahne || 'veri';
+  const x0 = s.x0 === undefined ? -0.8 : s.x0;
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'yogunluk'){
+    baslikSerit('KARIŞIM YOĞUNLUK · TEK GAUSS NEYİ KAYBEDER',
+      'x = ' + x0.toFixed(1) + ' için koşullu yoğunluk. Eğitim yok, kapalı formda hesap.', []);
+    const P = plot(rect(140, 200, 640, 400), -1.5, 1.5, 0, 2.9);
+    frame(P, 'y', 'yoğunluk', [-1, -0.5, 0, 0.5, 1], [0, 1, 2]);
+    const ciz = (f, renk, kalin) => { cx.strokeStyle = renk; cx.lineWidth = kalin;
+      cx.beginPath();
+      for (let i = 0; i <= 300; i++){ const y = -1.5 + 3*i/300;
+        const val = Math.min(2.9, f(y, x0));
+        i ? cx.lineTo(P.sx(y), P.sy(val)) : cx.moveTo(P.sx(y), P.sy(val)); }
+      cx.stroke(); };
+    ciz(MD.pGercek, K.green, 3.6);
+    ciz(MD.pTek, K.orange, 3);
+    cx.strokeStyle = K.red; cx.lineWidth = 2.5; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.sx(0), P.R.y); cx.lineTo(P.sx(0), P.R.y + P.R.h); cx.stroke();
+    cx.setLineDash([]);
+    txt('MSE nin cevabı', P.sx(0) + 10, P.R.y + P.R.h - 22, K.red, 17, 'left');
+    txt('gerçek yoğunluk (karışım)', P.R.x + P.R.w - 14, P.R.y + 28, K.green, 17, 'right');
+    txt('en iyi tek Gauss', P.R.x + P.R.w - 14, P.R.y + 52, K.orange, 17, 'right');
+    const d = MD.dal(x0), p0 = MD.pGercek(0, x0), pd = MD.pGercek(d, x0);
+    const bx = 830;
+    kart(bx, 200, 260, 'DAL TEPESİNDE', pd.toFixed(4), K.green, 'gerçek yoğunluk');
+    kart(bx + 280, 200, 260, 'y = 0 DA', p0.toExponential(2), K.red, 'MSE nin cevabı');
+    kart(bx, 330, 260, 'ORAN', (pd/p0).toExponential(2), K.purple, 'kaç kat olası');
+    kart(bx + 280, 330, 260, 'KAÇ σ UZAKTA', (d/MD.SIG).toFixed(2), K.orange,
+         'dal ile 0 arası');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('BİLGİ OLARAK BEDELİ', bx + 270, 494, K.mut, 18);
+    const kayip = MD.bilgiKaybi();
+    txt('En iyi tek Gauss, gerçek karışıma göre', bx + 18, 534, K.txt, 18, 'left');
+    txt('gözlem başına ' + kayip.toFixed(4) + ' nat kaybediyor.', bx + 18, 564, K.txt, 18, 'left');
+    txt('Yani karışım ' + Math.exp(kayip).toFixed(2) + ' kat daha olası.', bx + 18, 602, K.green, 18, 'left');
+    txt('Bu sayı eğitimle değil, kapalı formda', bx + 18, 642, K.mut, 18, 'left');
+    txt('hesaplandı: hiçbir eğitim bunu kapatamaz.', bx + 18, 672, K.mut, 18, 'left');
+  }
+
+  else if (sahne === 'mdn'){
+    const M = MD.mdn(0);
+    baslikSerit('KARIŞIM YOĞUNLUK AĞI · İKİ BİLEŞEN',
+      'Ağ tek sayı yerine π, μ ve σ üçlüsü veriyor. Her x için bir dağılım.', []);
+    const P = plot(rect(140, 200, 640, 400), -1.05, 1.05, -1.1, 1.1);
+    frame(P, 'x', 'y', [-1, -0.5, 0, 0.5, 1], [-1, 0, 1]);
+    MD.veri.X.forEach((x, i) => dot(P.sx(x), P.sy(MD.veri.Y[i]), 3.5, 'rgba(120,200,255,.5)'));
+    /* gercek dallar */
+    cx.setLineDash([6, 5]); cx.strokeStyle = K.mut; cx.lineWidth = 2;
+    [1, -1].forEach(s2 => { cx.beginPath();
+      for (let i = 0; i <= 200; i++){ const x = -1 + 2*i/200;
+        const y = s2*MD.dal(x);
+        i ? cx.lineTo(P.sx(x), P.sy(y)) : cx.moveTo(P.sx(x), P.sy(y)); }
+      cx.stroke(); });
+    cx.setLineDash([]);
+    /* MDN bilesenleri */
+    [0, 1].forEach(k => { cx.strokeStyle = K.green; cx.lineWidth = 3;
+      cx.beginPath();
+      for (let i = 0; i <= 100; i++){ const x = -1 + 2*i/100;
+        const F = M.ileri(x), y = F.mu[k];
+        i ? cx.lineTo(P.sx(x), P.sy(y)) : cx.moveTo(P.sx(x), P.sy(y)); }
+      cx.stroke(); });
+    /* MSE tahmini */
+    cx.strokeStyle = K.red; cx.lineWidth = 3; cx.beginPath();
+    for (let i = 0; i <= 100; i++){ const x = -1 + 2*i/100;
+      i ? cx.lineTo(P.sx(x), P.sy(MD.mse(0).tah(x))) : cx.moveTo(P.sx(x), P.sy(MD.mse(0).tah(x))); }
+    cx.stroke();
+    box(P.R.x + 8, P.R.y + 8, 262, 86, 'rgba(7,10,15,.9)', K.axis, 1);
+    txt('kesikli: gerçek dallar', P.R.x + 20, P.R.y + 32, K.mut, 17, 'left');
+    txt('yeşil: MDN bileşenleri', P.R.x + 20, P.R.y + 58, K.green, 17, 'left');
+    txt('kırmızı: MSE modeli', P.R.x + 20, P.R.y + 84, K.red, 17, 'left');
+    const O = MD.mseOlcum();
+    const bx = 830;
+    kart(bx, 200, 260, 'MSE ORTALAMA |TAHMİN|', O.mutlakOrt.toFixed(4), K.red,
+         'koşullu ortalama 0');
+    kart(bx + 280, 200, 260, 'EN YAKIN DALA', O.ortalama.toFixed(4), K.red, 'ortalama uzaklık');
+    kart(bx, 330, 260, 'EN İYİ DURUMDA BİLE', O.enAz.toFixed(4), K.red, 'hiç yaklaşamıyor');
+    kart(bx + 280, 330, 260, 'MSE KARARLILIĞI', MD.mseKararlilik().toExponential(1), K.green,
+         '1e-12 bozulmada');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.red, 2);
+    txt('MSE MODELİ NE ÖĞRENDİ', bx + 270, 494, K.mut, 18);
+    txt('Kare hata, koşullu ORTALAMAYI en aza indirir.', bx + 18, 534, K.txt, 18, 'left');
+    txt('Burada iki dal simetrik olduğu için ortalama 0.', bx + 18, 564, K.txt, 18, 'left');
+    txt('Model doğru öğrendi. Sorun modelde değil,', bx + 18, 604, K.red, 18, 'left');
+    txt('sorulan soruda: tek sayı istemek.', bx + 18, 634, K.red, 18, 'left');
+    txt('Ortalama, verinin hiç geçmediği bir yer.', bx + 18, 674, K.mut, 18, 'left');
+  }
+
+  else { /* veri */
+    baslikSerit('KARIŞIM YOĞUNLUK · BİR x İÇİN İKİ DOĞRU CEVAP',
+      'y = ±(0.4 + 0.5x²) + gürültü. İşaret rastgele, yani her x için iki geçerli y var.', []);
+    const P = plot(rect(200, 200, 620, 420), -1.05, 1.05, -1.1, 1.1);
+    frame(P, 'x', 'y', [-1, -0.5, 0, 0.5, 1], [-1, 0, 1]);
+    MD.veri.X.forEach((x, i) => dot(P.sx(x), P.sy(MD.veri.Y[i]), 4, K.blue));
+    cx.setLineDash([6, 5]); cx.strokeStyle = K.green; cx.lineWidth = 2.5;
+    [1, -1].forEach(s2 => { cx.beginPath();
+      for (let i = 0; i <= 200; i++){ const x = -1 + 2*i/200;
+        i ? cx.lineTo(P.sx(x), P.sy(s2*MD.dal(x))) : cx.moveTo(P.sx(x), P.sy(s2*MD.dal(x))); }
+      cx.stroke(); });
+    cx.setLineDash([]);
+    cx.strokeStyle = K.red; cx.lineWidth = 2.5; cx.setLineDash([4, 4]);
+    cx.beginPath(); cx.moveTo(P.sx(-1.05), P.sy(0)); cx.lineTo(P.sx(1.05), P.sy(0)); cx.stroke();
+    cx.setLineDash([]);
+    txt('koşullu ortalama (y = 0)', P.sx(1.0), P.sy(0) - 14, K.red, 17, 'right');
+    txt('gerçek dallar', P.R.x + 14, P.R.y + 28, K.green, 17, 'left');
+    const bx = 880;
+    kart(bx, 200, 260, 'x = 0 DA CEVAPLAR', '±' + MD.dal(0).toFixed(3), K.green);
+    kart(bx + 280, 200, 260, 'x = 0.8 DE', '±' + MD.dal(0.8).toFixed(3), K.green);
+    kart(bx, 330, 260, 'KOŞULLU ORTALAMA', '0.000', K.red, 'her x için');
+    kart(bx + 280, 330, 260, 'GÜRÜLTÜ σ', MD.SIG.toFixed(2), K.mut);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('ORTALAMA HİÇBİR ZAMAN CEVAP DEĞİL', bx + 270, 494, K.mut, 18);
+    txt('İki dal simetrik olduğu için koşullu ortalama', bx + 18, 534, K.txt, 18, 'left');
+    txt('tam olarak sıfır. Ama sıfır hiçbir x için', bx + 18, 564, K.txt, 18, 'left');
+    txt('geçerli bir cevap değil.', bx + 18, 594, K.txt, 18, 'left');
+    txt('En yakın dal bile ' + (MD.dal(0)/MD.SIG).toFixed(0) + ' gürültü sapması uzakta,',
+        bx + 18, 634, K.orange, 18, 'left');
+    txt('x = ±1 de ' + (MD.dal(1)/MD.SIG).toFixed(0) + ' sapma.', bx + 18, 664, K.orange, 18, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

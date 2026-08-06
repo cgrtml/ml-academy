@@ -86,7 +86,7 @@ const ROTALAR = [
     {id:'lstm',           ad:'LSTM: unutmayı ve hatırlamayı öğrenen ağ',       sure:18, durum:'hazir'},
     {id:'otokodlayici',   ad:'Otokodlayıcı: etiketsiz veriden öğrenmek',       sure:16, durum:'hazir'},
     {id:'hesap-cizge',    ad:'Hesaplama çizgesi: türev nasıl akar',            sure:16, durum:'hazir'},
-    {id:'mdn',            ad:'Tek cevap yetmediğinde: karışım yoğunluk ağı',   sure:14, durum:'planli'},
+    {id:'mdn',            ad:'Tek cevap yetmediğinde: karışım yoğunluk ağı',   sure:17, durum:'hazir'},
     {id:'bayes-ag',       ad:'Bayesçi ağ: ağırlıklara da şüpheyle bakmak',     sure:16, durum:'planli'},
     {id:'enc-dec',        ad:'Kodlayıcı mı çözücü mü: anlamak mı, üretmek mi',  sure:12, durum:'planli'},
   ],
@@ -9031,6 +9031,148 @@ DERSLER['hesap-cizge'] = {
       '<b>1.048.576</b> değer.<br><br>' +
       '<b>Kontrol noktası</b> bunları √L aralıkla saklayıp arasını yeniden hesaplar: ' +
       '64 katmanda bellek <b>8 kat</b> azalır, hesap yaklaşık <b>1.3 kat</b> artar.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── KARIŞIM YOĞUNLUK AĞI ─────────────── */
+DERSLER['mdn'] = {
+  ad:'Tek cevap yetmediğinde: karışım yoğunluk ağı',
+  alt:'Bir soruya birden çok doğru cevap varsa, tek sayı veren model ortalamayı söyler. Ve ortalama, hiçbir zaman o cevaplardan biri değildir.',
+  kaynaklar:[
+    {y:'Bishop, C. M.', t:'1994', b:'Mixture Density Networks', n:'Aston University Technical Report NCRG/94/004'},
+    {y:'Bishop, C. M.', t:'2006', b:'Pattern Recognition and Machine Learning, Bölüm 5.6', n:'Springer'},
+    {y:'Graves, A.', t:'2013', b:'Generating Sequences With Recurrent Neural Networks', n:'arXiv:1308.0850'},
+  ],
+  rota:2,
+  adimlar:[
+  {
+    t:'Bir x için iki doğru cevap',
+    goal:'Tek değerli bir fonksiyonun tanımlayamadığı bir problemi göreceksin.',
+    todo:'Veriye bak. Her x için kaç geçerli y var, ve ortalama nerede?',
+    kind:'static', viz:'karisimYogunluk', h:770, state:{sahne:'veri'},
+    body:'<p>Şu veriyi ürettik: her örnek için bir x seçtik, sonra <b>yazı tura attık</b> ve ' +
+      'y’yi +(0.4 + 0.5x²) ya da &minus;(0.4 + 0.5x²) yaptık, üstüne küçük bir gürültü ekledik.</p>' +
+      '<p>Yani her x için <b>iki geçerli cevap</b> var ve ikisi de eşit derecede doğru. ' +
+      'Bu uydurma bir kurgu değil: ters problemlerin çoğu böyledir. Bir robot kolunun ucunu ' +
+      'verilen noktaya götüren birden çok eklem açısı vardır. Bir ölçümü açıklayan birden ' +
+      'çok fiziksel durum olabilir.</p>' +
+      '<p>x = 0’da cevaplar <b>±0.400</b>, x = 0.8’de <b>±0.720</b>.</p>' +
+      '<p>Şimdi kritik nokta: iki dal simetrik olduğu için <b>koşullu ortalama tam olarak ' +
+      'sıfır</b>. Ve sıfır, hiçbir x için geçerli bir cevap değil.</p>' +
+      '<p>Ne kadar geçersiz olduğunu ölçelim. Gürültünün standart sapması 0.08. ' +
+      'En yakın dal bile x = 0’da <b>5 sapma</b>, x = ±1’de <b>11 sapma</b> uzakta. ' +
+      'Yani ortalama, verinin pratikte hiç uğramadığı bir bölge.</p>',
+    learned:'<b>Bazı problemlerde bir girdiye birden çok doğru cevap karşılık gelir.</b><br><br>' +
+      'Burada her x için ±(0.4 + 0.5x²) olmak üzere iki cevap var ve ikisi de eşit olası.<br><br>' +
+      'Koşullu ortalama tam olarak <b>sıfır</b>, ama sıfır hiçbir zaman geçerli bir cevap değil: ' +
+      'en yakın dal bile <b>5 ile 11 gürültü sapması</b> uzakta.',
+    xp:25,
+  },
+  {
+    t:'MSE modeli ne öğrenir',
+    goal:'Kare hatanın matematiksel olarak neyi hedeflediğini ölçümle göreceksin.',
+    todo:'Kırmızı çizgiye bak. Hiç dalların üstüne biniyor mu?',
+    kind:'static', viz:'karisimYogunluk', h:770, state:{sahne:'mdn'},
+    body:'<p>Bu veriye normal bir regresyon ağı eğittik: girdi x, çıktı tek bir sayı, ' +
+      'kayıp kare hata.</p>' +
+      '<p>Sonuç kırmızı çizgi. Neredeyse tam olarak sıfır: tahminlerin mutlak değer ortalaması ' +
+      '<b>0.0782</b>.</p>' +
+      '<p>En yakın geçerli cevaba ortalama uzaklığı <b>0.4918</b>. En iyi olduğu noktada bile ' +
+      '<b>0.3388</b>. Yani model <b>hiçbir x’te</b> doğru cevaba yaklaşmıyor.</p>' +
+      '<p>Ama model bir hata yapmıyor. Kare hata kaybının en küçüldüğü nokta, tanım gereği ' +
+      '<b>koşullu ortalamadır</b>. Model kendisinden isteneni kusursuz yapıyor.</p>' +
+      '<p>Sorun modelde değil, <b>sorulan soruda</b>. "Bana tek bir sayı ver" dediğinde, ' +
+      'birden çok cevabın olduğu bir problemde en iyi tek sayı ortalamadır, ve ortalama ' +
+      'geçersiz olabilir.</p>' +
+      '<p>Bu modelin ölçümü tamamen tekrarlanabilir: ağırlıklardan birini 10⁻¹² oynattığımızda ' +
+      'tahminlerdeki en büyük değişim <b>3.3 × 10⁻¹⁴</b>. Sıradaki adımlarda bu ayrıntıya ' +
+      'geri döneceğiz.</p>',
+    learned:'<b>Kare hata koşullu ortalamayı hedefler ve bunu doğru yapar.</b><br><br>' +
+      'MSE modelinin tahminlerinin mutlak ortalaması <b>0.0782</b>, en yakın geçerli cevaba ' +
+      'ortalama uzaklığı <b>0.4918</b>, en iyi noktasında bile <b>0.3388</b>.<br><br>' +
+      'Model kusursuz çalışıyor. Hatalı olan, birden çok cevabın olduğu bir problemde ' +
+      '<b>tek sayı istemek</b>.',
+    xp:50,
+  },
+  {
+    t:'Tek Gauss neyi kaybeder',
+    goal:'Tek modlu bir çıktının bedelini eğitimsiz, kapalı formda hesaplayacaksın.',
+    todo:'x’i değiştir. Kırmızı çizginin geçtiği yerdeki gerçek yoğunluğa bak.',
+    kind:'controls', viz:'karisimYogunluk', h:770, state:{sahne:'yogunluk'},
+    controls:[{k:'x0', lb:'x DEĞERİ', min:-0.8, max:0.8, step:0.2, val:0,
+               fmt:v => 'x = ' + v.toFixed(1)}],
+    derive:s => ({oran: MD.pGercek(MD.dal(s.x0), s.x0) / MD.pGercek(0, s.x0)}),
+    live:s => [['y=0 DA YOĞUNLUK', MD.pGercek(0, s.x0).toExponential(2), K.red],
+               ['DAL TEPESİNDE', MD.pGercek(MD.dal(s.x0), s.x0).toFixed(4), K.green],
+               ['ORAN', s.oran.toExponential(1)], ['HEDEF', 'oranı 10¹⁰ üstüne çıkar']],
+    unlock:s => s.oran > 1e10,
+    unlockMsg:'Oranı 10¹⁰ üstüne çıkaran bir x bul',
+    body:'<p>Şimdi eğitimi tamamen bırakıp doğrudan olasılıklara bakalım. Bu adımdaki bütün ' +
+      'sayılar <b>kapalı formda</b> hesaplandı, yani hiçbir eğitime bağlı değil.</p>' +
+      '<p>Yeşil eğri gerçek koşullu yoğunluk: iki tepeli bir <b>karışım</b>. ' +
+      'Turuncu eğri, aynı ortalama ve varyansa sahip <b>en iyi tek Gauss</b>. ' +
+      'MSE modelinin cevabı olan y = 0 kırmızı kesikli çizgi.</p>' +
+      '<p>x = 0’da y = 0 noktasındaki gerçek yoğunluk <b>1.86 × 10⁻⁵</b>, dal tepesinde ' +
+      '<b>2.4934</b>. Oran <b>134.000</b>.</p>' +
+      '<p>x = 0.8’de aynı sayılar <b>1.29 × 10⁻¹⁷</b> ve <b>2.4934</b>. ' +
+      'Oran <b>1.94 × 10¹⁷</b>.</p>' +
+      '<p>Yani MSE modelinin verdiği cevap, verinin ürettiği dağılımda pratikte ' +
+      '<b>imkânsız</b> bir nokta.</p>' +
+      '<p>Bilgi cinsinden de ölçebiliriz: en iyi tek Gauss, gerçek karışıma göre gözlem başına ' +
+      '<b>1.2557 nat</b> kaybediyor. Yani karışım, aynı veriyi <b>3.51 kat</b> daha olası ' +
+      'kılıyor. Bu bir eğitim eksikliği değil: tek Gauss’un <b>biçimi</b> iki tepeyi ' +
+      'temsil edemez.</p>' +
+      '<p>Çözüm de burada görünüyor: çıktı tek bir sayı ya da tek bir Gauss olmasın, ' +
+      '<b>karışım</b> olsun. Ağ her x için π ağırlıklarını, μ ortalamalarını ve σ ' +
+      'genişliklerini versin. Grafikteki yeşil eğri tam olarak bunun hedefi.</p>',
+    learned:'<b>Tek modlu bir çıktı, iki tepeli bir dağılımı hiçbir eğitimle temsil edemez.</b><br><br>' +
+      'x = 0.8’de MSE’nin cevabındaki gerçek yoğunluk <b>1.29 × 10⁻¹⁷</b>, dal tepesinde ' +
+      '<b>2.4934</b>: oran <b>1.94 × 10¹⁷</b>.<br><br>' +
+      'En iyi tek Gauss gözlem başına <b>1.2557 nat</b> kaybeder, yani karışım ' +
+      '<b>3.51 kat</b> daha olası. Bu sayılar eğitimden değil, <b>kapalı formdan</b> geliyor.',
+    xp:50,
+  },
+  {
+    t:'Karışımın kendi tuzağı',
+    goal:'Karışım modellerinin nadiren anlatılan bir zorluğunu ölçeceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'karisimYogunluk', h:770, state:{sahne:'mdn'},
+    body:'<p>Karışım yoğunluk ağı bu problemi çözüyor: grafikteki yeşil eğriler iki bileşenin ' +
+      'ortalamaları ve ikisi birlikte her iki dalı da örtüyor.</p>' +
+      '<p>Ama dikkatli bak: eğriler ortada birbirini kesiyor. Yani <b>birinci bileşen ' +
+      'her yerde üst dalı öğrenmiş değil</b>; solda alt dalı, sağda üst dalı taşıyor. ' +
+      'Öğrenilen dağılım doğru, ama bileşenlerin hangisinin hangi dala düştüğü ' +
+      'keyfi. Bu adımın konusu tam olarak bu.</p>' +
+      '<p>Ama bu dersteki MDN’in <b>hiçbir sayısını aktarmadık</b>, ve bunun bir sebebi var.</p>' +
+      '<p>Karışım olabilirliği <b>tanımlanabilir değildir</b>. Birinci bileşen üst dalı, ' +
+      'ikinci alt dalı öğrenebilir; ya da tam tersi. İkisi de aynı dağılımı verir ve aynı ' +
+      'kaybı alır. Kayıp yüzeyinde bu, birbirinin kopyası olan birden çok en iyi nokta demek.</p>' +
+      '<p>Sonucu ölçtük: ağırlıklardan birini <b>10⁻¹²</b> oynatıp eğitimi baştan ' +
+      'çalıştırdığımızda, öğrenilen ortalamalarda en büyük değişim <b>0.35</b>. ' +
+      'Karşılaştır: aynı sınamada MSE modelinin değişimi <b>3.3 × 10⁻¹⁴</b> idi.</p>' +
+      '<p>Yani MDN eğitimi <b>kaotik</b>. Patlayan gradyan dersinde koyduğumuz kurala göre ' +
+      'böyle bir koşunun sayıları bu sayfada aktarılamaz, çünkü senin tarayıcında ' +
+      'başka çıkabilir.</p>' +
+      '<p>Bu bir kusur değil, bilinmesi gereken bir özellik. Pratikte üç şey yapılır: ' +
+      'bileşen sayısını gereğinden fazla tutup boşta kalanları budamak, ' +
+      'σ’ya alt sınır koyup bir bileşenin tek bir noktaya çökmesini engellemek, ' +
+      've birden çok başlangıçtan eğitip en iyi olabilirliği seçmek.</p>' +
+      '<p>Değerlendirmenin de <b>bileşen sırasından bağımsız</b> olması gerekir: ' +
+      '"birinci bileşen ne öğrendi" diye sorulmaz, "öğrenilen dağılım gerçeğe ne kadar ' +
+      'yakın" diye sorulur.</p>',
+    quiz:{ q:'El yazısı üretmek için bir model kuruyorsun: modelin bir sonraki kalem hareketini tahmin etmesi gerekiyor. Kare hatayla eğittin ve çıktı sürekli düz, ortalama bir çizgiye dönüşüyor. Ne yaparsın?',
+      opts:[
+        {t:'Çıktıyı tek nokta yerine karışım dağılımı yapar, üretimde o dağılımdan örneklerim', why:'Doğru. Bir sonraki kalem hareketi için birden çok makul devam vardır ve bu derste ölçtüğün gibi kare hata bu durumda koşullu ortalamayı verir: burada iki dalın ortalaması 0 çıkmıştı ve o nokta 5 ile 11 gürültü sapması uzaktaydı. El yazısında ortalama hareket, düz bir çizgidir. Karışım çıktısı her adımda birden çok olası devamı temsil eder ve örnekleme gerçek bir yazıya benzeyen izler üretir. Graves ın el yazısı üreten çalışması tam olarak bunu yapar.'},
+        {t:'Daha büyük bir ağ kullanırım', why:'Kapasite sorunu değil. Bu derste MSE modeli kendisinden isteneni kusursuz yapıyordu: kare hatanın en küçüğü koşullu ortalamadır ve model tam olarak oraya gitti. Daha büyük bir ağ aynı ortalamayı daha hızlı bulur.'},
+        {t:'Kayıp fonksiyonunu mutlak hataya çeviririm', why:'Mutlak hata koşullu ortancayı hedefler, ortalamayı değil. Bu bazı durumlarda yardımcı olur ama yine tek bir sayı verir; iki eşit olası devam varsa ortanca da aralarında bir yere düşer. Sorun hangi tek sayı olduğunda değil, tek sayı isteniyor olmasında.'},
+        {t:'Daha uzun eğitirim', why:'Model zaten yakınsamış durumda ve gittiği yer doğru: koşullu ortalama. Bu derste ölçtüğün gibi sorun eğitimin eksik kalması değil, hedefin biçimi.'},
+      ], correct:0 },
+    learned:'<b>Karışım olabilirliği tanımlanabilir değildir: bileşenler yer değiştirebilir.</b><br><br>' +
+      'Bir ağırlığı 10⁻¹² oynatınca öğrenilen ortalamalarda en büyük değişim <b>0.35</b> ' +
+      'oluyor; aynı sınamada MSE modeli <b>3.3 × 10⁻¹⁴</b> veriyordu.<br><br>' +
+      'Bu yüzden bu dersteki MDN sayıları aktarılmadı. Pratikte fazladan bileşen, σ alt sınırı ' +
+      've çok başlangıçlı eğitim kullanılır; değerlendirme <b>bileşen sırasından bağımsız</b> olmalıdır.',
     xp:50,
   },
 ]};
