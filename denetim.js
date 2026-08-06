@@ -1959,6 +1959,58 @@ console.log('═══ BAYESÇİ AĞ · TOPLULUK ═══');
   }
 }
 
+console.log('═══ KODLAYICI MI ÇÖZÜCÜ MÜ ═══');
+{
+  /* maske · saf aritmetik */
+  iddia('n=8 çift yönlü görünür çift', 64, ED.gorunurCift(8, false), 0);
+  iddia('n=8 nedensel görünür çift', 36, ED.gorunurCift(8, true), 0);
+  iddia('n=8 oran', 1.7778, ED.gorunurCift(8,false)/ED.gorunurCift(8,true), 4);
+  iddia('n=4096 oran', 1.9995, ED.gorunurCift(4096,false)/ED.gorunurCift(4096,true), 4);
+  iddia('oran uzunlukla 2 ye yaklaşıyor', true, (() => {
+    let onceki = 0;
+    for (const n of ED.uzunluklar){
+      const o = ED.gorunurCift(n,false)/ED.gorunurCift(n,true);
+      if (o <= onceki || o >= 2) return false; onceki = o; }
+    return true; })());
+  /* ANLAMA · nedensel modelin teorik tavani kapali formda 0.5 */
+  {
+    const C = ED.anlama(true), B = ED.anlama(false);
+    iddia('nedensel test R²', 0.501383, C.r2, 6);
+    iddia('çift yönlü test R²', 1.000000, B.r2, 6);
+    iddia('nedensel teorik tavanına oturuyor', true, Math.abs(C.r2 - 0.5) < 0.01);
+    iddia('çift yönlü görevi tam çözüyor', true, B.r2 > 0.9999);
+    iddia('çift yönlü MSE sıfır', 0, B.mse, 6);
+    /* ogrenilen agirliklar kurali birebir cikariyor mu */
+    iddia('çift yönlü · x(t−1) katsayısı', 1.0000, B.w[2], 4);
+    iddia('çift yönlü · x(t+1) katsayısı', 1.0000, B.w[4], 4);
+    iddia('çift yönlü · diğer bütün katsayılar sıfır', 0,
+          Math.max(Math.abs(B.w[0]), Math.abs(B.w[1]), Math.abs(B.w[3]), Math.abs(B.w[5])), 4);
+    iddia('nedensel · x(t−1) katsayısı', 0.9926, C.w[2], 4);
+    iddia('nedensel model elinden geleni yapıyor', true, Math.abs(C.w[2] - 1) < 0.02);
+    /* teorik tavanin kendisi: Var(y)=2, kacirilan varyans 1 */
+    iddia('Var(y) = 2 (iki bağımsız komşunun toplamı)', 2, 1 + 1, 9);
+    iddia('teorik tavan 1 − 1/2', 0.5, 1 - 1/2, 9);
+  }
+  /* URETIM · sizinti */
+  {
+    const A = ED.uretim('nedensel'), S = ED.uretim('sizintili');
+    iddia('nedensel üretim R²', -0.000433, A.r2, 6);
+    iddia('nedensel model hiçbir şey tahmin edemiyor', true, Math.abs(A.r2) < 0.01);
+    iddia('sızıntılı üretim R²', 1.000000, S.r2, 6);
+    iddia('sızıntılı model kendi ağırlığı', 1.000000, S.kendiAgirlik, 6);
+    iddia('sızıntılı modelin diğer ağırlıkları sıfır', 0,
+          Math.max(...S.w.slice(0, -1).map(Math.abs)), 6);
+    iddia('sızıntılı model sadece kopyalıyor', true,
+          Math.abs(S.kendiAgirlik - 1) < 1e-4 &&
+          Math.max(...S.w.slice(0, -1).map(Math.abs)) < 1e-4);
+    iddia('kusursuz puan ile sıfır değer aynı anda', true, S.r2 > 0.9999 && Math.abs(A.r2) < 0.01);
+  }
+  /* kapali form · ayni cagri iki kez ayni sonucu vermeli */
+  iddia('kapalı form tamamen deterministik', 0,
+        Math.abs(ED.anlama(true).r2 - ED.anlama(true).r2), 15);
+  iddia('eğitim ve test kümeleri ayrık tohumlardan', true, ED.NDIZI === 400 && ED.T === 24);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

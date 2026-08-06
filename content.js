@@ -88,7 +88,7 @@ const ROTALAR = [
     {id:'hesap-cizge',    ad:'Hesaplama çizgesi: türev nasıl akar',            sure:16, durum:'hazir'},
     {id:'mdn',            ad:'Tek cevap yetmediğinde: karışım yoğunluk ağı',   sure:17, durum:'hazir'},
     {id:'bayes-ag',       ad:'Bayesçi ağ: ağırlıklara da şüpheyle bakmak',     sure:17, durum:'hazir'},
-    {id:'enc-dec',        ad:'Kodlayıcı mı çözücü mü: anlamak mı, üretmek mi',  sure:12, durum:'planli'},
+    {id:'enc-dec',        ad:'Kodlayıcı mı çözücü mü: anlamak mı, üretmek mi',  sure:16, durum:'hazir'},
   ],
 },
 {
@@ -9317,6 +9317,138 @@ DERSLER['bayes-ag'] = {
       'Büyüklük yanlış: kapsama <b>%95 yerine %78</b> (dışarıda <b>%9.5</b>). ' +
       'Aralık raporlamak için ayrı bir <b>kalibrasyon adımı</b> ve o adımın ' +
       '<b>yalnızca eğitim dağılımı içinde</b> geçerli olduğunun yazılması gerekir.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── KODLAYICI MI ÇÖZÜCÜ MÜ ─────────────── */
+DERSLER['enc-dec'] = {
+  ad:'Kodlayıcı mı çözücü mü: anlamak mı, üretmek mi',
+  alt:'Aynı mimari, tek fark dikkat maskesi. Çift yönlü bağlam anlamayı ölçülebilir şekilde iyileştiriyor; nedensel maske ise üretimin ön koşulu.',
+  kaynaklar:[
+    {y:'Vaswani, A. ve ark.', t:'2017', b:'Attention Is All You Need', n:'NeurIPS 2017'},
+    {y:'Devlin, J. ve ark.', t:'2019', b:'BERT: Pre-training of Deep Bidirectional Transformers', n:'NAACL 2019'},
+    {y:'Raffel, C. ve ark.', t:'2020', b:'Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer', n:'JMLR 21(140)'},
+  ],
+  rota:2,
+  adimlar:[
+  {
+    t:'Tek fark: kim kimi görebiliyor',
+    goal:'İki mimari ailesinin arasındaki farkın tek bir maskede olduğunu göreceksin.',
+    todo:'Dizi uzunluğunu artır. İki maskenin oranı nereye gidiyor?',
+    kind:'controls', viz:'kodlayiciCozucu', h:770, state:{sahne:'maske'},
+    controls:[{k:'ni', lb:'DİZİ UZUNLUĞU', min:0, max:3, step:1, val:0,
+               fmt:v => ED.uzunluklar[v] + ' konum'}],
+    derive:s => { const n = ED.uzunluklar[Math.round(s.ni)];
+      return {oran: ED.gorunurCift(n, false)/ED.gorunurCift(n, true)}; },
+    live:s => [['ORAN', s.oran.toFixed(4), K.purple], ['HEDEF', 'oranı 1.99 üstüne çıkar']],
+    unlock:s => s.oran > 1.99,
+    unlockMsg:'Oranı 1.99 üstüne çıkaran uzunluğu bul',
+    body:'<p>Kodlayıcı ve çözücü mimarilerinin arasındaki fark, çoğu anlatımın ima ettiğinden ' +
+      'çok daha küçük. Katmanlar aynı, dikkat aynı, ileri besleme aynı. Değişen tek şey ' +
+      '<b>hangi konumun hangisini görebildiği</b>.</p>' +
+      '<p><b>Kodlayıcıda</b> her konum bütün diziyi görür: geçmişi de geleceği de. ' +
+      'Görünür (sorgu, anahtar) çifti sayısı <b>n²</b>.</p>' +
+      '<p><b>Çözücüde</b> her konum yalnızca kendisini ve öncesini görür. Üçgen bir maske. ' +
+      'Görünür çift sayısı <b>n(n+1)/2</b>.</p>' +
+      '<p>Soldaki iki kare tam olarak bunu gösteriyor: dolu hücreler görünür bağlantılar.</p>' +
+      '<p>Oran uzunlukla birlikte 2’ye yaklaşıyor: 8 konumda <b>1.7778</b>, 64’te <b>1.9692</b>, ' +
+      '4096’da <b>1.9995</b>.</p>' +
+      '<p>Yani kodlayıcı, uzun dizilerde çözücünün tam iki katı bağlantı görüyor. ' +
+      'Sıradaki iki adımda bu farkın neye mal olduğunu ve ne kazandırdığını ölçeceğiz.</p>',
+    learned:'<b>Kodlayıcı ile çözücü arasındaki fark tek bir maskededir.</b><br><br>' +
+      'Kodlayıcı <b>n²</b> çift görür, çözücü <b>n(n+1)/2</b>. Oran uzunlukla 2’ye yaklaşır: ' +
+      '8 konumda 1.7778, 4096 konumda <b>1.9995</b>.<br><br>' +
+      'Katmanlar, dikkat ve ileri besleme aynı. Bütün fark <b>görülen bilgide</b>.',
+    xp:25,
+  },
+  {
+    t:'Anlamak için iki taraf gerekiyor',
+    goal:'Çift yönlü bağlamın kazancını kapalı formda türetilmiş bir tavana karşı ölçeceksin.',
+    todo:'İki çubuğu karşılaştır. Nedensel model teorik tavanına ulaşabiliyor mu?',
+    kind:'static', viz:'kodlayiciCozucu', h:770, state:{sahne:'anlama'},
+    body:'<p>Bir görev kuralım: dizideki her konum için hedef, <b>iki komşusunun toplamı</b>. ' +
+      'y(t) = x(t&minus;1) + x(t+1). x değerleri birbirinden bağımsız rastgele sayılar.</p>' +
+      '<p>Bu görevin cevabı önceden hesaplanabilir. Var(y) = 2. Nedensel bir model x(t&minus;1)’i ' +
+      'görür ama x(t+1)’i göremez, dolayısıyla varyansın <b>tam yarısını</b> asla ' +
+      'açıklayamaz. Teorik tavan: <b>R² = 0.5</b>.</p>' +
+      '<p>Ölçüm: nedensel model <b>0.501383</b>, çift yönlü model <b>1.000000</b>.</p>' +
+      '<p>Nedensel model tavanına oturuyor, yani eksikliği eğitimden değil <b>görüş ' +
+      'alanından</b> geliyor. Çift yönlü model görevi tam olarak çözüyor.</p>' +
+      '<p>Öğrenilen ağırlıklar mekanizmayı doğruluyor. Nedensel model x(t&minus;1) üstünde ' +
+      '<b>0.9926</b> taşıyor, geri kalan her şey sıfıra yakın: elinden geleni yapmış. ' +
+      'Çift yönlü model x(t&minus;1) ve x(t+1) üstünde tam olarak <b>1.0000</b> ve ' +
+      '<b>1.0000</b>, diğer bütün konumlarda <b>0.0000</b> buluyor. Kuralı birebir çıkarmış.</p>' +
+      '<p>Bu, BERT ailesinin neden dolgu (fill-in-the-blank) görevleriyle eğitildiğini ' +
+      'açıklıyor: anlamak, iki taraftan da bakabilmeyi gerektiriyor.</p>',
+    learned:'<b>Çift yönlü bağlam, tek yönlünün göremediği bilgiyi ölçülebilir şekilde ekler.</b><br><br>' +
+      'y(t) = x(t&minus;1) + x(t+1) görevinde nedensel modelin teorik tavanı <b>0.5</b> ve ' +
+      'ölçülen değeri <b>0.501383</b>: tavana oturuyor. Çift yönlü model <b>1.000000</b>.<br><br>' +
+      'Ağırlıklar da bunu gösteriyor: çift yönlü model iki komşuyu da tam <b>1.0000</b> ' +
+      'katsayıyla buluyor, nedensel model yalnızca soldakini.',
+    xp:50,
+  },
+  {
+    t:'Üretmek için geleceği gizlemek zorunlu',
+    goal:'Nedensel maskenin neden bir kısıt değil bir şart olduğunu göreceksin.',
+    todo:'İki çubuğa bak. Hangisi kusursuz puan alıyor, ve işe yarıyor mu?',
+    kind:'static', viz:'kodlayiciCozucu', h:770, state:{sahne:'uretim'},
+    body:'<p>Şimdi görevi değiştirelim: model <b>x(t)’nin kendisini</b> tahmin etsin. ' +
+      'Dil modellemesinin özü budur: bir sonraki simgeyi tahmin etmek.</p>' +
+      '<p>İki modeli karşılaştırıyoruz. Nedensel model yalnızca x(t)’den öncesini görüyor. ' +
+      'Sızıntılı model penceresinde <b>x(t)’nin kendisi de var</b>.</p>' +
+      '<p>Sonuç:</p>' +
+      '<p>nedensel: <b>&minus;0.000433</b> &nbsp;·&nbsp; sızıntılı: <b>1.000000</b></p>' +
+      '<p>Sızıntılı model kusursuz. Ağırlıklarına bak: x(t) üstünde tam <b>1.000000</b>, ' +
+      'diğer bütün konumlarda <b>0</b>. Yani hiçbir şey öğrenmedi, sadece <b>kopyalamayı</b> ' +
+      'öğrendi.</p>' +
+      '<p>Ve kopyalamak üretimde işe yaramaz, çünkü üretim anında x(t) <b>henüz yok</b>. ' +
+      'Model onu üretmek için çağrılıyor.</p>' +
+      '<p>Nedensel modelin &minus;0.000433 alması da doğru: x değerleri bağımsız üretildiği ' +
+      'için geçmiş, geleceği tahmin etmek için gerçekten hiçbir bilgi taşımıyor. ' +
+      'Model dürüstçe "bilmiyorum" diyor.</p>' +
+      '<p>Ders şu: <b>nedensel maske bir kısıtlama değil, üretimin tanımı</b>. ' +
+      'Onu kaldırırsan eğitimdeki puan yükselir ve model kullanılamaz hâle gelir. ' +
+      'Veri sızıntısı dersindeki desenin aynısı, bu sefer mimarinin içinde.</p>',
+    learned:'<b>Nedensel maske olmadan model kopyalamayı öğrenir ve üretim yapamaz.</b><br><br>' +
+      'x(t)’yi tahmin etme görevinde sızıntılı model <b>R² = 1.000000</b> alıyor, ' +
+      'çünkü x(t) üstündeki ağırlığı tam <b>1.000000</b>: cevabı girdide görüyor.<br><br>' +
+      'Üretim anında x(t) henüz yoktur. <b>Kusursuz puan, sıfır değer.</b>',
+    xp:50,
+  },
+  {
+    t:'Hangisini ne zaman',
+    goal:'Üç mimari ailesi arasında seçim yapmayı öğreneceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'kodlayiciCozucu', h:770, state:{sahne:'maske', ni:3},
+    body:'<p>Ölçtüklerimiz üç aileyi doğal olarak ayırıyor.</p>' +
+      '<p><b>Yalnızca kodlayıcı</b> (BERT ailesi). Çift yönlü bağlam, n² görünür çift. ' +
+      'Girdiyi anlamak gereken işler için: sınıflandırma, etiketleme, arama için gömme ' +
+      'çıkarmak. Üretim yapamaz, çünkü nedensel bir sıra yok.</p>' +
+      '<p><b>Yalnızca çözücü</b> (GPT ailesi). Nedensel maske, n(n+1)/2 çift. ' +
+      'Üretim yapabilir. Bedeli, ölçtüğümüz gibi: her konum bağlamın yalnızca yarısını ' +
+      'görür ve sağdaki bilgiye ihtiyaç duyan görevlerde tavanı düşüktür.</p>' +
+      '<p><b>Kodlayıcı-çözücü</b> (T5 ailesi). Girdi çift yönlü okunur, çıktı nedensel ' +
+      'üretilir. Çeviri, özetleme, soru cevaplama gibi girdi ile çıktının farklı diller ' +
+      'olduğu işlerde doğal seçim: anlama tarafında kısıt yok, üretim tarafında kısıt ' +
+      'zaten gerekli.</p>' +
+      '<p>Bugün üretken modellerin çoğunun yalnızca çözücü olması, ölçtüğümüz dezavantaja ' +
+      'rağmen. Sebebi ölçekle ilgili: tek bir hedefle (bir sonrakini tahmin et) her metin ' +
+      'parçası eğitim verisi hâline geliyor ve mimari basitleştiği için çok daha büyük ' +
+      'ölçeklere çıkılabiliyor.</p>' +
+      '<p>Yani seçim "hangisi daha iyi" değil, <b>hangi kısıt işine yarıyor</b> sorusu.</p>',
+    quiz:{ q:'Bir arama sisteminde belgeleri vektöre çevirip benzerlik araması yapacaksın. Elinde hazır bir yalnızca-çözücü dil modeli var ve onu kullanmayı düşünüyorsun. Ne dikkate almalısın?',
+      opts:[
+        {t:'Nedensel maske yüzünden her simge yalnızca solundaki bağlamı görür; belge temsili için çift yönlü bir kodlayıcı yapısal olarak daha uygundur', why:'Doğru. Bu derste ölçtüğün gibi nedensel maske görünür bağlantıların yaklaşık yarısını kaldırıyor ve sağdaki bilgiye ihtiyaç duyan bir görevde tavanı 0.5 e sabitliyordu. Belge temsilinde bir kelimenin anlamı çoğu zaman devamına bağlıdır. Yalnızca-çözücü model kullanılabilir ama bunun için ek çalışma gerekir; çift yönlü bir kodlayıcı bu görev için baştan uygun.'},
+        {t:'Fark etmez, ikisi de aynı katmanları kullanıyor', why:'Katmanlar gerçekten aynı ve bu dersin başlangıç noktası da buydu. Ama tek fark olan maske, bu derste ölçüldüğü gibi görevin tavanını belirleyebiliyor: aynı veriyle nedensel model 0.501383, çift yönlü model 1.000000 aldı.'},
+        {t:'Yalnızca-çözücü model her zaman daha iyidir, çünkü daha büyük ölçekte eğitiliyor', region:'', why:'Ölçek gerçekten önemli bir avantaj ve bu dersin son adımı bunu söylüyor. Ama ölçek, maskenin getirdiği yapısal kısıtı ortadan kaldırmaz; sadece telafi edebilir. Görev için doğru soru hangi bağlamın gerektiği.'},
+        {t:'Modeli üretim modunda çalıştırıp ürettiği metni vektör olarak kullanırım', why:'Üretilen metin bir temsil değil, bir çıktıdır. Arama için gereken şey belgenin kendisini kodlayan sabit bir vektör; üretim bunu vermez ve her çağrıda değişebilir.'},
+      ], correct:0 },
+    learned:'<b>Seçim "hangisi daha iyi" değil, "hangi kısıt işine yarıyor" sorusudur.</b><br><br>' +
+      '<b>Kodlayıcı:</b> n² çift, anlamak için. <b>Çözücü:</b> n(n+1)/2 çift, üretmek için. ' +
+      '<b>Kodlayıcı-çözücü:</b> girdide kısıt yok, çıktıda zaten gerekli.<br><br>' +
+      'Yalnızca-çözücü modellerin bugünkü yaygınlığı, ölçtüğümüz dezavantajı ortadan ' +
+      'kaldırmıyor; <b>ölçekle telafi ediyor</b>.',
     xp:50,
   },
 ]};

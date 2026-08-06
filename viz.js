@@ -5929,6 +5929,206 @@ VIZ.bayesAg = s => {
   }
 };
 
+
+/* ═══════════ KODLAYICI MI ÇÖZÜCÜ MÜ ═══════════
+   Aynı mimari, farklı dikkat maskesi. Çift yönlü bağlam anlamayı iyileştiriyor,
+   nedensel maske ise üretimi mümkün kılıyor. Hepsi kapalı formda ölçülüyor. */
+const ED = {};
+ED.T = 24; ED.NDIZI = 400; ED.PENC = 2;
+ED.veri = seed => {
+  const r = rng(seed), X = [], Y = [];
+  for (let d = 0; d < ED.NDIZI; d++){
+    const x = []; for (let t = 0; t < ED.T; t++) x.push(omNormal(r));
+    const y = [];
+    for (let t = 0; t < ED.T; t++){
+      const sol = t > 0 ? x[t-1] : 0, sag = t < ED.T-1 ? x[t+1] : 0;
+      y.push(sol + sag); }
+    X.push(x); Y.push(y); }
+  return { X, Y };
+};
+function edEkk(A, b){
+  const p = A[0].length, M = Array.from({ length: p }, () => new Array(p+1).fill(0));
+  for (let i = 0; i < p; i++){
+    for (let j = 0; j < p; j++){ let s = 0;
+      for (let k = 0; k < A.length; k++) s += A[k][i]*A[k][j];
+      M[i][j] = s + (i === j ? 1e-9 : 0); }
+    let s = 0; for (let k = 0; k < A.length; k++) s += A[k][i]*b[k];
+    M[i][p] = s; }
+  for (let c = 0; c < p; c++){
+    let pv = c;
+    for (let r2 = c+1; r2 < p; r2++) if (Math.abs(M[r2][c]) > Math.abs(M[pv][c])) pv = r2;
+    const t = M[c]; M[c] = M[pv]; M[pv] = t;
+    const d = M[c][c];
+    for (let j = c; j <= p; j++) M[c][j] /= d;
+    for (let r2 = 0; r2 < p; r2++){ if (r2 === c) continue;
+      const f = M[r2][c];
+      for (let j = c; j <= p; j++) M[r2][j] -= f*M[c][j]; } }
+  return M.map(r2 => r2[p]);
+}
+/* pencere · 'nedensel' gelecegi hic gormez, 'ciftyonlu' iki tarafi gorur */
+ED.ozellik = (x, t, nedensel) => {
+  const f = [1];
+  for (let k = -ED.PENC; k <= ED.PENC; k++){
+    if (nedensel && k > 0) continue;
+    const i = t + k;
+    f.push(i >= 0 && i < ED.T ? x[i] : 0); }
+  return f;
+};
+const _edCache = {};
+ED.anlama = nedensel => {
+  const key = 'a' + nedensel;
+  if (_edCache[key]) return _edCache[key];
+  const { X, Y } = ED.veri(5), A = [], b = [];
+  for (let d = 0; d < ED.NDIZI; d++) for (let t = 0; t < ED.T; t++){
+    A.push(ED.ozellik(X[d], t, nedensel)); b.push(Y[d][t]); }
+  const w = edEkk(A, b);
+  const TT = ED.veri(1005);
+  let ss = 0, sr = 0, n = 0, m = 0;
+  for (let d = 0; d < ED.NDIZI; d++) for (let t = 0; t < ED.T; t++){ m += TT.Y[d][t]; n++; }
+  m /= n;
+  for (let d = 0; d < ED.NDIZI; d++) for (let t = 0; t < ED.T; t++){
+    const p = ED.ozellik(TT.X[d], t, nedensel).reduce((s, val, i) => s + val*w[i], 0);
+    sr += (TT.Y[d][t] - p)**2; ss += (TT.Y[d][t] - m)**2; }
+  return (_edCache[key] = { r2: 1 - sr/ss, mse: sr/n, w });
+};
+/* uretim gorevi: x_t nin kendisini tahmin et
+   'sizintili' pencereye x_t dahil · 'nedensel' degil */
+ED.ozellik2 = (x, t, tur) => {
+  const f = [1];
+  for (let k = -ED.PENC; k <= ED.PENC; k++){
+    if (tur === 'nedensel' && k >= 0) continue;
+    if (tur === 'sizintili' && k > 0) continue;
+    const i = t + k;
+    f.push(i >= 0 && i < ED.T ? x[i] : 0); }
+  return f;
+};
+ED.uretim = tur => {
+  const key = 'u' + tur;
+  if (_edCache[key]) return _edCache[key];
+  const { X } = ED.veri(5), A = [], b = [];
+  for (let d = 0; d < ED.NDIZI; d++) for (let t = 0; t < ED.T; t++){
+    A.push(ED.ozellik2(X[d], t, tur)); b.push(X[d][t]); }
+  const w = edEkk(A, b);
+  const TT = ED.veri(1005);
+  let ss = 0, sr = 0, n = 0, m = 0;
+  for (let d = 0; d < ED.NDIZI; d++) for (let t = 0; t < ED.T; t++){ m += TT.X[d][t]; n++; }
+  m /= n;
+  for (let d = 0; d < ED.NDIZI; d++) for (let t = 0; t < ED.T; t++){
+    const p = ED.ozellik2(TT.X[d], t, tur).reduce((s, val, i) => s + val*w[i], 0);
+    sr += (TT.X[d][t] - p)**2; ss += (TT.X[d][t] - m)**2; }
+  /* x_t nin ozellik vektorundeki yeri: sizintili pencerede son eleman */
+  const kendiAgirlik = tur === 'sizintili' ? w[w.length - 1] : null;
+  return (_edCache[key] = { r2: 1 - sr/ss, w, kendiAgirlik });
+};
+ED.gorunurCift = (n, nedensel) => nedensel ? n*(n+1)/2 : n*n;
+ED.uzunluklar = [8, 64, 512, 4096];
+
+VIZ.kodlayiciCozucu = s => {
+  clear();
+  const sahne = s.sahne || 'maske';
+  const n = ED.uzunluklar[Math.max(0, Math.min(3, s.ni === undefined ? 0 : Math.round(s.ni)))];
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'anlama'){
+    const C = ED.anlama(true), B = ED.anlama(false);
+    baslikSerit('KODLAYICI · ÇİFT YÖNLÜ BAĞLAM',
+      'Hedef y = x(t−1) + x(t+1). Sağdaki komşu olmadan yarısı bilinemez.', []);
+    const P = plot(rect(200, 210, 560, 380), -0.5, 1.5, 0, 1.15);
+    frame(P, '', 'test R²', [], [0, 0.25, 0.5, 0.75, 1]);
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.sx(-0.5), P.sy(0.5)); cx.lineTo(P.sx(1.5), P.sy(0.5)); cx.stroke();
+    cx.setLineDash([]);
+    txt('nedensel için teorik tavan: 0.5', P.sx(1.45), P.sy(0.5) - 12, K.mut, 17, 'right');
+    [[0, C.r2, K.orange, 'nedensel'], [1, B.r2, K.green, 'çift yönlü']].forEach(([x, val, renk, ad]) => {
+      const y0 = P.sy(0), y1 = P.sy(val);
+      cx.fillStyle = renk + '55'; cx.fillRect(P.sx(x) - 70, y1, 140, y0 - y1);
+      cx.strokeStyle = renk; cx.lineWidth = 2; cx.strokeRect(P.sx(x) - 70, y1, 140, y0 - y1);
+      txt(val.toFixed(4), P.sx(x), y1 - 16, renk, 22);
+      txt(ad, P.sx(x), P.R.y + P.R.h + 34, renk, 20); });
+    const bx = 830;
+    kart(bx, 210, 260, 'NEDENSEL R²', C.r2.toFixed(6), K.orange, 'teorik tavan 0.5');
+    kart(bx + 280, 210, 260, 'ÇİFT YÖNLÜ R²', B.r2.toFixed(6), K.green, 'tam çözüm');
+    kart(bx, 340, 260, 'NEDENSEL MSE', C.mse.toFixed(4), K.orange, 'artık varyans');
+    kart(bx + 280, 340, 260, 'ÇİFT YÖNLÜ MSE', B.mse.toFixed(6), K.green);
+    box(bx, 470, 540, 240, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('ÖĞRENİLEN AĞIRLIKLAR', bx + 270, 504, K.mut, 18);
+    txt('nedensel:  x(t−1) → ' + C.w[2].toFixed(4), bx + 18, 544, K.orange, 18, 'left');
+    txt('çift yönlü: x(t−1) → ' + B.w[2].toFixed(4) + '   x(t+1) → ' + B.w[4].toFixed(4),
+        bx + 18, 578, K.green, 18, 'left');
+    txt('Nedensel model x(t−1) i buluyor ama x(t+1) i', bx + 18, 620, K.mut, 18, 'left');
+    txt('göremediği için varyansın yarısı artık kalıyor.', bx + 18, 650, K.mut, 18, 'left');
+    txt('Var(y) = 2, kaçırılan = 1 → R² tam olarak 0.5.', bx + 18, 686, K.txt, 18, 'left');
+  }
+
+  else if (sahne === 'uretim'){
+    const A = ED.uretim('nedensel'), S = ED.uretim('sizintili');
+    baslikSerit('ÇÖZÜCÜ · NEDEN GELECEK GİZLENMEK ZORUNDA',
+      'Görev: x(t) yi tahmin et. Pencere x(t) yi görürse model kopyalar.', []);
+    const P = plot(rect(200, 210, 560, 380), -0.5, 1.5, -0.15, 1.15);
+    frame(P, '', 'test R²', [], [0, 0.5, 1]);
+    [[0, A.r2, K.green, 'nedensel'], [1, S.r2, K.red, 'sızıntılı']].forEach(([x, val, renk, ad]) => {
+      const y0 = P.sy(0), y1 = P.sy(val);
+      cx.fillStyle = renk + '55'; cx.fillRect(P.sx(x) - 70, Math.min(y0, y1), 140, Math.abs(y1 - y0));
+      cx.strokeStyle = renk; cx.lineWidth = 2;
+      cx.strokeRect(P.sx(x) - 70, Math.min(y0, y1), 140, Math.abs(y1 - y0));
+      txt(val.toFixed(4), P.sx(x), y1 - 16, renk, 22);
+      txt(ad, P.sx(x), P.R.y + P.R.h + 34, renk, 20); });
+    const bx = 830;
+    kart(bx, 210, 260, 'NEDENSEL R²', A.r2.toFixed(6), K.green, 'tahmin edilemez');
+    kart(bx + 280, 210, 260, 'SIZINTILI R²', S.r2.toFixed(6), K.red, 'kusursuz puan');
+    kart(bx, 340, 260, 'x(t) ÜSTÜNDEKİ AĞIRLIK', S.kendiAgirlik.toFixed(6), K.red,
+         'sızıntılı model');
+    kart(bx + 280, 340, 260, 'DİĞER AĞIRLIKLAR',
+         Math.max(...S.w.slice(0, -1).map(Math.abs)).toExponential(1), K.mut, 'hepsi sıfır');
+    box(bx, 470, 540, 240, 'rgba(7,10,15,.55)', K.red, 2);
+    txt('KUSURSUZ PUAN, SIFIR DEĞER', bx + 270, 504, K.mut, 18);
+    txt('Sızıntılı model R² = 1.000000 alıyor çünkü cevabı', bx + 18, 544, K.txt, 18, 'left');
+    txt('girdide görüyor: kendi ağırlığı 1, diğerleri 0.', bx + 18, 574, K.txt, 18, 'left');
+    txt('Ama üretim anında x(t) henüz yok. Model', bx + 18, 614, K.red, 18, 'left');
+    txt('kopyalamayı öğrendi ve kopyalanacak şey yok.', bx + 18, 644, K.red, 18, 'left');
+    txt('Nedensel maske bu yüzden bir kısıt değil, şart.', bx + 18, 686, K.green, 18, 'left');
+  }
+
+  else { /* maske */
+    baslikSerit('DİKKAT MASKESİ · KİM KİMİ GÖREBİLİR',
+      'Aynı mimari, tek fark hangi konumların birbirini görebildiği.', []);
+    /* iki maske gorseli */
+    const g = 12, hu = 22;
+    const ciz = (x0, y0, nedensel, ad, renk) => {
+      for (let i = 0; i < g; i++) for (let j = 0; j < g; j++){
+        const gor = nedensel ? j <= i : true;
+        cx.fillStyle = gor ? renk + '77' : 'rgba(255,255,255,.05)';
+        cx.fillRect(x0 + j*hu, y0 + i*hu, hu - 2, hu - 2); }
+      box(x0 - 2, y0 - 2, g*hu + 2, g*hu + 2, null, renk, 2);
+      txt(ad, x0 + g*hu/2, y0 + g*hu + 34, renk, 20);
+      txt(nedensel ? 'n(n+1)/2 = ' + (g*(g+1)/2) + ' çift' : 'n² = ' + (g*g) + ' çift',
+          x0 + g*hu/2, y0 + g*hu + 60, K.mut, 17); };
+    ciz(220, 220, false, 'kodlayıcı · çift yönlü', K.green);
+    ciz(620, 220, true, 'çözücü · nedensel', K.orange);
+    txt('sorgu →', 150, 220 + g*hu/2, K.mut, 16, 'right');
+    txt('12 konumluk örnek', 480, 200, K.mut, 17);
+    const bx = 950;
+    kart(bx, 220, 250, 'DİZİ UZUNLUĞU', String(n), K.blue);
+    kart(bx + 270, 220, 250, 'ORAN', (ED.gorunurCift(n, false)/ED.gorunurCift(n, true)).toFixed(4),
+         K.purple, 'çift yönlü / nedensel');
+    kart(bx, 350, 250, 'ÇİFT YÖNLÜ', ED.gorunurCift(n, false).toLocaleString('tr-TR'), K.green,
+         'görünür çift');
+    kart(bx + 270, 350, 250, 'NEDENSEL', ED.gorunurCift(n, true).toLocaleString('tr-TR'), K.orange);
+    box(bx, 480, 520, 230, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('ORAN NEREYE GİDİYOR', bx + 260, 514, K.mut, 18);
+    txt('n büyüdükçe n² / (n(n+1)/2) → 2.', bx + 18, 554, K.txt, 18, 'left');
+    txt('Yani uzun dizilerde çift yönlü model,', bx + 18, 590, K.mut, 18, 'left');
+    txt('nedenselin tam iki katı bağlantı görüyor.', bx + 18, 620, K.mut, 18, 'left');
+    txt('Fark hesapta değil, görülen bilgide.', bx + 18, 658, K.green, 18, 'left');
+    txt('Bedelini sıradaki adımlar ölçüyor.', bx + 18, 688, K.green, 18, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
