@@ -81,7 +81,7 @@ const ROTALAR = [
     {id:'ilkleme',        ad:'Ağırlık ilkleme: Xavier ve He',                  sure:17, durum:'hazir'},
     {id:'patlayan',       ad:'Patlayan gradyan ve klipleme',                   sure:17, durum:'hazir'},
     {id:'kisayol',        ad:'Kısayol bağlantıları: ResNet fikri',             sure:17, durum:'hazir'},
-    {id:'havuzlama',      ad:'Havuzlama: görüntüyü özetlemek',                 sure:10, durum:'planli'},
+    {id:'havuzlama',      ad:'Havuzlama: görüntüyü özetlemek',                 sure:16, durum:'hazir'},
     {id:'rnn',            ad:'RNN: sırayı hafızada tutmak',                    sure:14, durum:'planli'},
     {id:'lstm',           ad:'LSTM: unutmayı ve hatırlamayı öğrenen ağ',       sure:16, durum:'planli'},
     {id:'otokodlayici',   ad:'Otokodlayıcı: etiketsiz veriden öğrenmek',       sure:14, durum:'planli'},
@@ -8305,6 +8305,158 @@ DERSLER['kisayol'] = {
       'h + F(h) her katmanda varyansı büyütür. Normalleştirme, sıfır ilkleme ya da dal ' +
       'sönümlemesi bunu engeller. Üçünün de amacı aynı: <b>derin ağ eğitime sığ bir ağ ' +
       'gibi başlasın</b>.',
+    xp:50,
+  },
+]};
+
+/* ─────────────── HAVUZLAMA ─────────────── */
+DERSLER['havuzlama'] = {
+  ad:'Havuzlama: kaydırmaya direnç ve konumun bedeli',
+  alt:'Havuzlama boyutu küçültür ve küçük kaymalara direnç kazandırır. Direncin sınırı pencere kadardır ve karşılığında ödenen şey konum bilgisidir.',
+  kaynaklar:[
+    {y:'LeCun, Y. ve ark.', t:'1998', b:'Gradient-Based Learning Applied to Document Recognition', n:'Proceedings of the IEEE 86(11)'},
+    {y:'Springenberg, J. T. ve ark.', t:'2015', b:'Striving for Simplicity: The All Convolutional Net', n:'ICLR 2015 Workshop'},
+    {y:'Zhang, R.', t:'2019', b:'Making Convolutional Networks Shift-Invariant Again', n:'ICML 2019'},
+  ],
+  rota:2,
+  adimlar:[
+  {
+    t:'Pencereyi tek sayıya indirmek',
+    goal:'Havuzlamanın ne yaptığını ve neyi ucuzlattığını göreceksin.',
+    todo:'Pencereyi büyüt. Değer sayısı kaça iniyor?',
+    kind:'controls', viz:'havuzlama', h:770, state:{sahne:'boyut', tur:'maks'},
+    controls:[{k:'pi', lb:'HAVUZ PENCERESİ', min:0, max:5, step:1, val:0,
+               fmt:v => HV.pencereler[v] + '×' + HV.pencereler[v]},
+              {k:'tur', lb:'TÜR', min:0, max:1, step:1, val:0,
+               fmt:v => v ? 'ortalama' : 'maksimum'}],
+    derive:s => ({bo: HV.boyut(HV.pencereler[Math.round(s.pi)])}),
+    live:s => [['ÇIKTI BOYU', s.bo + '×' + s.bo],
+               ['DEĞER SAYISI', String(s.bo * s.bo)], ['HEDEF', '64 değere in']],
+    unlock:s => s.bo * s.bo <= 64,
+    unlockMsg:'Değer sayısını 64 ya da altına indir',
+    body:'<p>Evrişim dersinde çekirdeğin görüntüde gezdiğini gördün. Çıktı yine ' +
+      '32 × 32, yani <b>1024</b> değer. Ağın her katmanı bu kadar değeri taşımak zorunda ' +
+      'kalırsa hem yavaş olur hem gereksiz.</p>' +
+      '<p>Havuzlama basit bir özet kuralı: çıktıyı k × k pencerelere böl, her pencereden ' +
+      '<b>tek bir sayı</b> al. Maksimum havuzlamada en büyüğünü, ortalama havuzlamada ' +
+      'ortalamasını.</p>' +
+      '<p>2×2 pencerede 1024 değer <b>256</b>’ya iner, yani <b>4 kat</b>. 4×4 pencerede ' +
+      '<b>64</b> değere, yani <b>16 kat</b>. Azalma her zaman pencere alanı kadar.</p>' +
+      '<p>Kritik ayrıntı: havuzlamanın <b>hiç parametresi yoktur</b>. Öğrenilecek bir ağırlık ' +
+      'içermez, sadece sabit bir özet kuralıdır. Bu yüzden modeli büyütmeden hesabı ' +
+      'küçültür.</p>' +
+      '<p>Ama asıl sebep hesap tasarrufu değil. Sıradaki adımda ölçeceğimiz şey, havuzlamanın ' +
+      'temsile kattığı bir özellik.</p>',
+    learned:'<b>Havuzlama, k×k pencereyi tek bir sayıya indiren parametresiz bir özet kuralıdır.</b><br><br>' +
+      '32×32 = 1024 değer, 2×2 havuzla <b>256</b>’ya, 4×4 havuzla <b>64</b>’e iner. ' +
+      'Azalma her zaman <b>pencere alanı kadar</b>.<br><br>' +
+      'Öğrenilecek ağırlık içermediği için modeli büyütmeden hesabı küçültür.',
+    xp:25,
+  },
+  {
+    t:'Küçük kaymalara direnç',
+    goal:'Havuzlamanın asıl kattığı özelliği sayıyla ölçeceksin.',
+    todo:'Pencereyi büyüt. 1 piksel kaydırmada değişim ne zaman sıfırlanıyor?',
+    kind:'controls', viz:'havuzlama', h:770, state:{sahne:'kayma', tur:'maks', kaydir:1},
+    controls:[{k:'pi', lb:'HAVUZ PENCERESİ', min:0, max:5, step:1, val:0,
+               fmt:v => HV.pencereler[v] + '×' + HV.pencereler[v]},
+              {k:'tur', lb:'TÜR', min:0, max:1, step:1, val:0,
+               fmt:v => v ? 'ortalama' : 'maksimum'}],
+    derive:s => ({d: HV.duyarlilik(1, HV.pencereler[Math.round(s.pi)], s.tur ? 'ort' : 'maks')}),
+    live:s => [['1 PİKSEL DEĞİŞİM', s.d.toFixed(4), s.d < 0.01 ? K.green : K.orange],
+               ['HEDEF', 'değişimi sıfırla']],
+    unlock:s => s.d < 0.01,
+    unlockMsg:'1 piksel kaydırmada değişimi 0.01 altına indir',
+    body:'<p>Aynı görüntüyü <b>1 piksel sağa</b> kaydırıp temsili yeniden hesaplıyoruz. ' +
+      'Sonra iki temsil arasındaki bağıl farkı ölçüyoruz. 0 demek "hiç değişmedi" demek.</p>' +
+      '<p><b>Havuzsuz (1×1):</b> <b>1.0000</b>. Yani temsil tamamen değişti. Kenar haritası ' +
+      'seyrek olduğu için bir piksellik kayma bütün aktivasyonları yerinden ediyor.</p>' +
+      '<p><b>2×2 havuz:</b> <b>0.7774</b><br>' +
+      '<b>4×4 havuz:</b> <b>0.5684</b><br>' +
+      '<b>8×8 havuz:</b> <b>0.0000</b></p>' +
+      '<p>8×8 havuzda temsil <b>hiç değişmiyor</b>. Sebebi doğrudan tanımda: maksimum ' +
+      'havuzlama "bu pencerede en güçlü tepki neydi" diye sorar. Özellik pencere içinde ' +
+      'yer değiştirdiği sürece cevap aynı kalır.</p>' +
+      '<p>Bu, sınıflandırmada tam olarak istenen şeydir. Bir kedinin fotoğraftaki yeri ' +
+      'birkaç piksel kaysa da hâlâ kedidir.</p>' +
+      '<p>Yaygın bir inanışı da sınayalım: "maksimum havuzlama ortalamadan daha ' +
+      'değişmezdir." Ölçüm bunu <b>desteklemiyor</b>. 2×2’de maks 0.7774, ortalama 0.8647 ' +
+      '(maks önde) ama 4×4’te maks 0.5684, ortalama <b>0.5097</b> (ortalama önde). ' +
+      'İkisi de her zaman kazanmıyor.</p>',
+    learned:'<b>Havuzlama küçük kaymalara direnç kazandırır ve bu ölçülebilir.</b><br><br>' +
+      '1 piksel kaydırmada bağıl değişim: havuzsuz <b>1.0000</b>, 2×2 <b>0.7774</b>, ' +
+      '4×4 <b>0.5684</b>, 8×8 <b>0.0000</b>.<br><br>' +
+      'Maksimum havuzlamanın ortalamadan hep daha değişmez olduğu doğru değil: ' +
+      '2×2’de maks, 4×4’te ortalama önde çıkıyor.',
+    xp:50,
+  },
+  {
+    t:'Direncin sınırı pencere kadar',
+    goal:'Değişmezliğin nerede bittiğini ölçeceksin.',
+    todo:'Kaydırmayı artır. 8×8 havuzun direnci kaçıncı pikselde bitiyor?',
+    kind:'controls', viz:'havuzlama', h:770, state:{sahne:'kayma', tur:'maks', pi:3},
+    controls:[{k:'kaydir', lb:'KAYDIRMA', min:0, max:8, step:1, val:1,
+               fmt:v => v + ' piksel'}],
+    derive:s => ({d: HV.duyarlilik(Math.round(s.kaydir), 8, 'maks')}),
+    live:s => [['8×8 DEĞİŞİM', s.d.toFixed(4), s.d < 0.01 ? K.green : K.orange],
+               ['HEDEF', 'direnci kır: > 0.5']],
+    unlock:s => s.d > 0.5,
+    unlockMsg:'8×8 havuzun direncini kıracak kadar kaydır',
+    body:'<p>8×8 havuz 1 piksellik kaymada hiç etkilenmiyordu. Peki 2 piksel? 4 piksel?</p>' +
+      '<p>Ölçüm:</p>' +
+      '<p>0 px <b>0.0000</b> &nbsp;·&nbsp; 1 px <b>0.0000</b> &nbsp;·&nbsp; ' +
+      '2 px <b>0.0000</b> &nbsp;·&nbsp; 3 px <b>0.2875</b> &nbsp;·&nbsp; ' +
+      '4 px <b>0.7846</b> &nbsp;·&nbsp; 8 px <b>0.9976</b></p>' +
+      '<p>Direnç 2 piksele kadar <b>tam</b>, sonra hızla bozuluyor. 8 pikselde temsil ' +
+      'neredeyse tamamen farklı.</p>' +
+      '<p>Neden tam 8 piksele kadar değil de 2’ye kadar: havuz pencereleri sabit bir ızgaraya ' +
+      'oturur. Bir özellik kayınca pencere içinde kalabilir ama <b>komşu pencereye de ' +
+      'geçebilir</b>. Geçtiği anda değişmezlik biter. Yani garanti pencere boyu değil, ' +
+      'özelliğin pencere içindeki yerine bağlı.</p>' +
+      '<p>Bu, alanda uzun süre fark edilmemiş bir noktadır. Havuzlamalı ağların ' +
+      '"kaydırmaya değişmez" olduğu ders kitabı iddiası pratikte tam olarak doğru değildir: ' +
+      'değişmezlik <b>kısmi</b> ve <b>ızgaraya bağımlıdır</b>.</p>',
+    learned:'<b>Havuzlamanın değişmezliği kısmidir ve ızgaraya bağlıdır.</b><br><br>' +
+      '8×8 maks havuzda değişim: 0, 1 ve 2 pikselde <b>0.0000</b>, ' +
+      '3 pikselde <b>0.2875</b>, 4 pikselde <b>0.7846</b>, 8 pikselde <b>0.9976</b>.<br><br>' +
+      'Garanti pencere boyu kadar değildir, çünkü özellik komşu pencereye geçtiği anda ' +
+      'değişmezlik biter.',
+    xp:50,
+  },
+  {
+    t:'Bedeli: nerede olduğunu unutmak',
+    goal:'Değişmezlik ile konum bilgisinin neden aynı şeyin iki yüzü olduğunu göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'static', viz:'havuzlama', h:770, state:{sahne:'konum', tur:'maks'},
+    body:'<p>Pencereyi büyütmek direnci artırıyordu. O zaman en büyüğünü alalım: 16×16.</p>' +
+      '<p>16×16 havuzda 1 piksel kaydırmada değişim <b>0.0000</b>. Mükemmel. ' +
+      'Peki 4 piksel? <b>0.0000</b>. 8 piksel? <b>0.0000</b>.</p>' +
+      '<p>Bu artık dayanıklılık değil. Temsil, görüntünün <b>nerede</b> olduğuna dair ' +
+      'hiçbir şey söylemiyor. İki farklı konumdaki aynı nesne, birbirinden ayırt edilemez ' +
+      'iki temsile dönüşüyor.</p>' +
+      '<p>Buradaki ödünleşim kaçınılmaz: <b>kaydırmaya değişmezlik ile konum duyarlılığı ' +
+      'aynı şeyin iki yüzüdür.</b> Birini kazanmak diğerini kaybetmektir.</p>' +
+      '<p>Bu yüzden görev belirleyicidir. <b>Sınıflandırmada</b> "kedi var mı" sorusunun ' +
+      'cevabı konumdan bağımsızdır, dolayısıyla agresif havuzlama işe yarar. ' +
+      '<b>Tespit ve bölütlemede</b> ise soru zaten "nerede" olduğu için aynı havuzlama ' +
+      'modeli işe yaramaz hâle getirir.</p>' +
+      '<p>Modern mimarilerde havuzlama yerini büyük ölçüde <b>adımlı evrişime</b> bıraktı. ' +
+      'Adımlı evrişim de boyutu küçültür ama nasıl özetleyeceğini <b>öğrenir</b>: ' +
+      'havuzlamanın sabit kuralı yerine ağırlıklı bir birleştirme kullanır. ' +
+      'Tespit ağlarında ise küçültülen haritalar sonradan yukarı örneklenip birleştirilir, ' +
+      'böylece hem geniş bağlam hem konum korunur.</p>',
+    quiz:{ q:'Bir uydu görüntüsünde gemi tespiti yapıyorsun. Mimarin dört tane 2×2 maksimum havuzlama içeriyor ve model gemi var mı sorusunu iyi cevaplıyor ama koordinatları kabaca veriyor. Ne yaparsın?',
+      opts:[
+        {t:'Havuzlama sayısını azaltıp küçültmeyi adımlı evrişime devrederim ve küçültülen haritaları yukarı örnekleyip birleştiririm', why:'Doğru. Dört tane 2×2 havuz toplamda 16 kat küçültme demektir ve bu derste ölçtüğün gibi büyük pencerelerde konum bilgisi tamamen kayboluyor: 16×16 havuzda 1 piksel ile 4 piksel kaydırma aynı temsili veriyordu, ikisi de 0.0000. Adımlı evrişim boyutu yine küçültür ama nasıl özetleyeceğini öğrenir, yukarı örnekleme ise kaybolan çözünürlüğü geri getirir. Belirti tam olarak bu dersin ölçtüğü ödünleşim.'},
+        {t:'Daha büyük havuz pencereleri kullanırım, model daha dayanıklı olur', why:'Bu, sorunu tam ters yönde büyütür. Bu derste ölçtüğün gibi pencere büyüdükçe konum ayırt etme yeteneği azalıyor ve 16×16 de tamamen sıfırlanıyor. Zaten kaba olan koordinatlar daha da kabalaşır.'},
+        {t:'Modeli daha uzun eğitirim', why:'Konum bilgisi mimaride yok ediliyor, eğitimde değil. Havuzlama sabit bir özet kuralıdır ve attığı bilgiyi hiçbir eğitim süresi geri getiremez.'},
+        {t:'Ortalama havuzlamaya geçerim, o daha çok bilgi tutar', why:'Ortalama havuzlama pencere içindeki toplam enerjiyi tutar ama pencere içindeki konumu o da atar. Bu derste ölçtüğün gibi 8×8 ve üzerinde iki yöntem de 1 piksel kaydırmada 0.0000 veriyor: fark türde değil, pencere boyutunda.'},
+      ], correct:0 },
+    learned:'<b>Kaydırmaya değişmezlik ile konum duyarlılığı aynı şeyin iki yüzüdür.</b><br><br>' +
+      '16×16 havuzda 1, 4 ve 8 piksel kaydırmanın hepsi <b>0.0000</b> veriyor: temsil ' +
+      'artık konumu hiç taşımıyor.<br><br>' +
+      'Sınıflandırmada bu kazançtır, tespit ve bölütlemede kayıptır. Modern mimariler ' +
+      'küçültmeyi <b>adımlı evrişime</b> devrediyor, çünkü o nasıl özetleyeceğini öğreniyor.',
     xp:50,
   },
 ]};

@@ -1492,6 +1492,80 @@ console.log('═══ KISAYOL BAĞLANTILARI ═══');
   }
 }
 
+console.log('═══ HAVUZLAMA ═══');
+{
+  /* boyut ve azalma · pencere alani kadar */
+  iddia('evrişim çıktısı değer sayısı', 1024, HV.N * HV.N, 0);
+  iddia('2×2 havuz sonrası değer', 256, HV.boyut(2) ** 2, 0);
+  iddia('4×4 havuz sonrası değer', 64, HV.boyut(4) ** 2, 0);
+  {
+    let ihlal = 0;
+    for (const k of HV.pencereler)
+      if ((HV.N * HV.N) / (HV.boyut(k) ** 2) !== k * k) ihlal++;
+    iddia('azalma her pencerede tam olarak pencere alanı kadar', 0, ihlal, 0);
+  }
+  /* havuzlama parametresizdir: ayni girdi ayni cikti, ogrenme yok · determinizm */
+  iddia('havuzlama deterministik', 0,
+        HV.fark(HV.havuz(HV.evrisim(HV.goruntu(0)), 4, 'maks'),
+                HV.havuz(HV.evrisim(HV.goruntu(0)), 4, 'maks')), 9);
+  /* maks havuz gercekten pencerenin maksimumunu aliyor mu · bagimsiz dogrulama */
+  {
+    const o = HV.evrisim(HV.goruntu(0)), p = HV.havuz(o, 4, 'maks');
+    let ihlal = 0;
+    for (let i = 0; i < HV.boyut(4); i++) for (let j = 0; j < HV.boyut(4); j++){
+      let m = -1e9;
+      for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) m = Math.max(m, o[i*4+a][j*4+b]);
+      if (Math.abs(p[i][j] - m) > 1e-12) ihlal++; }
+    iddia('maks havuz her pencerede gerçekten maksimumu veriyor', 0, ihlal, 0);
+  }
+  /* 1 piksel kaydirma duyarliligi · dersin cekirdek olcumu */
+  iddia('havuzsuz 1px değişim', 1.0000, HV.duyarlilik(1, 1, 'maks'), 4);
+  iddia('2×2 maks 1px değişim', 0.7774, HV.duyarlilik(1, 2, 'maks'), 4);
+  iddia('4×4 maks 1px değişim', 0.5684, HV.duyarlilik(1, 4, 'maks'), 4);
+  iddia('8×8 maks 1px değişim', 0.0000, HV.duyarlilik(1, 8, 'maks'), 6);
+  iddia('pencere büyüdükçe duyarlılık azalıyor', true,
+        HV.duyarlilik(1,1,'maks') > HV.duyarlilik(1,2,'maks') &&
+        HV.duyarlilik(1,2,'maks') > HV.duyarlilik(1,4,'maks') &&
+        HV.duyarlilik(1,4,'maks') > HV.duyarlilik(1,8,'maks'));
+  /* Ders "maks her zaman ortalamadan daha degismez" iddiasini REDDEDIYOR · sinayalim */
+  iddia('2×2 ortalama 1px değişim', 0.8647, HV.duyarlilik(1, 2, 'ort'), 4);
+  iddia('4×4 ortalama 1px değişim', 0.5097, HV.duyarlilik(1, 4, 'ort'), 4);
+  iddia('2×2 de maks ortalamadan daha değişmez', true,
+        HV.duyarlilik(1,2,'maks') < HV.duyarlilik(1,2,'ort'));
+  iddia('4×4 te ortalama maks tan daha değişmez', true,
+        HV.duyarlilik(1,4,'ort') < HV.duyarlilik(1,4,'maks'));
+  iddia('maks her zaman kazanmıyor', true,
+        (HV.duyarlilik(1,2,'maks') < HV.duyarlilik(1,2,'ort')) !==
+        (HV.duyarlilik(1,4,'maks') < HV.duyarlilik(1,4,'ort')));
+  /* direncin siniri · dersin ikinci cekirdek olcumu */
+  iddia('8×8 · 0px', 0.0000, HV.duyarlilik(0, 8, 'maks'), 6);
+  iddia('8×8 · 2px', 0.0000, HV.duyarlilik(2, 8, 'maks'), 6);
+  iddia('8×8 · 3px', 0.2875, HV.duyarlilik(3, 8, 'maks'), 4);
+  iddia('8×8 · 4px', 0.7846, HV.duyarlilik(4, 8, 'maks'), 4);
+  iddia('8×8 · 8px', 0.9976, HV.duyarlilik(8, 8, 'maks'), 4);
+  {
+    let sonTam = -1;
+    for (let s2 = 0; s2 <= 8; s2++) if (HV.duyarlilik(s2, 8, 'maks') < 1e-9) sonTam = s2;
+    iddia('8×8 havuzun tam değişmez kaldığı en büyük kaydırma', 2, sonTam, 0);
+    iddia('garanti pencere boyu kadar değil', true, sonTam < 8);
+  }
+  /* konumun bedeli · 16x16 da her kaydirma ayni temsili veriyor */
+  {
+    let enBuyuk = 0;
+    for (let s2 = 0; s2 <= 8; s2++) enBuyuk = Math.max(enBuyuk, HV.duyarlilik(s2, 16, 'maks'));
+    iddia('16×16 havuzda hiçbir kaydırma temsili değiştirmiyor', 0, enBuyuk, 9);
+    iddia('16×16 da 1px ve 4px aynı sonucu veriyor', true,
+          Math.abs(HV.duyarlilik(1,16,'maks') - HV.duyarlilik(4,16,'maks')) < 1e-12);
+  }
+  /* konum ayirt etme: 8x8 hala 4px i ayirt ediyor, 16x16 etmiyor */
+  iddia('8×8 havuz 4 pikseli hâlâ ayırt ediyor', true, HV.duyarlilik(4, 8, 'maks') > 0.5);
+  iddia('16×16 havuz 4 pikseli ayırt edemiyor', true, HV.duyarlilik(4, 16, 'maks') < 1e-9);
+  /* ortalama havuz da ayni bedeli oduyor · tur degil pencere belirleyici */
+  iddia('8×8 ortalama havuz da 1px te sıfır veriyor', 0, HV.duyarlilik(1, 8, 'ort'), 6);
+  iddia('fark türde değil pencere boyutunda', true,
+        HV.duyarlilik(1,8,'maks') < 1e-9 && HV.duyarlilik(1,8,'ort') < 1e-9);
+}
+
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

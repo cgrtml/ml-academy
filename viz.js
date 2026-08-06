@@ -4403,6 +4403,175 @@ VIZ.kisayolBaglanti = s => {
   }
 };
 
+
+/* ═══════════ HAVUZLAMA ═══════════
+   Havuzlama boyutu küçültür ve kaydırmaya karşı direnç kazandırır.
+   Ama direnç pencere kadardır ve bedeli konum bilgisidir. */
+const HV = {};
+HV.N = 32;
+HV.cekirdek = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]];   /* dikey kenar bulucu */
+HV.pencereler = [1, 2, 4, 8, 16, 32];
+HV.goruntu = kaydir => {
+  const N = HV.N, r = rng(3);
+  const g = Array.from({ length: N }, () => new Array(N).fill(0));
+  const bloklar = [];
+  for (let k = 0; k < 5; k++) bloklar.push([Math.floor(4 + r()*20), Math.floor(4 + r()*20),
+                                            Math.floor(3 + r()*5), Math.floor(3 + r()*5), 0.4 + 0.6*r()]);
+  for (const [y, x, h, w, val] of bloklar)
+    for (let i = y; i < Math.min(N, y + h); i++)
+      for (let j = x; j < Math.min(N, x + w); j++){
+        const jj = j + kaydir; if (jj >= 0 && jj < N) g[i][jj] = val; }
+  return g;
+};
+HV.evrisim = g => {
+  const N = HV.N, o = Array.from({ length: N }, () => new Array(N).fill(0));
+  for (let i = 1; i < N-1; i++) for (let j = 1; j < N-1; j++){
+    let s = 0;
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++)
+      s += HV.cekirdek[a+1][b+1] * g[i+a][j+b];
+    o[i][j] = Math.max(0, s); }
+  return o;
+};
+HV.havuz = (o, k, tur) => {
+  if (k <= 1) return o;
+  const N = HV.N, M = Math.floor(N / k);
+  const p = Array.from({ length: M }, () => new Array(M).fill(0));
+  for (let i = 0; i < M; i++) for (let j = 0; j < M; j++){
+    const v2 = [];
+    for (let a = 0; a < k; a++) for (let b = 0; b < k; b++) v2.push(o[i*k+a][j*k+b]);
+    p[i][j] = tur === 'ort' ? v2.reduce((s, x) => s + x, 0) / v2.length : Math.max(...v2); }
+  return p;
+};
+HV.fark = (a, b) => {
+  const x = a.flat(), y = b.flat();
+  let d = 0, n = 0;
+  for (let i = 0; i < x.length; i++){ d += (x[i]-y[i])**2; n += x[i]*x[i]; }
+  return Math.sqrt(d) / Math.sqrt(Math.max(1e-9, n));
+};
+const _hvCache = {};
+HV.temsil = (kaydir, k, tur) => {
+  const key = kaydir + ':' + k + ':' + tur;
+  if (_hvCache[key]) return _hvCache[key];
+  return (_hvCache[key] = HV.havuz(HV.evrisim(HV.goruntu(kaydir)), k, tur));
+};
+HV.duyarlilik = (kaydir, k, tur) => HV.fark(HV.temsil(0, k, tur), HV.temsil(kaydir, k, tur));
+HV.boyut = k => Math.floor(HV.N / k);
+
+VIZ.havuzlama = s => {
+  clear();
+  const k = HV.pencereler[Math.max(0, Math.min(5, s.pi === undefined ? 0 : Math.round(s.pi)))];
+  const tur = s.tur === 'ort' ? 'ort' : 'maks';
+  const kaydir = Math.max(0, Math.min(8, s.kaydir === undefined ? 1 : Math.round(s.kaydir)));
+  const sahne = s.sahne || 'boyut';
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 25);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+  /* matris cizici */
+  const izgaraCiz = (m, x0, y0, boy, baslik, renk) => {
+    const M = m.length, h = boy / M;
+    let enB = 0; for (const row of m) for (const val of row) enB = Math.max(enB, val);
+    for (let i = 0; i < M; i++) for (let j = 0; j < M; j++){
+      const t = enB > 0 ? m[i][j] / enB : 0;
+      cx.fillStyle = 'rgba(' + Math.round(60 + 60*t) + ',' + Math.round(200*t + 40) + ',' +
+                     Math.round(255*t*0.8 + 50) + ',' + (0.12 + 0.88*t) + ')';
+      cx.fillRect(x0 + j*h, y0 + i*h, Math.max(1, h - (M > 16 ? 0 : 1)), Math.max(1, h - (M > 16 ? 0 : 1))); }
+    box(x0 - 2, y0 - 2, boy + 4, boy + 4, null, renk, 2);
+    txt(baslik, x0 + boy/2, y0 + boy + 30, renk, 18);
+    txt(M + ' × ' + M + ' = ' + (M*M) + ' değer', x0 + boy/2, y0 + boy + 54, K.mut, 16);
+  };
+
+  if (sahne === 'boyut'){
+    baslikSerit('HAVUZLAMA · ÖZET ÇIKARMAK',
+      'Evrişim çıktısındaki her ' + k + '×' + k + ' pencere tek bir sayıya iniyor.', []);
+    izgaraCiz(HV.evrisim(HV.goruntu(0)), 150, 200, 300, 'evrişim çıktısı', K.blue);
+    izgaraCiz(HV.temsil(0, k, tur), 560, 200, 300,
+              k + '×' + k + ' ' + (tur === 'maks' ? 'maks' : 'ortalama') + ' havuz', K.green);
+    const bx = 950;
+    kart(bx, 200, 250, 'PENCERE', k + ' × ' + k, K.blue);
+    kart(bx + 270, 200, 250, 'ÇIKTI BOYU', HV.boyut(k) + ' × ' + HV.boyut(k), K.green);
+    kart(bx, 330, 250, 'DEĞER SAYISI', String(HV.boyut(k) ** 2), K.green,
+         'önce ' + (HV.N ** 2));
+    kart(bx + 270, 330, 250, 'KAÇ KAT AZALDI',
+         (HV.N ** 2 / HV.boyut(k) ** 2) + '×', K.purple, 'pencere alanı kadar');
+    box(bx, 460, 520, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('HAVUZLAMANIN PARAMETRESİ YOK', bx + 260, 494, K.mut, 18);
+    txt('Öğrenilecek ağırlık içermez: sadece bir özet', bx + 18, 534, K.txt, 18, 'left');
+    txt('kuralıdır. Maks en büyüğü, ortalama hepsinin', bx + 18, 564, K.txt, 18, 'left');
+    txt('ortalamasını alır.', bx + 18, 594, K.txt, 18, 'left');
+    txt('Sonraki katman ' + (HV.N**2 / HV.boyut(k)**2) + ' kat az değer görür, yani', bx + 18, 634, K.mut, 18, 'left');
+    txt('o kadar az çarpma yapar.', bx + 18, 664, K.mut, 18, 'left');
+  }
+
+  else if (sahne === 'kayma'){
+    baslikSerit('HAVUZLAMA · KAYDIRMAYA DİRENÇ',
+      'Görüntüyü ' + kaydir + ' piksel kaydırıp temsilin ne kadar değiştiğini ölçüyoruz.', []);
+    const P = plot(rect(140, 200, 620, 400), -0.3, 5.3, -0.05, 1.15);
+    frame(P, 'havuz penceresi', 'temsildeki bağıl değişim', [], [0, 0.5, 1]);
+    HV.pencereler.forEach((p, i) => txt(p + '×' + p, P.sx(i), P.R.y + P.R.h + 28, K.mut, 15));
+    [['maks', K.green], ['ort', K.orange]].forEach(([t, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = t === tur ? 3.6 : 2;
+      cx.globalAlpha = t === tur ? 1 : 0.45;
+      cx.beginPath();
+      HV.pencereler.forEach((p, i) => { const y = P.sy(HV.duyarlilik(kaydir, p, t));
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      HV.pencereler.forEach((p, i) => dot(P.sx(i), P.sy(HV.duyarlilik(kaydir, p, t)), 5, renk));
+      cx.globalAlpha = 1; });
+    dot(P.sx(HV.pencereler.indexOf(k)), P.sy(HV.duyarlilik(kaydir, k, tur)), 9, K.yellow);
+    txt('maks havuz', P.R.x + P.R.w - 14, P.R.y + 28, K.green, 17, 'right');
+    txt('ortalama havuz', P.R.x + P.R.w - 14, P.R.y + 52, K.orange, 17, 'right');
+    txt('0 = temsil hiç değişmedi', P.R.x + 14, P.R.y + P.R.h - 20, K.mut, 17, 'left');
+    const bx = 810;
+    kart(bx, 200, 260, 'KAYDIRMA', kaydir + ' piksel', K.blue);
+    kart(bx + 280, 200, 260, 'PENCERE', k + '×' + k, K.blue);
+    kart(bx, 330, 260, 'DEĞİŞİM', HV.duyarlilik(kaydir, k, tur).toFixed(4),
+         HV.duyarlilik(kaydir, k, tur) < 0.01 ? K.green : K.orange,
+         HV.duyarlilik(kaydir, k, tur) < 0.01 ? 'tamamen değişmez' : '');
+    kart(bx + 280, 330, 260, 'HAVUZSUZ DEĞİŞİM', HV.duyarlilik(kaydir, 1, tur).toFixed(4), K.red);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('1 PİKSEL KAYDIRMADA DEĞİŞİM', bx + 270, 494, K.mut, 18);
+    HV.pencereler.slice(0, 4).forEach((p, i) => {
+      txt(p + '×' + p + ' havuz', bx + 18, 534 + i*40, K.txt, 18, 'left');
+      const d = HV.duyarlilik(1, p, 'maks');
+      txt(d.toFixed(4), bx + 522, 534 + i*40, d < 0.01 ? K.green : K.orange, 19, 'right'); });
+  }
+
+  else { /* konum: bedeli */
+    baslikSerit('HAVUZLAMA · KONUM BİLGİSİNİN BEDELİ',
+      'Direnç pencere kadar. Pencere büyüdükçe iki farklı konum ayırt edilemez hâle geliyor.', []);
+    const P = plot(rect(140, 200, 620, 400), 0, 8, -0.07, 1.55);
+    frame(P, 'kaydırma (piksel)', 'temsildeki bağıl değişim', [0, 2, 4, 6, 8], [0, 0.5, 1, 1.5]);
+    [[8, K.green, '8×8 havuz'], [16, K.purple, '16×16 havuz'], [1, K.red, 'havuz yok']]
+      .forEach(([p, renk]) => {
+        cx.strokeStyle = renk; cx.lineWidth = 3.2; cx.beginPath();
+        for (let s2 = 0; s2 <= 8; s2++){ const y = P.sy(HV.duyarlilik(s2, p, 'maks'));
+          s2 ? cx.lineTo(P.sx(s2), y) : cx.moveTo(P.sx(s2), y); }
+        cx.stroke();
+        for (let s2 = 0; s2 <= 8; s2++) dot(P.sx(s2), P.sy(HV.duyarlilik(s2, p, 'maks')), 4, renk); });
+    txt('havuz yok', P.R.x + P.R.w - 14, P.sy(HV.duyarlilik(8, 1, 'maks')) - 14, K.red, 17, 'right');
+    txt('8×8 havuz', P.R.x + P.R.w - 14, P.sy(HV.duyarlilik(8, 8, 'maks')) + 28, K.green, 17, 'right');
+    txt('16×16 havuz', P.R.x + P.R.w - 14, P.sy(HV.duyarlilik(8, 16, 'maks')) - 14, K.purple, 17, 'right');
+    const bx = 810;
+    kart(bx, 200, 260, '8×8 · 2 PİKSEL', HV.duyarlilik(2, 8, 'maks').toFixed(4), K.green,
+         'tamamen değişmez');
+    kart(bx + 280, 200, 260, '8×8 · 4 PİKSEL', HV.duyarlilik(4, 8, 'maks').toFixed(4), K.orange,
+         'direnç bitti');
+    kart(bx, 330, 260, '16×16 · 1 PİKSEL', HV.duyarlilik(1, 16, 'maks').toFixed(4), K.purple);
+    kart(bx + 280, 330, 260, '16×16 · 4 PİKSEL', HV.duyarlilik(4, 16, 'maks').toFixed(4), K.red,
+         'konum bilgisi yok');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.red, 2);
+    txt('DEĞİŞMEZLİK İLE KONUM AYNI ŞEYİN İKİ YÜZÜ', bx + 270, 494, K.mut, 17);
+    txt('16×16 havuzda 1 piksel ile 4 piksel kaydırma', bx + 18, 534, K.txt, 18, 'left');
+    txt('aynı temsili veriyor: ikisi de 0.0000.', bx + 18, 564, K.txt, 18, 'left');
+    txt('Bu, kaydırmaya dayanıklılık değil, körlük.', bx + 18, 604, K.red, 18, 'left');
+    txt('Nerede olduğunu bilmen gereken işlerde', bx + 18, 644, K.mut, 18, 'left');
+    txt('(tespit, bölütleme) bu bedel ödenemez.', bx + 18, 674, K.mut, 18, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
