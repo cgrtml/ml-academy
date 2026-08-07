@@ -7518,3 +7518,240 @@ DERSLER_EN['gam'] = {
   },
   ],
 };
+
+DERSLER_EN['kisit'] = {
+  ad:'Constraint satisfaction: solving without learning',
+  alt:'In some problems there is no data, there are rules. In this lesson we train no model; we prune the search space with the rules themselves.',
+  kaynaklar:[{"y":"Russell, S. & Norvig, P.","t":"2020","b":"Artificial Intelligence: A Modern Approach, 4th edition, Chapter 6","n":"Pearson"},
+             {"y":"Dechter, R.","t":"2003","b":"Constraint Processing","n":"Morgan Kaufmann"},
+             {"y":"Haralick, R. M. & Elliott, G. L.","t":"1980","b":"Increasing Tree Search Efficiency for Constraint Satisfaction Problems","n":"Artificial Intelligence 14(3)"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'If there are rules there is no need for data',
+    goal:'You will see how to write a problem as a constraint satisfaction problem and how the search gets pruned.',
+    todo:'Grow N. Compare the brute force count with the number of assignments tried.',
+    kind:'controls', viz:'kisitArama', h:820, xp:25, state:{strateji:0},
+    body:'<p>There is no model to train in this lesson. And no data. Only rules.</p>' +
+         '<p>The N-queens problem: place N queens on an N × N board so that none of them attacks another. As a constraint satisfaction problem it is written in three parts:</p>' +
+         '<p><b>variables:</b> every column is a variable<br>' +
+         '<b>domains:</b> every variable can take a row value between 0 and N&minus;1<br>' +
+         '<b>constraints:</b> two queens cannot be on the same row or the same diagonal</p>' +
+         '<p>Brute force means N options for every column: <b>16.8 million</b> combinations for N=8 and <b>1.05 × 10²⁶</b> for N=20. A lifetime is not enough to count that.</p>' +
+         '<p>Backtracking does this: go from left to right, try the first suitable row in every column, and go back if a conflict appears. The difference is that <b>the constraints are checked immediately</b> rather than at the end. If a half finished placement is invalid, millions of possibilities on that branch fall away at once.</p>' +
+         '<p>The number of assignments tried for N=8 is <b>876</b>. For N=20 it is <b>3,992,510</b>. A large number, but not 10²⁶.</p>',
+    learned:'<b>Checking the constraints early is cutting the search space away.</b><br><br>For N=20 brute force means 1.05 × 10²⁶ combinations. Backtracking finds the same solution by trying <b>3,992,510</b> assignments.<br><br>The gain here comes neither from a model nor from data. It comes from <b>the structure of the problem</b>.',
+    controls:[{k:'n', lb:'BOARD SIZE N', min:6, max:20, step:2, val:8}],
+  },
+  {
+    t:'Looking ahead: pruning the domains',
+    goal:'You will see how one assignment narrows the future options.',
+    todo:'Set the strategy to forward checking and grow N. How far below the orange curve is the blue one?',
+    kind:'controls', viz:'kisitArama', h:820, xp:50,
+    body:'<p>The blindness of plain backtracking is this: when it places a queen, it <b>does not notice which options that makes impossible</b> until it gets to that column.</p>' +
+         '<p>Forward checking reviews the domains of the remaining columns after every assignment and deletes the values that have become impossible. If a column\'s domain empties completely, that branch is abandoned <b>before ever reaching it</b>.</p>' +
+         '<p>The measurement for N=16: backtracking <b>160,712</b> assignments, forward checking <b>8,144</b>. 19.7 times fewer.</p>' +
+         '<p>For N=20 the gap widens further: <b>138,534</b> instead of <b>3,992,510</b>, a factor of 28.8.</p>' +
+         '<p>The idea here is not specific to this lesson. The principle "propagate the consequences of a choice at once and give up early if a contradiction appears" stands in the same place from Sudoku solvers to compiler type checking, from timetabling to SAT solvers.</p>',
+    learned:'<b>Forward checking sees the contradiction before reaching it.</b><br><br>After every assignment the remaining domains are pruned, and if a domain empties the branch is abandoned at once.<br><br>N=16: <b>160,712 → 8,144</b> assignments. N=20: <b>3,992,510 → 138,534</b>. The same search tree, the same solution, it just gives up earlier.',
+    controls:[{k:'n', lb:'BOARD SIZE N', min:6, max:20, step:2, val:16},
+              {k:'strateji', lb:'STRATEGY', min:0, max:1, step:1, val:0}],
+  },
+  {
+    t:'Choosing the next variable',
+    goal:'You will measure that the order of search can make more difference than the search algorithm.',
+    todo:'Turn MRV on and go to N=20. Where does the green curve fall to?',
+    kind:'controls', viz:'kisitArama', h:820, xp:50,
+    body:'<p>So far we have always processed the columns from left to right. There is no reason for that, only habit.</p>' +
+         '<p>The <b>MRV</b> (minimum remaining values) rule says: process <b>the variable with the smallest domain</b> next. That is, the most constrained one.</p>' +
+         '<p>The intuition may seem backwards, but the logic is this: that variable is going to make the solution hard anyway. Leave it to the end and you only get stuck there after making all the easy choices in front of it, and you have to redo all those easy choices. Try it early and you discover the dead ends <b>while they are small</b>.</p>' +
+         '<p>The measurement for N=20: backtracking <b>3,992,510</b>, forward checking <b>138,534</b>, forward checking + MRV <b>113</b>.</p>' +
+         '<p>One hundred and thirteen. <b>35,332 times</b> fewer than backtracking. The algorithm did not change, the constraints did not change, only <b>which variable is handled first</b> changed.</p>' +
+         '<p>Look at the plot: the orange and blue curves climb with N while the green one is almost flat. And it is not even monotone: <b>43</b> at N=16, <b>124</b> at N=18, <b>113</b> at N=20. MRV gives no guarantee, it just works very well in practice.</p>',
+    learned:'<b>The order of search is as decisive as the search algorithm itself.</b><br><br>For N=20: <b>3,992,510 → 138,534 → 113</b> assignments.<br><br>MRV handles the most constrained variable first, so dead ends are found while the tree is small. But the node count does not rise monotonically with N (43 at 16, 124 at 18), so this is <b>a heuristic, not a theorem</b>.',
+    controls:[{k:'n', lb:'BOARD SIZE N', min:6, max:20, step:2, val:20},
+              {k:'strateji', lb:'STRATEGY', min:0, max:2, step:1, val:1}],
+  },
+  {
+    t:'This is not a learning problem',
+    goal:'You will see when the constraint approach is the right tool and when it is the wrong one.',
+    todo:'Answer the question.',
+    kind:'static', viz:'kisitArama', h:820, xp:50, state:{n:20, strateji:2},
+    body:'<p>Throughout this lesson we learned nothing. There is no training set, no loss function, no generalisation. The solution found is <b>definitively correct</b>: it either satisfies the constraints or it does not.</p>' +
+         '<p>Machine learning does the exact opposite: because we do not know the rule, it extracts an approximate rule from examples and its output is never certain.</p>' +
+         '<p><b>The constraint approach is the right tool</b> if the rules are exactly known and the validity of a solution can be checked: shift rosters, class timetables, production sequencing, circuit layout, package dependency resolution. A package manager resolving version conflicts is exactly this.</p>' +
+         '<p><b>It is the wrong tool</b> if the rule cannot be written. You cannot write "is there a cat in this photo" as a constraint.</p>' +
+         '<p>An honest warning: the speedup here does not change the difficulty of the problem. Constraint satisfaction is NP-complete in general. MRV finishing at N=20 in 113 assignments is because this family of problems is tractable. On another set of constraints the same heuristic may gain nothing. Indeed the node count not rising smoothly with N is a small sign of that.</p>',
+    learned:'<b>Constraint satisfaction is not an alternative to learning but a different class of problem.</b><br><br>If the rule is known and validity can be checked, a constraint solver gives a definitive result. If the rule cannot be written, learning is needed and the result is always approximate.<br><br>The speedup here does not make the problem easy: constraint satisfaction is NP-complete in general. MRV finishing at N=20 in <b>113</b> assignments is the success of <b>a heuristic</b> on this family of problems, not a guarantee.',
+    quiz:{
+      q:'You are building a monthly on-call roster at a hospital. The rules are clear: nobody works two shifts in a row, everyone has at least 4 and at most 7 shifts a month, and there is at least one specialist every night. You also have the rosters of the last three years. How do you approach it?',
+      opts:[
+        {t:'I write it as a constraint satisfaction problem and use the past rosters not to extract rules but to rank preferences',
+         why:'Correct. The rules are already written down explicitly, so trying to learn them from data is both unnecessary and risky: a learned model can produce a roster that violates a rule, a constraint solver cannot. The job left for the past data is to determine which of the valid solutions is preferred, that is to shape the objective function.'},
+        {t:'I train a model on the past rosters and have it predict the new month',
+         why:'A trained model learns the rules approximately and there is no guarantee at all that its output will be valid. Here "no two shifts in a row" is not a tendency but a constraint that must hold. An approximation is not acceptable.'},
+        {t:'I generate every possible roster by brute force and pick the ones that satisfy the rules',
+         why:'What the first measurement in this lesson shows is exactly why that does not work: for N=20 brute force is 10²⁶ combinations while a search that checks the constraints early finds the same solution in 3,992,510 assignments. The constraints have to be used during generation, not after it.'},
+        {t:'I hard code most of the rules and fix the rest by hand',
+         why:'Fixing by hand creates a loop of repeatedly violating constraints: while fixing one conflict you break another. That is exactly why scheduling problems are given to a solver.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['konu-kesif'] = {
+  ad:'From embeddings to topics: finding topics by clustering',
+  alt:'Extracting topics from an unlabelled pile of text is possible. But answering "how many topics are there" without labels is not always possible.',
+  kaynaklar:[{"y":"Rousseeuw, P. J.","t":"1987","b":"Silhouettes: a graphical aid to the interpretation and validation of cluster analysis","n":"J. Comput. Appl. Math. 20","u":"https://doi.org/10.1016/0377-0427(87)90125-7"},
+             {"y":"Grootendorst, M.","t":"2022","b":"BERTopic: Neural topic modeling with a class-based TF-IDF procedure","n":"arXiv:2203.05794","u":"https://arxiv.org/abs/2203.05794"},
+             {"y":"Chang, J. et al.","t":"2009","b":"Reading Tea Leaves: How Humans Interpret Topic Models","n":"NeurIPS 2009","u":"https://papers.nips.cc/paper/3700-reading-tea-leaves-how-humans-interpret-topic-models"},
+             {"y":"von Luxburg, U.","t":"2010","b":"Clustering Stability: An Overview","n":"Foundations and Trends in ML 2(3)","u":"https://arxiv.org/abs/1007.1075"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'Clustering does not see the label',
+    goal:'You will see what topic discovery does and does not do.',
+    todo:'Change the separation and the number of clusters. When do the colours line up with the crosses?',
+    kind:'controls', viz:'konuKesfi', h:760, xp:50, state:{sahne:'nokta'},
+    body:'<p>You have thousands of documents and none of them is labelled. You turn every document into an embedding vector and group the ones that are close together. You call the groups that emerge "topics". That is the whole of topic discovery.</p>' +
+         '<p>Here there are 240 documents and four true topics. The crosses show the true topic centres; the colours are the decision of the k-means algorithm. The algorithm <b>does not see</b> the crosses: it only knows where the points are.</p>' +
+         '<p>At a separation of 3.0 and k = 4 the purity is <b>100%</b>: every cluster contains exactly one topic. That is the case where topic discovery works.</p>' +
+         '<p>But two things must not be confused. Clustering finds <b>proximity</b>, not <b>meaning</b>. Whether the clusters correspond to topics depends on the embedding having separated those topics. If the embedding did not separate them, clustering cannot either.</p>' +
+         '<p>Lower the separation and watch what happens at the same k: the colours stop gathering around the crosses. The clusters are still there and still look tidy, but they no longer correspond to topics.</p>',
+    learned:'<b>Clustering finds proximity, not meaning.</b><br><br>With well separated topics (separation 3.0, k = 4) the purity is 100%. As the separation falls the clusters keep looking tidy but stop corresponding to topics.<br><br>Clusters matching topics is the success of <b>the embedding</b>, not of the clustering algorithm. If the embedding did not separate two topics, no clustering can.',
+    controls:[{k:'ai', lb:'SEPARATION BETWEEN TOPICS', min:0, max:3, step:1, val:0},
+              {k:'ki', lb:'NUMBER OF CLUSTERS k', min:0, max:5, step:1, val:2}],
+  },
+  {
+    t:'Why purity cannot choose k',
+    goal:'You will see why the most natural looking measure does not work.',
+    todo:'Change the separation. What does the purity do as k grows?',
+    kind:'controls', viz:'konuKesfi', h:760, xp:50, state:{sahne:'saflik'},
+    body:'<p>The natural reflex: "pick the k that maximises the purity". That fails for two separate reasons.</p>' +
+         '<p><b>First, purity grows with k.</b> At a separation of 3.0 it is 100% at k = 4 and 100% again at k = 8. In the limit, if you put every document in its own cluster the purity is 100% by definition. So optimising purity leads you to k = n.</p>' +
+         '<p><b>Second and more important, purity needs labels.</b> To find the dominant topic of every cluster you have to know the true topic of the documents. If you are doing topic discovery you do not have those labels; if you did there would be no need for discovery.</p>' +
+         '<p>This is the fundamental difficulty of unsupervised learning: to measure the accuracy you need exactly the thing you are looking for. Purity is used here as an <b>evaluation tool</b>, that is we audit what the algorithm does with information you would not really have.</p>' +
+         '<p>As the separation falls the purity at k = 4 falls too: 100% at 3.0, 95.4% at 2.0, 77.9% at 1.2 and <b>50.8%</b> at 0.6. In the last case the clusters have become almost unrelated to the topics.</p>',
+    learned:'<b>Purity cannot choose k, because it grows with k and needs labels.</b><br><br>At k = n the purity is 100% by definition. And to compute purity you have to know the true topic of the documents; in topic discovery that information does not exist.<br><br>The purity at k = 4 falls with the separation: 100% at 3.0, 77.9% at 1.2 and 50.8% at 0.6.',
+    controls:[{k:'ai', lb:'SEPARATION BETWEEN TOPICS', min:0, max:3, step:1, val:0}],
+  },
+  {
+    t:'Choosing k without labels',
+    goal:'You will see how k is chosen when there are no labels and where that fails.',
+    todo:'Lower the separation. At which point does the silhouette pick the wrong k?',
+    kind:'controls', viz:'konuKesfi', h:760, xp:50, state:{sahne:'secim'},
+    body:'<p>Without labels two measures remain and they behave very differently.</p>' +
+         '<p><b>The within-cluster sum of squares</b> measures every point\'s distance to its own centre. It <b>always falls</b> as k grows, because more centres always cover better. Picking the smallest value means k = n. This is why in practice an "elbow" is sought, that is the point where the fall slows down. But the elbow is judged by eye and is often debatable.</p>' +
+         '<p><b>The silhouette</b> compares every point\'s closeness to its own cluster with its closeness to the nearest other cluster. This one has a <b>peak</b>, so it really can pick a k.</p>' +
+         '<p>The measurement: at a separation of 3.0 the silhouette peaks at k = 4 with 0.689, correctly. At 2.0 it is 4 again, and at 1.2 it is 4 again (0.394, very close to the second).</p>' +
+         '<p>But at a separation of 0.6 the silhouette picks <b>k = 6</b>. The true answer is 4. As the structure weakens the unsupervised measure gets it wrong, and there is nobody to tell you it got it wrong.</p>' +
+         '<p>The real lesson here: choosing k is not a <b>calculation</b> but a <b>decision</b>. The silhouette, the elbow and stability analysis (von Luxburg, 2010) all help, but none of them guarantees anything. The last step is always to look at the clusters and judge whether they make sense.</p>',
+    learned:'<b>Choosing k without labels is a decision, not a calculation.</b><br><br>The within-cluster sum of squares always falls with k and cannot pick a k on its own. The silhouette has a peak: at separations of 3.0, 2.0 and 1.2 it finds the correct k = 4.<br><br>But at a separation of 0.6 it picks k = 6 while the true answer is 4. As the structure weakens the unsupervised measure gets it wrong, and there is no mechanism to tell you it did.',
+    controls:[{k:'ai', lb:'SEPARATION BETWEEN TOPICS', min:0, max:3, step:1, val:0}],
+  },
+  {
+    t:'What happens when the structure is weak',
+    goal:'You will recognise the case where topic discovery fails silently.',
+    todo:'Look at the distribution at a separation of 0.6, then answer the question.',
+    kind:'controls', viz:'konuKesfi', h:760, xp:75, state:{sahne:'nokta'},
+    body:'<p>At a separation of 0.6 the topics have merged into each other. Clustering still finds four tidy clusters; nothing on screen looks wrong. But the purity is <b>50.8%</b>, that is half the clusters contain documents from the wrong topic.</p>' +
+         '<p>This is the most dangerous side of topic discovery: <b>it fails silently</b>. The algorithm always returns k clusters. The clusters always look consistent enough to be given a name. There is no signal telling you whether the structure was really there.</p>' +
+         '<p>The classic study by Chang and colleagues (2009) showed the human side of this: the outputs of topic models that looked statistically best were not the ones humans found most interpretable. So a numerical measure and the question "does this topic mean anything" are separate things.</p>' +
+         '<p>The practical safeguards: run with different seeds and see whether the clusters stay stable, read random documents from a few clusters and check whether they really are on the same topic, and change the embedding and see whether the result changes.</p>',
+    learned:'<b>Topic discovery fails silently.</b><br><br>At a separation of 0.6 the purity is 50.8% and yet the clusters look tidy on screen. The algorithm always returns k clusters and the clusters always look consistent enough to be given a name.<br><br>The safeguards: a stability check with different seeds, reading random documents from the clusters, and changing the embedding to see whether the result changes.',
+    controls:[{k:'ai', lb:'SEPARATION BETWEEN TOPICS', min:0, max:3, step:1, val:3},
+              {k:'ki', lb:'NUMBER OF CLUSTERS k', min:0, max:5, step:1, val:2}],
+    quiz:{
+      q:'You used embeddings plus clustering to extract topics from customer feedback. The silhouette peaks at k = 7 and when you look at the seven clusters you can give each of them a reasonable name. How much should you trust that result?',
+      opts:[
+        {t:'Only so far: being able to name the clusters does not show that the structure is real; stability and reading tests are needed',
+         why:'Correct. As you measured in the lesson, clustering always returns tidy looking clusters even when there is no structure: at a separation of 0.6 the purity was 50.8% and nothing looked wrong on screen. A human being able to name every cluster is not strong evidence either; as Chang and colleagues (2009) showed, statistical fit and interpretability are separate things. What to do is measure the stability with different seeds and read random documents from the clusters.'},
+        {t:'A great deal: if the silhouette peaked and the clusters are interpretable, the structure is real',
+         why:'In the lesson you measured a case where the silhouette got it wrong: at a separation of 0.6 it picked k = 6 while the true answer was 4. A peak in the silhouette is an estimate, not proof. Interpretability is not independent evidence either, because people can find a name even for random groups.'},
+        {t:'Not at all: clustering results are unusable',
+         why:'Too strict. At a separation of 3.0 the purity was 100%; if the structure really is there, clustering finds it and that is very valuable. The problem is not the method itself but trusting it without validation.'},
+        {t:'You should lower k to 4 and look again',
+         why:'The number 4 has no meaning here; it was the true number of topics in that lesson\'s setup. You do not know how many topics there are in customer feedback, and the problem is not the value of k anyway but that the result is unvalidated.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['adillik'] = {
+  ad:'The model\'s face in the mirror: fairness and transparency',
+  alt:'You have to choose between fairness measures, because satisfying them all at once is mathematically impossible. You will see this as an equation rather than an opinion.',
+  kaynaklar:[{"y":"Chouldechova, A.","t":"2017","b":"Fair Prediction with Disparate Impact: A Study of Bias in Recidivism Prediction Instruments","n":"Big Data 5(2)","u":"https://arxiv.org/abs/1703.00056"},
+             {"y":"Kleinberg, J. et al.","t":"2017","b":"Inherent Trade-Offs in the Fair Determination of Risk Scores","n":"ITCS 2017","u":"https://arxiv.org/abs/1609.05807"},
+             {"y":"Hardt, M. et al.","t":"2016","b":"Equality of Opportunity in Supervised Learning","n":"NeurIPS 2016","u":"https://arxiv.org/abs/1610.02413"},
+             {"y":"Mitchell, M. et al.","t":"2019","b":"Model Cards for Model Reporting","n":"FAT* 2019","u":"https://arxiv.org/abs/1810.03993"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'The same model, a different result',
+    goal:'You will see how a model that discriminates in no way can still produce different outcomes.',
+    todo:'Change group B\'s base rate. Which measure diverges?',
+    kind:'controls', viz:'adillik', h:760, xp:50, state:{sahne:'ayniesik'},
+    body:'<p>There are two groups. The model is <b>exactly the same</b> for both: the same score distribution, the same discriminative power, the same threshold. Group membership never enters the model. The only difference is the <b>base rate</b> in the groups: the share of the positive class is 0.30 in group A and higher in group B.</p>' +
+         '<p>The error rates come out equal as expected. The FPR is 0.2459 in both and the FNR 0.2459 in both. The difference is exactly zero, because these are <b>class conditional</b> quantities and the score distributions are the same.</p>' +
+         '<p>But the PPV differs. In group A it is <b>0.5679</b> and in group B, with a base rate of 0.60, <b>0.8214</b>. So the rate at which the model is right when it says "positive" varies by group.</p>' +
+         '<p>The reason is arithmetic: PPV = p·TPR / (p·TPR + (1−p)·FPR). As the base rate p rises, the PPV rises with the same TPR and FPR. The model did nothing; the number changed by itself.</p>' +
+         '<p>The lesson here: <b>saying "the model does not look at the group" does not mean it is fair.</b> You have to say on which measure it is fair, because the measures measure different things.</p>',
+    learned:'<b>Even a model that never uses group information gives different results depending on the measure.</b><br><br>With the same score distribution and the same threshold the FPR and FNR are exactly equal between the groups (a difference of 0.0000), but the PPV is 0.5679 against 0.8214.<br><br>The reason is arithmetic: the PPV depends on the base rate. Saying "the model does not look at the group" does not mean it is fair; you have to say on which measure it is fair.',
+    controls:[{k:'bi', lb:'BASE RATE OF GROUP B', min:0, max:3, step:1, val:3}],
+  },
+  {
+    t:'Fixing one measure breaks another',
+    goal:'You will measure the trade-off between the measures directly.',
+    todo:'Change the base rate. What does equalising the PPV cost in FPR?',
+    kind:'controls', viz:'adillik', h:760, xp:50, state:{sahne:'ppvesit'},
+    body:'<p>Suppose we chose PPV equality. The way to achieve it is to apply a different threshold to group B. So what does that cost?</p>' +
+         '<p>With B\'s base rate at 0.40: the threshold falls from 0.500 to 0.365, the PPV is equalised (0.5678 against 0.5679), but the FPR difference becomes <b>+0.2099</b>. That is, a far larger share of the negative examples in group B is wrongly flagged positive.</p>' +
+         '<p>With a base rate of 0.50: the threshold falls to 0.207 and the FPR difference is <b>+0.4988</b>. Group B\'s false positive rate is more than three times A\'s.</p>' +
+         '<p>And at a base rate of 0.60 something even harsher happens: <b>no threshold suffices.</b> Even if you drop the threshold to zero and call everyone positive, the PPV stays at 0.6000, because the smallest value a PPV can take is the base rate. Since group A\'s PPV is 0.5679, PPV equality is <b>impossible</b> in this case.</p>' +
+         '<p>This is the heart of the debate. In the COMPAS controversy one side said "the PPV is equal, the model is fair" while the other said "the FPR differs, the model is not fair". Both were right, and satisfying both at once was not possible.</p>',
+    learned:'<b>Equalising one fairness measure breaks another.</b><br><br>Equalising the PPV requires shifting the threshold: at a base rate of 0.40 the FPR difference is +0.2099 and at 0.50 it is +0.4988.<br><br>At a base rate of 0.60 no threshold suffices, because the smallest value a PPV can take is the base rate (0.6000) and that is already above A\'s PPV (0.5679).',
+    controls:[{k:'bi', lb:'BASE RATE OF GROUP B', min:0, max:3, step:1, val:2}],
+  },
+  {
+    t:'The impossibility is an equation, not an opinion',
+    goal:'You will see algebraically why the trade-off is unavoidable.',
+    todo:'Look at where the points sit relative to the diagonal.',
+    kind:'controls', viz:'adillik', h:760, xp:50, state:{sahne:'kimlik'},
+    body:'<p>All of this comes out of a single equation (Chouldechova, 2017):</p>' +
+         '<p style="font-family:monospace;font-size:1.05em">FPR = p · (1 − FNR) · (1 − PPV) / [ (1 − p) · PPV ]</p>' +
+         '<p>Every point on the plot is a (base rate, threshold) pair. The horizontal axis is the FPR the equation gives and the vertical axis the FPR measured directly. Every point is on the diagonal and the largest deviation is <b>2.2 × 10⁻¹⁶</b>, that is machine precision. This is not an approximation but an <b>identity</b>.</p>' +
+         '<p>The equation has four quantities: p, FNR, PPV and FPR. Fix three and the fourth is determined by itself. From that follows directly:</p>' +
+         '<p><b>If two groups have equal FNR and equal PPV and different base rates, their FPRs cannot be equal.</b></p>' +
+         '<p>That is not a design choice, a data quality problem or an engineering shortcoming. It is an algebraic necessity. Kleinberg and colleagues (2017) proved the same result in a more general form: calibration and error rate balance can only hold together with different base rates if the classifier is perfect.</p>' +
+         '<p>So there is no single thing called a "fair model". You have to say which definition of fairness you chose and <b>defend why you chose it</b>.</p>',
+    learned:'<b>FPR = p(1 − FNR)(1 − PPV) / [(1 − p)PPV]</b><br><br>This is an identity: over 120 different (base rate, threshold) points the largest deviation is 2.2×10⁻¹⁶.<br><br>The consequence is direct: if two groups have equal FNR and PPV and different base rates, their FPRs cannot be equal. The trade-off between fairness measures is not a preference but an algebraic necessity.',
+    controls:[{k:'bi', lb:'BASE RATE OF GROUP B', min:0, max:3, step:1, val:3}],
+  },
+  {
+    t:'So what is done',
+    goal:'You will turn the impossibility result into a way of working.',
+    todo:'Answer the question.',
+    kind:'controls', viz:'adillik', h:760, xp:75, state:{sahne:'ayniesik'},
+    body:'<p>The impossibility result does not say "do not pursue fairness". It says: <b>you have to make a choice and you have to write your choice down explicitly.</b></p>' +
+         '<p><b>1. Ask which error costs whom.</b> A false positive is severe if it declares an innocent person a suspect. A false negative is severe if it sends a sick person home. That question chooses the measure, not the mathematics.</p>' +
+         '<p><b>2. Ask where the difference in base rates comes from.</b> Throughout this lesson we took the base rate difference as data. In reality that difference is often past inequality itself. Fixing the model does not fix that inequality, it only chooses how it will be transmitted.</p>' +
+         '<p><b>3. Question the label itself.</b> The label "reoffended" actually means "was caught again", and the rate of being caught varies by group. If what you measure is not what you want to measure, none of the fairness measures will save you.</p>' +
+         '<p><b>4. Write it down.</b> Model cards (Mitchell et al., 2019) exist for exactly this: how it was measured on which groups, which definition of fairness was chosen, and what was not measured. Transparency here is not an alternative to fairness but a precondition for it.</p>' +
+         '<p>One more thing: equality between groups and individual justice are not the same. Even if all the group averages are equalised, individual decisions being justifiable is a separate requirement.</p>',
+    learned:'<b>The impossibility means making the choice explicitly, not giving up on fairness.</b><br><br>Four practical steps: ask which error costs whom; ask where the base rate difference comes from; question whether the label is really what you want to measure; and write your choice down in a model card.<br><br>Equalising group averages does not guarantee individual justice; the two are separate requirements.',
+    controls:[{k:'bi', lb:'BASE RATE OF GROUP B', min:0, max:3, step:1, val:3}],
+    quiz:{
+      q:'You set a target for a credit model that "the repayment rate among those approved should be the same in both groups" and you achieved it. An auditor says "but the share of those wrongly rejected among the rejected differs greatly by group". Who is right?',
+      opts:[
+        {t:'Both: two different fairness measures are in play and with different base rates they cannot both hold',
+         why:'Correct. The first target is PPV equality (predictive parity) and what the auditor points to is error rate balance. You measured it in the lesson: with different base rates, equalising the PPV widened the FPR difference (+0.4988 at a base rate of 0.50) and in some cases PPV equality could not be achieved with any threshold. The equation makes this necessary. What to do is to justify which measure matters more in this context, and write it down.'},
+        {t:'You are right, PPV equality is the correct measure',
+         why:'PPV equality is a defensible choice but not the only correct one. When a credit rejection is made wrongly the cost to the individual is severe, and the auditor\'s measure captures exactly that. Which one is right comes not from mathematics but from what the error costs whom.'},
+        {t:'The auditor is right, error rate balance is the only real fairness measure',
+         why:'The mirror image of the same mistake. Error rate balance is also a defensible choice but not the only correct one; and achieving it widens the PPV difference. Making one measure absolute is ignoring the impossibility result.'},
+        {t:'If you retrain the model you can satisfy both',
+         why:'You cannot. The identity you measured in the lesson is independent of the model: the relation between FPR, p, FNR and PPV holds whichever model you train. If the base rates differ and the classifier is not perfect, both cannot hold.'},
+      ], correct:0 },
+  },
+  ],
+};
