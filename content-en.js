@@ -4006,3 +4006,106 @@ DERSLER_EN['rag'] = {
   },
   ],
 };
+
+DERSLER_EN['llm-embed'] = {
+  ad:'Where words sit in space',
+  alt:'The problem static embeddings cannot solve, and why everything changed after BERT.',
+  kaynaklar:[{"y":"Mikolov, T. et al.","t":"2013","b":"Efficient Estimation of Word Representations in Vector Space","n":"ICLR Workshop 2013","u":"https://arxiv.org/abs/1301.3781"},
+             {"y":"Peters, M. et al.","t":"2018","b":"Deep Contextualized Word Representations (ELMo)","n":"NAACL 2018","u":"https://arxiv.org/abs/1802.05365"},
+             {"y":"Devlin, J. et al.","t":"2019","b":"BERT: Pre-training of Deep Bidirectional Transformers","n":"NAACL 2019","u":"https://arxiv.org/abs/1810.04805"},
+             {"y":"Ethayarajh, K.","t":"2019","b":"How Contextual are Contextualized Word Representations?","n":"EMNLP 2019","u":"https://arxiv.org/abs/1909.00512"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'The "yüz" problem',
+    goal:'You will see, through measured cosine values, why static embeddings fall short.',
+    todo:'Study the plot and the table on the right, then answer the question.',
+    kind:'static', viz:'cokanlam', h:760, xp:50,
+    body:'<p>A second word2vec was trained for this page. This time the Turkish word <b>"yüz"</b> was added to the corpus and made to appear <b>equally often</b> in three different contexts. It is a perfect example of ambiguity: it means "face", "a hundred" and "swim" all at once.</p>' +
+         '<p>· <b>the organ</b>: eye, nose, cheek, expression, smile<br>' +
+         '· <b>the number</b>: seventy, eighty, ninety, quantity, piece<br>' +
+         '· <b>the verb</b>: pool, sea, stroke, in the water, race</p>' +
+         '<p>Unambiguous words separate cleanly:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">            organ    number   verb<br>gözlük      <b>0.999</b>    0.274    0.271   (glasses)<br>altmış      0.262    <b>0.998</b>    0.257   (sixty)<br>yüzücü      0.216    0.249    <b>0.996</b>   (swimmer)</p>' +
+         '<p>Each one is <b>0.99+</b> to its own cluster and about 0.25 to a foreign one. Flawless.</p>' +
+         '<p>But "yüz":</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">yüz         <b style="color:#f87171">0.209</b>    0.431    <b>0.984</b></p>' +
+         '<p><b>A single vector could not carry three meanings.</b> It collapsed onto one (the verb, 0.984), half kept the second (0.431) and lost the third entirely: its similarity to the organ sense is <b>0.209</b>, below even that of a completely unrelated word (about 0.25).</p>' +
+         '<p>This is the structural limit of <b>static</b> embeddings like word2vec and GloVe: there is <b>one vector per word</b> in the vocabulary. What the word means in the sentence makes no difference.</p>',
+    learned:'<b>A static embedding (word2vec/GloVe) is one vector per word.</b> It collapses on ambiguous words.<br><br><b>A context sensitive embedding (BERT and after) computes the vector from the sentence.</b> The same word gets a different representation in a different sentence.<br><br>Everything we call an "embedding model" today is of the second kind, and that is why RAG works.',
+    quiz:{
+      q:'How did BERT solve this problem?',
+      opts:[
+        {t:'By adding separate entries like "yüz-1", "yüz-2", "yüz-3" to the vocabulary',
+         why:'Some older systems tried this (word sense disambiguation) but it does not scale: you have to know in advance how many senses every word has and label them by hand.'},
+        {t:'The embedding is PRODUCED by looking at the whole sentence, so the same word gets a different vector in different sentences',
+         why:'Correct. In BERT and after, an embedding is not stored in a table, it is <b>computed</b>. After passing through the attention layers, the vector for a word carries information from the words around it. The vector in "swim in the pool" differs from the one in "he washed his face". Ethayarajh (2019) measured this: in the upper layers the representations of the same word in different contexts separate clearly.'},
+        {t:'By using higher dimensional vectors',
+         why:'Raising the dimension does not help; the problem is not capacity but the constraint of <b>one vector</b>.'},
+        {t:'By training a separate model for each sense',
+         why:'Not practical, and unnecessary.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['halusinasyon'] = {
+  ad:'Why does hallucination happen?',
+  alt:'"The model is lying" is the wrong frame. The model is doing exactly what it was trained to do; the problem is in what it was trained to do.',
+  kaynaklar:[{"y":"Ji, Z. et al.","t":"2023","b":"Survey of Hallucination in Natural Language Generation","n":"ACM Computing Surveys, 55(12)","u":"https://arxiv.org/abs/2202.03629"},
+             {"y":"Kalai, A. & Vempala, S.","t":"2024","b":"Calibrated Language Models Must Hallucinate","n":"STOC 2024","u":"https://arxiv.org/abs/2311.14648"},
+             {"y":"Lin, S. et al.","t":"2022","b":"TruthfulQA: Measuring How Models Mimic Human Falsehoods","n":"ACL 2022","u":"https://arxiv.org/abs/2109.07958"},
+             {"y":"Farquhar, S. et al.","t":"2024","b":"Detecting Hallucinations Using Semantic Entropy","n":"Nature, 630","u":"https://www.nature.com/articles/s41586-024-07421-0"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'What is the model optimising?',
+    goal:'You will see that hallucination is not a bug but a natural consequence of the training objective.',
+    todo:'Lower the temperature. Watch what happens to the probability of the honest answer; it is the opposite of what you expect.',
+    kind:'controls', viz:'halusinasyon', h:760, xp:55,
+    body:'<p>Imagine asking a language model about a person it has never heard of. What should it do? Say "I do not know". So what does it do?</p>' +
+         '<p><b>Recall the training objective: predict the next token.</b> The model has seen the pattern "X graduated from ___ University" thousands of times in text on the internet. What comes in that blank is almost always the name of a university, <b>not "I do not know"</b>.</p>' +
+         '<p>So the model produces a fluent and likely continuation. That is <b>exactly what it was trained to do</b>.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">the distribution at T = 1.0:<br><br>✗ from Istanbul Technical University   35.9%<br>✗ from Boğaziçi University             26.6%<br>✗ from METU                            19.7%<br>✗ from Ankara University               13.2%<br>✓ I have no information about this person.  2.9%<br>✓ I cannot answer this question.            1.6%<br><br>total invented: <b style="color:#f87171">95.4%</b>   ·   total honest: 4.6%</p>' +
+         '<p style="color:#facc15"><b>And now the real surprise:</b> lowering the temperature does <b>not increase</b> honesty, it decreases it.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">T = 1.5  →  honest 9.5%<br>T = 1.0  →  honest 4.6%<br>T = 0.7  →  honest 1.7%<br>T = 0.3  →  honest <b style="color:#f87171">0.0%</b></p>' +
+         '<p>A low temperature sharpens the distribution, and because the most likely thing is already <b>an invention</b>, the model invents more decisively. <b>Lowering the temperature does not reduce hallucination, it makes it certain.</b></p>',
+    learned:'<b>Hallucination is not a bug, it is a consequence of the training objective.</b> The model was trained to "produce a likely continuation", not to "be correct".<br><br>And lowering the temperature is not a fix, it only makes the invention more stable.',
+    controls:[{k:'T', lb:'TEMPERATURE  T', min:0.2, max:2, step:0.05, val:1}],
+  },
+  {
+    t:'What works and what does not?',
+    goal:'You will learn what actually works against hallucination and what does not.',
+    todo:'Read the text and solve the scenario.',
+    kind:'controls', viz:'halusinasyon', h:760, xp:65,
+    body:'<p>There is even a theoretical result saying hallucination cannot be eliminated entirely: Kalai and Vempala (2024) showed that <b>a calibrated language model must hallucinate</b>: for facts that appear once in the training data the model either invents or becomes excessively cautious.</p>' +
+         '<p>So the right question is not "how do I eliminate it" but <b>"how do I reduce it and how do I catch it"</b>.</p>' +
+         '<p><b style="color:#22d3a0">WHAT WORKS</b></p>' +
+         '<p>· <b>RAG</b>: give the model the right documents before it answers. The single most effective method against hallucination, together with the instruction "use only the context, say you do not know if it is not there".<br>' +
+         '· <b>Requiring sources</b>: ask for a citation next to every claim. Where the model cannot invent, it stays silent.<br>' +
+         '· <b>Semantic entropy</b>: ask the same question several times and see whether the answers agree. Farquhar et al. (2024, Nature) showed this method is effective at detecting hallucination.<br>' +
+         '· <b>Tool use</b>: have arithmetic, dates and search done by a tool rather than by the model.<br>' +
+         '· <b>Verifiable output</b>: have it write code and run it, validate a JSON schema.</p>' +
+         '<p><b style="color:#f87171">WHAT DOES NOT WORK</b></p>' +
+         '<p>· <b>Lowering the temperature</b>: you just saw it do the opposite<br>' +
+         '· <b>Saying "do not make things up"</b>: an instruction does not make the model know what it does not know<br>' +
+         '· <b>Making the model bigger</b>: it reduces but does not end it; large models invent more <b>convincingly</b><br>' +
+         '· <b>Teaching facts by fine-tuning</b>: it teaches style, it does not hold facts reliably</p>' +
+         '<p style="color:#facc15"><b>And a trap:</b> as you saw in the previous lesson, RLHF optimises the answers people like. People like confident answers. So alignment can increase the model\'s tendency to <b>look sure</b>.</p>',
+    learned:'<b>Hallucination cannot be eliminated entirely</b> (Kalai & Vempala 2024); it is reduced and caught.<br><br><b>What works:</b> RAG · required sources · programmatic validation · semantic entropy · tool use<br><b>What does not:</b> a low temperature · a "do not invent" instruction · simply making the model bigger<br><br><b>Track 3 is complete.</b> The next track is not theory but practice: how you measure and break these systems.',
+    controls:[{k:'T', lb:'TEMPERATURE  T', min:0.2, max:2, step:0.05, val:1}],
+    quiz:{
+      q:'You are building an assistant for a law firm. Inventing a court decision that does not exist is unacceptable. How do you build the architecture?',
+      opts:[
+        {t:'I pick the largest model and set the temperature to 0',
+         why:'Both are the wrong reflex. You measured it in this lesson: as the temperature approaches 0 the probability of the honest answer <b>falls</b>. And a large model invents more convincingly, which is more dangerous in law.'},
+        {t:'RAG over the case database + a required citation for every claim + programmatic verification that the citation actually exists',
+         why:'Correct, and layered. (1) <b>RAG</b> gives the model the real decisions; (2) <b>a required citation</b> imposes a constraint the model cannot invent around; (3) <b>programmatic verification</b>, checking in code whether the given reference actually exists in the database, is the last line of defence. That third step is critical because the model can invent the citation too. There are real cases: lawyers in the US filed court documents with invented case references and were sanctioned.'},
+        {t:'I instruct the model to "never make anything up"',
+         why:'Necessary but far from sufficient. The model does not know what it does not know; an instruction does not close that gap.'},
+        {t:'I fine tune on the whole case database',
+         why:'Fine-tuning does not hold facts reliably, it teaches style. And you would have to retrain every time the database is updated.'},
+      ], correct:1 },
+  },
+  ],
+};
