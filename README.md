@@ -6,7 +6,7 @@ An interactive course that teaches machine learning from scratch, running entire
 
 No videos, no installation, no accounts. Open `index.html` and start.
 
-**[Live demo](https://cagritemel.com/ml-academy/)**
+**[Live demo](https://mltraining.org)**
 
 > **Note on language.** The interface has a TR/EN switch on the home page and on every lesson page.
 > Lesson content is translated one lesson at a time: the first lesson is fully English, including the

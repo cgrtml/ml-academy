@@ -142,7 +142,7 @@ const ROTALAR = [
     {id:'proje-karari',   ad:'Bir AI projesine nasıl karar verilir',           sure:12, durum:'planli'},
     {id:'adillik',        ad:'Modelin aynadaki yüzü: adillik ve şeffaflık',    sure:16, durum:'hazir'},
     {id:'automl',         ad:'AutoML: modelini seçen model',                   sure:14, durum:'planli'},
-    {id:'aktif-ogrenme',  ad:'Aktif öğrenme: hangi örneği etiketleyelim',      sure:14, durum:'planli'},
+    {id:'aktif-ogrenme',  ad:'Aktif öğrenme: hangi örneği etiketleyelim',      sure:16, durum:'hazir'},
     {id:'leaderboard',    ad:'Yarışma yanılsaması: skor tablosuna ne kadar güvenilir',  sure:16, durum:'hazir'},
   ],
 },
@@ -12092,6 +12092,163 @@ DERSLER['leaderboard'] = {
       'Tablolar değersiz değil: Recht ve arkadaşları (2019) yeni bir ImageNet test kümesiyle ' +
       'mutlak doğrulukların düştüğünü ama sıralamanın büyük ölçüde korunduğunu buldu. ' +
       'Güvenilmez olan birbirine yakın ilk sıraların karşılaştırılmasıdır.',
+    xp:75,
+  },
+]};
+
+/* --------------- AKTIF OGRENME --------------- */
+DERSLER['aktif-ogrenme'] = {
+  ad:'Aktif öğrenme: hangi örneği etiketleyelim',
+  alt:'Etiketlemek pahalıysa hangi örneği soracağını model seçsin. Kazancı gerçek, ama sınırları ve tuzakları da gerçek.',
+  kaynaklar:[
+    {y:'Settles, B.', t:'2009', b:'Active Learning Literature Survey', n:'Univ. of Wisconsin-Madison TR 1648', u:'https://minds.wisconsin.edu/handle/1793/60660'},
+    {y:'Lewis, D. D. & Gale, W. A.', t:'1994', b:'A Sequential Algorithm for Training Text Classifiers', n:'SIGIR 1994', u:'https://arxiv.org/abs/cmp-lg/9407020'},
+    {y:'Gal, Y. ve ark.', t:'2017', b:'Deep Bayesian Active Learning with Image Data', n:'ICML 2017', u:'https://arxiv.org/abs/1703.02910'},
+    {y:'Lowell, D. ve ark.', t:'2019', b:'Practical Obstacles to Deploying Active Learning', n:'EMNLP 2019', u:'https://arxiv.org/abs/1807.04801'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Hangi örneği etiketleyelim',
+    goal:'Etiket seçmenin doğruluğa ne kattığını ölçeceksin.',
+    todo:'Sınıf dengesini değiştir. İki eğri arasındaki fark nerede büyüyor?',
+    kind:'controls', viz:'aktifOgrenme', h:760,
+    controls:[{k:'di', lb:'HAVUZDA POZITIF PAYI', min:0, max:2, step:1, val:0,
+      fmt:v => '%' + (100*AO.dengeler[Math.round(v)]).toFixed(0)}],
+    state:{sahne:'egri'},
+    derive:s => { const d = AO.dengeler[Math.round(s.di)];
+      return {fark: AO.sonuc('belirsizlik', 16, d).dogruluk -
+                    AO.sonuc('rastgele', 16, d).dogruluk}; },
+    live:s => { const d = AO.dengeler[Math.round(s.di)];
+      return [['POZITIF PAY', '%' + (100*d).toFixed(0)],
+              ['16 ETIKET R', '%' + (100*AO.sonuc('rastgele', 16, d).dogruluk).toFixed(1), K.orange],
+              ['16 ETIKET B', '%' + (100*AO.sonuc('belirsizlik', 16, d).dogruluk).toFixed(1), K.green],
+              ['FARK', '+' + (100*s.fark).toFixed(1) + ' puan', K.purple]]; },
+    body:'<p>Kurulum: 400 etiketsiz örnekten oluşan bir havuz, sınırlı bir etiket bütçesi ' +
+      've etiketleri satın alacak bir bütçe sahibi. Soru şu: hangi örnekleri ' +
+      'etiketletmeli?</p>' +
+      '<p><b>Rastgele:</b> havuzdan rastgele seç. Basit ve yansız.<br>' +
+      '<b>Belirsizlik örneklemesi:</b> mevcut modeli eğit, karar sınırına en yakın ' +
+      '(yani modelin en kararsız olduğu) örneği seç, etiketlet, tekrarla. ' +
+      'Bu en eski ve en yaygın aktif öğrenme yöntemidir (Lewis ve Gale, 1994).</p>' +
+      '<p>Her nokta 15 bağımsız koşunun ortalaması; tek bir koşu bu ölçekte anlamlı değil.</p>' +
+      '<p>Dengeli veride (yarı yarıya): 8 etikette rastgele %65.8, belirsizlik %70.5. ' +
+      '16 etikette %73.0 e karşı %76.0. 64 etikette %80.9 a karşı %81.7.</p>' +
+      '<p>Kazanç gerçek ama abartılmamalı. Belirsizlik örneklemesinin 16 etiketle ulaştığı ' +
+      'yere rastgele yaklaşık 24-32 etiketle ulaşıyor: <b>iki kat civarı</b> bir tasarruf, ' +
+      'yüz kat değil.</p>' +
+      '<p>Bir de tavan var: veri gürültülü olduğu için hiçbir yöntem %82.8 in üstüne ' +
+      'çıkamıyor. Aktif öğrenme o tavana daha hızlı gitmeni sağlar, tavanı yükseltmez.</p>',
+    learned:'<b>Belirsizlik örneklemesi aynı doğruluğa yaklaşık iki kat az etiketle ulaşır.</b><br><br>' +
+      'Dengeli veride 16 etikette %73.0 e karşı %76.0; 64 etikette %80.9 a karşı %81.7.<br><br>' +
+      'Kazanç gerçek ama sınırlı: gürültü tavanı (%82.8) her iki yöntem için de aynıdır. ' +
+      'Aktif öğrenme tavana daha hızlı gitmeni sağlar, tavanı yükseltmez.',
+    xp:50,
+  },
+  {
+    t:'Kazanç aslında nereden geliyor',
+    goal:'Aktif öğrenmenin gizli etkisini göreceksin.',
+    todo:'Dengeyi bozup etiketlenen kümenin bileşimine bak.',
+    kind:'controls', viz:'aktifOgrenme', h:760,
+    controls:[{k:'di', lb:'HAVUZDA POZITIF PAYI', min:0, max:2, step:1, val:1,
+      fmt:v => '%' + (100*AO.dengeler[Math.round(v)]).toFixed(0)}],
+    state:{sahne:'bilesim'},
+    derive:s => { const d = AO.dengeler[Math.round(s.di)];
+      return {pay: AO.sonuc('belirsizlik', 64, d).pozitifPay, d: d}; },
+    live:s => [['HAVUZDA', '%' + (100*s.d).toFixed(0)],
+               ['BELIRSIZLIK TOPLADI', '%' + (100*s.pay).toFixed(0), K.green],
+               ['HEDEF', 'toplanan pay havuzun 2 kati']],
+    unlock:s => s.pay > 2*s.d,
+    unlockMsg:'Toplanan pozitif payı havuzdakinin iki katını geçen dengeyi bul',
+    body:'<p>Belirsizlik örneklemesinin kazancı sadece "zor örnek seçmek" değil. ' +
+      'Etiketlenen kümenin <b>bileşimi</b> de değişiyor.</p>' +
+      '<p>Havuzda pozitif sınıfın payı %20 iken, rastgele örnekleme doğal olarak ' +
+      '%20 civarı pozitif topluyor. Belirsizlik örneklemesi ise <b>%42</b> topluyor.</p>' +
+      '<p>Sebebi doğrudan: karar sınırı iki sınıfın buluştuğu yerdir. Sınıra yakın ' +
+      'noktaları seçmek, iki sınıftan da yaklaşık eşit sayıda örnek getirir. ' +
+      'Yani aktif öğrenme, istemeden bir <b>sınıf dengeleme</b> mekanizması gibi ' +
+      'de çalışıyor.</p>' +
+      '<p>Bu, dengesiz veride kazancın neden büyüdüğünü açıklıyor. Dengeli veride ' +
+      '16 etiketle kazanç 3.0 puan; %20 pozitif payında 3.4 puan.</p>' +
+      '<p>Ama aynı mekanizma önemli bir uyarı da taşıyor: <b>etiketlenen küme artık ' +
+      'havuzun temsili bir örneklemi değil.</b> O etiketleri başka bir amaçla (mesela ' +
+      'sınıf oranını tahmin etmek ya da başka bir model eğitmek) kullanırsan yanlı ' +
+      'sonuç alırsın. Lowell ve arkadaşlarının (2019) uygulamadaki engeller üzerine ' +
+      'çalışmasında bu, aktif öğrenmenin en az konuşulan maliyetlerinden biri olarak ' +
+      'geçiyor.</p>',
+    learned:'<b>Belirsizlik örneklemesi aynı zamanda bir sınıf dengeleyicidir.</b><br><br>' +
+      'Havuzda %20 pozitif varken belirsizlik örneklemesi %42 pozitif topluyor, ' +
+      'rastgele %22.<br><br>' +
+      'Bunun bedeli: toplanan etiketler artık havuzun temsili bir örneklemi değildir. ' +
+      'Bu etiketleri başka bir amaçla kullanmak (sınıf oranı tahmini, başka model ' +
+      'eğitimi) yanlı sonuç verir.',
+    xp:50,
+  },
+  {
+    t:'Soğuk başlangıç tuzağı',
+    goal:'Aktif öğrenmenin rastgeleden kötü olduğu durumu göreceksin.',
+    todo:'8 etiketteki iki noktayı karşılaştır.',
+    kind:'static', viz:'aktifOgrenme', h:760,
+    state:{sahne:'soguk'},
+    body:'<p>Şimdi zor durum: pozitif sınıfın payı sadece %8 ve bütçe çok küçük.</p>' +
+      '<p>8 etikette rastgele <b>%83.0</b>, belirsizlik örneklemesi <b>%80.6</b>. ' +
+      'Aktif öğrenme <b>daha kötü</b>.</p>' +
+      '<p>Sebep mekanizmada gizli: belirsizliği ölçen şey <b>modelin kendisi</b>. ' +
+      'Model 4 örnekle eğitilmişse belirsizlik tahmini de neredeyse rastgeledir ve ' +
+      'seçim yanlış bölgeye kilitlenir. Model kendi hatasını takip eder ve o hatayı ' +
+      'besleyen örnekleri toplar.</p>' +
+      '<p>Bütçe büyüdükçe durum tersine dönüyor: 64 etikette rastgele %89.8, ' +
+      'belirsizlik <b>%91.1</b>.</p>' +
+      '<p>Bu yüzden pratikte aktif öğrenme hiçbir zaman sıfırdan başlatılmaz. Standart ' +
+      'yaklaşım ilk turu <b>rastgele</b> yapmak, makul bir başlangıç modeli kurmak ve ' +
+      'ondan sonra belirsizliğe geçmektir.</p>' +
+      '<p>İkinci bir korunma: saf belirsizlik yerine <b>çeşitlilik</b> de gözeten ölçütler ' +
+      'kullanmak. Saf belirsizlik aynı bölgeden birbirine çok benzeyen örnekleri arka arkaya ' +
+      'seçebilir; bir yığın halinde seçim yapılıyorsa bu ciddi bir israftır.</p>',
+    learned:'<b>Belirsizliği ölçen model kötüyse, belirsizlik örneklemesi de kötüdür.</b><br><br>' +
+      'Pozitif payı %8 iken 8 etikette rastgele %83.0, belirsizlik %80.6. ' +
+      '64 etikette durum tersine dönüyor: %89.8 e karşı %91.1.<br><br>' +
+      'Korunma: ilk turu rastgele yapıp makul bir başlangıç modeli kurmak, ve saf ' +
+      'belirsizlik yerine çeşitliliği de gözeten ölçütler kullanmak.',
+    xp:50,
+  },
+  {
+    t:'Ne zaman kullanmalı',
+    goal:'Aktif öğrenmenin gerçekten kazandırdığı durumları tanıyacaksın.',
+    todo:'Soruyu cevapla.',
+    kind:'controls', viz:'aktifOgrenme', h:760,
+    controls:[{k:'di', lb:'HAVUZDA POZITIF PAYI', min:0, max:2, step:1, val:2,
+      fmt:v => '%' + (100*AO.dengeler[Math.round(v)]).toFixed(0)}],
+    state:{sahne:'egri'},
+    body:'<p>Ölçümlerden çıkan koşullar:</p>' +
+      '<p><b>1. Etiketleme gerçekten pahalı olmalı.</b> Kazanç iki kat civarı. Etiket ' +
+      'başına maliyet düşükse, bu tasarruf kurulum ve bakım karmaşıklığını karşılamaz.</p>' +
+      '<p><b>2. Havuz büyük ve çeşitli olmalı.</b> Seçecek bir şey yoksa seçim ' +
+      'yöntemi de bir şey kazandırmaz.</p>' +
+      '<p><b>3. Sınıf dengesizliği varsa kazanç büyür.</b> Ölçtün: %20 pozitif payında ' +
+      'fark 3.4 puan, dengeli veride 3.0 puan.</p>' +
+      '<p><b>4. Başlangıç modeli makul olmalı.</b> Soğuk başlangıçta aktif öğrenme ' +
+      'zarar verir.</p>' +
+      '<p>Ve bir gizli maliyet: <b>toplanan etiket kümesi yanlıdır.</b> Modeli ' +
+      'değiştirirsen (mesela lojistik regresyondan bir sinir ağına geçersen) o etiketler ' +
+      'eski modelin belirsizliğine göre seçilmiştir ve yeni model için en bilgilendirici ' +
+      'küme olmayabilir. Lowell ve arkadaşları (2019) bunun pratikte ciddi bir engel ' +
+      'olduğunu gösterdi.</p>' +
+      '<p>Kısaca: aktif öğrenme bir sihir değil, iki katlık bir tasarruf. Etiket ' +
+      'başına maliyetiniz yüksekse buna değer, değilse rastgele örnekleme hem daha ' +
+      'basit hem daha dürüst bir veri kümesi verir.</p>',
+    quiz:{ q:'Nadir bir üretim hatasını tespit etmek için model kuruyorsunuz. Hataların oranı %2, etiketleme uzman mühendis gerektiriyor ve elinizde milyonlarca etiketsiz görüntü var. Aktif öğrenme kullanmalı mısınız?',
+      opts:[
+        {t:'Evet, ama ilk turu rastgele yapıp makul bir başlangıç modeli kurduktan sonra', why:'Doğru. Üç koşul da sağlanıyor: etiketleme pahalı (uzman mühendis), havuz çok büyük, ve sınıf dengesizliği yüksek. Derste ölçtün: dengesizlik arttıkça belirsizlik örneklemesinin topladığı pozitif payı havuzdakinin çok üstüne çıkıyor ve kazanç büyüyor. Ama aynı derste soğuk başlangıç tuzağını da ölçtün: %8 dengesizlikte 8 etiketle belirsizlik rastgeleden kötüydü (%80.6 e karşı %83.0). Bu yüzden ilk tur rastgele olmalı.'},
+        {t:'Hayır, dengesiz veride aktif öğrenme çalışmaz', why:'Ölçüm bunun tersini söylüyor: dengesizlik arttıkça kazanç büyüyordu, çünkü sınıra yakın seçim etiketlenen kümeyi dengeliyordu. Çalışmayan şey dengesizlik değil, soğuk başlangıç.'},
+        {t:'Evet, doğrudan belirsizlik örneklemesiyle başlayın', why:'Yarısı doğru. Aktif öğrenme burada uygun ama doğrudan başlamak tam olarak ölçtüğün tuzak. Başlangıç modeli kötüyken belirsizlik tahmini de kötüdür ve seçim yanlış bölgeye kilitlenir.'},
+        {t:'Hayır, önce tüm veriyi etiketlemelisiniz', why:'Milyonlarca görüntüyü uzman mühendisle etiketlemek zaten imkânsız olduğu için soru soruluyor. Ayrıca gerekli de değil: derste gördüğün gibi doğruluk belirli bir etiket sayısından sonra gürültü tavanına yaklaşıyor.'},
+      ], correct:0 },
+    learned:'<b>Aktif öğrenme yaklaşık iki katlık bir etiket tasarrufudur, sihir değil.</b><br><br>' +
+      'Koşullar: etiketleme gerçekten pahalı olmalı, havuz büyük olmalı, sınıf dengesizliği ' +
+      'kazancı büyütür, ve başlangıç modeli makul olmalı.<br><br>' +
+      'Gizli maliyet: toplanan etiket kümesi yanlıdır ve modeli değiştirdiğinizde o etiketler ' +
+      'yeni model için en bilgilendirici küme olmayabilir.',
     xp:75,
   },
 ]};

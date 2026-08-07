@@ -6,7 +6,7 @@ Sıfırdan yapay zekâ öğrenmek isteyenler için hazırlanmış, tamamen taray
 
 Video yok, kurulum yok, üyelik yok. `index.html` dosyasını açıp başlıyorsunuz.
 
-**[Canlı demo](https://cagritemel.com/ml-academy/)**
+**[Canlı demo](https://mltraining.org)**
 
 > **Dil hakkında.** Ana sayfada ve her ders sayfasında bir TR/EN düğmesi var. Ders içeriği tek tek
 > çevriliyor: ilk ders, görsellerin üstündeki etiketler dâhil tamamen İngilizce ve müfredatta `EN`

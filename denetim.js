@@ -3449,6 +3449,93 @@ console.log('═══ SKOR TABLOSU YANILSAMASI ═══');
   iddia('SK - 5000 ornekte bile sisme sifirlanmiyor', 1,
         SK.sisme(5000, 100) > 0.01 ? 1 : 0, 0);
 }
+console.log('═══ AKTİF ÖĞRENME ═══');
+{
+  iddia('AO - havuz buyuklugu', 400, AO.HAVUZ, 0);
+  iddia('AO - tekrar sayisi', 15, AO.TEKRAR, 0);
+  /* denge parametresi gercekten istenen pozitif payi veriyor mu */
+  { let enBuyuk = 0;
+    AO.dengeler.forEach(dv => { const V2 = AO.veri(4000, 4242, dv);
+      const pay = V2.y.reduce((a, z) => a + z, 0)/V2.y.length;
+      enBuyuk = Math.max(enBuyuk, Math.abs(pay - dv)); });
+    iddia('AO - kurulan sinif dengesi istenen degerde (en buyuk sapma)', 0, enBuyuk, 1); }
+  /* baslangic tohumunda iki strateji ayni olmali */
+  { let enBuyuk = 0;
+    AO.dengeler.forEach(dv => enBuyuk = Math.max(enBuyuk,
+      Math.abs(AO.sonuc('rastgele', 4, dv).dogruluk - AO.sonuc('belirsizlik', 4, dv).dogruluk)));
+    iddia('AO - tohum butcesinde iki strateji ayni', 0, enBuyuk, 9); }
+
+  /* 1. adim - dengeli veride kazanc */
+  iddia('AO - dengeli - 8 etiket - rastgele', 65.8, 100*AO.sonuc('rastgele', 8, 0.50).dogruluk, 1);
+  iddia('AO - dengeli - 8 etiket - belirsizlik', 70.5, 100*AO.sonuc('belirsizlik', 8, 0.50).dogruluk, 1);
+  iddia('AO - dengeli - 16 etiket - rastgele', 73.0, 100*AO.sonuc('rastgele', 16, 0.50).dogruluk, 1);
+  iddia('AO - dengeli - 16 etiket - belirsizlik', 76.0, 100*AO.sonuc('belirsizlik', 16, 0.50).dogruluk, 1);
+  iddia('AO - dengeli - 64 etiket - rastgele', 80.9, 100*AO.sonuc('rastgele', 64, 0.50).dogruluk, 1);
+  iddia('AO - dengeli - 64 etiket - belirsizlik', 81.7, 100*AO.sonuc('belirsizlik', 64, 0.50).dogruluk, 1);
+  iddia('AO - dengeli gurultu tavani', 82.8, 100*AO.tavan(0.50), 1);
+  /* hicbir yontem tavani asmiyor */
+  { let asan = 0;
+    AO.dengeler.forEach(dv => AO.butceler.forEach(bv => {
+      if (AO.sonuc('rastgele', bv, dv).dogruluk > AO.tavan(dv) + 0.02) asan++;
+      if (AO.sonuc('belirsizlik', bv, dv).dogruluk > AO.tavan(dv) + 0.02) asan++; }));
+    iddia('AO - gurultu tavani asilmiyor', 0, asan, 0); }
+  /* butce arttikca dogruluk artiyor */
+  { let ihlal = 0;
+    AO.dengeler.forEach(dv => ['rastgele', 'belirsizlik'].forEach(st => {
+      for (let i = 1; i < AO.butceler.length; i++)
+        if (AO.sonuc(st, AO.butceler[i], dv).dogruluk <
+            AO.sonuc(st, AO.butceler[i-1], dv).dogruluk - 1e-12) ihlal++; }));
+    iddia('AO - butce arttikca dogruluk artiyor', 0, ihlal, 0); }
+
+  /* 2. adim - etiketlenen kumenin bilesimi */
+  iddia('AO - denge 0.20 - rastgele pozitif payi', 22, 100*AO.sonuc('rastgele', 64, 0.20).pozitifPay, 0);
+  iddia('AO - denge 0.20 - belirsizlik pozitif payi', 42, 100*AO.sonuc('belirsizlik', 64, 0.20).pozitifPay, 0);
+  iddia('AO - denge 0.08 - belirsizlik pozitif payi', 37, 100*AO.sonuc('belirsizlik', 64, 0.08).pozitifPay, 0);
+  /* belirsizlik her dengede havuzdan daha cok pozitif topluyor */
+  /* dogru iddia: DENGESIZ havuzda belirsizlik daha cok pozitif topluyor.
+     Dengeli havuzda (0.50) zaten daha fazlasini toplayamaz; orada esitlenir. */
+  { let ihlal = 0;
+    AO.dengeler.forEach(dv => { if (dv >= 0.5) return;
+      if (AO.sonuc('belirsizlik', 64, dv).pozitifPay <= dv) ihlal++; });
+    iddia('AO · dengesiz havuzda belirsizlik daha çok pozitif topluyor', 0, ihlal, 0);
+    iddia('AO · dengeli havuzda pay 0.50 civarında', 0.50,
+          AO.sonuc('belirsizlik', 64, 0.50).pozitifPay, 2);
+    /* belirsizligin payi havuzdan 0.50 ye daha yakin · dengeli havuzda
+       ikisi de zaten 0.50 de oldugu icin 0.01 lik ornekleme gurultusu payi birakildi */
+    let uzak = 0;
+    AO.dengeler.forEach(dv => {
+      const u = Math.abs(AO.sonuc('belirsizlik', 64, dv).pozitifPay - 0.5);
+      if (u > Math.abs(dv - 0.5) + 0.01) uzak++; });
+    iddia('AO · belirsizliğin payı dengeye havuzdan daha yakın', 0, uzak, 0);
+    /* dengeli havuzda sapma sadece ornekleme gurultusu kadar */
+    iddia('AO · dengeli havuzda 0.50 den sapma (nokta)', 0.003,
+          Math.abs(AO.sonuc('belirsizlik', 64, 0.50).pozitifPay - 0.5), 3);
+    /* dengesiz havuzlarda fark buyuk ve tartismasiz */
+    iddia('AO · havuz 0.20 de dengeye yaklasma (puan)', 21.9,
+          100*(Math.abs(0.20 - 0.5) - Math.abs(AO.sonuc('belirsizlik', 64, 0.20).pozitifPay - 0.5)), 1);
+    iddia('AO · havuz 0.08 de dengeye yaklasma (puan)', 29.3,
+          100*(Math.abs(0.08 - 0.5) - Math.abs(AO.sonuc('belirsizlik', 64, 0.08).pozitifPay - 0.5)), 1); }
+  /* rastgele havuz oranini koruyor (yaklasik) */
+  { let enBuyuk = 0;
+    AO.dengeler.forEach(dv => enBuyuk = Math.max(enBuyuk,
+      Math.abs(AO.sonuc('rastgele', 64, dv).pozitifPay - dv)));
+    iddia('AO - rastgele havuz oranini koruyor (en buyuk sapma)', 0, enBuyuk, 1); }
+
+  /* 3. adim - soguk baslangic */
+  iddia('AO - denge 0.08 - 8 etiket - rastgele', 83.0, 100*AO.sonuc('rastgele', 8, 0.08).dogruluk, 1);
+  iddia('AO - denge 0.08 - 8 etiket - belirsizlik', 80.6, 100*AO.sonuc('belirsizlik', 8, 0.08).dogruluk, 1);
+  iddia('AO - soguk baslangicta belirsizlik GERIDE', 1,
+        AO.sonuc('belirsizlik', 8, 0.08).dogruluk < AO.sonuc('rastgele', 8, 0.08).dogruluk ? 1 : 0, 0);
+  iddia('AO - denge 0.08 - 64 etiket - rastgele', 89.8, 100*AO.sonuc('rastgele', 64, 0.08).dogruluk, 1);
+  iddia('AO - denge 0.08 - 64 etiket - belirsizlik', 91.1, 100*AO.sonuc('belirsizlik', 64, 0.08).dogruluk, 1);
+  iddia('AO - buyuk butcede belirsizlik ONDE', 1,
+        AO.sonuc('belirsizlik', 64, 0.08).dogruluk > AO.sonuc('rastgele', 64, 0.08).dogruluk ? 1 : 0, 0);
+  /* dengesizlik arttikca 16 etiketteki kazanc buyuyor */
+  iddia('AO - 16 etiket kazanc - dengeli (puan)', 3.0,
+        100*(AO.sonuc('belirsizlik', 16, 0.50).dogruluk - AO.sonuc('rastgele', 16, 0.50).dogruluk), 1);
+  iddia('AO - 16 etiket kazanc - denge 0.20 (puan)', 3.4,
+        100*(AO.sonuc('belirsizlik', 16, 0.20).dogruluk - AO.sonuc('rastgele', 16, 0.20).dogruluk), 1);
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

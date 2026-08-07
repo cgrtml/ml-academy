@@ -9772,6 +9772,254 @@ VIZ.skorTablosu = s => {
   }
 };
 
+
+/* ═══════════ AKTİF ÖĞRENME ═══════════
+   Hangi örneği etiketleyeceğini model seçerse ne kazanır, nerede
+   kaybeder. Lojistik regresyon gerçekten eğitiliyor; her nokta
+   bağımsız tohumların ortalaması. */
+const AO = {};
+AO.D = 6; AO.HAVUZ = 400; AO.TEST = 2000; AO.TOHUM = 4;
+AO.butceler = [4, 8, 16, 32, 64];
+AO.TEKRAR = 15;
+AO.LAMBDA = 0.05; AO.ADIM = 250; AO.LR = 0.6;
+AO.dengeler = [0.50, 0.20, 0.08];   /* pozitif sınıfın payı */
+const _aoC = {};
+AO.wGercek = (() => { const r = rng(5), w = [];
+  for (let i = 0; i < AO.D; i++) w.push(omNormal(r));
+  const n = Math.sqrt(w.reduce((s, z) => s + z*z, 0));
+  return w.map(z => z/n); })();
+/* dengesizlik: karar sinirini kaydirarak pozitif payi ayarlaniyor */
+AO.kayma = denge => {
+  let a = -6, z = 6;
+  for (let it = 0; it < 60; it++){ const m = (a + z)/2;
+    /* standart normal projeksiyonun kuyruk olasiligi ~ 1 - Phi(m) */
+    const p = 0.5*(1 - erfYak(m/Math.SQRT2));
+    if (p > denge) a = m; else z = m; }
+  return (a + z)/2;
+};
+function erfYak(x){ /* Abramowitz-Stegun 7.1.26 */
+  const s = x < 0 ? -1 : 1; x = Math.abs(x);
+  const t = 1/(1 + 0.3275911*x);
+  const y = 1 - (((((1.061405429*t - 1.453152027)*t) + 1.421413741)*t
+    - 0.284496736)*t + 0.254829592)*t*Math.exp(-x*x);
+  return s*y; }
+AO.veri = (n, seed, denge) => {
+  const r = rng(seed), X = [], y = [], b = AO.kayma(denge);
+  for (let i = 0; i < n; i++){
+    const x = []; for (let j = 0; j < AO.D; j++) x.push(omNormal(r));
+    const z = x.reduce((s, v2, j) => s + v2*AO.wGercek[j], 0) - b;
+    y.push(r() < 1/(1 + Math.exp(-3*z)) ? 1 : 0);
+    X.push(x); }
+  return { X, y };
+};
+AO.egit = (X, y) => {
+  const w = new Array(AO.D + 1).fill(0), n = X.length;
+  if (n === 0) return w;
+  for (let t = 0; t < AO.ADIM; t++){
+    const g = new Array(AO.D + 1).fill(0);
+    for (let i = 0; i < n; i++){
+      let z = w[AO.D];
+      for (let j = 0; j < AO.D; j++) z += w[j]*X[i][j];
+      const e = 1/(1 + Math.exp(-z)) - y[i];
+      for (let j = 0; j < AO.D; j++) g[j] += e*X[i][j];
+      g[AO.D] += e; }
+    for (let j = 0; j <= AO.D; j++) w[j] -= AO.LR*(g[j]/n + AO.LAMBDA*w[j]); }
+  return w;
+};
+AO.skor = (w, x) => { let z = w[AO.D];
+  for (let j = 0; j < AO.D; j++) z += w[j]*x[j];
+  return z; };
+AO.dogruluk = (w, T) => { let d = 0;
+  for (let i = 0; i < T.X.length; i++)
+    if ((AO.skor(w, T.X[i]) > 0 ? 1 : 0) === T.y[i]) d++;
+  return d/T.X.length; };
+/* bir aktif ogrenme kosusu · strateji: 'rastgele' ya da 'belirsizlik' */
+AO.kosu = (strateji, butce, denge, tohum) => {
+  const H = AO.veri(AO.HAVUZ, 700 + tohum, denge);
+  const T = AO.veri(AO.TEST, 909, denge);
+  const r = rng(2000 + tohum);
+  const secili = [];
+  /* baslangic tohumu: rastgele */
+  const sira = [...Array(AO.HAVUZ).keys()];
+  for (let i = sira.length - 1; i > 0; i--){ const j = Math.floor((i + 1)*r());
+    const t = sira[i]; sira[i] = sira[j]; sira[j] = t; }
+  for (let i = 0; i < AO.TOHUM; i++) secili.push(sira[i]);
+  let ptr = AO.TOHUM;
+  while (secili.length < butce){
+    if (strateji === 'rastgele'){ secili.push(sira[ptr]); ptr++; }
+    else {
+      const w = AO.egit(secili.map(i => H.X[i]), secili.map(i => H.y[i]));
+      let en = Infinity, arg = -1;
+      for (let i = 0; i < AO.HAVUZ; i++){
+        if (secili.indexOf(i) >= 0) continue;
+        const m = Math.abs(AO.skor(w, H.X[i]));
+        if (m < en){ en = m; arg = i; } }
+      secili.push(arg); } }
+  const w = AO.egit(secili.map(i => H.X[i]), secili.map(i => H.y[i]));
+  return { dogruluk: AO.dogruluk(w, T),
+           pozitifPay: secili.filter(i => H.y[i] === 1).length/secili.length };
+};
+AO.sonuc = (strateji, butce, denge) => {
+  const key = 's' + strateji + ':' + butce + ':' + denge;
+  if (_aoC[key]) return _aoC[key];
+  let d = 0, p = 0;
+  for (let t = 0; t < AO.TEKRAR; t++){ const k = AO.kosu(strateji, butce, denge, t);
+    d += k.dogruluk; p += k.pozitifPay; }
+  return (_aoC[key] = { dogruluk: d/AO.TEKRAR, pozitifPay: p/AO.TEKRAR });
+};
+AO.tavan = denge => {
+  const key = 't' + denge;
+  if (_aoC[key] !== undefined) return _aoC[key];
+  const T = AO.veri(AO.TEST, 909, denge);
+  const w = [...AO.wGercek, -AO.kayma(denge)];
+  return (_aoC[key] = AO.dogruluk(w, T));
+};
+
+
+VIZ.aktifOgrenme = s => {
+  clear();
+  const sahne = s.sahne || 'egri';
+  const di = Math.max(0, Math.min(2, s.di === undefined ? 0 : Math.round(s.di)));
+  const denge = AO.dengeler[di];
+  const kart = (x, y, wd, ad, deger, rnk, alt) => {
+    box(x, y, wd, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + wd/2, y + 28, K.mut, 15);
+    txt(deger, x + wd/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + wd/2, y + 95, K.mut, 14);
+  };
+  const bEks = P => AO.butceler.forEach((bv, i) =>
+    txt(String(bv), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+
+  if (sahne === 'bilesim'){
+    baslikSerit('AKTİF ÖĞRENME · ETİKETLENEN KÜME NASIL DEĞİŞİYOR',
+      'Pozitif sınıfın havuzdaki payı %' + (100*denge).toFixed(0) +
+      '. Peki etiketlenen kümede payı ne?', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 4.35, 0, 0.58);
+    frame(P, 'etiket bütçesi', 'pozitif payı', [], [0, 0.2, 0.4]);
+    bEks(P);
+    [['rastgele', K.orange], ['belirsizlik', K.green]].forEach(([st, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = 3.6; cx.beginPath();
+      AO.butceler.forEach((bv, i) => { const y = P.sy(AO.sonuc(st, bv, denge).pozitifPay);
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      AO.butceler.forEach((bv, i) =>
+        dot(P.sx(i), P.sy(AO.sonuc(st, bv, denge).pozitifPay), 5, renk)); });
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(denge)); cx.lineTo(P.R.x + P.R.w, P.sy(denge)); cx.stroke();
+    cx.setLineDash([]);
+    txt('havuzdaki pay %' + (100*denge).toFixed(0),
+        P.R.x + P.R.w - 14, P.sy(denge) - 12, K.mut, 15, 'right');
+    txt('belirsizlik örneklemesi', P.R.x + 16, P.sy(0.55), K.green, 17, 'left');
+    txt('rastgele', P.R.x + 16, P.sy(0.51), K.orange, 17, 'left');
+    const r64 = AO.sonuc('rastgele', 64, denge), u64 = AO.sonuc('belirsizlik', 64, denge);
+    const bx = 830;
+    kart(bx, 200, 260, 'HAVUZDA POZİTİF', '%' + (100*denge).toFixed(0), K.blue);
+    kart(bx + 280, 200, 260, 'RASTGELE TOPLADI', '%' + (100*r64.pozitifPay).toFixed(0), K.orange,
+         '64 etikette');
+    kart(bx, 330, 260, 'BELİRSİZLİK TOPLADI', '%' + (100*u64.pozitifPay).toFixed(0), K.green,
+         '64 etikette');
+    kart(bx + 280, 330, 260, 'DOĞRULUK FARKI',
+         '+' + (100*(u64.dogruluk - r64.dogruluk)).toFixed(1) + ' puan', K.purple);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('KAZANCIN ASIL KAYNAĞI', bx + 270, 494, K.mut, 18);
+    txt('Belirsizlik örneklemesi sınıra yakın noktaları', bx + 18, 534, K.txt, 18, 'left');
+    txt('seçer. Sınırın çevresinde iki sınıf da bulunur.', bx + 18, 562, K.txt, 18, 'left');
+    txt('Sonuç: etiketlenen küme havuzdan çok daha', bx + 18, 602, K.green, 18, 'left');
+    txt('dengeli oluyor. Havuzda %' + (100*denge).toFixed(0) + ', toplananda %' +
+        (100*u64.pozitifPay).toFixed(0) + '.', bx + 18, 630, K.green, 18, 'left');
+    txt('Yani aktif öğrenme sadece "zor örnek" seçmiyor,', bx + 18, 670, K.mut, 17, 'left');
+    txt('aynı zamanda sınıf dengesini de düzeltiyor.', bx + 18, 696, K.mut, 17, 'left');
+  }
+
+  else if (sahne === 'soguk'){
+    baslikSerit('AKTİF ÖĞRENME · SOĞUK BAŞLANGIÇ TUZAĞI',
+      'Pozitif sınıfın payı %8. Az bütçede belirsizlik örneklemesi rastgeleden kötü.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 4.35, 0.74, 0.95);
+    frame(P, 'etiket bütçesi', 'doğruluk', [], [0.75, 0.80, 0.85, 0.90]);
+    bEks(P);
+    [['rastgele', K.orange], ['belirsizlik', K.green]].forEach(([st, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = 3.6; cx.beginPath();
+      AO.butceler.forEach((bv, i) => { const y = P.sy(AO.sonuc(st, bv, 0.08).dogruluk);
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      AO.butceler.forEach((bv, i) =>
+        dot(P.sx(i), P.sy(AO.sonuc(st, bv, 0.08).dogruluk), 5, renk)); });
+    dot(P.sx(1), P.sy(AO.sonuc('belirsizlik', 8, 0.08).dogruluk), 10, K.red);
+    txt('belirsizlik burada GERİDE', P.sx(1) + 16,
+        P.sy(AO.sonuc('belirsizlik', 8, 0.08).dogruluk) + 26, K.red, 16, 'left');
+    txt('rastgele', P.R.x + 16, P.sy(0.93), K.orange, 17, 'left');
+    txt('belirsizlik örneklemesi', P.R.x + 16, P.sy(0.915), K.green, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, '8 ETİKET · RASTGELE',
+         '%' + (100*AO.sonuc('rastgele', 8, 0.08).dogruluk).toFixed(1), K.orange);
+    kart(bx + 280, 200, 260, '8 ETİKET · BELİRSİZLİK',
+         '%' + (100*AO.sonuc('belirsizlik', 8, 0.08).dogruluk).toFixed(1), K.red, 'daha kötü');
+    kart(bx, 330, 260, '64 ETİKET · RASTGELE',
+         '%' + (100*AO.sonuc('rastgele', 64, 0.08).dogruluk).toFixed(1), K.orange);
+    kart(bx + 280, 330, 260, '64 ETİKET · BELİRSİZLİK',
+         '%' + (100*AO.sonuc('belirsizlik', 64, 0.08).dogruluk).toFixed(1), K.green, 'daha iyi');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.red, 2);
+    txt('KENDİ HATASINI TAKİP EDEN MODEL', bx + 270, 494, K.mut, 17);
+    txt('Belirsizliği ölçen şey modelin kendisi. Model', bx + 18, 534, K.txt, 18, 'left');
+    txt('kötüyse belirsizlik tahmini de kötüdür ve seçim', bx + 18, 562, K.txt, 18, 'left');
+    txt('yanlış bölgeye kilitlenir.', bx + 18, 590, K.txt, 18, 'left');
+    txt('8 etikette rastgele %' + (100*AO.sonuc('rastgele', 8, 0.08).dogruluk).toFixed(1) +
+        ', belirsizlik %' + (100*AO.sonuc('belirsizlik', 8, 0.08).dogruluk).toFixed(1) + '.',
+        bx + 18, 630, K.red, 18, 'left');
+    txt('64 etikette durum tersine dönüyor: %' +
+        (100*AO.sonuc('rastgele', 64, 0.08).dogruluk).toFixed(1) + ' e karşı %' +
+        (100*AO.sonuc('belirsizlik', 64, 0.08).dogruluk).toFixed(1) + '.',
+        bx + 18, 668, K.green, 18, 'left');
+    txt('Bu yüzden ilk turlar rastgele başlatılır.', bx + 18, 706, K.mut, 17, 'left');
+  }
+
+  else {
+    baslikSerit('AKTİF ÖĞRENME · HANGİ ÖRNEĞİ ETİKETLEYELİM',
+      'Havuzda ' + AO.HAVUZ + ' etiketsiz örnek. Pozitif payı %' + (100*denge).toFixed(0) +
+      '. Her nokta ' + AO.TEKRAR + ' bağımsız koşunun ortalaması.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 4.35, 0.55, 0.95);
+    frame(P, 'etiket bütçesi', 'doğruluk', [], [0.6, 0.7, 0.8, 0.9]);
+    bEks(P);
+    [['rastgele', K.orange], ['belirsizlik', K.green]].forEach(([st, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = 3.6; cx.beginPath();
+      AO.butceler.forEach((bv, i) => { const y = P.sy(AO.sonuc(st, bv, denge).dogruluk);
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      AO.butceler.forEach((bv, i) =>
+        dot(P.sx(i), P.sy(AO.sonuc(st, bv, denge).dogruluk), 5, renk)); });
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(AO.tavan(denge)));
+    cx.lineTo(P.R.x + P.R.w, P.sy(AO.tavan(denge))); cx.stroke();
+    cx.setLineDash([]);
+    txt('gürültü tavanı %' + (100*AO.tavan(denge)).toFixed(1),
+        P.R.x + P.R.w - 14, P.sy(AO.tavan(denge)) - 12, K.mut, 15, 'right');
+    txt('belirsizlik örneklemesi', P.R.x + 16, P.sy(0.93), K.green, 17, 'left');
+    txt('rastgele', P.R.x + 16, P.sy(0.905), K.orange, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'POZİTİF PAYI', '%' + (100*denge).toFixed(0), K.blue, 'havuzda');
+    kart(bx + 280, 200, 260, '16 ETİKETTE',
+         '%' + (100*AO.sonuc('rastgele', 16, denge).dogruluk).toFixed(1) + ' / %' +
+         (100*AO.sonuc('belirsizlik', 16, denge).dogruluk).toFixed(1), K.mut,
+         'rastgele / belirsizlik');
+    kart(bx, 330, 260, '64 ETİKETTE',
+         '%' + (100*AO.sonuc('rastgele', 64, denge).dogruluk).toFixed(1) + ' / %' +
+         (100*AO.sonuc('belirsizlik', 64, denge).dogruluk).toFixed(1), K.mut);
+    kart(bx + 280, 330, 260, 'TAVAN', '%' + (100*AO.tavan(denge)).toFixed(1), K.mut,
+         'gürültü sınırı');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('ETİKET PAHALIYSA HANGİSİNİ SORARSIN', bx + 270, 494, K.mut, 17);
+    txt('Rastgele örnekleme havuzun tipik örneklerini', bx + 18, 534, K.txt, 18, 'left');
+    txt('getirir. Belirsizlik örneklemesi ise modelin en', bx + 18, 562, K.txt, 18, 'left');
+    txt('kararsız olduğu, yani sınıra en yakın örneği ister.', bx + 18, 590, K.txt, 18, 'left');
+    txt('16 etikette fark: ' +
+        (100*(AO.sonuc('belirsizlik', 16, denge).dogruluk -
+              AO.sonuc('rastgele', 16, denge).dogruluk)).toFixed(1) + ' puan.',
+        bx + 18, 630, K.green, 18, 'left');
+    txt('Kazanç var ama sihirli değil: aynı doğruluğa', bx + 18, 668, K.mut, 17, 'left');
+    txt('yaklaşık iki kat az etiketle ulaşılıyor, yüz kat değil.', bx + 18, 694, K.mut, 17, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
