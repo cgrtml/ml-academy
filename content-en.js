@@ -5056,3 +5056,229 @@ DERSLER_EN['tokenizer-fark'] = {
   },
   ],
 };
+
+DERSLER_EN['alan-model'] = {
+  ad:'Domain-specific models: generalist or specialist',
+  alt:'The answer to that question is not a preference but a measurable threshold. And what sets the threshold is how similar the domains are to each other.',
+  kaynaklar:[{"y":"Gururangan, S. et al.","t":"2020","b":"Don't Stop Pretraining: Adapt Language Models to Domains and Tasks","n":"ACL 2020","u":"https://arxiv.org/abs/2004.10964"},
+             {"y":"Lee, J. et al.","t":"2020","b":"BioBERT: a pre-trained biomedical language representation model","n":"Bioinformatics 36(4)","u":"https://arxiv.org/abs/1901.08746"},
+             {"y":"Bommasani, R. et al.","t":"2021","b":"On the Opportunities and Risks of Foundation Models","n":"arXiv:2108.07258","u":"https://arxiv.org/abs/2108.07258"},
+             {"y":"Rosenstein, M. T. et al.","t":"2005","b":"To Transfer or Not To Transfer","n":"NeurIPS 2005 Workshop on Transfer Learning"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'Two curves cross',
+    goal:'You will measure where the specialist and the generalist change places.',
+    todo:'Change the angle between the domains. Where does the crossing move?',
+    kind:'controls', viz:'alanModeli', h:760, xp:50, state:{sahne:'egri'},
+    body:'<p>The setup is a real experiment: 8 dimensional binary classification, logistic regression with an L2 penalty, full gradient descent. Because the problem is convex the result is stable.</p>' +
+         '<p>There are two domains. <b>General domain A</b>: 400 examples, always available. <b>Target domain B</b>: a variable number of examples, and expensive. There is an <b>angle</b> between their decision boundaries; at 0 the domains are identical, at 90 degrees they are completely unrelated.</p>' +
+         '<p>Two models are compared: the <b>specialist</b> is trained on B data only, the <b>generalist</b> sees A and B data together. Both are measured on B.</p>' +
+         '<p>At 30 degrees the result is clear: with 5 examples the specialist is at 57.8% and the generalist at 77.5%. But at 400 examples the specialist is at 81.0% and the generalist at 79.5%. The curves cross at <b>50 examples</b>.</p>' +
+         '<p>After the crossing the general data is no longer help but a <b>hindrance</b>: it pulls the model away from the target domain. This is a classic phenomenon in transfer learning and goes by the name negative transfer (Rosenstein et al., 2005).</p>' +
+         '<p>At small sample sizes the curves look wobbly, and that is real: the performance of a model trained on between 5 and 20 examples depends largely on which examples arrived.</p>',
+    learned:'<b>The specialist and generalist curves cross; the question is not which is better but where the crossing is.</b><br><br>At 30 degrees: with 5 examples the specialist is at 57.8% and the generalist at 77.5%; with 400 the specialist is at 81.0% and the generalist at 79.5%. The crossing is at 50 examples.<br><br>After the crossing the general data pulls the model away from the target domain. That is called negative transfer.',
+    controls:[{k:'ai', lb:'ANGLE BETWEEN DOMAINS', min:0, max:3, step:1, val:1}],
+  },
+  {
+    t:'Where is the crossing',
+    goal:'You will see the single variable that sets the threshold.',
+    todo:'Compare the threshold values at the four angles.',
+    kind:'static', viz:'alanModeli', h:760, xp:50, state:{sahne:'kesisim', ai:1},
+    body:'<p>Let us repeat the same experiment at four angles and measure the first number of examples at which the specialist takes the lead.</p>' +
+         '<p><b>0 degrees</b> (identical domains): the specialist never takes the lead at any sample size. The expected result, because here the general data is target domain data exactly. In that case building a separate specialist model is wasted effort.</p>' +
+         '<p><b>30 degrees</b>: the threshold is 50 examples.<br>' +
+         '<b>60 degrees</b>: the threshold is 10 examples.<br>' +
+         '<b>90 degrees</b>: the threshold is 5 examples, that is almost immediately.</p>' +
+         '<p>The trend is clear: as the domains move apart the information the general data carries shrinks and the specialist takes the lead with far less data. At 90 degrees the general data says nothing, so five examples are enough to overtake it.</p>' +
+         '<p>The practical counterpart: the sentence "our domain is very specialised, let us train our own model" is not on its own a justification. To be one, the domain has to be genuinely distant and there has to be enough domain data. Both are measurable.</p>',
+    learned:'<b>The single variable that sets the threshold is the distance between the domains.</b><br><br>0 degrees: no threshold, the generalist is always ahead. 30 degrees: 50 examples. 60 degrees: 10 examples. 90 degrees: 5 examples.<br><br>The claim "our domain is special" is only valid if it is supported by two things: is the domain genuinely distant, and is there enough domain data. Both are measurable questions.',
+  },
+  {
+    t:'How much information does the general data carry',
+    goal:'You will measure the value of transfer directly.',
+    todo:'Change the angle. What does a model that has seen no examples from the target domain do?',
+    kind:'controls', viz:'alanModeli', h:760, xp:50, state:{sahne:'aktarim'},
+    body:'<p>Now a third model: trained on general domain A only, having seen <b>no examples</b> from the target domain. We measure it on the target domain. That gives the raw value of transfer directly.</p>' +
+         '<p>At 0 degrees it is 79.5%. The model is near the noise ceiling even though it has not seen a single example from the target domain, because the domains are identical.</p>' +
+         '<p>At 30 degrees it is 77.2%, at 60 degrees 65.9%, and at 90 degrees <b>51.8%</b>. The last number is indistinguishable from a coin flip.</p>' +
+         '<p>The main message here: <b>transfer is not free, it is a measurable quantity</b>. And when that quantity approaches zero, the general data does not merely become useless, it does active harm: as you saw in the first step, at 90 degrees the generalist stays behind the specialist even with 400 domain examples.</p>' +
+         '<p>A caveat: the "angle" here is not something you can measure directly in real life. But its proxy is measurable: testing the general model on the target domain. The number you get is the best indicator of how well transfer will work, and running that test takes an afternoon.</p>',
+    learned:'<b>The value of transfer is measurable: test the general model on the target domain.</b><br><br>A model that has seen no target domain examples: 79.5% at 0 degrees, 77.2% at 30, 65.9% at 60, 51.8% at 90 (a coin flip).<br><br>In real life you cannot measure the angle directly but you can measure its proxy. The general model\'s raw performance on the target domain is the best indicator of how well transfer will work.',
+    controls:[{k:'ai', lb:'ANGLE BETWEEN DOMAINS', min:0, max:3, step:1, val:0}],
+  },
+  {
+    t:'The decision rule',
+    goal:'You will turn the measurements into a decision.',
+    todo:'Answer the question.',
+    kind:'controls', viz:'alanModeli', h:760, xp:75, state:{sahne:'egri'},
+    body:'<p>Putting the three measurements together gives a decision rule:</p>' +
+         '<p><b>1. Test the general model on the target domain.</b> If the result is near the noise ceiling the domain is not distant and building a separate model is probably wasted effort.</p>' +
+         '<p><b>2. Count the domain data you have.</b> Below the threshold, use the generalist; above it, the specialist wins.</p>' +
+         '<p><b>3. In the region between there is a third route:</b> start from the general model and continue training on domain data. Gururangan et al. (2020) showed that continued in domain pretraining gives good results with far less data than training from scratch; BioBERT (Lee et al., 2020) is an application of the same approach to biomedical text.</p>' +
+         '<p>That third route is better than the two extremes we measured here because it uses the general data as a <b>starting point</b> rather than as a weight pulling constantly during training. That is, it removes the source of negative transfer.</p>' +
+         '<p>A last note: in the era of foundation models the "generalist" option is no longer a model you trained yourself but a ready made foundation model. The decision rule stays the same, only the cost of the generalist drops to almost nothing, which shifts the balance in the generalist\'s favour.</p>',
+    learned:'<b>The decision is made with three measurements: the value of transfer, the amount of domain data, and where the threshold is.</b><br><br>Test the general model on the target domain. If it is near the ceiling, do not build a separate model. If it is distant and you have the data, the specialist wins.<br><br>In the region between, the best route is the third: start from the general model and continue training on domain data. It makes the general data a starting point rather than a constant pull, removing the source of negative transfer.',
+    controls:[{k:'ai', lb:'ANGLE BETWEEN DOMAINS', min:0, max:3, step:1, val:2}],
+    quiz:{
+      q:'You are building a claims classifier for an insurance company. You have 300 labelled company files. A ready made general model gives 78% accuracy on them with no training at all, while the human expert ceiling is around 90%. What do you do?',
+      opts:[
+        {t:'Start from the general model and continue training on the 300 files',
+         why:'Correct. The 78% zero shot result says transfer is strong, so the domain is not distant. But there is a gap against the 90% ceiling, so the domain data has something to add. Continued training is exactly the answer to that middle case: it uses the general model as a starting point, preserving the transfer while preventing the negative transfer that comes from the general data pulling constantly.'},
+        {t:'Train a specialist from scratch and do not use the general data at all',
+         why:'The measurement argues against it. The general model gives 78% with no training at all, so the general data carries real information in this domain. The 0 to 30 degree cases in the lesson correspond to this, and there the specialist only took the lead with far more data. 300 files is probably too few for that.'},
+        {t:'Use the general model as it is and keep the domain data',
+         why:'That leaves the gap between 78% and 90% unexploited. With 300 labelled files in hand there is no reason not to use them; the cost of continued training is low.'},
+        {t:'Wait until more data has been collected',
+         why:'The measurement does not call for waiting. The 78% starting point is already a usable baseline and 300 files is a sufficient start for continued training. Waiting means postponing a measurable gain.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['llm-siniflandirici'] = {
+  ad:'Turning an LLM into a classifier',
+  alt:'Asking an LLM "is this review positive" works, and works immediately. When you should move to a small model is a measurable question.',
+  kaynaklar:[{"y":"Brown, T. et al.","t":"2020","b":"Language Models are Few-Shot Learners","n":"NeurIPS 2020","u":"https://arxiv.org/abs/2005.14165"},
+             {"y":"Hsieh, C.-Y. et al.","t":"2023","b":"Distilling Step-by-Step! Outperforming Larger Language Models with Less Training Data and Smaller Model Sizes","n":"ACL 2023 Findings","u":"https://arxiv.org/abs/2305.02301"},
+             {"y":"Zhao, Z. et al.","t":"2021","b":"Calibrate Before Use: Improving Few-Shot Performance of Language Models","n":"ICML 2021","u":"https://arxiv.org/abs/2102.09690"},
+             {"y":"Bucila, C., Caruana, R. & Niculescu-Mizil, A.","t":"2006","b":"Model Compression","n":"KDD 2006","u":"https://doi.org/10.1145/1150402.1150464"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'When to move to a small model',
+    goal:'You will measure the crossing point of the two approaches.',
+    todo:'Increase the number of labels. Where does the green curve pass the dashed lines?',
+    kind:'controls', viz:'llmSiniflandirici', h:760, xp:50, state:{sahne:'egri'},
+    body:'<p>You have a classification job and no labelled data at all. Two routes:</p>' +
+         '<p><b>Ask an LLM.</b> Write a prompt and it works immediately. The accuracy is <b>independent</b> of the number of labels: the same with zero labels as with a thousand.</p>' +
+         '<p><b>Train a small model.</b> Collect labels and train a logistic regression or a small classifier. The accuracy grows with the labels.</p>' +
+         '<p>The small model\'s curve is really measured here (24 dimensional, logistic regression, every point the average of 10 independent runs): 63.6% with 8 labels, 75.7% with 32, 84.2% with 128, 87.2% with 512. The noise ceiling is <b>88.1%</b>.</p>' +
+         '<p>The LLM\'s numbers, meanwhile, are <b>assumptions</b> rather than measurements: 72% zero shot, 80% few shot. You should measure those two numbers on your own job; the lesson here is not the numbers themselves but <b>the shape of the curves</b>.</p>' +
+         '<p>The crossings: the small model passes the zero shot LLM at <b>32 labels</b> and the few shot LLM at <b>128 labels</b>.</p>' +
+         '<p>Those numbers are smaller than most people guess. The intuition that "training a model takes thousands of labels" is usually wrong for simple classification jobs.</p>',
+    learned:'<b>An LLM\'s accuracy is a baseline independent of the number of labels.</b><br><br>The small model gets 63.6% with 8 labels, 75.7% with 32, 84.2% with 128 and 87.2% with 512 (ceiling 88.1%).<br><br>Under these assumptions the crossings are at 32 and 128 labels. The numbers are smaller than expected: the intuition that "training a model takes thousands of labels" is usually wrong for simple classification jobs.',
+    controls:[{k:'ni', lb:'LABELLED EXAMPLES', min:0, max:5, step:1, val:3}],
+  },
+  {
+    t:'The bill',
+    goal:'You will compare the cost shape of the two approaches.',
+    todo:'Change the number of labels and the volume. Where is the break even?',
+    kind:'controls', viz:'llmSiniflandirici', h:760, xp:50, state:{sahne:'maliyet'},
+    body:'<p>The cost shapes are completely different.</p>' +
+         '<p><b>The LLM:</b> you pay on every call. The cost grows linearly with volume and never saturates.</p>' +
+         '<p><b>The small model:</b> the cost is almost entirely a one off labelling expense. After that the inference cost is on the order of a thousandth of the LLM\'s.</p>' +
+         '<p>Assuming 0.5 units per label and 0.002 units per LLM call, the break even point is a simple division: <b>n × 0.5 / 0.002</b>.</p>' +
+         '<p>With 32 labels the break even is <b>8,008 requests</b>. With 128 labels, 32,032. With 512 labels, 128,128.</p>' +
+         '<p>So even in a mid sized product a small model pays for itself within the first month. At a million requests a month the LLM costs 2000 units while a small model with 512 labels costs 258.</p>' +
+         '<p>The practical consequence is a common design pattern: <b>start with an LLM, label with the LLM, move to a small model.</b> The LLM itself is used as the labeller, and that can be seen as the modern form of distillation (Bucila et al., 2006). As Hsieh et al. (2023) showed, using not only the LLM\'s label but also its rationale gives better small models with less data.</p>',
+    learned:'<b>The LLM\'s cost is linear in volume while the small model\'s cost is almost entirely a one off labelling expense.</b><br><br>The break even point is n × price per label / price per call. 8,008 requests with 32 labels, 128,128 with 512.<br><br>A common design pattern: start with an LLM, label with the LLM, move to a small model. That is the modern form of distillation.',
+    controls:[{k:'ni', lb:'LABELLED EXAMPLES', min:1, max:5, step:1, val:3},
+              {k:'hi', lb:'MONTHLY REQUESTS', min:0, max:4, step:1, val:2}],
+  },
+  {
+    t:'Trusting an LLM\'s scores',
+    goal:'You will see the problem that gets overlooked when using an LLM as a classifier.',
+    todo:'Answer the question.',
+    kind:'controls', viz:'llmSiniflandirici', h:760, xp:75, state:{sahne:'egri'},
+    body:'<p>Three things are easily overlooked when using an LLM as a classifier:</p>' +
+         '<p><b>1. The scores are not calibrated.</b> Using the probability the LLM gives to the "yes" token as a confidence score is common but dangerous. Zhao et al. (2021) showed that in few-shot classification those scores are sensitive even to the order of the examples, their formatting and which class comes first, and recommended not using them without correction. The masking distortion you measured in the grammar lesson is from the same family.</p>' +
+         '<p><b>2. The class balance cannot be controlled.</b> In a small model you can move the threshold and pick whatever point you want between precision and recall. With an LLM that adjustment is made indirectly and crudely through the prompt.</p>' +
+         '<p><b>3. Behaviour changes when the version changes.</b> When the provider updates the model your classifier changes too, and without your knowing. A small model you trained yourself stays frozen.</p>' +
+         '<p>Against that there are places where the LLM is unquestionably superior: <b>if the class definition changes often</b>, <b>if there are very many classes</b>, or <b>if you cannot collect any labels at all</b>. Changing a prompt is far faster than retraining.</p>' +
+         '<p>The right question is not "which is better" but <b>how stable is this job</b>. A stable job goes to a small model, a changing one to an LLM.</p>',
+    learned:'<b>The right question is not "which is better" but "how stable is this job".</b><br><br>The LLM\'s three weak points: its scores are not calibrated, the class balance cannot be tuned by a threshold, and behaviour changes without warning when the provider\'s version changes.<br><br>Against that, if the class definition changes often, if there are very many classes, or if no labels can be collected, the LLM is unquestionably superior.',
+    controls:[{k:'ni', lb:'LABELLED EXAMPLES', min:0, max:5, step:1, val:2}],
+    quiz:{
+      q:'You are building a classifier that sorts support tickets into 5 categories. There are 200 thousand tickets a month, the categories change once or twice a year, and you have no labelled data. How do you start?',
+      opts:[
+        {t:'Start with an LLM, label a few hundred tickets with that same LLM, then move to a small model',
+         why:'Correct. All three measurements point that way: the small model passes the LLM with a few hundred labels (84.2% at 128 labels), the break even volume at that label count is around 32 thousand requests against your 200 thousand a month, and because the categories rarely change the job is stable enough. Using the LLM as the labeller also lowers the data collection cost. When the categories change, the process is repeated.'},
+        {t:'Use the LLM permanently, it is the simplest',
+         why:'The volume argues against it: at 200 thousand requests a month the LLM cost is several times the break even point. And your classifier changes without warning when the version changes. Because the categories change only once or twice a year, this job is stable enough.'},
+        {t:'Have a few thousand tickets labelled by hand first',
+         why:'That works but is needlessly expensive. You measured it: at 128 labels the small model is already above the LLM and approaching the ceiling. And starting with hand labelling is a waste of time when the LLM itself can be used as the labeller.'},
+        {t:'Write rules instead of classifying, since the categories can change',
+         why:'Rules are generally brittle for 5 category natural language classification, and when the categories change they have to be rewritten too. And one or two changes a year is not a frequency that prevents retraining.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['temel-model'] = {
+  ad:'Foundation models: one model for everything',
+  alt:'The value of a foundation model comes not from its size but from the shared representation it finds at the intersection of many tasks. We can measure that intersection.',
+  kaynaklar:[{"y":"Bommasani, R. et al.","t":"2021","b":"On the Opportunities and Risks of Foundation Models","n":"arXiv:2108.07258","u":"https://arxiv.org/abs/2108.07258"},
+             {"y":"Caruana, R.","t":"1997","b":"Multitask Learning","n":"Machine Learning 28(1)","u":"https://doi.org/10.1023/A:1007379606734"},
+             {"y":"Maurer, A. et al.","t":"2016","b":"The Benefit of Multitask Representation Learning","n":"JMLR 17(81)","u":"https://jmlr.org/papers/v17/15-242.html"},
+             {"y":"Tripuraneni, N. et al.","t":"2021","b":"Provable Meta-Learning of Linear Representations","n":"ICML 2021","u":"https://arxiv.org/abs/2002.11684"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'In how many tasks does the shared structure appear',
+    goal:'You will see at the level of mechanism how a representation gets "learned".',
+    todo:'Increase the number of pretraining tasks. What does the recovery approach?',
+    kind:'controls', viz:'temelModel', h:760, xp:50, state:{sahne:'kurtarma'},
+    body:'<p>The setup: a 20 dimensional feature space. The decision boundaries of all the tasks lie in <b>a shared 3 dimensional subspace</b> inside it. No task knows this on its own; each one only learns its own 20 dimensional weight vector.</p>' +
+         '<p>Then we extract the dominant directions of the learned weight vectors (really computed, by power iteration and deflation). The recovery measure is how much of the projection of the true subspace onto the learned subspace is preserved.</p>' +
+         '<p>The measurement: <b>0.7071</b> with 2 tasks, 0.7718 with 5, 0.9182 with 10, <b>0.9918</b> with 30.</p>' +
+         '<p>The idea here is the essence of foundation models. A single task gives you only its own answer. Many tasks reveal <b>the structure they all use in common</b>. The representation is found at the intersection of the tasks.</p>' +
+         '<p>Note: with 2 tasks the recovery cannot approach 1, because 2 vectors cannot span a 3 dimensional space. That is not a training problem but an information problem: even with enough data, if the number of tasks is insufficient the subspace stays invisible.</p>',
+    learned:'<b>A shared representation is found at the intersection of tasks.</b><br><br>A shared 3 dimensional subspace in a 20 dimensional space: recovery is 0.7071 with 2 tasks, 0.9182 with 10 and 0.9918 with 30.<br><br>No single task can reveal that structure. Because 2 vectors cannot span 3 dimensions, recovery with few tasks is mathematically limited; that is an information problem rather than a training one.',
+    controls:[{k:'Ki', lb:'NUMBER OF PRETRAINING TASKS', min:0, max:4, step:1, val:4}],
+  },
+  {
+    t:'A new task with few examples',
+    goal:'You will measure what the representation buys, in units of data.',
+    todo:'Change the number of tasks. How many examples does a model from scratch need to reach where the foundation model gets with 20?',
+    kind:'controls', viz:'temelModel', h:760, xp:50, state:{sahne:'azornek'},
+    body:'<p>Now a <b>new</b> task arrives that lies in the subspace, and we have very few examples. Two routes: train from scratch in 20 dimensions, or train in the 3 dimensional representation the foundation model learned.</p>' +
+         '<p>Every number is the average of 12 independent data draws. A single draw of 5 examples would be meaningless, because the result depends on which 5 examples arrived.</p>' +
+         '<p>With a 30 task foundation model: 65.8% at 5 examples, <b>78.5%</b> at 20, 80.4% at 200 (ceiling 80.7%).</p>' +
+         '<p>From scratch: 57.0% at 5 examples, 65.8% at 20, 78.6% at 200.</p>' +
+         '<p>The comparison is striking: where the foundation model gets with <b>20 examples</b> (78.5%) is the same place the from scratch model gets with <b>200</b> (78.6%). <b>Ten times less data.</b></p>' +
+         '<p>The source of the gain is not the size of the model. The representation shrinks the place to search from 20 dimensions to 3. Searching a small space with little data is equivalent to searching a large space with a lot of data.</p>',
+    learned:'<b>A representation shrinks the place to search; that is where the gain comes from.</b><br><br>With a 30 task foundation model, 20 examples give 78.5%. A model trained from scratch reaches the same place with 200 (78.6%): ten times less data.<br><br>The gain comes not from the size of the model but from searching in 3 dimensions instead of 20.',
+    controls:[{k:'Ki', lb:'NUMBER OF PRETRAINING TASKS', min:0, max:4, step:1, val:4}],
+  },
+  {
+    t:'A weak foundation is a ceiling',
+    goal:'You will see why a bad representation can be worse than training from scratch.',
+    todo:'Compare the curves. Where is the 2 task foundation model at 200 examples?',
+    kind:'controls', viz:'temelModel', h:760, xp:50, state:{sahne:'zayif'},
+    body:'<p>Now let us see all the task counts on the same plot. The two extremes are interesting:</p>' +
+         '<p><b>30 tasks:</b> it beats training from scratch at every sample size and sits on the ceiling at 200 examples.</p>' +
+         '<p><b>2 tasks:</b> it sticks at <b>66.6%</b> at 200 examples. Training from scratch gives 78.6% on the same data. So a weak foundation model <b>stays behind</b> even with plenty of data.</p>' +
+         '<p>The reason is in the mechanism. Projecting onto a representation <b>irreversibly erases</b> the directions outside it. If the subspace was recovered incompletely, part of the true decision boundary stays in those erased directions and no amount of data brings it back.</p>' +
+         '<p>The rule that follows: <b>a good foundation model is a floor and a bad one is a ceiling.</b> The question to ask before deciding to use a representation is not "is it large" but "does it carry the directions my task needs".</p>' +
+         '<p>In practice this is the difference between training a thin layer on top of a frozen representation and fine tuning the whole model. A frozen representation is cheap but its ceiling is limited by the quality of the representation.</p>',
+    learned:'<b>A good foundation is a floor and a bad one is a ceiling.</b><br><br>A 30 task representation gives 80.4% at 200 examples (ceiling 80.7%). A 2 task representation sticks at 66.6% on the same data, while training from scratch gives 78.6%.<br><br>The reason: projecting onto a representation irreversibly erases the directions outside it. The ceiling of a frozen representation is the quality of that representation.',
+    controls:[{k:'Ki', lb:'NUMBER OF PRETRAINING TASKS', min:0, max:4, step:1, val:1}],
+  },
+  {
+    t:'Outside the shared structure',
+    goal:'You will see the case in which a foundation model fails completely.',
+    todo:'Study the plot, then answer the question.',
+    kind:'controls', viz:'temelModel', h:760, xp:75, state:{sahne:'disari'},
+    body:'<p>The last experiment: the new task\'s direction is <b>orthogonal</b> to the subspace the pretraining tasks share. So the shared representation holds no information at all about this task.</p>' +
+         '<p>The result is decisive: training in the foundation model\'s representation gives <b>49.9%</b> even at 200 examples, that is a coin flip. Training from scratch on the same 200 examples gives <b>78.2%</b>.</p>' +
+         '<p>What happens here is simple and irreversible: the projection zeroes out the direction that carries all the task\'s information. However much data you give it, the model <b>cannot see</b> that direction. The problem is not the data but the blindness of the representation.</p>' +
+         '<p>This is the other face of the picture from the first step. Foundation models are powerful because they capture the structure shared by many tasks. But for exactly that reason, they give nothing to a task that falls outside that shared structure.</p>' +
+         '<p>In real life no task is exactly orthogonal; the 90 degrees here is an extreme case. But the direction is this: the further your task is from a foundation model\'s pretraining distribution, the lower the result you get from a frozen representation and the more attractive full fine tuning (or training from scratch) becomes.</p>',
+    learned:'<b>A foundation model gives nothing to a task outside the shared structure.</b><br><br>On a task orthogonal to the subspace, training in the representation gives 49.9% at 200 examples (a coin flip) while training from scratch gives 78.2%.<br><br>The projection zeroes out the direction carrying the task\'s information and it does not come back. The problem is the blindness of the representation rather than the data; the fix is not adding data but unfreezing or changing the representation.',
+    controls:[{k:'Ki', lb:'NUMBER OF PRETRAINING TASKS', min:0, max:4, step:1, val:4}],
+    quiz:{
+      q:'You are training a thin classifier on top of a frozen image foundation model. The result plateaus at 71% however much data you add. Training a small model from scratch on the same data gives 76%. What does that mean?',
+      opts:[
+        {t:'The representation does not carry the directions your task needs; full fine tuning or a different representation is required',
+         why:'Correct. This is exactly the situation you measured in the lesson: projecting onto an incomplete or irrelevant representation irreversibly erases the directions outside it, and that loss is not closed by data. A 2 task representation stuck at 66.6% at 200 examples while training from scratch gave 78.6%. The right move is to unfreeze the representation (full fine tuning) or pick a foundation model closer to the task.'},
+        {t:'You should collect more data',
+         why:'The measurement argues against it: the result has already plateaued as data was added. The ceiling of a frozen representation is not passed with data, because the limit is in the directions the representation carries rather than in the amount of data.'},
+        {t:'You should make the classifier layer bigger',
+         why:'Making the layer bigger cannot bring back a direction that is not in the representation. The projection erased the information; no operation afterwards can regenerate it.'},
+        {t:'The foundation model is too small, you should move to a larger one',
+         why:'Size on its own is not the right diagnosis. You saw in the lesson that the recovery measure is what decides: the question is whether the representation carries the directions your task needs. A larger model trained on the same distribution stays just as blind to an orthogonal task.'},
+      ], correct:0 },
+  },
+  ],
+};
