@@ -1233,7 +1233,7 @@ VIZ.fisherLDA = s => {
       flDogruluk(th) > 0.9 ? K.green : K.red, 32);
 
   /* J ve varyans eğrileri */
-  const R2 = plot(rect(730, 535, 660, 105), 0, 180, 0, 1);
+  const R2 = plot(rect(730, 528, 660, 98), 0, 180, 0, 1);
   frame(R2, 'yön (derece)', 'ölçekli', [0, 45, 90, 135, 180], []);
   const enJ = flJ(FL.enIyi.fisher), enV = flVar(FL.enIyi.pca);
   [['J', K.green, t => flJ(t) / enJ], ['varyans', K.purple, t => flVar(t) / enV]].forEach(([ad, renk, fn]) => {
@@ -3719,7 +3719,7 @@ VIZ.kombinatorikPatlama = s => {
   else if (sahne === 'donanim'){
     baslikSerit('KOMBİNATORİK · DAHA HIZLI BİLGİSAYAR NE KAZANDIRIR',
       'Bilgisayarı 1000 kat hızlandırdık. Her büyüme sınıfı ne kadar ilerledi?', []);
-    const y0 = 220, sh = 118;
+    const y0 = 220, sh = 104;
     KP.sinif.forEach(([ad, f], i) => {
       const a = KP.cozulebilen(f, 1e9), b = KP.cozulebilen(f, 1e12);
       const ustel = i >= 2;
@@ -3734,11 +3734,11 @@ VIZ.kombinatorikPatlama = s => {
       txt(ustel ? '+' + (b - a) : '×' + (b / a).toFixed(1), 1080, y + 70,
           ustel ? K.red : K.green, 28);
     });
-    box(150, y0 + 4*sh + 6, 1200, 118, 'rgba(7,10,15,.55)', K.axis, 2);
+    box(150, y0 + 4*sh + 6, 1200, 100, 'rgba(7,10,15,.55)', K.axis, 2);
     txt('Polinom büyümede bilgisayarı 1000 kat hızlandırmak çözebildiğin boyutu çarpar.',
-        180, y0 + 4*sh + 48, K.txt, 19, 'left');
+        180, y0 + 4*sh + 42, K.txt, 19, 'left');
     txt('Üstel büyümede aynı hızlanma sadece birkaç birim ekler. n! için topu topu iki.',
-        180, y0 + 4*sh + 82, K.txt, 19, 'left');
+        180, y0 + 4*sh + 74, K.txt, 19, 'left');
   }
 
   else if (sahne === 'algoritma'){
@@ -12117,7 +12117,7 @@ VIZ.kmeans = s => {
   baslikSerit('k-MEANS KÜMELEME', 'Etiket yok. Model verideki grupları kendisi buluyor.',
     [['k','3',K.blue], ['ADIM', s.faz==='baslangic'?'0':String(s.it||0), K.orange],
      ['ÖĞRENME','gözetimsiz',K.green]]);
-  const P = plot(rect(400,180,700,470), -2.4,2.4, -2.4,2.4);
+  const P = plot(rect(400,170,700,415), -2.4,2.4, -2.4,2.4);
   frame(P,'özellik 1','özellik 2',[-2,-1,0,1,2],[-2,-1,0,1,2]);
   /* atama çizgileri */
   if (s.atama) KM_VERI.forEach((p,i) => {
@@ -12328,7 +12328,7 @@ VIZ.bolme = s => {
                     : 'Model öğrenir, sen ayarlarsın, gerçeği tek seferlik test söyler.',
     mod === 'kfold' ? [['KAT','5',K.blue], ['EĞİTİM','5 kez',K.orange]]
                     : [['EĞİTİM','%60',K.blue], ['DOĞRULAMA','%20',K.orange], ['TEST','%20',K.green]]);
-  const x0 = 110, W = 1280, h = 62;
+  const x0 = 110, W = 1230, h = 62;
   if (mod === 'tek'){
     const y = 260;
     const parcalar = [['EĞİTİM', .6, K.blue, 'model bundan ÖĞRENİR'],
@@ -12357,7 +12357,7 @@ VIZ.bolme = s => {
   } else {
     const kat = s.kat === undefined ? 0 : s.kat;
     for (let r=0;r<5;r++){
-      const y = 210 + r*88;
+      const y = 210 + r*72;
       for (let c=0;c<5;c++){
         const w = W/5;
         const test = c === r;
@@ -12372,8 +12372,8 @@ VIZ.bolme = s => {
       if (r <= kat) txt('skor '+(0.86 + r*0.017).toFixed(3), x0+W+16, y+38, K.green, 18, 'left');
     }
     if (kat >= 4){
-      box(x0+W/2-300, 660, 600, 70, 'rgba(34,211,160,.09)', K.green, 2.5);
-      txt('ortalama = 0.894   ·   std = 0.024', x0+W/2, 700, K.green, 24);
+      box(x0+W/2-300, 612, 600, 50, 'rgba(34,211,160,.09)', K.green, 2.5);
+      txt('ortalama = 0.894   ·   std = 0.024', x0+W/2, 644, K.green, 20);
     }
   }
   durum(mod === 'kfold'
@@ -12450,7 +12450,7 @@ VIZ.sinir = s => {
   baslikSerit('KARAR SINIRI', 'Sınıflandırma = uzayı ikiye bölen bir çizgi çizmek.',
     [['DOĞRULUK','%'+(dg*100).toFixed(1), dg>0.9?K.green:K.orange],
      ['YANLIŞ', String(FP+FN), K.red]]);
-  const P = plot(rect(320,180,860,500), 0,10, 0,10);
+  const P = plot(rect(320,180,860,468), 0,10, 0,10);
   /* bölgeler */
   const G = 60, cw = P.R.w/G, ch = P.R.h/G;
   for (let i=0;i<G;i++) for (let j=0;j<G;j++){
@@ -12698,7 +12698,7 @@ VIZ.agacKur = s => {
   baslikSerit('KARAR AĞACI  ·  CART', 'Ağaç yalnızca EKSEN-HİZALI kesebilir. Çapraz sınırı merdivenle yaklaşır.',
     [['DERİNLİK', String(d), K.blue], ['YAPRAK', String(yap), K.orange],
      ['DOĞRULUK', '%'+(dg*100).toFixed(1), dg>0.88?K.green:K.orange]]);
-  const P = plot(rect(110,190,540,480), 0,10, 0,10);
+  const P = plot(rect(110,190,540,458), 0,10, 0,10);
   bolgeCiz(P, agacIzgara(kok, 90), 90);
   frame(P,'x','y',[0,2,4,6,8,10],[0,2,4,6,8,10]);
   /* gerçek sınır */
@@ -12789,7 +12789,7 @@ VIZ.orman = s => {
   baslikSerit('RANDOM FOREST', 'Her ağaç farklı bir örneklem ve farklı özelliklerle büyür. Sonra hepsi oy verir.',
     [['AĞAÇ', String(n), K.blue], ['DERİNLİK','3',K.mut],
      ['DOĞRULUK','%'+(dg*100).toFixed(1), dg>0.92?K.green:K.orange]]);
-  const P = plot(rect(110,190,520,470), 0,10, 0,10);
+  const P = plot(rect(110,190,520,458), 0,10, 0,10);
   bolgeCiz(P, ormanIzgara(agaclar, 80), 80);
   frame(P,'x','y',[0,5,10],[0,5,10]);
   cx.setLineDash([9,7]); cx.strokeStyle = 'rgba(250,204,21,.7)'; cx.lineWidth = 2.5;
@@ -12842,7 +12842,7 @@ VIZ.boost = s => {
   txt('model', P.R.x+P.R.w-16, P.R.y+48, K.green, 17, 'right');
   txt('| artık (hata)', P.R.x+P.R.w-16, P.R.y+70, K.red, 17, 'right');
   /* alt sol: bu adımda eklenen kütük */
-  const Q = plot(rect(110,560,470,180), -0.4,10.4, -2.6,2.6);
+  const Q = plot(rect(110,555,470,133), -0.4,10.4, -2.6,2.6);
   frame(Q,'x','eklenen düzeltme',[0,5,10],[-2,0,2]);
   if (f.kutuk){
     cx.strokeStyle = K.orange; cx.lineWidth = 4;
@@ -12854,7 +12854,7 @@ VIZ.boost = s => {
     txt('kütük '+m+':  x ≤ '+f.kutuk.t.toFixed(2), Q.R.x+Q.R.w/2, Q.R.y-14, K.orange, 18);
   } else txt('henüz kütük yok, model sadece ortalama', Q.R.x+Q.R.w/2, Q.R.y+Q.R.h/2, K.mut, 19);
   /* alt sağ: MSE eğrisi */
-  const R2 = plot(rect(700,560,690,180), 0,30, 0,3.7);
+  const R2 = plot(rect(700,555,690,133), 0,30, 0,3.7);
   frame(R2,'eklenen ağaç sayısı','MSE',[0,10,20,30],[0,1,2,3]);
   cx.strokeStyle = K.green; cx.lineWidth = 3.5; cx.beginPath();
   F.forEach((ff,i) => i ? cx.lineTo(R2.sx(i),R2.sy(ff.mse)) : cx.moveTo(R2.sx(i),R2.sy(ff.mse)));
@@ -12874,7 +12874,7 @@ VIZ.knn = s => {
   baslikSerit('k-NEAREST NEIGHBORS', 'Eğitim yok. Soru gelince tüm veriye bakar, en yakın k komşuya oy verdirir.',
     [['k', String(k), K.blue], ['OY', r.oy0+' – '+r.oy1, K.orange],
      ['SONUÇ','sınıf '+r.sonuc, r.sonuc?K.green:K.pink]]);
-  const P = plot(rect(300,190,760,480), 0,10, 0,10);
+  const P = plot(rect(300,190,760,458), 0,10, 0,10);
   frame(P,'özellik 1','özellik 2',[0,2,4,6,8,10],[0,2,4,6,8,10]);
   /* k yarıçapı */
   cx.setLineDash([9,7]); cx.strokeStyle = 'rgba(34,211,160,.6)'; cx.lineWidth = 2.5;
@@ -13009,7 +13009,7 @@ VIZ.lojistik = s => {
   baslikSerit('LOJİSTİK REGRESYON', 'Doğrusal bir skor üretir, sigmoid ile olasılığa çevirir, çapraz entropi ile eğitilir.',
     [['EPOCH', String(e), K.blue], ['KAYIP', m.kayip.toFixed(3), m.kayip<0.2?K.green:K.orange],
      ['DOĞRULUK','%'+(m.dogruluk*100).toFixed(1), m.dogruluk>0.95?K.green:K.orange]]);
-  const P = plot(rect(110,190,540,470), 0,10, 0,10);
+  const P = plot(rect(110,190,540,456), 0,10, 0,10);
   const G = 70, cw = P.R.w/G, ch = P.R.h/G;
   for (let j=0;j<G;j++) for (let i=0;i<G;i++){
     const p = sgm(m.w[0]*(i/(G-1)*10) + m.w[1]*(j/(G-1)*10) + m.b);
@@ -13043,7 +13043,7 @@ VIZ.lojistik = s => {
   cx.beginPath(); cx.moveTo(Q.R.x,Q.sy(0.5)); cx.lineTo(Q.R.x+Q.R.w,Q.sy(0.5)); cx.stroke(); cx.setLineDash([]);
   txt('karar eşiği 0.5', Q.R.x+Q.R.w-12, Q.sy(0.5)-10, K.yellow, 16, 'right');
   /* kayıp eğrisi */
-  const R2 = plot(rect(770,520,600,180), 0,2000, 0,0.75);
+  const R2 = plot(rect(770,505,600,140), 0,2000, 0,0.75);
   frame(R2,'epoch','çapraz entropi',[0,500,1000,1500,2000],[0,0.25,0.5]);
   const tam = lojistikEgit(2000, 0.1);
   cx.strokeStyle = K.orange; cx.lineWidth = 3.5; cx.beginPath();
@@ -13063,7 +13063,7 @@ VIZ.svm = s => {
   baslikSerit('SUPPORT VECTOR MACHINE', 'Sadece ayırmakla yetinmez, iki sınıf arasındaki BOŞLUĞU en geniş yapmaya çalışır.',
     [['C', C.toFixed(1), K.orange], ['MARJ', m.marj.toFixed(2), K.blue],
      ['DESTEK VEKTÖRÜ', String(m.destek.length), K.green]]);
-  const P = plot(rect(300,200,760,480), 0,10, 0,10);
+  const P = plot(rect(300,200,760,468), 0,10, 0,10);
   frame(P,'özellik 1','özellik 2',[0,2,4,6,8,10],[0,2,4,6,8,10]);
   const [w0,w1] = m.w, b = m.b, nrm = Math.hypot(w0,w1);
   const cizgi = (ofset, renk, kal, kesik) => {
@@ -13315,7 +13315,7 @@ VIZ.pca = s => {
   baslikSerit('TEMEL BİLEŞEN ANALİZİ  ·  PCA',
     'Veriyi, varyansın en çok olduğu yeni eksenlere döndürür. Bilgi kaybı en aza iner.',
     [['PC1','%'+(E.l[0]/top*100).toFixed(1), K.green], ['PC2','%'+(E.l[1]/top*100).toFixed(1), K.orange]]);
-  const P = plot(rect(110,190,540,470), 0,10, 0,10);
+  const P = plot(rect(110,190,540,438), 0,10, 0,10);
   frame(P,'özellik 1','özellik 2',[0,2,4,6,8,10],[0,2,4,6,8,10]);
   const oklu = (v,l,renk,ad) => {
     const uz = Math.sqrt(l)*2.3;
@@ -13414,7 +13414,7 @@ VIZ.optimizer = s => {
     [['ADIM', String(adim), K.blue]].concat(kos.map(o =>
       [o.ad, o.r.mse_[Math.min(adim,o.r.mse_.length-1)].toFixed(2), o.renk])));
   /* kayıp haritası */
-  const P = plot(rect(110,190,620,470), MW[0],MW[1], MB[0],MB[1]);
+  const P = plot(rect(110,190,620,458), MW[0],MW[1], MB[0],MB[1]);
   const G = 64, cw = P.R.w/G, ch = P.R.h/G;
   for (let i=0;i<G;i++) for (let j=0;j<G;j++){
     const w = MW[0]+(i+.5)/G*(MW[1]-MW[0]), b = MB[0]+(j+.5)/G*(MB[1]-MB[0]);
@@ -13479,7 +13479,7 @@ VIZ.aktivasyon = s => {
   });
   txt('FONKSİYON', P.R.x+P.R.w/2, 190, K.mut, 18);
   /* türev */
-  const Q = plot(rect(110,530,540,180), -6,6, -0.05,1.15);
+  const Q = plot(rect(110,512,540,130), -6,6, -0.05,1.15);
   frame(Q,'z',"f '(z)",[-4,-2,0,2,4],[0,0.25,0.5,1]);
   Object.entries(AKT).forEach(([k,a]) => {
     cx.strokeStyle = k === ad ? a.renk : 'rgba(132,148,168,.2)';
@@ -13495,7 +13495,7 @@ VIZ.aktivasyon = s => {
   txt('TÜREV', Q.R.x+Q.R.w/2, 520, K.mut, 18);
   /* katman katman gradyan */
   const G = katmanGradyan(ad, 10);
-  const R2 = plot(rect(780,230,610,420), 0.4, 10.6, -9, 0.5);
+  const R2 = plot(rect(780,230,610,416), 0.4, 10.6, -9, 0.5);
   frame(R2,'katman (1 = girdiye en yakın)','log₁₀ ‖gradyan‖',[1,3,5,7,9],[-8,-6,-4,-2,0]);
   cx.strokeStyle = A.renk; cx.lineWidth = 4; cx.beginPath();
   G.forEach((v,i) => { const lv = Math.log10(Math.max(v,1e-9));
