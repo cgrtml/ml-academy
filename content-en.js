@@ -1006,3 +1006,81 @@ DERSLER_EN['mat-matris'] = {
   },
   ],
 };
+
+DERSLER_EN['mat-olasilik'] = {
+  ad:'Probability: a good test is not enough',
+  alt:'The same test, the same two numbers, completely different meanings. Understand why once and the way you read classification metrics changes.',
+  kaynaklar:[{"y":"Gigerenzer, G. & Hoffrage, U.","t":"1995","b":"How to Improve Bayesian Reasoning Without Instruction: Frequency Formats","n":"Psychological Review 102(4)"},
+             {"y":"Deisenroth, M. P., Faisal, A. A. & Ong, C. S.","t":"2020","b":"Mathematics for Machine Learning, Chapter 6","n":"Cambridge University Press","u":"https://mml-book.github.io/"},
+             {"y":"Wasserman, L.","t":"2004","b":"All of Statistics, Chapters 1-2","n":"Springer"}],
+  rota:0,
+  adimlar:[
+  {
+    t:'A probability says nothing about a single trial',
+    goal:'You will see what a probability number is actually promising.',
+    todo:'Increase the number of tosses. When does the blue line settle onto the dashed one?',
+    kind:'controls', viz:'olasilikTaban', h:760, xp:25, state:{sahne:'sayilar'},
+    body:'<p>The sentence "the probability of heads is 0.5" says <b>nothing</b> about the next toss. What it says is that as the number of tosses grows, the fraction of heads approaches 0.5.</p>' +
+         '<p>The blue line on the plot is the trace of one run of the experiment. It jumps around at first and then settles. At 10 tosses the ratio is 0.500, at 100 it is 0.430, at 2000 it is 0.490.</p>' +
+         '<p>The plot on the right matters more. For each N we ran the whole experiment <b>400 times</b> and averaged the deviation: <b>0.1218</b> at 10 tosses, <b>0.0627</b> at 40, <b>0.0313</b> at 160, <b>0.0078</b> at 2560.</p>' +
+         '<p>Did you see the pattern: <b>quadruple the number of tosses and the deviation halves</b>. So accuracy grows with √N, not with N. The measured log-log slope is <b>&minus;0.4947</b>, almost exactly &minus;0.5.</p>' +
+         '<p>This will be directly useful in machine learning: making your test set four times larger only halves the noise in the accuracy you measure. A success rate measured on 100 examples sounds precise but is quite wobbly.</p>',
+    learned:'<b>A probability is not a promise, it is a long run frequency.</b><br><br>Measurement error shrinks with 1/√N: averaged over 400 runs the deviation is 0.1218 at 10 tosses and <b>0.0078</b> at 2560. The log-log slope is <b>&minus;0.4947</b>.<br><br>The consequence: quadrupling the sample size only halves the uncertainty. This is why comparisons made on small test sets deserve caution.',
+    controls:[{k:'n', lb:'NUMBER OF TOSSES', min:10, max:2000, step:10, val:20}],
+  },
+  {
+    t:'The test is 99% accurate, so what does positive mean?',
+    goal:'You will see that the meaning of a result depends as much on how common the disease is as on the quality of the test.',
+    todo:'Lower the prevalence. Of the people who test positive, how many are really sick?',
+    kind:'controls', viz:'olasilikTaban', h:760, xp:50, state:{sahne:'bayes', duy:0.99, ozg:0.99},
+    body:'<p>There is a test: it correctly catches <b>99%</b> of sick people and correctly calls <b>99%</b> of healthy people negative. It sounds perfect.</p>' +
+         '<p>Your test came back positive. What is the probability that you are sick?</p>' +
+         '<p>Most people say "99%". So do most doctors. The right answer <b>cannot be given</b> without knowing how common the disease is.</p>' +
+         '<p>If the disease is present in 1 person out of 100, here is what happens among 10,000 people:</p>' +
+         '<p><b>100</b> people are sick &rarr; the test catches <b>99</b> of them (true positives)<br><b>9,900</b> people are healthy &rarr; the test wrongly calls <b>99</b> of them positive</p>' +
+         '<p>That is <b>198</b> positives in total, of which <b>99</b> are really sick. So the answer is <b>50%</b>. A coin flip.</p>' +
+         '<p>The reason: healthy people are so numerous that even their tiny error rate produces as many false positives as there are sick people in total.</p>' +
+         '<p>Drop the prevalence to 0.1% and precision falls to <b>9.02%</b>. Raise it to 10% and it becomes <b>91.67%</b>. The test never changed.</p>',
+    learned:'<b>The quality of a test does not by itself determine what its result means.</b><br><br>With sensitivity at 99% and specificity at 99%, the probability that a positive result is correct is <b>9.02%</b> when prevalence is 0.1%, <b>50.00%</b> at 1%, and <b>91.67%</b> at 10%.<br><br>When you hunt for rare events, false positives outnumber true positives. This is called the <b>base rate</b> problem.',
+    controls:[{k:'ix', lb:'PREVALENCE', min:0, max:8, step:1, val:3}],
+  },
+  {
+    t:'The same model, a different world',
+    goal:'You will see the exact counterpart of this in machine learning.',
+    todo:'Raise the fraud rate. Can you push precision above 80%?',
+    kind:'controls', viz:'olasilikTaban', h:760, xp:50, state:{sahne:'taban', duy:0.95, ozg:0.95},
+    body:'<p>Now swap the medical test for a classification model. The model looks for fraud in card transactions. It catches 95% of frauds and correctly calls 95% of clean transactions clean.</p>' +
+         '<p>Those two numbers are properties of the model itself. We are not changing the model at all.</p>' +
+         '<p>At a bank where the fraud rate is 0.1%, the rate at which the model is right when it says "fraud" is <b>1.87%</b>. So when the model raises an alarm, <b>53 times out of 54</b> it is a false alarm.</p>' +
+         '<p>Put the same model in an environment where the rate is 5%: <b>50.00%</b>. Raise it to 20%: <b>82.61%</b>.</p>' +
+         '<p>The model is the same model. The only thing that changed is <b>the world itself</b>.</p>' +
+         '<p>This has two practical consequences. First, you cannot carry a model\'s success numbers into another environment; a model that reported 90% precision in a paper may give you 5% on your data. Second, this is exactly where the arithmetic in the "why accuracy lies to you" lesson comes from: on rare classes, the accuracy rate measures nothing.</p>',
+    learned:'<b>Precision is not a property of the model, it is a joint property of the model and the world.</b><br><br>With sensitivity and specificity fixed at 95%, precision is <b>1.87%</b> at a base rate of 0.1%, <b>50.00%</b> at 5%, and <b>82.61%</b> at 20%.<br><br>A model\'s numbers cannot be read apart from the class balance of the environment they were measured in.',
+    controls:[{k:'ix', lb:'FRAUD RATE', min:0, max:8, step:1, val:0}],
+  },
+  {
+    t:'So what should you do',
+    goal:'You will see how the design changes when the base rate is low.',
+    todo:'Answer the question.',
+    kind:'static', viz:'olasilikTaban', h:760, xp:50, state:{sahne:'taban', duy:0.95, ozg:0.95, ix:0},
+    body:'<p>If you are looking for a rare event there are three levers, and the arithmetic tells you which one works.</p>' +
+         '<p><b>Raise specificity.</b> This is the most effective one. If the model goes from 95% to 99.5% specificity, precision at a 0.1% base rate rises from 1.87% to <b>15.98%</b>. Reducing false positives is far more valuable than increasing true positives.</p>' +
+         '<p><b>Raise sensitivity.</b> This barely helps. Even going from 95% to 100% only lifts precision from 1.87% to <b>1.96%</b>. Because the problem is not the ones you miss, it is the ones you wrongly catch.</p>' +
+         '<p><b>Raise the base rate.</b> Narrow the search first. If you look at a subset that was already flagged as risky rather than at all transactions, the rate inside that subset goes up and the same model suddenly becomes useful. This is the logic behind the screening then confirmation order in medicine: a cheap test narrows the pool, an expensive test works on the narrowed pool.</p>' +
+         '<p>There is a fourth route, but it does not solve the problem: moving the threshold. That converts sensitivity into specificity and back, it does not improve both at once.</p>',
+    learned:'<b>When the base rate is low, the right thing to improve is specificity.</b><br><br>At a 0.1% rate, raising specificity from 95% to 99.5% takes precision from <b>1.87% to 15.98%</b>. Raising sensitivity from 95% to 100% only takes it from <b>1.87% to 1.96%</b>.<br><br>The third and often strongest route is to narrow the search first and <b>raise the base rate</b>. That is the logic behind cheap screening followed by expensive confirmation.',
+    quiz:{
+      q:'You are setting up screening for a rare cancer in a hospital. Its incidence is 1 in 10,000. Your model has 98% sensitivity and 98% specificity, and everybody who tests positive is sent for an expensive biopsy. Your budget is limited. What do you invest in?',
+      opts:[
+        {t:'Raising specificity, because almost every biopsy is wasted',
+         why:'Correct. At an incidence of 1 in 10,000, 98% specificity produces about 200 false positives among 10,000 people while the number of true positives is 1: roughly 99.5% of the biopsies are unnecessary. As the arithmetic in this lesson shows, when the base rate is low it is the number of false positives that determines precision, so specificity is the only meaningful thing to improve.'},
+        {t:'Raising sensitivity, since missing a patient is the worst outcome',
+         why:'Sensitivity is already 98% and even making it perfect gains very little: as you measured in this lesson, going from 95% to 100% only takes precision from 1.87% to 1.96%. The number of missed patients here is already tiny; the problem is in the false positives.'},
+        {t:'Collecting more data so the model learns better',
+         why:'More data may improve the model, but the problem is not the model\'s capacity to learn, it is the base rate itself. As long as sensitivity and specificity stay the same, precision does not change; data only helps to the extent that it raises specificity.'},
+        {t:'Raising the threshold so that fewer positives come out',
+         why:'Moving the threshold converts sensitivity into specificity and back: false positives go down while missed patients go up. That may be a design choice, but it does not increase the model\'s discriminating power, it only moves the error from one side to the other.'},
+      ], correct:0 },
+  },
+  ],
+};
