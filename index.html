@@ -237,6 +237,15 @@ const TAG = {hazir:['HAZIR','t-hazir'], yapim:['YAPIM AŞAMASINDA','t-yapim'], p
 function ciz(){
 let nHazir = 0, nToplam = 0, nBitti = 0, xpTop = 0;
 const en = DIL === 'en';
+/* EN başlık zinciri: tam çevrilmiş ders → çevrilmiş ders adı → Türkçe ad.
+   İkincisi olmadan arayüz İngilizceye geçiyor ama müfredattaki 111 ders adı
+   Türkçe kalıyordu. */
+const adEN = d => {
+  const tam = (typeof DERSLER_EN !== 'undefined') && DERSLER_EN[d.id];
+  if (tam && tam.ad) return tam.ad;
+  if (typeof DERS_ADI_EN !== 'undefined' && DERS_ADI_EN[d.id]) return DERS_ADI_EN[d.id];
+  return d.ad;
+};
 $('rotalar').innerHTML = ROTALAR.map(r => {
   const hazir = r.dersler.filter(d => d.durum === 'hazir').length;
   nToplam += r.dersler.length; nHazir += hazir;
@@ -253,7 +262,7 @@ $('rotalar').innerHTML = ROTALAR.map(r => {
     const link = d.durum === 'hazir' ? (d.dis || ('lesson.html?id=' + d.id)) : null;
     const inner =
       '<div class="no">'+(bitti ? '✓' : (i+1))+'</div>' +
-      '<div class="body"><div class="ad">'+((en && enDers) ? enDers.ad : d.ad)+'</div>' +
+      '<div class="body"><div class="ad">'+(en ? adEN(d) : d.ad)+'</div>' +
       '<div class="meta">' +
         '<span class="tag '+TAG[d.durum][1]+'">'+(en?EN.etiket[d.durum]:TAG[d.durum][0])+'</span>' +
         (cev ? '<span class="tag t-hazir">EN</span>' : '') +
@@ -297,7 +306,7 @@ if (devam){
   $('startBtn').href = 'lesson.html?id=' + devam.id;
   $('startBtn').textContent = (p && p.done.length ? (en?EN.devam:'Kaldığın yerden devam: ')
                                                   : (en?EN.basla:'Buradan başla: ')) +
-    ((en && typeof DERSLER_EN !== 'undefined' && DERSLER_EN[devam.id]) ? DERSLER_EN[devam.id].ad : devam.ad) + ' ▶';
+    (en ? adEN(devam) : devam.ad) + ' ▶';
 } else if (sirali.length){
   $('startBtn').textContent = en ? EN.bitti : 'Hepsini bitirdin ✓, tekrar et ▶';
 }

@@ -660,8 +660,12 @@ $('dilbar').querySelectorAll('button').forEach(b => {
   b.classList.toggle('on', b.dataset.dil === DIL);
   b.onclick = () => { localStorage.setItem('mlacad_dil', b.dataset.dil); location.reload(); };
 });
-$('dAd').textContent = D.ad;
+/* Ders tam çevrilmemişse bile başlık İngilizce görünsün, alt satır Türkçe kalır
+   ve zaten yukarıdaki dil notu bunu söylüyor. */
+$('dAd').textContent = (EN && !CEVRILI && typeof DERS_ADI_EN !== 'undefined' && DERS_ADI_EN[DERS_ID])
+                       ? DERS_ADI_EN[DERS_ID] : D.ad;
 $('dAlt').textContent = D.alt;
+document.title = $('dAd').textContent + ' · ML Academy';
 renderMap();
 go(MY.done.length && MY.done.length < D.adimlar.length ? Math.max(...MY.done)+1 : 0);
 </script>
