@@ -2952,3 +2952,167 @@ DERSLER_EN['rnn'] = {
   },
   ],
 };
+
+DERSLER_EN['lstm'] = {
+  ad:'LSTM: the cell path and the forget gate',
+  alt:'In the RNN lesson we measured the influence decaying at a rate of 0.59 per step. LSTM pushes that rate towards 1, and how it does so is visible in a single multiplication.',
+  kaynaklar:[{"y":"Hochreiter, S. & Schmidhuber, J.","t":"1997","b":"Long Short-Term Memory","n":"Neural Computation 9(8)"},
+             {"y":"Gers, F. A., Schmidhuber, J. & Cummins, F.","t":"2000","b":"Learning to Forget: Continual Prediction with LSTM","n":"Neural Computation 12(10)"},
+             {"y":"Jozefowicz, R., Zaremba, W. & Sutskever, I.","t":"2015","b":"An Empirical Exploration of Recurrent Network Architectures","n":"ICML 2015"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'The cell path and the forget gate',
+    goal:'You will see the single change with which LSTM stops the decay.',
+    todo:'Change the forget bias. How do the mean gate and the per step decay change?',
+    kind:'controls', viz:'lstmKapilar', h:770, xp:25, state:{sahne:'kapi'},
+    body:'<p>In an RNN the state was rewritten at every step: h &larr; tanh(W h + u x). Whether anything survived from the old state depended on surviving a multiplication by W.</p>' +
+         '<p>LSTM adds a second path. It puts a <b>cell</b> alongside the state and updates it like this:</p>' +
+         '<p style="text-align:center;font-size:1.2em">c &larr; f · c + i · g</p>' +
+         '<p>Here <b>f</b> is the forget gate, a number between 0 and 1. The cell is not multiplied by a matrix, only by <b>this gate</b>. If f were 1 the cell would be carried through unchanged, that is with no decay at all.</p>' +
+         '<p>The gate comes from a sigmoid, so its initial value is set by the bias: &sigma;(0) = <b>0.50</b>, &sigma;(1) = <b>0.73</b>, &sigma;(2) = <b>0.88</b>.</p>' +
+         '<p>The measured mean gate values are <b>0.5004</b>, <b>0.7251</b> and <b>0.8753</b> respectively. The per step decay rate is <b>0.7072</b>, <b>0.9197</b> and <b>1.0205</b>.</p>' +
+         '<p>At a bias of 2 the rate <b>passes 1</b>: the cell path now amplifies slightly rather than decaying. This is why giving the forget gate a <b>bias of 1</b> is a standard habit in LSTM implementations: starting the gate open means opening the path from the beginning.</p>',
+    learned:'<b>LSTM\'s solution is to multiply the cell by a gate rather than by a matrix.</b><br><br>In the form c &larr; f · c + i · g, if the gate f is close to 1 the cell is carried almost unchanged.<br><br>Measured mean gate: <b>0.5004</b> at bias 0, <b>0.7251</b> at 1, <b>0.8753</b> at 2. The per step decay is <b>0.7072</b>, <b>0.9197</b> and <b>1.0205</b> respectively.',
+    controls:[{k:'bF', lb:'FORGET BIAS', min:0, max:2, step:1, val:0}],
+  },
+  {
+    t:'The influence no longer fades',
+    goal:'You will compare an RNN and an LSTM on the same measurement.',
+    todo:'Raise the bias. How far above the red curve does the green one stay?',
+    kind:'controls', viz:'lstmKapilar', h:770, xp:50, state:{sahne:'sonum'},
+    body:'<p>We repeat exactly the measurement from the RNN lesson: the sensitivity of the output to an input t steps back, on an untrained network, averaged over 32 sequences. The same task, the same settings.</p>' +
+         '<p>The red curve is a plain RNN. Its per step decay rate is <b>0.5919</b> and the influence from 31 steps back is <b>1.61 × 10⁻⁷</b> of the last step\'s.</p>' +
+         '<p>The green curve is the LSTM:</p>' +
+         '<p><b>bias 0:</b> 31 steps back <b>2.09 × 10⁻⁵</b> · <b>130 times</b> the RNN<br>' +
+         '<b>bias 1:</b> <b>9.10 × 10⁻²</b> · <b>565 thousand times</b><br>' +
+         '<b>bias 2:</b> <b>3.50</b> · <b>21.7 million times</b></p>' +
+         '<p>At bias 2 the number passes 1: an input 31 steps back is <b>more</b> influential than the one at the last step. That is not an error, it is the cell path accumulating rather than decaying.</p>' +
+         '<p>Notice on the plot that the red curve keeps falling while the green one becomes almost flat. A curve flattening on a log axis means the exponential decay has <b>stopped</b>.</p>' +
+         '<p>The identity path we measured along depth in the skip connections lesson, this time along time.</p>',
+    learned:'<b>The cell path stops the exponential decay, and the difference is measurable.</b><br><br>The influence from 31 steps back: <b>1.61 × 10⁻⁷</b> in the RNN, <b>9.10 × 10⁻²</b> in the LSTM (bias 1). A difference of <b>565 thousand times</b>.<br><br>The per step decay is <b>0.5919</b> in the RNN and <b>1.0205</b> in the LSTM at bias 2. A curve flattening on a log axis means the decay has stopped.',
+    controls:[{k:'bF', lb:'FORGET BIAS', min:0, max:2, step:1, val:0}],
+  },
+  {
+    t:'What it means for the task',
+    goal:'You will measure how far the difference in decay moves a real task.',
+    todo:'Raise the sequence length to 8. Which model stays above zero?',
+    kind:'controls', viz:'lstmKapilar', h:770, xp:50, state:{sahne:'egitim'},
+    body:'<p>The same task as in the RNN lesson: show T random numbers and ask for the first one at the end. The same data, the same number of steps, the same learning rate.</p>' +
+         '<p><b>T = 4:</b> plain RNN <b>73.9%</b>, LSTM <b>29.3%</b>. The RNN is ahead.<br>' +
+         '<b>T = 8:</b> plain RNN <b>&minus;10.7%</b>, LSTM <b>25.0%</b>. The LSTM is ahead, by <b>35.7 points</b>.</p>' +
+         '<p>T = 8 was the point at which we measured the horizon ending in the RNN lesson. Right there the RNN drops below zero while the LSTM stays above it.</p>' +
+         '<p>But let us not ignore the result at T = 4: <b>on a short sequence the RNN is better</b>. The reason is the parameter count: <b>80</b> for the RNN, <b>328</b> for the LSTM. Four gates means four weight matrices. With no problem to solve, four times the parameters only means learning more slowly.</p>' +
+         '<p>An honest limit: we also measured longer sequences, but at that scale the LSTM runs come out <b>chaotic</b>. By the 10⁻¹² test from the exploding gradient lesson the results are not reproducible, so we do not write them down here as numbers.</p>',
+    learned:'<b>The difference in decay shows up in the task exactly where the horizon ends.</b><br><br>At T = 8 the plain RNN is at <b>&minus;10.7%</b> (below the mean) and the LSTM at <b>25.0%</b>. A difference of <b>35.7 points</b>.<br><br>At T = 4 the RNN is ahead (<b>73.9%</b> against 29.3%), because the LSTM with <b>328</b> parameters learns more slowly than an RNN with 80. <b>Gates are not free.</b>',
+    controls:[{k:'ti', lb:'SEQUENCE LENGTH', min:0, max:1, step:1, val:0}],
+  },
+  {
+    t:'When gates are not enough either',
+    goal:'You will see the limit of LSTM and what came after it.',
+    todo:'Answer the question.',
+    kind:'static', viz:'lstmKapilar', h:770, xp:50, state:{sahne:'sonum', bF:2},
+    body:'<p>LSTM largely solves the decay but it has three costs, and all three were measured or seen in this lesson.</p>' +
+         '<p><b>Parameters.</b> Four gates, four weight matrices: <b>328</b> instead of 80. About four times as many at the same hidden size.</p>' +
+         '<p><b>Sequentiality.</b> Because the cell is updated step by step, an LSTM <b>cannot process a sequence in parallel</b>. Processing a 1000 step sequence means 1000 sequential steps. In the matrix lesson you saw why graphics cards speed up parallel work: here that parallelism cannot be used.</p>' +
+         '<p><b>The path is still long.</b> Even with the gate open, information passes through 1000 multiplications for 1000 steps. Because the factors are close to 1 the decay is slow, but it is not zero.</p>' +
+         '<p><b>The attention mechanism</b> solves all three at once. Every step looks directly at every step in the past: the path length is <b>1</b> whatever the distance. There is no chain of multiplications to decay. And because steps do not wait for each other, the computation parallelises.</p>' +
+         '<p>Its price is clear too: because every step looks at every step, the cost grows with the <b>square</b> of the sequence length. The growth classes from the combinatorics lesson apply here too, and this time the trade is between memory horizon and computation.</p>',
+    learned:'<b>LSTM solves the decay, not the sequentiality.</b><br><br>Three costs: <b>328</b> parameters (80 in the RNN), the inability to process a sequence in parallel, and a path that is still as long as the number of steps even with the gate open.<br><br><b>Attention</b> solves all three: the path length is <b>1</b> at any distance, and the computation parallelises. In return the cost grows with the <b>square</b> of the sequence length.',
+    quiz:{
+      q:'You use an LSTM in a speech recognition model. Accuracy is good on long recordings but training is very slow: one epoch takes hours and the GPU sits idle most of the time. What do you do?',
+      opts:[
+        {t:'The problem is sequentiality, not decay: I move to an attention based architecture, because the steps do not wait for each other',
+         why:'Correct. An idle GPU is a direct sign that the work cannot be parallelised. Because an LSTM updates the cell step by step, a 1000 step recording means 1000 sequential steps, and that is exactly one of the three costs counted in this lesson. In attention every step looks directly at every step, so both the path length becomes 1 and the computation parallelises. Its price is a cost growing with the square of the sequence length, and that has to be chosen knowingly.'},
+        {t:'I raise the forget bias, the memory will be better',
+         why:'As you measured in this lesson, raising the bias genuinely reduces the decay: the per step rate goes from 0.7072 to 1.0205. But the symptom is not a memory problem, it is a speed problem. The bias does not change the fact that the computation is sequential.'},
+        {t:'I shrink the hidden size',
+         why:'That reduces the computation somewhat but does not change the sequentiality: 1000 steps are still 1000 sequential steps and the GPU still sits idle. It also risks the good accuracy on long recordings.'},
+        {t:'I add gradient clipping',
+         why:'Clipping cuts large gradients and stabilises training, but it has nothing to do with speed. A tool aimed at the wrong symptom.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['otokodlayici'] = {
+  ad:'Autoencoder: learning a representation from unlabelled data',
+  alt:'The network uses its own input as the target. Because it is forced through a narrow bottleneck, it has to decide what matters.',
+  kaynaklar:[{"y":"Hinton, G. E. & Salakhutdinov, R. R.","t":"2006","b":"Reducing the Dimensionality of Data with Neural Networks","n":"Science 313(5786)"},
+             {"y":"Baldi, P. & Hornik, K.","t":"1989","b":"Neural Networks and Principal Component Analysis","n":"Neural Networks 2(1)"},
+             {"y":"Goodfellow, I., Bengio, Y. & Courville, A.","t":"2016","b":"Deep Learning, Chapter 14","n":"MIT Press","u":"https://www.deeplearningbook.org/"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'The simplest form of learning without labels',
+    goal:'You will see what question an autoencoder asks.',
+    todo:'Increase the bottleneck size. How does the reconstruction error change?',
+    kind:'controls', viz:'otokodlayici', h:770, xp:25, state:{sahne:'bogaz'},
+    body:'<p>Every model so far had a label: the right answer. But labelled data is expensive and unlabelled data is plentiful. Can anything be learned from unlabelled data?</p>' +
+         '<p>The autoencoder\'s answer: <b>let the network\'s target be its own input</b>. Ask for the output to equal the input.</p>' +
+         '<p>Put that way it sounds pointless: what does copying the input teach? Which is exactly why we put a <b>narrow bottleneck</b> in between. 6 dimensional data first goes down to k dimensions and then back up to 6.</p>' +
+         '<p>Because the bottleneck is narrow, copying is impossible. The network has to decide what to keep and what to throw away, and <b>what it learns is that decision</b>.</p>' +
+         '<p>The data is 6 dimensional but it was really generated from 2 parameters: a curved surface. The measurement catches that. With a bottleneck of 1 the error is <b>1.6942</b>, with 2 it is <b>0.7679</b>, with 3 it is <b>0.3189</b>. The total variance is <b>3.3790</b>, which is the error you would get by doing nothing at all.</p>',
+    learned:'<b>An autoencoder uses the input itself as the target instead of a label.</b><br><br>A narrow bottleneck makes copying impossible, so the network is forced to decide what to keep.<br><br>Reconstruction error on 6 dimensional data: <b>1.6942</b> at a bottleneck of 1, <b>0.7679</b> at 2, <b>0.3189</b> at 3. The baseline for comparison is the total variance: <b>3.3790</b>.',
+    controls:[{k:'ki', lb:'BOTTLENECK SIZE', min:0, max:3, step:1, val:0}],
+  },
+  {
+    t:'A linear autoencoder is PCA',
+    goal:'You will see a surprising equivalence through measurement.',
+    todo:'Sweep the bottleneck size. Where does the blue curve sit relative to the orange one?',
+    kind:'controls', viz:'otokodlayici', h:770, xp:50, state:{sahne:'karsilastirma'},
+    body:'<p>Let us remove all the non linear layers from the autoencoder. What remains is two matrices: one that compresses and one that expands. The loss is still squared error.</p>' +
+         '<p>We trained that network with gradient descent and compared it with PCA. PCA is computed by a completely different route: the eigenvectors of the covariance matrix, via power iteration.</p>' +
+         '<p>The result:</p>' +
+         '<p>bottleneck 1: PCA <b>2.1141</b>, AE <b>2.1141</b> · difference <b>0.000%</b><br>' +
+         'bottleneck 2: <b>1.3426</b> and <b>1.3426</b> · difference <b>0.001%</b><br>' +
+         'bottleneck 3: <b>0.7845</b> and <b>0.7857</b> · difference <b>0.150%</b><br>' +
+         'bottleneck 4: <b>0.3477</b> and <b>0.3478</b> · difference <b>0.005%</b></p>' +
+         '<p>The same numbers. On the plot the blue curve sits on top of the orange one.</p>' +
+         '<p>This is not a coincidence, it is a known theorem: <b>a linear autoencoder trained with squared error finds the same subspace as PCA</b>. Both solve the question "which k dimensional subspace retains the most variance".</p>' +
+         '<p>The practical consequence: building a linear autoencoder has no advantage over PCA. And PCA is closed form and deterministic, while an autoencoder is iterative and depends on its initialisation.</p>',
+    learned:'<b>A linear autoencoder trained with squared error finds the same subspace as PCA.</b><br><br>The errors coincide at all four bottleneck sizes, with a largest difference of <b>0.150%</b> which itself comes from gradient descent not having fully converged.<br><br>So the autoencoder\'s gain does not come from "being a neural network". Wherever the gain comes from, it must be somewhere else.',
+    controls:[{k:'ki', lb:'BOTTLENECK SIZE', min:0, max:3, step:1, val:0}],
+  },
+  {
+    t:'The gain comes from the non linear layers',
+    goal:'You will measure the price of representing a curved surface with a linear subspace.',
+    todo:'Set the bottleneck to 3. How far below the orange curve is the green one?',
+    kind:'controls', viz:'otokodlayici', h:770, xp:50, state:{sahne:'karsilastirma'},
+    body:'<p>Now we add a tanh layer to the encoder and to the decoder. The same bottleneck, the same data, the same number of steps.</p>' +
+         '<p>The gain over PCA:</p>' +
+         '<p>bottleneck 1: <b>19.9%</b> &nbsp;·&nbsp; bottleneck 2: <b>42.8%</b> &nbsp;·&nbsp; bottleneck 3: <b>59.4%</b> &nbsp;·&nbsp; bottleneck 4: <b>16.1%</b></p>' +
+         '<p>The largest gain is at a bottleneck of 3: the error falls from <b>0.7845</b> to <b>0.3189</b>.</p>' +
+         '<p>The reason is in how the data was generated: from two parameters, but through a <b>curved</b> transformation. The data does not sit on a flat plane in 6 dimensional space, it sits on a bent surface.</p>' +
+         '<p>PCA can only find flat subspaces. It has to try to cover a bent surface with a flat plane, and the difference is the price of that bend.</p>' +
+         '<p>The gain falling at a bottleneck of 4 is meaningful too: given enough dimensions, a flat subspace starts covering the surface well, so there is less left to gain from curvature.</p>',
+    learned:'<b>An autoencoder\'s advantage over PCA comes from the non linear layers.</b><br><br>The gain over PCA at the same bottleneck: <b>19.9%</b> at 1 dimension, <b>42.8%</b> at 2, <b>59.4%</b> at 3, <b>16.1%</b> at 4.<br><br>The data sits on a curved surface and PCA can only find a flat subspace. As the bottleneck widens the gain shrinks, because a flat space becomes sufficient.',
+    controls:[{k:'ki', lb:'BOTTLENECK SIZE', min:0, max:3, step:1, val:0}],
+  },
+  {
+    t:'A low error does not mean a good representation',
+    goal:'You will see why reconstruction error is not a criterion on its own.',
+    todo:'Answer the question.',
+    kind:'static', viz:'otokodlayici', h:770, xp:50, state:{sahne:'karsilastirma', ki:3},
+    body:'<p>So far we have been trying to lower the error. So how would we get the lowest error of all?</p>' +
+         '<p>By widening the bottleneck to the same size as the input, that is 6. Then the network can learn the identity function and the error falls to <b>zero</b>.</p>' +
+         '<p>And what it learns is <b>nothing</b>. A representation that passes the input through unchanged is the input. With no compression there is no decision.</p>' +
+         '<p>The lesson here is general: <b>reconstruction error is not a goal, it is a pressure</b>. What is valuable is not that the error is low but that the network was <b>forced to give something up</b> to lower it.</p>' +
+         '<p>This is why every variant used in practice adds a further constraint. In a <b>denoising</b> autoencoder the input is corrupted and the clean version is requested, so copying does not work. In a <b>sparse</b> autoencoder most of the bottleneck units are forced to be zero. In a <b>variational</b> autoencoder the bottleneck is forced to be a distribution.</p>' +
+         '<p>All three have the same purpose: closing off the easy solution. Without a constraint an autoencoder always finds the laziest one.</p>',
+    learned:'<b>Reconstruction error is not a goal, it is a pressure.</b><br><br>If the bottleneck is as wide as the input the network learns the identity, the error falls to zero and the representation teaches <b>nothing</b>.<br><br>This is why every practical variant adds a constraint: denoising, sparse and variational autoencoders. All of them exist to <b>close off the easy solution</b>.',
+    quiz:{
+      q:'You are building an autoencoder for anomaly detection on sensor data. The bottleneck is 64 dimensions and the input is 60. During training the reconstruction error falls to almost zero but the model catches no anomalies at all. Why?',
+      opts:[
+        {t:'Because the bottleneck is wider than the input the network learned the identity: it reconstructs everything perfectly, anomalies included',
+         why:'Correct. Anomaly detection relies on the autoencoder reconstructing normal data well and abnormal data badly. That distinction only appears when the bottleneck forces it to give something up. Passing 60 dimensions through 64 imposes no constraint at all, and as this lesson explained, zero error in that situation is a sign of not learning rather than learning. The bottleneck has to be narrowed substantially.'},
+        {t:'It needs to be trained for longer',
+         why:'The error is already almost zero, so the optimisation succeeded. The problem is not that the model cannot reach the target, it is that the target is wrong: the identity function solves this loss perfectly and teaches nothing.'},
+        {t:'A deeper network is needed',
+         why:'Depth raises capacity, which only makes it easier to learn the identity. It makes the problem worse. What is missing is not capacity but a constraint.'},
+        {t:'The loss should be changed from squared error to absolute error',
+         why:'The form of the loss is not the deciding factor here. The identity function gives zero for any reconstruction loss you choose; the problem is not the type of loss but the width of the bottleneck.'},
+      ], correct:0 },
+  },
+  ],
+};
