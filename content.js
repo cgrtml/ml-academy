@@ -118,7 +118,7 @@ const ROTALAR = [
     {id:'tokenizer-fark',  ad:'Tokenizer\'lar neden farklı davranır',            sure:12, durum:'planli'},
     {id:'cokdilli',       ad:'Çok dilli modellerin kör noktası',               sure:14, durum:'hazir'},
     {id:'alan-model',     ad:'Alana özel modeller: genelci mi, uzman mı',      sure:16, durum:'hazir'},
-    {id:'temel-model',    ad:'Temel modeller: tek modelden her şeye',          sure:12, durum:'planli'},
+    {id:'temel-model',    ad:'Temel modeller: tek modelden her şeye',          sure:16, durum:'hazir'},
     {id:'llm-siniflandirici',  ad:'LLM\'i sınıflandırıcıya çevirmek',                sure:12, durum:'planli'},
     {id:'konu-kesif',     ad:'Gömmelerden konuya: kümeleme ile konu bulmak',   sure:12, durum:'planli'},
   ],
@@ -11291,6 +11291,157 @@ DERSLER['alan-model'] = {
       'Aradaki bölgede en iyi yol üçüncüsüdür: genel modelden başlayıp alan verisiyle devam ' +
       'eğitimi. Genel veriyi başlangıç noktası yapar, sürekli çeken bir ağırlık değil, ' +
       'böylece olumsuz aktarımın kaynağını ortadan kaldırır.',
+    xp:75,
+  },
+]};
+
+/* --------------- TEMEL MODEL --------------- */
+DERSLER['temel-model'] = {
+  ad:'Temel modeller: tek modelden her şeye',
+  alt:'Bir temel modelin değeri büyüklüğünden değil, birçok görevin kesişiminde bulduğu ortak temsilden gelir. Bu kesişimi ölçebiliriz.',
+  kaynaklar:[
+    {y:'Bommasani, R. ve ark.', t:'2021', b:'On the Opportunities and Risks of Foundation Models', n:'arXiv:2108.07258', u:'https://arxiv.org/abs/2108.07258'},
+    {y:'Caruana, R.', t:'1997', b:'Multitask Learning', n:'Machine Learning 28(1)', u:'https://doi.org/10.1023/A:1007379606734'},
+    {y:'Maurer, A. ve ark.', t:'2016', b:'The Benefit of Multitask Representation Learning', n:'JMLR 17(81)', u:'https://jmlr.org/papers/v17/15-242.html'},
+    {y:'Tripuraneni, N. ve ark.', t:'2021', b:'Provable Meta-Learning of Linear Representations', n:'ICML 2021', u:'https://arxiv.org/abs/2002.11684'},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'Ortak yapı kaç görevde ortaya çıkıyor',
+    goal:'Bir temsilin nasıl "öğrenildiğini" mekanizma düzeyinde göreceksin.',
+    todo:'Ön eğitim görevi sayısını artır. Kurtarma nereye yaklaşıyor?',
+    kind:'controls', viz:'temelModel', h:760,
+    controls:[{k:'Ki', lb:'ON EGITIM GOREVI SAYISI', min:0, max:4, step:1, val:4,
+      fmt:v => TM.gorevSayilari[Math.round(v)] + ' gorev'}],
+    state:{sahne:'kurtarma'},
+    derive:s => ({k: TM.kurtarma(TM.gorevSayilari[Math.round(s.Ki)])}),
+    live:s => [['GOREV', String(TM.gorevSayilari[Math.round(s.Ki)])],
+               ['KURTARMA', s.k.toFixed(4), K.green],
+               ['TAM', '1.0000', K.mut],
+               ['HEDEF', 'kurtarma > 0.95']],
+    unlock:s => s.k > 0.95,
+    unlockMsg:'Altuzayi 0.95 in uzerinde kurtaran gorev sayisini bul',
+    body:'<p>Kurulum: 20 boyutlu bir özellik uzayı. Bütün görevlerin karar sınırları, ' +
+      'bu uzayın içindeki <b>3 boyutluk ortak bir altuzayda</b> duruyor. Hiçbir görev bunu ' +
+      'tek başına bilmiyor; her biri sadece kendi 20 boyutlu ağırlık vektörünü öğreniyor.</p>' +
+      '<p>Sonra öğrenilen ağırlık vektörlerinin baskın yönlerini çıkarıyoruz (güç yinelemesi ' +
+      've deflasyon ile, gerçekten hesaplanıyor). Kurtarma ölçüsü, gerçek altuzayın ' +
+      'öğrenilen altuzaya izdüşümünün ne kadarının korunduğu.</p>' +
+      '<p>Ölçüm: 2 görevle <b>0.7071</b>, 5 görevle 0.7718, 10 görevle 0.9182, ' +
+      '30 görevle <b>0.9918</b>.</p>' +
+      '<p>Buradaki fikir temel modellerin özüdür. Tek bir görev size sadece kendi cevabını ' +
+      'verir. Çok sayıda görev, <b>hepsinin ortak olarak kullandığı yapıyı</b> açığa çıkarır. ' +
+      'Temsil, görevlerin kesişiminde bulunur.</p>' +
+      '<p>Dikkat: 2 görevle kurtarma 1 e yaklaşamaz, çünkü 2 vektör 3 boyutluk bir uzayı ' +
+      'geremez. Bu bir eğitim sorunu değil, bir bilgi sorunudur: veri yeterli olsa bile ' +
+      'görev sayısı yetmiyorsa altuzay görünmez.</p>',
+    learned:'<b>Ortak temsil, görevlerin kesişiminde bulunur.</b><br><br>' +
+      '20 boyutlu uzayda 3 boyutluk ortak altuzay: 2 görevle kurtarma 0.7071, 10 görevle ' +
+      '0.9182, 30 görevle 0.9918.<br><br>' +
+      'Hiçbir görev bu yapıyı tek başına gösteremez. 2 vektör 3 boyutu geremediği için ' +
+      'az görevle kurtarma matematiksel olarak sınırlıdır; bu bir eğitim sorunu değil, ' +
+      'bilgi sorunudur.',
+    xp:50,
+  },
+  {
+    t:'Az örnekle yeni görev',
+    goal:'Temsilin ne kazandırdığını veri cinsinden ölçeceksin.',
+    todo:'Görev sayısını değiştir. Temel modelin 20 örnekle vardığı yere sıfırdan model kaç örnekle varıyor?',
+    kind:'controls', viz:'temelModel', h:760,
+    controls:[{k:'Ki', lb:'ON EGITIM GOREVI SAYISI', min:0, max:4, step:1, val:4,
+      fmt:v => TM.gorevSayilari[Math.round(v)] + ' gorev'}],
+    state:{sahne:'azornek'},
+    live:s => { const KG = TM.gorevSayilari[Math.round(s.Ki)];
+      return [['GOREV', String(KG)],
+              ['20 ORNEK', '%' + (100*TM.sonuc(KG, 20, false).sifirdan).toFixed(1) + ' / %' +
+                            (100*TM.sonuc(KG, 20, false).temelli).toFixed(1), K.mut],
+              ['200 ORNEK', '%' + (100*TM.sonuc(KG, 200, false).sifirdan).toFixed(1) + ' / %' +
+                            (100*TM.sonuc(KG, 200, false).temelli).toFixed(1), K.mut],
+              ['TAVAN', '%80.7', K.mut]]; },
+    body:'<p>Şimdi altuzayda duran <b>yeni</b> bir görev geliyor ve elimizde çok az örnek var. ' +
+      'İki yol: sıfırdan 20 boyutta eğitmek, ya da temel modelin öğrendiği 3 boyutluk ' +
+      'temsilde eğitmek.</p>' +
+      '<p>Her sayı 12 bağımsız veri çekilişinin ortalaması. Tek bir 5 örneklik çekiliş ' +
+      'anlamlı değil, çünkü sonuç hangi 5 örneğin geldiğine bağlı.</p>' +
+      '<p>30 görevlik temel modelle: 5 örnekte %65.8, 20 örnekte <b>%78.5</b>, ' +
+      '200 örnekte %80.4 (tavan %80.7).</p>' +
+      '<p>Sıfırdan: 5 örnekte %57.0, 20 örnekte %65.8, 200 örnekte %78.6.</p>' +
+      '<p>Karşılaştırma çarpıcı: temel modelin <b>20 örnekle</b> ulaştığı yer (%78.5), ' +
+      'sıfırdan modelin <b>200 örnekle</b> ulaştığı yerle (%78.6) aynı. ' +
+      '<b>On kat az veri.</b></p>' +
+      '<p>Kazancın kaynağı modelin büyüklüğü değil. Temsil, aranacak yeri 20 boyuttan ' +
+      '3 boyuta indiriyor. Az veriyle küçük bir uzayda arama yapmak, çok veriyle büyük bir ' +
+      'uzayda arama yapmaya denk geliyor.</p>',
+    learned:'<b>Temsil, aranacak yeri küçültür; kazanç oradan gelir.</b><br><br>' +
+      '30 görevlik temel modelle 20 örnek %78.5 veriyor. Sıfırdan eğitilen model aynı yere ' +
+      '200 örnekle geliyor (%78.6): on kat az veri.<br><br>' +
+      'Kazanç modelin büyüklüğünden değil, 20 boyut yerine 3 boyutta arama yapmaktan geliyor.',
+    xp:50,
+  },
+  {
+    t:'Zayıf temel bir tavandır',
+    goal:'Kötü bir temsilin neden sıfırdan eğitmekten kötü olabileceğini göreceksin.',
+    todo:'Eğrileri karşılaştır. 2 görevlik temel model 200 örnekte nerede?',
+    kind:'controls', viz:'temelModel', h:760,
+    controls:[{k:'Ki', lb:'ON EGITIM GOREVI SAYISI', min:0, max:4, step:1, val:1,
+      fmt:v => TM.gorevSayilari[Math.round(v)] + ' gorev'}],
+    state:{sahne:'zayif'},
+    body:'<p>Şimdi bütün görev sayılarını aynı grafikte görelim. İki uç ilginç:</p>' +
+      '<p><b>30 görev:</b> her örnek sayısında sıfırdan eğitmeyi geçiyor ve 200 örnekte ' +
+      'tavana oturuyor.</p>' +
+      '<p><b>2 görev:</b> 200 örnekte <b>%66.6</b> da takılıyor. Sıfırdan eğitmek aynı ' +
+      'veriyle %78.6 veriyor. Yani zayıf temel model, bol veriyle bile <b>geride kalıyor</b>.</p>' +
+      '<p>Sebebi mekanizmada. Temsile izdüşüm almak, temsilin dışındaki yönleri <b>geri ' +
+      'getirilemez şekilde siler</b>. Altuzay eksik kurtarıldıysa, gerçek karar sınırının ' +
+      'bir kısmı o silinen yönlerde kalır ve ne kadar veri verirsen ver geri gelmez.</p>' +
+      '<p>Buradan çıkan kural: <b>iyi bir temel model zemindir, kötü bir temel model tavandır.</b> ' +
+      'Bir temsili kullanmaya karar vermeden önce sorulacak soru "büyük mü" değil, ' +
+      '"benim görevimin ihtiyaç duyduğu yönleri taşıyor mu".</p>' +
+      '<p>Pratikte bu, dondurulmuş bir temsilin üstüne ince bir katman eğitmek ile modelin ' +
+      'tamamını ince ayarlamak arasındaki farktır. Dondurulmuş temsil ucuzdur ama tavanı ' +
+      'temsilin kalitesiyle sınırlıdır.</p>',
+    learned:'<b>İyi temel zemin, kötü temel tavandır.</b><br><br>' +
+      '30 görevlik temsil 200 örnekte %80.4 (tavan %80.7). 2 görevlik temsil aynı veriyle ' +
+      '%66.6 da takılıyor; sıfırdan eğitmek %78.6 veriyor.<br><br>' +
+      'Sebep: temsile izdüşüm, dışarıdaki yönleri geri getirilemez şekilde siler. ' +
+      'Dondurulmuş bir temsilin tavanı, o temsilin kalitesidir.',
+    xp:50,
+  },
+  {
+    t:'Ortak yapının dışında',
+    goal:'Temel modelin tamamen çuvalladığı durumu göreceksin.',
+    todo:'Grafiği incele, sonra soruyu cevapla.',
+    kind:'controls', viz:'temelModel', h:760,
+    controls:[{k:'Ki', lb:'ON EGITIM GOREVI SAYISI', min:0, max:4, step:1, val:4,
+      fmt:v => TM.gorevSayilari[Math.round(v)] + ' gorev'}],
+    state:{sahne:'disari'},
+    body:'<p>Son deney: yeni görevin yönü, ön eğitim görevlerinin paylaştığı altuzaya ' +
+      '<b>dik</b>. Yani bu görev hakkında ortak temsilde hiçbir bilgi yok.</p>' +
+      '<p>Sonuç kesin: temel modelin temsilinde eğitmek 200 örnekte bile <b>%49.9</b> ' +
+      'veriyor, yani yazı tura. Aynı 200 örnekle sıfırdan eğitmek <b>%78.2</b>.</p>' +
+      '<p>Burada olan şey basit ve geri dönüşsüz: izdüşüm, görevin bütün bilgisini taşıyan ' +
+      'yönü sıfırlıyor. Ne kadar veri verirsen ver, model o yönü <b>göremiyor</b>. ' +
+      'Sorun veri değil, temsilin körlüğü.</p>' +
+      '<p>Bu, birinci adımdaki resmin diğer yüzü. Temel modeller güçlüdür çünkü çok sayıda ' +
+      'görevin ortak yapısını yakalarlar. Ama tam da bu yüzden, o ortak yapının dışında ' +
+      'kalan bir göreve hiçbir şey vermezler.</p>' +
+      '<p>Gerçek hayatta hiçbir görev tam olarak dik değildir; buradaki 90 derece bir uç ' +
+      'durumdur. Ama yön şudur: göreviniz temel modelin ön eğitim dağılımından ne kadar ' +
+      'uzaksa, dondurulmuş temsille alacağınız sonuç o kadar düşer ve tam ince ayar ' +
+      '(ya da sıfırdan eğitim) o kadar cazip hale gelir.</p>',
+    quiz:{ q:'Dondurulmuş bir görüntü temel modelinin üstüne ince bir sınıflandırıcı eğitiyorsun. Sonuç veri artırdıkça %71 de sabitleniyor. Aynı veriyle küçük bir modeli sıfırdan eğitince %76 alıyorsun. Bu ne anlama gelir?',
+      opts:[
+        {t:'Temsil senin görevin için gereken yönleri taşımıyor; tam ince ayar ya da farklı bir temsil gerekiyor', why:'Doğru. Derste ölçtüğün tam olarak bu durumdu: eksik ya da ilgisiz bir temsile izdüşüm almak, dışarıdaki yönleri geri getirilemez şekilde siler ve o kayıp veriyle kapanmaz. 2 görevlik temsil 200 örnekte %66.6 da takılırken sıfırdan eğitmek %78.6 veriyordu. Doğru hamle temsili çözmek (tam ince ayar) ya da göreve daha yakın bir temel model seçmek.'},
+        {t:'Daha fazla veri toplamalısın', why:'Ölçüm bunun aleyhine: sonuç veri artırdıkça zaten sabitlenmiş. Dondurulmuş temsilin tavanı veriyle aşılmaz, çünkü sınır veri miktarında değil temsilin taşıdığı yönlerde.'},
+        {t:'Sınıflandırıcı katmanını büyütmelisin', why:'Katmanı büyütmek, temsilde olmayan bir yönü geri getiremez. İzdüşüm bilgiyi silmiştir; sonrasındaki hiçbir işlem onu geri üretemez.'},
+        {t:'Temel model çok küçük, daha büyüğüne geçmelisin', why:'Büyüklük tek başına doğru teşhis değil. Derste kurtarma ölçüsünün belirleyici olduğunu gördün: mesele temsilin senin görevinin ihtiyaç duyduğu yönleri taşıyıp taşımadığı. Daha büyük ama aynı dağılımda eğitilmiş bir model, dik bir görev için yine kör kalır.'},
+      ], correct:0 },
+    learned:'<b>Temel model, ortak yapının dışındaki göreve hiçbir şey vermez.</b><br><br>' +
+      'Altuzaya dik bir görevde temsille eğitmek 200 örnekte %49.9 (yazı tura), sıfırdan ' +
+      'eğitmek %78.2.<br><br>' +
+      'İzdüşüm görevin bilgisini taşıyan yönü sıfırlar ve bu geri gelmez. Sorun veri değil ' +
+      'temsilin körlüğüdür; çözüm veri eklemek değil, temsili çözmek ya da değiştirmektir.',
     xp:75,
   },
 ]};

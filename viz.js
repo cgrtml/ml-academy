@@ -8618,6 +8618,293 @@ VIZ.alanModeli = s => {
   }
 };
 
+
+/* ═══════════ TEMEL MODEL ═══════════
+   Cok gorevden ogrenilen ortak temsil, yeni bir gorevi az orneкle
+   ogrenilebilir hale getiriyor. Altuzay guc yinelemesiyle gercekten
+   kurtariliyor; hicbir sey varsayilmiyor. */
+const TM = {};
+TM.D = 20;        /* ham ozellik boyutu */
+TM.R = 3;         /* gorevlerin paylastigi gercek altuzay boyutu */
+TM.NG = 300;      /* on egitim gorevi basina ornek */
+TM.TEST = 2000;
+TM.gorevSayilari = [0, 2, 5, 10, 30];
+TM.yeniNler = [5, 10, 20, 50, 200];
+TM.LAMBDA = 0.02; TM.ADIM = 300; TM.LR = 0.5;
+const _tmC = {};
+/* r boyutlu ortak altuzay · sabit */
+TM.altuzay = (() => {
+  const r = rng(7), B = [];
+  for (let k = 0; k < TM.R; k++){
+    const u = []; for (let i = 0; i < TM.D; i++) u.push(omNormal(r));
+    /* Gram-Schmidt */
+    for (let j = 0; j < k; j++){
+      const ip = u.reduce((s, z, i) => s + z*B[j][i], 0);
+      for (let i = 0; i < TM.D; i++) u[i] -= ip*B[j][i]; }
+    const n = Math.sqrt(u.reduce((s, z) => s + z*z, 0));
+    B.push(u.map(z => z/n)); }
+  return B;
+})();
+/* altuzaya dik bir yon · disaridaki gorev icin */
+TM.disYon = (() => {
+  const r = rng(11), u = [];
+  for (let i = 0; i < TM.D; i++) u.push(omNormal(r));
+  TM.altuzay.forEach(b => { const ip = u.reduce((s, z, i) => s + z*b[i], 0);
+    for (let i = 0; i < TM.D; i++) u[i] -= ip*b[i]; });
+  const n = Math.sqrt(u.reduce((s, z) => s + z*z, 0));
+  return u.map(z => z/n);
+})();
+/* gorev agirligi: altuzayda rastgele yon */
+TM.gorevAgirligi = (id, disarida) => {
+  if (disarida) return TM.disYon.slice();
+  const r = rng(1000 + id), k = [];
+  for (let j = 0; j < TM.R; j++) k.push(omNormal(r));
+  const w = new Array(TM.D).fill(0);
+  for (let j = 0; j < TM.R; j++) for (let i = 0; i < TM.D; i++) w[i] += k[j]*TM.altuzay[j][i];
+  const n = Math.sqrt(w.reduce((s, z) => s + z*z, 0));
+  return w.map(z => z/n);
+};
+TM.veri = (w, n, seed) => {
+  const r = rng(seed), X = [], y = [];
+  for (let i = 0; i < n; i++){
+    const x = []; for (let j = 0; j < w.length; j++) x.push(omNormal(r));
+    const z = x.reduce((s, v2, j) => s + v2*w[j], 0);
+    y.push(r() < 1/(1 + Math.exp(-2.5*z)) ? 1 : 0);
+    X.push(x); }
+  return { X, y };
+};
+TM.egit = (X, y, d) => {
+  const w = new Array(d).fill(0), n = X.length;
+  if (n === 0) return w;
+  for (let t = 0; t < TM.ADIM; t++){
+    const g = new Array(d).fill(0);
+    for (let i = 0; i < n; i++){
+      let z = 0; for (let j = 0; j < d; j++) z += w[j]*X[i][j];
+      const e = 1/(1 + Math.exp(-z)) - y[i];
+      for (let j = 0; j < d; j++) g[j] += e*X[i][j]; }
+    for (let j = 0; j < d; j++) w[j] -= TM.LR*(g[j]/n + TM.LAMBDA*w[j]); }
+  return w;
+};
+TM.dogruluk = (w, T) => { let d = 0;
+  for (let i = 0; i < T.X.length; i++){
+    let z = 0; for (let j = 0; j < w.length; j++) z += w[j]*T.X[i][j];
+    if ((z > 0 ? 1 : 0) === T.y[i]) d++; }
+  return d/T.X.length; };
+/* K gorevden ogrenilen agirliklarin baskin R yonu · guc yinelemesi + deflasyon */
+TM.temel = K => {
+  const key = 't' + K;
+  if (_tmC[key]) return _tmC[key];
+  if (K === 0) return (_tmC[key] = []);
+  const W = [];
+  for (let g = 0; g < K; g++){
+    const w = TM.gorevAgirligi(g, false);
+    const V2 = TM.veri(w, TM.NG, 500 + g);
+    W.push(TM.egit(V2.X, V2.y, TM.D)); }
+  /* kovaryans */
+  let C = [];
+  for (let i = 0; i < TM.D; i++){ const row = new Array(TM.D).fill(0); C.push(row); }
+  W.forEach(w => { for (let i = 0; i < TM.D; i++) for (let j = 0; j < TM.D; j++) C[i][j] += w[i]*w[j]; });
+  const B = [];
+  for (let k = 0; k < TM.R; k++){
+    let u = []; const r = rng(31 + k);
+    for (let i = 0; i < TM.D; i++) u.push(omNormal(r));
+    for (let it = 0; it < 200; it++){
+      const nu = new Array(TM.D).fill(0);
+      for (let i = 0; i < TM.D; i++) for (let j = 0; j < TM.D; j++) nu[i] += C[i][j]*u[j];
+      B.forEach(b => { const ip = nu.reduce((s, z, i) => s + z*b[i], 0);
+        for (let i = 0; i < TM.D; i++) nu[i] -= ip*b[i]; });
+      const n = Math.sqrt(nu.reduce((s, z) => s + z*z, 0));
+      if (n < 1e-14) break;
+      u = nu.map(z => z/n); }
+    B.push(u); }
+  return (_tmC[key] = B);
+};
+/* kurtarma hatasi: gercek altuzayin ogrenilen altuzaya izdusum kaybi */
+TM.kurtarma = K => {
+  const key = 'k' + K;
+  if (_tmC[key] !== undefined) return _tmC[key];
+  const B = TM.temel(K);
+  if (!B.length) return (_tmC[key] = 0);
+  let top = 0;
+  TM.altuzay.forEach(a => { let s = 0;
+    B.forEach(b => { const ip = a.reduce((q, z, i) => q + z*b[i], 0); s += ip*ip; });
+    top += s; });
+  return (_tmC[key] = top/TM.R);
+};
+TM.izdusur = (X, B) => X.map(x => B.map(b => x.reduce((s, z, i) => s + z*b[i], 0)));
+/* TEK bir 5 orneklik cekilis anlamli degil: sonuc hangi 5 ornegin
+   geldigine bagli. Bu yuzden yeni gorev verisi TEKRAR sayisi kadar
+   bagimsiz cekiliyor ve dogruluk ortalaniyor. */
+TM.TEKRAR = 12;
+TM.sonuc = (K, n, disarida) => {
+  const key = 's' + K + ':' + n + ':' + (disarida ? 1 : 0);
+  if (_tmC[key]) return _tmC[key];
+  const w = TM.gorevAgirligi(999, disarida);
+  const T = TM.veri(w, TM.TEST, 888);
+  const B = TM.temel(K);
+  const TX = B.length ? TM.izdusur(T.X, B) : null;
+  let sifirdan = 0, temelli = 0;
+  for (let t = 0; t < TM.TEKRAR; t++){
+    const Y = TM.veri(w, n, 777 + 37*t);
+    sifirdan += TM.dogruluk(TM.egit(Y.X, Y.y, TM.D), T);
+    if (B.length){
+      const wp = TM.egit(TM.izdusur(Y.X, B), Y.y, B.length);
+      temelli += TM.dogruluk(wp, { X: TX, y: T.y }); } }
+  sifirdan /= TM.TEKRAR;
+  temelli = B.length ? temelli/TM.TEKRAR : sifirdan;
+  return (_tmC[key] = { sifirdan, temelli, tavan: TM.dogruluk(w, T) });
+};
+
+
+VIZ.temelModel = s => {
+  clear();
+  const sahne = s.sahne || 'kurtarma';
+  const Ki = Math.max(0, Math.min(4, s.Ki === undefined ? 4 : Math.round(s.Ki)));
+  const KG = TM.gorevSayilari[Ki];
+  const kart = (x, y, wd, ad, deger, rnk, alt) => {
+    box(x, y, wd, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + wd/2, y + 28, K.mut, 15);
+    txt(deger, x + wd/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + wd/2, y + 95, K.mut, 14);
+  };
+  
+
+  if (sahne === 'azornek' || sahne === 'disari'){
+    const dis = sahne === 'disari';
+    const S = TM.yeniNler.map(n => TM.sonuc(KG, n, dis));
+    baslikSerit(dis ? 'TEMEL MODEL · ORTAK YAPININ DIŞINDAKİ GÖREV'
+                    : 'TEMEL MODEL · AZ ÖRNEKLE YENİ GÖREV',
+      dis ? 'Yeni görevin yönü, ön eğitim görevlerinin paylaştığı altuzaya dik.'
+          : 'Temel model ' + KG + ' görevden öğrenilmiş bir temsil kullanıyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 4.35, 0.4, 0.88);
+    frame(P, 'yeni görevden örnek sayısı', 'doğruluk', [], [0.5, 0.6, 0.7, 0.8]);
+    TM.yeniNler.forEach((nv, i) => txt(String(nv), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    [['sifirdan', K.orange], ['temelli', K.green]].forEach(([alan, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = 3.6; cx.beginPath();
+      S.forEach((sv, i) => { const y = P.sy(sv[alan]);
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      S.forEach((sv, i) => dot(P.sx(i), P.sy(sv[alan]), 5, renk)); });
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(S[0].tavan));
+    cx.lineTo(P.R.x + P.R.w, P.sy(S[0].tavan)); cx.stroke();
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(0.5)); cx.lineTo(P.R.x + P.R.w, P.sy(0.5)); cx.stroke();
+    cx.setLineDash([]);
+    txt('gürültü tavanı %' + (100*S[0].tavan).toFixed(1),
+        P.R.x + P.R.w - 14, P.sy(S[0].tavan) - 12, K.mut, 15, 'right');
+    txt('yazı tura %50', P.R.x + P.R.w - 14, P.sy(0.5) - 12, K.mut, 15, 'right');
+    txt('sıfırdan · 20 boyutta', P.R.x + 16, P.sy(0.86), K.orange, 17, 'left');
+    txt('temel modelin temsilinde', P.R.x + 16, P.sy(0.83), K.green, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'ÖN EĞİTİM GÖREVİ', String(KG), K.blue);
+    kart(bx + 280, 200, 260, '5 ÖRNEKTE',
+         '%' + (100*S[0].sifirdan).toFixed(1) + ' / %' + (100*S[0].temelli).toFixed(1),
+         K.mut, 'sıfırdan / temelli');
+    kart(bx, 330, 260, '20 ÖRNEKTE',
+         '%' + (100*S[2].sifirdan).toFixed(1) + ' / %' + (100*S[2].temelli).toFixed(1), K.mut);
+    kart(bx + 280, 330, 260, '200 ÖRNEKTE',
+         '%' + (100*S[4].sifirdan).toFixed(1) + ' / %' + (100*S[4].temelli).toFixed(1), K.mut);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', dis ? K.red : K.axis, 2);
+    if (dis){
+      txt('ORTAK YAPI YOKSA TEMSİL DE YOK', bx + 270, 494, K.mut, 17);
+      txt('Yeni görevin yönü öğrenilen altuzaya dik.', bx + 18, 534, K.txt, 18, 'left');
+      txt('İzdüşüm alınca o yöndeki bilgi tamamen siliniyor.', bx + 18, 564, K.txt, 18, 'left');
+      txt('Temel model %' + (100*S[4].temelli).toFixed(1) + ' te takılı: 200 örnek de',
+          bx + 18, 606, K.red, 18, 'left');
+      txt('vermen bir şey değiştirmiyor, çünkü sorun veri', bx + 18, 636, K.red, 18, 'left');
+      txt('değil temsilin körlüğü.', bx + 18, 666, K.red, 18, 'left');
+      txt('Sıfırdan eğitmek aynı veriyle %' + (100*S[4].sifirdan).toFixed(1) + ' veriyor.',
+          bx + 18, 702, K.orange, 18, 'left');
+    } else {
+      txt('AZ ÖRNEK, AYNI SONUÇ', bx + 270, 494, K.mut, 18);
+      txt('Temel modelin temsilinde eğitmek, 20 boyut', bx + 18, 534, K.txt, 18, 'left');
+      txt('yerine ' + TM.R + ' boyutta eğitmek demek.', bx + 18, 564, K.txt, 18, 'left');
+      txt('20 örnekle %' + (100*S[2].temelli).toFixed(1) + ', sıfırdan modelin 200 örnekle',
+          bx + 18, 606, K.green, 18, 'left');
+      txt('ulaştığı yer (%' + (100*S[4].sifirdan).toFixed(1) + ') ile aynı: 10 kat az veri.',
+          bx + 18, 636, K.green, 18, 'left');
+      txt('Kazanç modelin büyüklüğünden değil, aranacak', bx + 18, 676, K.mut, 17, 'left');
+      txt('yerin küçülmesinden geliyor.', bx + 18, 702, K.mut, 17, 'left');
+    }
+  }
+
+  else if (sahne === 'zayif'){
+    baslikSerit('TEMEL MODEL · ZAYIF TEMEL BİR TAVANDIR',
+      'Az görevle öğrenilen temsil, bol veriyle bile aşılamayan bir sınır koyuyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 4.35, 0.4, 0.88);
+    frame(P, 'yeni görevden örnek sayısı', 'doğruluk', [], [0.5, 0.6, 0.7, 0.8]);
+    TM.yeniNler.forEach((nv, i) => txt(String(nv), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    const renkler = [K.mut, K.red, K.orange, K.blue, K.green];
+    TM.gorevSayilari.forEach((Kv, ki) => {
+      cx.strokeStyle = renkler[ki]; cx.lineWidth = Kv === KG ? 3.8 : 1.8;
+      cx.globalAlpha = Kv === KG ? 1 : 0.45; cx.beginPath();
+      TM.yeniNler.forEach((nv, i) => { const s2 = TM.sonuc(Kv, nv, false);
+        const y = P.sy(Kv === 0 ? s2.sifirdan : s2.temelli);
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke(); cx.globalAlpha = 1; });
+    TM.gorevSayilari.forEach((Kv, ki) => {
+      const yy = P.sy(0.86 - ki*0.028);
+      cx.strokeStyle = renkler[ki]; cx.lineWidth = Kv === KG ? 3.8 : 1.8;
+      cx.beginPath(); cx.moveTo(P.R.x + 16, yy - 5); cx.lineTo(P.R.x + 52, yy - 5); cx.stroke();
+      txt(Kv === 0 ? 'temel yok · sıfırdan' : Kv + ' ön eğitim görevi',
+          P.R.x + 62, yy, renkler[ki], 15, 'left', Kv === KG ? 700 : 400); });
+    const bx = 830;
+    kart(bx, 200, 260, 'ÖN EĞİTİM GÖREVİ', String(KG), K.blue,
+         'kurtarma %' + (100*TM.kurtarma(KG)).toFixed(1));
+    kart(bx + 280, 200, 260, '200 ÖRNEKTE',
+         '%' + (100*(KG === 0 ? TM.sonuc(0, 200, false).sifirdan
+                             : TM.sonuc(KG, 200, false).temelli)).toFixed(1),
+         K.green);
+    kart(bx, 330, 260, '2 GÖREVLE · 200 ÖRNEK',
+         '%' + (100*TM.sonuc(2, 200, false).temelli).toFixed(1), K.red, 'sıfırdanın altında');
+    kart(bx + 280, 330, 260, 'SIFIRDAN · 200 ÖRNEK',
+         '%' + (100*TM.sonuc(0, 200, false).sifirdan).toFixed(1), K.orange);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('İYİ TEMEL ZEMİN, KÖTÜ TEMEL TAVAN', bx + 270, 494, K.mut, 17);
+    txt('30 görevle öğrenilen temsil her örnek sayısında', bx + 18, 534, K.txt, 18, 'left');
+    txt('sıfırdan eğitmeyi geçiyor.', bx + 18, 564, K.txt, 18, 'left');
+    txt('2 görevle öğrenilen temsil ise 200 örnekte %' +
+        (100*TM.sonuc(2, 200, false).temelli).toFixed(1) + ' te', bx + 18, 606, K.red, 18, 'left');
+    txt('takılıyor: sıfırdan eğitmenin (%' +
+        (100*TM.sonuc(0, 200, false).sifirdan).toFixed(1) + ') altında.', bx + 18, 636, K.red, 18, 'left');
+    txt('Sebebi basit: eksik bir temsile izdüşüm almak,', bx + 18, 676, K.mut, 17, 'left');
+    txt('atılan yöndeki bilgiyi geri getirilemez şekilde siler.', bx + 18, 702, K.mut, 17, 'left');
+  }
+
+  else {
+    baslikSerit('TEMEL MODEL · ORTAK YAPI KAÇ GÖREVDE ORTAYA ÇIKIYOR',
+      TM.D + ' boyutlu uzayda ' + TM.R + ' boyutluk ortak bir altuzay var. Görevlerden kurtarılıyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 4.35, 0, 1.08);
+    frame(P, 'ön eğitim görevi sayısı', 'altuzay kurtarma', [], [0, 0.25, 0.5, 0.75, 1]);
+    TM.gorevSayilari.forEach((Kv, i) => txt(String(Kv), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    cx.strokeStyle = K.green; cx.lineWidth = 3.6; cx.beginPath();
+    TM.gorevSayilari.forEach((Kv, i) => { const y = P.sy(TM.kurtarma(Kv));
+      i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+    cx.stroke();
+    TM.gorevSayilari.forEach((Kv, i) => dot(P.sx(i), P.sy(TM.kurtarma(Kv)), 5, K.green));
+    dot(P.sx(Ki), P.sy(TM.kurtarma(KG)), 9, K.yellow);
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(1)); cx.lineTo(P.R.x + P.R.w, P.sy(1)); cx.stroke();
+    cx.setLineDash([]);
+    txt('tam kurtarma', P.R.x + P.R.w - 14, P.sy(1) + 26, K.mut, 15, 'right');
+    const bx = 830;
+    kart(bx, 200, 260, 'GÖREV SAYISI', String(KG), K.blue);
+    kart(bx + 280, 200, 260, 'KURTARMA', TM.kurtarma(KG).toFixed(4), K.green);
+    kart(bx, 330, 260, '2 GÖREVLE', TM.kurtarma(2).toFixed(4), K.red);
+    kart(bx + 280, 330, 260, '30 GÖREVLE', TM.kurtarma(30).toFixed(4), K.green);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('TEMSİL, GÖREVLERİN KESİŞİMİDİR', bx + 270, 494, K.mut, 18);
+    txt('Her görev ' + TM.D + ' boyutlu bir ağırlık vektörü öğreniyor', bx + 18, 534, K.txt, 18, 'left');
+    txt('ama hepsi aynı ' + TM.R + ' boyutlu altuzayda duruyor.', bx + 18, 564, K.txt, 18, 'left');
+    txt('Öğrenilen ağırlıkların baskın yönlerini çıkarınca', bx + 18, 606, K.green, 18, 'left');
+    txt('o altuzay ortaya çıkıyor: 2 görevle ' + TM.kurtarma(2).toFixed(2) + ', 30 görevle',
+        bx + 18, 636, K.green, 18, 'left');
+    txt(TM.kurtarma(30).toFixed(2) + '. Hiçbir görev tek başına gösteremezdi.',
+        bx + 18, 666, K.green, 18, 'left');
+    txt('Temel modelin "temel" olması bu kesişimden geliyor.', bx + 18, 702, K.mut, 17, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

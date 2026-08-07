@@ -3095,6 +3095,92 @@ console.log('═══ ALANA ÖZEL MODEL ═══');
       AM.nBler.forEach(nv => { if (Math.abs(AM.sonuc(av, nv).sadeceA - t) > 1e-12) ihlal++; }); });
     iddia('AM - genel model hedef veriden bagimsiz', 0, ihlal, 0); }
 }
+console.log('═══ TEMEL MODEL ═══');
+{
+  iddia('TM - ham boyut', 20, TM.D, 0);
+  iddia('TM - ortak altuzay boyutu', 3, TM.R, 0);
+  /* gercek altuzay ortonormal mi */
+  { let enBuyuk = 0;
+    for (let i = 0; i < TM.R; i++) for (let j = 0; j < TM.R; j++){
+      const ip = TM.altuzay[i].reduce((s, z, q) => s + z*TM.altuzay[j][q], 0);
+      enBuyuk = Math.max(enBuyuk, Math.abs(ip - (i === j ? 1 : 0))); }
+    iddia('TM - gercek altuzay ortonormal', 0, enBuyuk, 9); }
+  /* dis yon gercekten altuzaya dik mi */
+  { let enBuyuk = 0;
+    TM.altuzay.forEach(b => { enBuyuk = Math.max(enBuyuk,
+      Math.abs(TM.disYon.reduce((s, z, i) => s + z*b[i], 0))); });
+    iddia('TM - dis yon altuzaya dik', 0, enBuyuk, 9); }
+  /* gorev agirliklari gercekten altuzayda mi */
+  { let enBuyuk = 0;
+    for (let g = 0; g < 5; g++){ const w = TM.gorevAgirligi(g, false);
+      let kalan = w.slice();
+      TM.altuzay.forEach(b => { const ip = kalan.reduce((s, z, i) => s + z*b[i], 0);
+        for (let i = 0; i < TM.D; i++) kalan[i] -= ip*b[i]; });
+      enBuyuk = Math.max(enBuyuk, Math.sqrt(kalan.reduce((s, z) => s + z*z, 0))); }
+    iddia('TM - gorev agirliklari altuzayda', 0, enBuyuk, 9); }
+
+  /* 1. adim - kurtarma */
+  iddia('TM - kurtarma - 0 gorev', 0.0000, TM.kurtarma(0), 4);
+  iddia('TM - kurtarma - 2 gorev', 0.7071, TM.kurtarma(2), 4);
+  iddia('TM - kurtarma - 5 gorev', 0.7718, TM.kurtarma(5), 4);
+  iddia('TM - kurtarma - 10 gorev', 0.9182, TM.kurtarma(10), 4);
+  iddia('TM - kurtarma - 30 gorev', 0.9918, TM.kurtarma(30), 4);
+  { let ihlal = 0;
+    for (let i = 1; i < TM.gorevSayilari.length; i++)
+      if (TM.kurtarma(TM.gorevSayilari[i]) < TM.kurtarma(TM.gorevSayilari[i-1]) - 1e-12) ihlal++;
+    iddia('TM - kurtarma gorev sayisiyla monoton artiyor', 0, ihlal, 0); }
+  iddia('TM - kurtarma hicbir zaman 1 i asmiyor', 1,
+        TM.gorevSayilari.every(K => TM.kurtarma(K) <= 1 + 1e-12) ? 1 : 0, 0);
+  /* ogrenilen taban ortonormal mi */
+  { const B = TM.temel(30); let enBuyuk = 0;
+    for (let i = 0; i < B.length; i++) for (let j = 0; j < B.length; j++){
+      const ip = B[i].reduce((s, z, q) => s + z*B[j][q], 0);
+      enBuyuk = Math.max(enBuyuk, Math.abs(ip - (i === j ? 1 : 0))); }
+    iddia('TM - ogrenilen taban ortonormal', 0, enBuyuk, 6); }
+
+  /* 2. adim - az ornekle yeni gorev */
+  iddia('TM - 30 gorev - 5 ornek - temelli', 65.8, 100*TM.sonuc(30, 5, false).temelli, 1);
+  iddia('TM - 30 gorev - 20 ornek - temelli', 78.5, 100*TM.sonuc(30, 20, false).temelli, 1);
+  iddia('TM - 30 gorev - 200 ornek - temelli', 80.4, 100*TM.sonuc(30, 200, false).temelli, 1);
+  iddia('TM - sifirdan - 5 ornek', 57.0, 100*TM.sonuc(0, 5, false).sifirdan, 1);
+  iddia('TM - sifirdan - 20 ornek', 65.8, 100*TM.sonuc(0, 20, false).sifirdan, 1);
+  iddia('TM - sifirdan - 200 ornek', 78.6, 100*TM.sonuc(0, 200, false).sifirdan, 1);
+  iddia('TM - gurultu tavani', 80.7, 100*TM.sonuc(0, 5, false).tavan, 1);
+  /* 20 ornekli temel model ~ 200 ornekli sifirdan */
+  iddia('TM - 20 ornek temelli ile 200 ornek sifirdan farki (puan)', 0.1,
+        100*Math.abs(TM.sonuc(30, 20, false).temelli - TM.sonuc(0, 200, false).sifirdan), 1);
+  /* sifirdan sonucu gorev sayisindan bagimsiz olmali */
+  { let ihlal = 0;
+    const t = TM.sonuc(0, 20, false).sifirdan;
+    TM.gorevSayilari.forEach(K => {
+      if (Math.abs(TM.sonuc(K, 20, false).sifirdan - t) > 1e-12) ihlal++; });
+    iddia('TM - sifirdan sonucu gorev sayisindan bagimsiz', 0, ihlal, 0); }
+
+  /* 3. adim - zayif temel bir tavan */
+  iddia('TM - 2 gorev - 200 ornek - temelli', 66.6, 100*TM.sonuc(2, 200, false).temelli, 1);
+  iddia('TM - zayif temel sifirdanin altinda', 1,
+        TM.sonuc(2, 200, false).temelli < TM.sonuc(0, 200, false).sifirdan ? 1 : 0, 0);
+  iddia('TM - guclu temel sifirdanin ustunde', 1,
+        TM.sonuc(30, 200, false).temelli > TM.sonuc(0, 200, false).sifirdan ? 1 : 0, 0);
+  /* 30 gorev her ornek sayisinda sifirdani geciyor */
+  { let ihlal = 0;
+    TM.yeniNler.forEach(n => {
+      if (TM.sonuc(30, n, false).temelli <= TM.sonuc(0, n, false).sifirdan) ihlal++; });
+    iddia('TM - 30 gorevlik temel her ornek sayisinda onde', 0, ihlal, 0); }
+
+  /* 4. adim - altuzay disi gorev */
+  iddia('TM - disari - 30 gorev - 200 ornek - temelli', 49.9,
+        100*TM.sonuc(30, 200, true).temelli, 1);
+  iddia('TM - disari - sifirdan - 200 ornek', 78.2, 100*TM.sonuc(0, 200, true).sifirdan, 1);
+  iddia('TM - disari - temelli yazi tura seviyesinde', 1,
+        Math.abs(TM.sonuc(30, 200, true).temelli - 0.5) < 0.05 ? 1 : 0, 0);
+  /* veri artirmak disarida hicbir sey degistirmiyor */
+  { let enBuyuk = 0;
+    TM.yeniNler.forEach(n =>
+      enBuyuk = Math.max(enBuyuk, Math.abs(TM.sonuc(30, n, true).temelli - 0.5)));
+    iddia('TM - disarida hicbir ornek sayisi yazi turayi asmiyor', 1,
+          enBuyuk < 0.05 ? 1 : 0, 0); }
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
