@@ -216,11 +216,7 @@ function dilUygula(){
   if (DIL === 'en'){
     const nCev = (typeof DERSLER_EN !== 'undefined') ? Object.keys(DERSLER_EN).length : 0;
     const nTop = Object.keys(DERSLER).length;
-    $('dilnot').innerHTML = 'The interface and the full ' + nTop + '-lesson curriculum are in English. '
-      + 'Lesson text is being translated one lesson at a time: lessons marked '
-      + '<b style="color:var(--green)">EN</b> are fully translated (' + nCev + ' so far), '
-      + 'the others open in Turkish. Every simulation, chart and number works the same in both languages.';
-    $('dilnot').style.display = 'block';
+    $('dilnot').style.display = 'none';
   } else $('dilnot').style.display = 'none';
   document.querySelectorAll('.dilbar button').forEach(b =>
     b.classList.toggle('on', b.dataset.dil === DIL));

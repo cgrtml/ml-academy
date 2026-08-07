@@ -245,3 +245,105 @@ const DERS_ADI_EN = {
   'aktif-ogrenme':'Active learning: which example should we label?',
   'leaderboard':'The leaderboard illusion: how much can you trust a ranking?',
 };
+
+DERSLER_EN['algoritma'] = {
+  ad:'What is an algorithm?',
+  alt:'Before we get to artificial intelligence, one thing has to be clear: how do you tell a computer to do a job, step by step? And why does that matter so much?',
+  kaynaklar:[{"y":"Knuth, D. E.","t":"1998","b":"The Art of Computer Programming, Vol. 3: Sorting and Searching","n":"Addison-Wesley"},
+             {"y":"Cormen, Leiserson, Rivest, Stein","t":"2009","b":"Introduction to Algorithms, 3rd edition","n":"MIT Press"}],
+  rota:0,
+  adimlar:[
+  {
+    t:'First ask this: what is it good for?',
+    goal:'You will see, <b>as a number</b>, why sorting matters, by asking the same question of sorted and unsorted data.',
+    todo:'The animation plays on its own. Watch how many checks each of the two lists needs.',
+    kind:'play', viz:'arama', h:700, hiz:420, xp:35,
+    learned:'<b>Choosing the algorithm matters more than the hardware.</b> Scanning an unsorted list costs n steps; binary search on a sorted one costs log₂n. On a billion records that is the difference between a billion and thirty.<br><br>Now let us look at <b>how</b> the sorting itself is done.',
+    quiz:{
+      q:'An online shop shows the "20 cheapest" out of 50 million products instantly. How is it doing that?',
+      opts:[
+        {t:'It scans all 50 million products on every request',
+         why:'No. Scanning 50 million records would take seconds on every request. No user waits that long.'},
+        {t:'It keeps the data <b>sorted</b> in advance; the list is already there, it just reads the first 20',
+         why:'Correct. The sorting is done once, or in the background, and then millions of queries benefit from it. A database <b>index</b> is exactly this: a structure that was sorted ahead of time.'},
+        {t:'It uses a faster computer',
+         why:'Hardware helps, but it cannot close the gap between n and log n. 50 million versus 26 steps is not a difference in speed, it is a difference in <b>method</b>.'},
+        {t:'It only shows popular products',
+         why:'That might be a shortcut, but it does not answer the question. The "20 cheapest" still has to come out of the whole catalogue.'},
+      ], correct:1 },
+  },
+  {
+    t:'The problem: 8 boxes in a mess',
+    goal:'You will see the constraints a computer is working under while it does this job.',
+    todo:'Look at the boxes. How would you sort them? Then continue.',
+    kind:'static', viz:'sirala', h:660, xp:10,
+    state:{ dizi:[5,2,8,1,9,3,7,4], mesaj:'a mess, needs sorting' },
+    body:'<p>Eight boxes, out of order. The task: <b>line them up from smallest to largest.</b></p>' +
+         '<p>You solve this in seconds, because you see all of them <b>at once</b>. A computer cannot.</p>' +
+         '<p>The only two things a computer can do here are: <b>compare two numbers</b> and <b>swap two boxes</b>. Nothing else.</p>' +
+         '<p>An <b>algorithm</b> is a recipe that finishes the job with those two moves and leaves no gap for interpretation. "Sort it" is not an algorithm. "Look at the first pair, swap them if they are in the wrong order, move one to the right, repeat" is one.</p>',
+    learned:'<b>A computer has two moves: compare and swap.</b> You sort eight boxes at a glance because you see all of them at the same time. The computer does not.<br><br>That is why "sort it" is not an algorithm. An algorithm is a recipe that finishes the job with those two moves and leaves nothing to interpretation.',
+  },
+  {
+    t:'Watch bubble sort run',
+    goal:'You will follow every step of an algorithm side by side with the line of code that causes it.',
+    todo:'The animation plays and loops on its own. Use ⏸ to stop it, ◀ ▶ to walk it one step at a time.',
+    kind:'play', viz:'sirala', h:660, hiz:230, xp:10,
+    learned:'<b>Bubble sort repeats one rule: look at the neighbouring pair, swap if they are in the wrong order, move one to the right.</b> On this 8 element list it did 28 comparisons and 13 swaps.<br><br>At the end of every pass, the largest remaining number is guaranteed to reach the end, which is why the green region on the right keeps growing. That sentence is also the proof that the algorithm is correct.',
+  },
+  {
+    t:'So how did it manage that?',
+    goal:'You will stop the animation <b>pass by pass</b> and understand why the algorithm works at all.',
+    todo:'Drag the pass slider from 0 to 7. Watch the green region on the right grow with every pass.',
+    kind:'controls', viz:'turOzet', h:660, xp:45,
+    body:'<p>In the animation you saw the individual comparisons, but <b>why it works</b> went by too fast. Let us stop it.</p>' +
+         '<p><b>Every pass guarantees this:</b> after one sweep from left to right, the largest remaining number is certain to reach the far right. Whichever pair the largest number enters, it wins and moves one step right, and it never stops during the sweep.</p>' +
+         '<p>So:</p>' +
+         '<p>· <b>after pass 1</b> 1 number is definitely in place (the largest, on the right)<br>' +
+         '· <b>after pass 2</b> 2 numbers are definitely in place<br>' +
+         '· <b>after pass k</b> k numbers are definitely in place</p>' +
+         '<p>The dashed green frame is that <b>locked region</b>. There is no reason to look at it again, which is why the code says <code>range(n - 1 - pass)</code>: every pass walks one box less.</p>' +
+         '<p>After 7 passes 7 numbers are locked; the one number left over is necessarily the smallest. <b>The list is sorted.</b></p>' +
+         '<p>This kind of reasoning is called a <b>loop invariant</b>: you find a statement that stays true on every pass, and with it you prove that the algorithm <i>works</i>. Not try it and see, <b>prove it</b>.</p>',
+    learned:'<b>Understanding an algorithm means being able to prove why it produces the right answer.</b> The proof for bubble sort is one sentence: on every pass the largest remaining number reaches the end, therefore after k passes k numbers are certainly in place.<br><br>And its cost is n², so <b>how much work it spends</b> matters just as much as <b>what it does</b>.',
+    controls:[{k:'tur', lb:'PASS', min:0, max:7, step:1, val:0}],
+    quiz:{
+      q:'Bubble sort did about 28 comparisons for 8 elements. How many does it do for 800?',
+      opts:[
+        {t:'About 2,800, proportional to the number of elements',
+         why:'No. There are two nested loops: for every element we walk the list once more. The cost is not <b>linear</b> in the number of elements.'},
+        {t:'About 320,000, proportional to the square of the number of elements (n²/2)',
+         why:'Correct. For n=8, 28 ≈ 8²/2. For n=800, 800²/2 = 320,000. A hundred times more elements means <b>ten thousand times</b> more work. This is why bubble sort is not used in real systems; merge sort and quicksort run in n·log n.'},
+        {t:'About 2,400, three times as many',
+         why:'No, the cost of an algorithm does not scale like that.'},
+        {t:'It does not change, always 28',
+         why:'No, more elements definitely means more work.'},
+      ], correct:1 },
+  },
+  {
+    t:'So what makes artificial intelligence different?',
+    goal:'You will learn the one fundamental difference between a classical algorithm and machine learning. The whole course turns on it.',
+    todo:'Answer the question.',
+    kind:'static', viz:'sirala', h:660, xp:40,
+    state:{ dizi:[1,2,3,4,5,7,8,9], sirali:0, bitti:true, mesaj:'the rule was written by a HUMAN' },
+    body:'<p>In bubble sort a <b>human</b> wrote the rule: "look at the neighbour, swap if they are out of order". The computer only applied it. The rule is fixed and never changes.</p>' +
+         '<p>Now think about this job: <b>"is there a cat in this photo?"</b></p>' +
+         '<p>Try writing the rule. "If the ears are pointy…", but what if the cat has its back turned? "If it is furry…", what about a hairless cat? "If it has four legs…", what about a dog? There are millions of exceptions and no human can write that rule.</p>' +
+         '<p>People did try: from 1970 to 2010 computer vision worked on hand written feature extractors. Decades of work, limited success. Then the approach changed.</p>' +
+         '<p><b>The idea behind machine learning:</b> we do not write the rule. We give the computer millions of examples and let it <b>find the rule itself</b>. This entire course is about how that finding is done.</p>',
+    learned:'<b>Classical algorithm:</b> a human writes the rule, the computer applies it. The rule is fixed, provable, and always gives the same answer.<br><b>Machine learning:</b> a human supplies examples and a <i>learning procedure</i>, and the computer finds the rule itself. The rule depends on the data, it is approximate, and it makes mistakes.<br><br>In the next lesson we look at what those "examples" actually are.',
+    quiz:{
+      q:'What is the <b>fundamental</b> difference between bubble sort and a machine learning model?',
+      opts:[
+        {t:'ML models run faster',
+         why:'No, usually the opposite. Training a model can take hours or even months. Speed is not the difference.'},
+        {t:'A human writes the rule for bubble sort; an ML model <b>finds its rule from the data</b>',
+         why:'Correct. In a classical algorithm the logic is baked into the code and is fixed. In ML the code only describes the <b>learning process</b>; the actual rule (the parameters) comes out of the data. Run the same code on different data and you get a different model, which is impossible with bubble sort.'},
+        {t:'ML models do not make mistakes',
+         why:'Absolutely not. ML models make mistakes constantly, and a large part of this course is about measuring and reducing that error.'},
+        {t:'Bubble sort works on numbers, ML works on text',
+         why:'No, both work on any kind of data. The difference is not the type of data, it is where the rule comes from.'},
+      ], correct:1 },
+  },
+  ],
+};

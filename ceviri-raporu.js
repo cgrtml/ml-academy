@@ -62,8 +62,23 @@ enIds.filter(id => trIds.includes(id)).forEach(id => {
     if (a.quiz && b.quiz){
       if ((a.quiz.opts||[]).length !== (b.quiz.opts||[]).length){
         sorun.push(ad+' şık sayısı TR '+(a.quiz.opts||[]).length+' ≠ EN '+(b.quiz.opts||[]).length); yapiHata++; }
-      if (a.quiz.dogru !== b.quiz.dogru){ sorun.push(ad+' doğru şık indeksi farklı'); yapiHata++; }
+      if (a.quiz.correct !== b.quiz.correct){
+        sorun.push(ad+' doğru şık indeksi TR '+a.quiz.correct+' ≠ EN '+b.quiz.correct); yapiHata++; }
+      (a.quiz.opts||[]).forEach((o,j) => {
+        const p = (b.quiz.opts||[])[j]; if (!p) return;
+        ['t','why'].forEach(k => {
+          if (o[k] && !p[k]) { sorun.push(ad+' şık '+j+' "'+k+'" EN tarafında yok'); alanHata++; }
+          else if (o[k] && p[k] && o[k] === p[k]) { sorun.push(ad+' şık '+j+' "'+k+'" hâlâ Türkçe'); alanHata++; }
+        });
+      });
+      if (a.quiz.q && b.quiz.q && a.quiz.q === b.quiz.q){ sorun.push(ad+' quiz sorusu hâlâ Türkçe'); alanHata++; }
     }
+    /* kontrol ve durum anahtarları motoru sürüyor, birebir aynı olmalı */
+    const ac = (a.controls||[]).map(c=>c.k).join(','), bc = (b.controls||[]).map(c=>c.k).join(',');
+    if (ac !== bc){ sorun.push(ad+' controls anahtarları TR {'+ac+'} EN {'+bc+'}'); yapiHata++; }
+    (a.controls||[]).forEach((c,j) => { const p=(b.controls||[])[j]; if(!p) return;
+      if (c.min!==p.min || c.max!==p.max || c.step!==p.step || c.val!==p.val){
+        sorun.push(ad+' control "'+c.k+'" aralığı farklı'); yapiHata++; } });
     METIN.forEach(k => {
       if (a[k] && !b[k]) { sorun.push(ad+' "'+k+'" EN tarafında yok'); alanHata++; }
       else if (a[k] && b[k] && a[k] === b[k]) { sorun.push(ad+' "'+k+'" hâlâ Türkçe (birebir aynı)'); alanHata++; }
