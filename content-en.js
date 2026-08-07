@@ -5600,3 +5600,111 @@ DERSLER_EN['soft-split'] = {
   },
   ],
 };
+
+DERSLER_EN['orman'] = {
+  ad:'Bagging and Random Forest',
+  alt:'Take hundreds of an unstable model and average them. It looks simple, and it is still one of the most reliable methods on tabular data.',
+  kaynaklar:[{"y":"Breiman, L.","t":"2001","b":"Random Forests","n":"Machine Learning, 45(1), 5–32"},
+             {"y":"Breiman, L.","t":"1996","b":"Bagging Predictors","n":"Machine Learning, 24(2)"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'What happens as the number of trees grows?',
+    goal:'You will see how averaging smooths the decision boundary and raises the accuracy.',
+    todo:'Raise the number of trees from 1 to 200. Look at both the big map and the individual trees on the right.',
+    kind:'controls', viz:'orman', h:760, xp:55,
+    body:'<p>On the right are the decision regions of the individual trees. They are all <b>different</b> and all somewhat bad. Why are they different?</p>' +
+         '<p><b>1 · Bootstrap.</b> Each tree is trained on a random sample of the data (drawn with replacement). Some points enter more than once and some never enter at all.</p>' +
+         '<p><b>2 · Random features.</b> At every split only a subset of the features is tried. Here 1 out of 2 features, in reality √p of them.</p>' +
+         '<p>These two sources of randomness make the trees <b>independent</b> of each other. And independent errors cancel each other out when averaged.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">  1 tree  → 85.0%<br>  5 trees → 90.4%<br> 25 trees → 92.5%<br> 50 trees → 92.9%<br>200 trees → 93.3%<br><br>a SINGLE tree at the same depth → 88.3%</p>' +
+         '<p><b>Five points better than a single tree at the same depth.</b> And look at the map: the boundary no longer has sharp corners, the transition is smooth. As the number of trees grows the region colours start to behave like "probability".</p>' +
+         '<p>Note that the gain saturates. Going from 50 to 200 only brings 0.4 points. <b>Adding trees never hurts</b> (it does not overfit), it only slows things down.</p>',
+    learned:'<b>Bagging = averaging independent models = lower variance.</b><br><br>Random Forest achieves that with two kinds of randomness: bootstrap sampling plus a random subset of features at every split.<br><br>The number of trees does not cause overfitting; the depth does.',
+    controls:[{k:'nAgac', lb:'NUMBER OF TREES', min:1, max:200, step:1, val:1}],
+    quiz:{
+      q:'If you raise the number of trees in a Random Forest from 100 to 1000, does the risk of overfitting go up?',
+      opts:[
+        {t:'Yes, more models means more complexity',
+         why:'A common misconception, but no. Adding a tree <b>reduces the model\'s variance</b>, it does not raise its capacity. The risk of overfitting comes from the <b>depth</b> of the trees, not their number.'},
+        {t:'No, adding trees reduces variance; overfitting comes from depth',
+         why:'Correct. This is Breiman\'s central result from 2001: the RF error rate converges to a limit as the number of trees grows and does not go past that limit and get worse. The practical consequence: set n_estimators to whatever your compute budget allows and control overfitting with <code>max_depth</code> and <code>min_samples_leaf</code>.'},
+        {t:'Only with small data',
+         why:'With small data every model memorises more easily, but that has nothing to do with the <i>number</i> of trees.'},
+        {t:'You cannot say without measuring',
+         why:'In this case it is known theoretically and has been confirmed consistently in practice.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['boosting'] = {
+  ad:'Boosting: building on top of the error',
+  alt:'Random Forest grows its trees in parallel. Boosting grows them in sequence, and each tree targets the error the previous ones left behind.',
+  kaynaklar:[{"y":"Friedman, J. H.","t":"2001","b":"Greedy Function Approximation: A Gradient Boosting Machine","n":"Annals of Statistics, 29(5)"},
+             {"y":"Chen, T. & Guestrin, C.","t":"2016","b":"XGBoost: A Scalable Tree Boosting System","n":"KDD 2016","u":"https://arxiv.org/abs/1603.02754"},
+             {"y":"Ke, G. et al.","t":"2017","b":"LightGBM: A Highly Efficient Gradient Boosting Decision Tree","n":"NeurIPS 2017"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'Fit the remaining error',
+    goal:'You will see the single idea of boosting, "fit the residual, add it, repeat", step by step.',
+    todo:'Drag the step slider slowly <b>from 0 to 30</b>. Watch the red error bars shrink.',
+    kind:'controls', viz:'boost', h:800, xp:60,
+    body:'<p>Regression this time: 40 points, a wavy relationship. The model will predict a number for every x.</p>' +
+         '<p><b>Step 0:</b> the model tells everybody the same thing, the mean. MSE = <b>3.534</b>.</p>' +
+         '<p>Then the loop starts and <b>one single thing</b> happens on every round:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">1 · residual = truth − current prediction<br>2 · a NEW stump is fitted to that <b>residual</b><br>3 · prediction += 0.4 × the stump\'s output<br>4 · repeat</p>' +
+         '<p>The panel at the bottom left shows the stump added at that step, and the small red dots are the residuals at that moment. The stump is trying to catch the average of the residuals.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">step  0 → MSE 3.534<br>step  1 → MSE 2.770  (78%)<br>step  3 → MSE 2.006  (57%)<br>step 10 → MSE 0.899  (25%)<br>step 20 → MSE 0.368  (10%)<br>step 30 → MSE 0.179  (5%)</p>' +
+         '<p><b>No stump is any good on its own</b>, each one is just a threshold and two constants. But stack 30 of them and the error falls to 5%. That is the whole of boosting.</p>',
+    learned:'<b>Boosting = fit the residual, add it with a small step, repeat.</b><br><br>Random Forest lowers <i>variance</i> (the average of independent trees). Boosting lowers <i>bias</i> (each tree targets the remaining error).<br><br>The price: boosting will certainly memorise if it does not stop. This is why <b>boosting is never used without early stopping</b>.',
+    controls:[{k:'adim', lb:'TREES ADDED', min:0, max:30, step:1, val:0}],
+    quiz:{
+      q:'What would you expect if you raised the learning rate (lr) from 0.4 to 1.0?',
+      opts:[
+        {t:'It converges faster and the result is better',
+         why:'The first part is right, the second is usually wrong. With a large lr every stump sits exactly on the residual and <b>learns the noise too</b>.'},
+        {t:'It falls faster but the risk of overfitting rises, which is why in practice lr is kept small and the number of trees is raised',
+         why:'Correct. In boosting the lr and the number of trees are inversely related: halve the lr and you need roughly twice as many trees. A small lr (0.01–0.1) plus many trees plus <b>early stopping</b> is the standard recipe of everyone working with XGBoost or LightGBM. A small lr is itself a form of regularisation ("shrinkage").'},
+        {t:'Nothing changes',
+         why:'It does change; the lr scales each stump\'s contribution directly.'},
+        {t:'The model collapses',
+         why:'It does not collapse in regression, it just fits faster and more noisily.'},
+      ], correct:1 },
+  },
+  {
+    t:'Two ideas, two different targets',
+    goal:'You will make clear the difference between bagging and boosting and when to pick which.',
+    todo:'Read the comparison, then solve the scenario.',
+    kind:'static', viz:'boost', h:800, xp:50, state:{adim:30},
+    body:'<p>Both of them use "many trees" but they solve <b>completely different problems</b>.</p>' +
+         '<p><b style="color:#4cc4ff">RANDOM FOREST, parallel</b><br>' +
+         '· The trees are independent of each other and can be trained at the same time<br>' +
+         '· Each tree is <b>deep</b> (low bias, high variance)<br>' +
+         '· Lowers <b>variance</b> by averaging<br>' +
+         '· Resistant to overfitting, works well without tuning<br>' +
+         '· Adding a tree never hurts</p>' +
+         '<p><b style="color:#fb923c">BOOSTING, sequential</b><br>' +
+         '· The trees depend on each other and must be trained in order<br>' +
+         '· Each tree is <b>shallow</b> (high bias, low variance, a "weak learner")<br>' +
+         '· Lowers <b>bias</b> by correcting errors one on top of another<br>' +
+         '· Higher accuracy potential, but it needs tuning<br>' +
+         '· Past a certain point adding a tree <b>hurts</b> → early stopping is mandatory</p>' +
+         '<p><b>In practice:</b> on tabular data XGBoost/LightGBM/CatBoost usually beat Random Forest, and boosting wins almost every tabular competition on Kaggle. But RF is one of the rare models that gives a reasonable result with <i>no tuning at all</i>.</p>',
+    learned:'<b>Bagging targets variance, boosting targets bias.</b><br><br>· A fast and safe baseline → <b>Random Forest</b><br>· The highest accuracy, if you are ready to tune → <b>Gradient Boosting</b> + early stopping<br>· If a justification has to be shown → a <b>single tree</b> or a <b>soft decision tree</b><br><br>And which one is really better you say with a <b>statistical test</b>, not by eye.',
+    quiz:{
+      q:'You have 8,000 rows of tabular data, 40 features, some missing values. Your time for tuning is limited. Where do you start?',
+      opts:[
+        {t:'Straight to a deep neural network, the most modern method',
+         why:'No. On tabular data of this size neural networks almost always trail tree based methods, and they need far more tuning on top of that. The comparative studies between 2022 and 2024 showed this again and again.'},
+        {t:'I build a baseline with Random Forest, then if there is time left I try LightGBM with early stopping',
+         why:'Correct, and the most efficient order in practice. RF gives a reasonable number with no tuning and creates a <b>reference</b> for you. Then you try to beat that reference with LightGBM, which also handles missing values directly. And you test the difference between the two models statistically with the 5×2cv F-test from the earlier lesson.'},
+        {t:'A single decision tree, so it is interpretable',
+         why:'Sensible if interpretability is required, but the question is about accuracy and speed. A single tree is unstable.'},
+        {t:'k-NN, it needs no training at all',
+         why:'With 40 features the curse of dimensionality kicks in and it cannot cope with missing values.'},
+      ], correct:1 },
+  },
+  ],
+};
