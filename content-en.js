@@ -1461,3 +1461,87 @@ DERSLER_EN['judge'] = {
   },
   ],
 };
+
+DERSLER_EN['ajan'] = {
+  ad:'Agents and tool calling',
+  alt:'A model does not have to answer in one shot. It can think, call a tool, look at the result and think again.',
+  kaynaklar:[{"y":"Yao, S. et al.","t":"2023","b":"ReAct: Synergizing Reasoning and Acting in Language Models","n":"ICLR 2023","u":"https://arxiv.org/abs/2210.03629"},
+             {"y":"Schick, T. et al.","t":"2023","b":"Toolformer: Language Models Can Teach Themselves to Use Tools","n":"NeurIPS 2023","u":"https://arxiv.org/abs/2302.04761"},
+             {"y":"Anthropic","t":"2024","b":"Building Effective Agents","n":"anthropic.com/engineering","u":"https://www.anthropic.com/engineering/building-effective-agents"}],
+  rota:4,
+  adimlar:[
+  {
+    t:'Think → call → observe → repeat',
+    goal:'You will follow an agent\'s loop step by step and understand when it is actually needed.',
+    todo:'Walk the step from 1 to 8. Watch when the model thinks and when it calls a tool.',
+    kind:'controls', viz:'ajan', h:760, xp:55,
+    body:'<p>On its own, a language model <b>cannot</b> do these things: read current data, do arithmetic (reliably), query a database, run code, send an email.</p>' +
+         '<p><b>Tool calling</b> solves that: the model is given a list of tools and a schema for each. Instead of an answer, the model can produce a <b>tool call</b>; the system runs the tool and hands the result back to the model.</p>' +
+         '<p>The <b>ReAct loop</b> (Yao et al. 2023): <b>Think → Act → Observe</b>, and repeat if necessary. In the example on screen the model runs two separate SQL queries and compares the results. It could not have done that in a single call, because it only realised it needed the second query after seeing the result of the first.</p>' +
+         '<p><b>When do you need an agent?</b></p>' +
+         '<p>· When the number of steps is <b>not known in advance</b>, when how many queries are needed depends on the situation<br>' +
+         '· When intermediate results <b>determine</b> the next step<br>' +
+         '· When interaction with the outside world is required</p>' +
+         '<p style="color:#facc15"><b>When you do not:</b> if the flow is fixed, do not build an agent. A fixed chain like "fetch the document → summarise → convert to JSON" is not an agent, it is <b>a simple pipeline</b>. Making it an agent only makes it slow, expensive and unpredictable. That is the core advice in Anthropic\'s engineering post: <b>start with the simplest solution and reach for an agent only when the flexibility is genuinely needed.</b></p>' +
+         '<p><b>The three hard problems with agents:</b> (1) <b>error accumulation</b>, 95% success per step becomes 60% over 10 steps; (2) <b>infinite loops</b>, a step limit is mandatory; (3) <b>cost</b>, every step is an LLM call and the context keeps growing.</p>',
+    learned:'<b>An agent is think → call a tool → observe → repeat.</b> You need one when the number of steps is not known in advance.<br><br>If the flow is fixed, <b>build a pipeline, not an agent</b>.<br><br>And watch out for error accumulation: 95% success per step means 60% over 10 steps.',
+    controls:[{k:'adim', lb:'STEP', min:0, max:7, step:1, val:0}],
+    quiz:{
+      q:'You are building a system that reads invoices and extracts the VAT amount. The flow is always the same: read the PDF → convert to text → find the amount → return JSON. Should you build an agent?',
+      opts:[
+        {t:'Yes, an agent is more flexible and more modern',
+         why:'No, and this is the most common mistake made in the rush towards agents. If the flow is fixed you do not need an agent\'s flexibility; you are only adding cost, latency and unpredictability.'},
+        {t:'No, the flow is fixed, this is a pipeline. An agent is only needed when the number of steps is not known in advance',
+         why:'Correct. On a fixed chain, calling every step separately and deterministically is cheaper, faster, more testable and more predictable. An agent architecture earns its keep when the model itself has to <b>decide which step to take and when</b>. Anthropic\'s advice is clear: start with the simplest solution.'},
+        {t:'Yes, because PDFs can come in different formats',
+         why:'Variation in format is handled with prompting and preprocessing; the flow itself is still fixed.'},
+        {t:'It makes no difference, both give the same result',
+         why:'The result may be similar but the cost, latency and debuggability are very different.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['maliyet'] = {
+  ad:'Cost and latency',
+  alt:'A few cents per token. Thousands of dollars a month at scale. And there is a right order for bringing the cost down.',
+  kaynaklar:[{"y":"Anthropic","t":"-","b":"Prompt Caching Documentation","n":"docs.anthropic.com","u":"https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching"},
+             {"y":"Chen, L. et al.","t":"2023","b":"FrugalGPT: How to Use Large Language Models While Reducing Cost","n":"arXiv:2305.05176","u":"https://arxiv.org/abs/2305.05176"},
+             {"y":"Kwon, W. et al.","t":"2023","b":"Efficient Memory Management for LLM Serving with PagedAttention","n":"SOSP 2023","u":"https://arxiv.org/abs/2309.06180"}],
+  rota:4,
+  adimlar:[
+  {
+    t:'What happens at scale?',
+    goal:'You will work out how the price per token shows up in a real system.',
+    todo:'Change the number of requests and the model. Then <b>turn the RAG switch on</b> and see where the cost moves.',
+    kind:'controls', viz:'maliyet', h:760, xp:60,
+    body:'<p>The scenario: <b>500 input plus 300 output</b> tokens per request. Prices are per million tokens (real provider prices are of this order and change over time).</p>' +
+         '<p><b>Two things stand out immediately:</b></p>' +
+         '<p><b>1 · Output is 4 to 5 times more expensive than input.</b> Because output is produced token by token, each one requiring its own forward pass. Input is processed in parallel in a single pass. This is why <b>the first optimisation is shortening the output</b>: "answer briefly", "return only JSON, no explanation".</p>' +
+         '<p><b>2 · RAG flips the balance.</b> Turn RAG on and the input grows eightfold (5 chunks × roughly 800 tokens of context). Now most of the cost sits on the <b>input side</b>. In that situation the move is not to shorten the output but to <b>reduce the number of retrieved chunks</b> and use <b>prompt caching</b>.</p>' +
+         '<p><b>The order for cutting cost</b> (from highest return to lowest):</p>' +
+         '<p>1. <b>Prompt caching</b>: if the system prompt and fixed context are the same on every request, they are cached and not charged again (around 90% off). In most systems this is the single biggest win.<br>' +
+         '2. <b>A smaller model</b>: for most tasks the large model is unnecessary. FrugalGPT (2023) proposes a <b>cascade</b>: ask the small model first, escalate to the large one when it is unsure.<br>' +
+         '3. <b>Shorten the output</b>, the side that costs 4 to 5 times more.<br>' +
+         '4. <b>Retrieve fewer chunks</b>: lower k and put a reranker in its place (you saw this in the RAG lesson).<br>' +
+         '5. <b>Batch processing</b>: around 50% off for work that is not urgent.</p>' +
+         '<p><b>Latency is a separate axis:</b> how quickly the user sees the first token (TTFT) and how fast the rest streams. Long context grows TTFT; long output grows the total time. Streaming does not shorten the total time but it substantially lowers the <b>perceived</b> latency.</p>',
+    learned:'<b>An output token costs 4 to 5 times more than an input token</b>, but if you use RAG the balance shifts to the input.<br><br>The order for cutting cost: <b>prompt caching</b> (risk free, biggest) → smaller model or a cascade → shorten the output → retrieve fewer chunks → batch.<br><br>Latency is a separate axis: long context grows TTFT, long output grows the total time.',
+    controls:[{k:'model', lb:'MODEL', min:0, max:2, step:1, val:1},
+              {k:'istek', lb:'DAILY REQUESTS', min:1000, max:200000, step:1000},
+              {k:'rag', lb:'RAG CONTEXT', min:0, max:1, step:1, val:0}],
+    quiz:{
+      q:'A RAG based support bot takes 50,000 requests a day, and the same 2000 token system prompt is sent on every one. Where is the single biggest win?',
+      opts:[
+        {t:'Moving to a smaller model',
+         why:'That produces a serious saving but puts quality at risk and needs testing. Do the risk free thing first.'},
+        {t:'Prompt caching, since the fixed 2000 tokens are being charged again on every request',
+         why:'Correct. That is 50,000 × 2000 = 100 million tokens a day for the fixed system prompt alone. Prompt caching makes that part around 90% cheaper and <b>carries no quality risk at all</b>, since the output stays identical. Because it is risk free and large, it is always the first move. It also lowers TTFT.'},
+        {t:'Shortening the output',
+         why:'It helps, but in this scenario the weight of the cost is on the input side, the fixed 2000 tokens plus the RAG context.'},
+        {t:'Using the batch API',
+         why:'A support bot runs in real time; the batch API cannot be used here.'},
+      ], correct:1 },
+  },
+  ],
+};
