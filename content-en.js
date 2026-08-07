@@ -1885,3 +1885,90 @@ DERSLER_EN['ai-vs-ml'] = {
   },
   ],
 };
+
+DERSLER_EN['proje-karari'] = {
+  ad:'How to decide on an AI project',
+  alt:'"Is the model good enough" is the wrong question. The right one is answered with four numbers, and sometimes the answer is "no accuracy is enough".',
+  kaynaklar:[{"y":"Provost, F. & Fawcett, T.","t":"2013","b":"Data Science for Business","n":"O'Reilly","u":"https://data-science-for-biz.com/"},
+             {"y":"Sculley, D. et al.","t":"2015","b":"Hidden Technical Debt in Machine Learning Systems","n":"NeurIPS 2015","u":"https://papers.nips.cc/paper/5656-hidden-technical-debt-in-machine-learning-systems"},
+             {"y":"Zhu, W. et al.","t":"2010","b":"Sensitivity, Specificity, Accuracy, Associated Confidence Interval and ROC Analysis","n":"NESUG 2010"},
+             {"y":"Bansal, G. et al.","t":"2021","b":"Does the Whole Exceed its Parts? The Effect of AI Explanations on Complementary Team Performance","n":"CHI 2021","u":"https://arxiv.org/abs/2006.14779"}],
+  rota:4,
+  adimlar:[
+  {
+    t:'The decision is arithmetic, not accuracy',
+    goal:'You will see which numbers determine a model\'s value.',
+    todo:'Change the base rate and the accuracy. When does the net gain go below zero?',
+    kind:'controls', viz:'projeKarari', h:760, xp:50, state:{sahne:'kazanc', mi:1},
+    body:'<p>You are building a leak detection model. Deciding takes four numbers, and none of them is about the model:</p>' +
+         '<p><b>The base rate p of the event.</b> What percentage of cases are really leaks?<br>' +
+         '<b>The cost of a miss.</b> What does an undetected leak cost? (500)<br>' +
+         '<b>The cost of an intervention.</b> What does looking at one alarm cost? (20)<br>' +
+         '<b>The cost of a call.</b> What does running the model on one case cost? (2)</p>' +
+         '<p>The arithmetic is direct: without a model every event escapes and a cost of n·p·500 arises. With a model: caught events cost 20 instead of 500, the ones that escape still cost 500, wasted interventions cost 20 each, and every case pays 2 units for the call.</p>' +
+         '<p>With a base rate of 5% and 90% accuracy, the net gain over 1000 cases is <b>17,700</b>. At the same accuracy, drop the base rate to 0.1% and the gain falls to <b>minus 3,566</b>: the model works but the project loses money.</p>' +
+         '<p>Accuracy is the fifth number and on its own it says nothing. The sentence "90% accuracy" is not a justification for a decision until those four numbers are given.</p>',
+    learned:'<b>The decision is made with four numbers: the base rate, the cost of a miss, the cost of an intervention, the cost of a call.</b><br><br>At a base rate of 5% and 90% accuracy the net gain over 1000 cases is 17,700. At the same accuracy with a base rate of 0.1% the gain is minus 3,566.<br><br>Accuracy is the fifth number and on its own it is not a justification for a decision.',
+    controls:[{k:'ti', lb:'BASE RATE OF THE EVENT', min:0, max:3, step:1, val:2},
+              {k:'di', lb:'MODEL ACCURACY', min:0, max:4, step:1, val:2}],
+  },
+  {
+    t:'Break even accuracy',
+    goal:'You will compute the accuracy a model needs to turn a profit.',
+    todo:'Lower the base rate. Where does the required accuracy pass 1?',
+    kind:'controls', viz:'projeKarari', h:760, xp:50, state:{sahne:'basabas'},
+    body:'<p>Set the net gain to zero and solve for accuracy, and a closed form appears:</p>' +
+         '<p style="font-family:monospace">d* = [(1−p)·C_intervention + C_call] / [p·(C_miss − C_intervention) + (1−p)·C_intervention]</p>' +
+         '<p>The measurement: at a base rate of 20% the required accuracy is only <b>16.1%</b>. At 5% it is <b>48.8%</b>. At 1% it is <b>88.6%</b>. And at 0.1% it is <b>107.4%</b>, which is <b>impossible</b>.</p>' +
+         '<p>The reason: as the base rate falls the positive class shrinks while the negative class grows. Even a small percentage of the negatives produces more wasted interventions than the entire set of positives. The cost of those interventions eats the gain.</p>' +
+         '<p>The cost of an intervention is at least as decisive as accuracy. At a base rate of 5%: if an intervention costs 5 units the required accuracy is <b>22.9%</b>, and if it costs 100 units it is <b>84.4%</b>.</p>' +
+         '<p>The practical counterpart matters: the way to save a project is not always to improve the model. <b>Making the intervention cheaper</b> is usually easier and more effective. Automatic pre filtering, a cheaper verification step, or batching the alarms all lower the required accuracy substantially.</p>',
+    learned:'<b>Break even accuracy has a closed form and is very sensitive to the base rate.</b><br><br>Base rate 20% → required accuracy 16.1%; 5% → 48.8%; 1% → 88.6%; 0.1% → 107.4% (impossible).<br><br>The cost of an intervention is at least as decisive: at a 5% base rate, 22.9% is enough if an intervention costs 5 units, and 84.4% is needed if it costs 100. <b>Making the intervention cheaper is usually easier than improving the model.</b>',
+    controls:[{k:'ti', lb:'BASE RATE OF THE EVENT', min:0, max:3, step:1, val:2},
+              {k:'mi', lb:'INTERVENTION COST', min:0, max:3, step:1, val:1}],
+  },
+  {
+    t:'How many alarms are empty',
+    goal:'You will see why high accuracy can still produce a sea of empty alarms.',
+    todo:'Lower the base rate. What is the empty alarm rate even at 99% accuracy?',
+    kind:'controls', viz:'projeKarari', h:760, xp:50, state:{sahne:'alarm', mi:1},
+    body:'<p>Now look at the human side of the project: what will the team looking at the alarms actually see?</p>' +
+         '<p>At a base rate of 5% and 90% accuracy, out of 1000 cases 45 real events are caught but 95 interventions are wasted. <b>67.9% of the alarms are empty.</b></p>' +
+         '<p>Drop the base rate to 1% and at the same 90% accuracy <b>91.7% of the alarms are empty</b>. Even pushing accuracy to 99% leaves it at 50.0%.</p>' +
+         '<p>This is the PPV issue you saw in the fairness lesson, viewed from the cost side. The model is not bad; because the event is rare, even a small share of the negatives outnumbers all of the positives.</p>' +
+         '<p>The consequence is serious: in a system with a high empty alarm rate the team stops trusting the alarms very quickly. A system that is profitable on paper can become worthless because it is abandoned in practice. This is why the net gain calculation must always be accompanied by the <b>workload per alarm</b> and the <b>empty alarm rate</b>.</p>' +
+         '<p>As Bansal et al. (2021) showed, in systems where a human and a model work together, how much the team trusts the model can be as decisive as the model\'s accuracy.</p>',
+    learned:'<b>On rare events, even high accuracy produces a sea of empty alarms.</b><br><br>Base rate 5%, accuracy 90%: 67.9% of alarms are empty. At a base rate of 1% with the same accuracy it is 91.7%; even at 99% accuracy it is 50.0%.<br><br>A system that is profitable on paper can be abandoned in practice because the team stops trusting the alarms. The empty alarm rate belongs next to the net gain.',
+    controls:[{k:'ti', lb:'BASE RATE OF THE EVENT', min:0, max:3, step:1, val:1},
+              {k:'di', lb:'MODEL ACCURACY', min:0, max:4, step:1, val:4}],
+  },
+  {
+    t:'The decision checklist',
+    goal:'You will turn the arithmetic into a decision process.',
+    todo:'Answer the question.',
+    kind:'controls', viz:'projeKarari', h:760, xp:75, state:{sahne:'basabas'},
+    body:'<p>The measurements, turned into a checklist:</p>' +
+         '<p><b>1. Measure the base rate.</b> Before writing a model. If the event is very rare the project may be mathematically impossible, and learning that three months later is expensive.</p>' +
+         '<p><b>2. Measure the intervention cost and try to lower it.</b> You measured it: taking an intervention from 100 to 5 lowers the required accuracy from 84.4% to 22.9%. That is a bigger win than most model improvements.</p>' +
+         '<p><b>3. Compute the break even accuracy and write it down as the target.</b> "As good as possible" is not a target; "above 48.8%" is.</p>' +
+         '<p><b>4. Report the empty alarm rate as well.</b> Profitable but unusable systems are common.</p>' +
+         '<p><b>5. Do not forget the no model baseline.</b> In this calculation the "no model" option was doing nothing. In reality there is usually a simple rule (a threshold, a list, human intuition) and the model competes against that, not against zero.</p>' +
+         '<p>Finally, the arithmetic here is the project\'s <b>running</b> cost. Setup, data collection, monitoring and maintenance come on top; the "hidden technical debt" work of Sculley et al. (2015) describes how those costs are usually larger than the model code.</p>',
+    learned:'<b>The checklist: measure the base rate, lower the intervention cost, write the break even accuracy down as the target, report the empty alarm rate, do not forget the no model baseline.</b><br><br>Taking an intervention from 100 to 5 lowers the required accuracy from 84.4% to 22.9%: a bigger win than most model improvements.<br><br>This arithmetic covers only the running cost; setup, data, monitoring and maintenance come on top.',
+    controls:[{k:'ti', lb:'BASE RATE OF THE EVENT', min:0, max:3, step:1, val:0},
+              {k:'mi', lb:'INTERVENTION COST', min:0, max:3, step:1, val:0}],
+    quiz:{
+      q:'On a production line the critical fault rate is 0.1%. A missed fault costs 500 units, looking at one alarm costs 20 units, and a model call costs 2 units. The team says "let us start the project once we reach 95% accuracy". What do you say?',
+      opts:[
+        {t:'With these parameters no accuracy turns a profit; the intervention or call cost has to come down first',
+         why:'Correct. With these numbers the break even formula gives a required accuracy of 107.4%, which is above 1: impossible. The impossibility threshold is p* = C_call/(C_miss − C_intervention) = 2/480 = 0.417%, and 0.1% is below it. Setting an accuracy target is pointless; what has to change is the cost structure. Making the intervention cheaper, or running the model only on cases that pass a cheap pre filter, are the real solutions.'},
+        {t:'95% is a reasonable target, start the project',
+         why:'The measurement says otherwise. With a base rate of 0.1% the required accuracy is 107.4%; 95% is far short. With these parameters even the best model loses money.'},
+        {t:'Raise the target to 99%',
+         why:'99% is not enough either. Because the required accuracy is above 1, no target works. The problem is not in the model, it is in the combination of the base rate and the cost structure.'},
+        {t:'Collect more data and strengthen the model',
+         why:'Data improves the model, but the required accuracy is already at an unreachable place. The constraint here is economic, not statistical.'},
+      ], correct:0 },
+  },
+  ],
+};
