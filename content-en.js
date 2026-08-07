@@ -2784,3 +2784,171 @@ DERSLER_EN['havuzlama'] = {
   },
   ],
 };
+
+DERSLER_EN['kisayol'] = {
+  ad:'Skip connections: making depth free',
+  alt:'Deep plain networks train worse than shallow ones. The cause is not overfitting, it is the path the gradient takes. A single plus sign changes that.',
+  kaynaklar:[{"y":"He, K., Zhang, X., Ren, S. & Sun, J.","t":"2016","b":"Deep Residual Learning for Image Recognition","n":"CVPR 2016"},
+             {"y":"He, K. et al.","t":"2016","b":"Identity Mappings in Deep Residual Networks","n":"ECCV 2016"},
+             {"y":"Zhang, H., Dauphin, Y. & Ma, T.","t":"2019","b":"Fixup Initialization: Residual Learning Without Normalization","n":"ICLR 2019"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'Why does a deep network train worse',
+    goal:'You will see that depth makes training harder, independently of overfitting.',
+    todo:'Increase the number of layers. Which way does the red curve go?',
+    kind:'controls', viz:'kisayolBaglanti', h:770, xp:25, state:{sahne:'derinlik'},
+    body:'<p>We train four separate networks: 4, 8, 16 and 32 layers. All ReLU, all with He initialisation, the same data, the same learning rate, the same 40 steps.</p>' +
+         '<p>What we measure is the <b>training loss</b>. Not the test loss. So there is no overfitting argument here: if a model cannot even fit its own training data, the problem is not generalisation.</p>' +
+         '<p>The results:</p>' +
+         '<p>4 layers <b>0.0020</b> &nbsp;·&nbsp; 8 layers <b>0.1109</b> &nbsp;·&nbsp; 16 layers <b>0.1530</b> &nbsp;·&nbsp; 32 layers <b>0.9882</b></p>' +
+         '<p>The 32 layer network is <b>487 times</b> worse than the 4 layer one. And that network is more powerful: it can do everything the 4 layer one can, it would only have to set the extra 28 layers to the identity function.</p>' +
+         '<p>So this is not a problem of <b>expressive power</b>, it is a problem of <b>optimisation</b>. The solution exists in the space but gradient descent cannot get there.</p>' +
+         '<p>The same mechanism as in the exploding gradient lesson: the returning gradient is multiplied by a matrix at every layer, and the product of 32 multiplications either fades or explodes.</p>',
+    learned:'<b>Depth can worsen the training loss too, not only the test loss.</b><br><br>In the same setup, 4 layers gives <b>0.0020</b> and 32 layers gives <b>0.9882</b>: <b>487 times</b> worse.<br><br>The deeper network is not weaker, it is strictly more powerful. Setting the extra layers to the identity would make it equal to the shallow one. <b>The problem is not what the model can do, it is whether training can get there.</b>',
+    controls:[{k:'di', lb:'NUMBER OF LAYERS', min:0, max:3, step:1, val:0}],
+  },
+  {
+    t:'A single plus sign',
+    goal:'You will measure how a skip connection reverses the relationship with depth.',
+    todo:'Increase the number of layers and compare the two curves. When does the ratio turn in favour of the skip?',
+    kind:'controls', viz:'kisayolBaglanti', h:770, xp:50, state:{sahne:'derinlik'},
+    body:'<p>The change is one line. Where the layer was:</p>' +
+         '<p style="text-align:center;font-size:1.15em">h &larr; ReLU(W h)</p>' +
+         '<p>we now write:</p>' +
+         '<p style="text-align:center;font-size:1.15em">h &larr; h + 0.1 · ReLU(W h)</p>' +
+         '<p>The layer no longer replaces the input, it adds a <b>correction</b> to it. That is the ResNet idea.</p>' +
+         '<p>The measurement:</p>' +
+         '<p>4 layers <b>0.0898</b> &nbsp;·&nbsp; 8 layers <b>0.1555</b> &nbsp;·&nbsp; 16 layers <b>0.0971</b> &nbsp;·&nbsp; 32 layers <b>0.0412</b></p>' +
+         '<p>As depth grows the loss <b>falls</b>. At 32 layers the network with skips is <b>24 times</b> better than the plain one.</p>' +
+         '<p>But let us be honest, because people often draw the wrong conclusion here: <b>at 4 layers the plain network is 44 times better than the one with skips</b> (0.0020 against 0.0898). A skip is not a free improvement, it is the solution to a problem created by depth. With no problem, the solution is a cost.</p>' +
+         '<p>The turning point is around 16 layers: that is where the ratio first crosses in favour of the skip (<b>1.58 times</b>).</p>',
+    learned:'<b>A skip connection reverses the relationship between depth and loss.</b><br><br>The plain network goes from <b>0.0020 to 0.9882</b> across 4 to 32 layers (getting worse). The network with skips goes from <b>0.0898 to 0.0412</b> (getting better).<br><br>At 32 layers the skip is worth <b>24 times</b>. But at 4 layers the plain network is <b>44 times</b> ahead. <b>A skip pays the price of depth; with no depth there is nothing to pay.</b>',
+    controls:[{k:'di', lb:'NUMBER OF LAYERS', min:0, max:3, step:1, val:0}],
+  },
+  {
+    t:'Why it works: the identity path',
+    goal:'You will measure how the gradient passes through the skip without being distorted.',
+    todo:'Look at the direction of the two curves on the plot. Which one grows with depth?',
+    kind:'static', viz:'kisayolBaglanti', h:770, xp:50, state:{sahne:'gradyan'},
+    body:'<p>During backpropagation the gradient crosses the layers in the opposite direction. In a plain layer it is multiplied by <b>Wᵀ</b> at every crossing. Thirty two layers, thirty two multiplications.</p>' +
+         '<p>In a layer with a skip the derivative takes this form:</p>' +
+         '<p style="text-align:center;font-size:1.15em">I + 0.1 · J</p>' +
+         '<p>The <b>I</b> here is the identity matrix. So a copy of the gradient passes through <b>without being multiplied by anything</b>. Whatever the layer does, that copy reaches back undistorted.</p>' +
+         '<p>We measured the gradient norm at the first training step:</p>' +
+         '<p><b>plain network:</b> <b>8.475</b> at 4 layers, <b>1.203</b> at 32. It <b>shrinks</b> with depth.<br>' +
+         '<b>with skips:</b> <b>0.476</b> at 4 layers, <b>4.622</b> at 32. It <b>grows</b> with depth.</p>' +
+         '<p>The directions are exactly opposite. In a plain network, adding a layer reduces the gradient\'s chance of reaching the source; in a network with skips, every layer adds its own contribution through the identity path.</p>' +
+         '<p>This also explains the observation at the start of the lesson: the 32 layer plain network could not find the solution not because the solution was missing, but because the gradient could not carry the news there.</p>',
+    learned:'<b>A skip opens a path the gradient travels without being multiplied.</b><br><br>The derivative takes the form I + 0.1·J, and the I term is unaffected by depth.<br><br>The first step gradient norm goes <b>8.475 → 1.203</b> in the plain network (shrinking) and <b>0.476 → 4.622</b> with skips (growing). The same change in depth, opposite directions.',
+  },
+  {
+    t:'Writing h + F(h) is not enough',
+    goal:'You will see the problem a skip brings with it, and its solution.',
+    todo:'Answer the question.',
+    kind:'static', viz:'kisayolBaglanti', h:770, xp:50, state:{sahne:'baslangic'},
+    body:'<p>So far we wrote the skip as <b>h + 0.1 · F(h)</b>. So why is that 0.1 there?</p>' +
+         '<p>Let us measure. The loss of the 32 layer network while it is <b>still completely untrained</b>:</p>' +
+         '<p><b>plain network:</b> 1.181 &nbsp;·&nbsp; <b>skip, branch scale 1.0:</b> <b>5.19 × 10¹¹</b> &nbsp;·&nbsp; <b>skip, branch scale 0.1:</b> 3.705</p>' +
+         '<p>Without damping, the network with skips explodes at the very first moment.</p>' +
+         '<p>The reason is the same arithmetic as in the initialisation lesson. When you write h + F(h) the variance of the output becomes the variance of the input <b>plus</b> the variance of the branch. So every layer grows the variance. Across thirty two layers that accumulates.</p>' +
+         '<p>In real ResNets this problem is solved in one of three ways: putting a <b>normalisation layer</b> inside the branch (that is what the original ResNet does), <b>initialising the last layer of the branch to zero</b>, or <b>damping the branch</b> by a fixed factor as we did here.</p>' +
+         '<p>All three have the same purpose: the network should <b>start close to the identity</b>. That way a 32 layer network starts training not as a 32 layer mess but somewhere close to a shallow network, and the layers come into play only as far as they are needed.</p>',
+    learned:'<b>Adding a skip only makes sense together with starting the network close to the identity.</b><br><br>Initial loss at 32 layers: plain <b>1.181</b>, undamped skip <b>5.19 × 10¹¹</b>, damped skip <b>3.705</b>.<br><br>h + F(h) grows the variance at every layer. Normalisation, zero initialisation or branch damping prevent that. All three have the same aim: <b>a deep network should begin training like a shallow one</b>.',
+    quiz:{
+      q:'You added skip connections to a 50 layer network but training gives NaN from the first step. Removing the skips gets rid of the NaN but the loss does not fall at all either. What do you do?',
+      opts:[
+        {t:'Keep the skips and damp the branch: add normalisation or initialise the last layer of the branch to zero',
+         why:'Correct. The two symptoms point at two separate problems. The "loss does not fall" state without skips is the measurement from the first step of this lesson: the 32 layer plain network was stuck at 0.9882. The NaN with skips is the measurement from the last step: with an undamped skip the initial loss at 32 layers climbed to 5.19e11. The skip is the right tool but it does not work until the branch\'s contribution is scaled.'},
+        {t:'Lower the learning rate',
+         why:'If the NaN arrives from the first step, the problem is not the step size but the network\'s initial output itself. As you measured in this lesson, the undamped skip network had an initial loss of 5.19e11 with no training at all. You cannot rescue a network that exploded before taking a step by taking smaller steps.'},
+        {t:'Reduce the number of layers from 50 to 10',
+         why:'That avoids the problem rather than removing it, and this whole lesson is about making depth free. Besides, 10 layers can be problematic in plain form too: here even 16 layers left the plain network stuck at 0.1530.'},
+        {t:'Add gradient clipping',
+         why:'Clipping trims the gradient, but the explosion here happens on the forward pass, before any gradient is computed. As the exploding gradient lesson also noted, clipping treats the symptom; the cause here is the initial scale.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['rnn'] = {
+  ad:'RNN: holding the sequence in memory, and the horizon of that memory',
+  alt:'The same weights are applied again at every step and a state is carried forward. The memory is real, and its horizon is measurable too.',
+  kaynaklar:[{"y":"Elman, J. L.","t":"1990","b":"Finding Structure in Time","n":"Cognitive Science 14(2)"},
+             {"y":"Bengio, Y., Simard, P. & Frasconi, P.","t":"1994","b":"Learning Long-Term Dependencies with Gradient Descent is Difficult","n":"IEEE Trans. Neural Networks 5(2)"},
+             {"y":"Goodfellow, I., Bengio, Y. & Courville, A.","t":"2016","b":"Deep Learning, Chapter 10","n":"MIT Press","u":"https://www.deeplearningbook.org/"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'The same weights, at every step',
+    goal:'You will see why an RNN is independent of the sequence length.',
+    todo:'Increase the sequence length. Does the parameter count change?',
+    kind:'controls', viz:'rnnHafiza', h:770, xp:25, state:{sahne:'yapi'},
+    body:'<p>Every network so far expected a fixed size input. But a sentence can be 5 words or 50. How do you hand that to a network with a fixed input?</p>' +
+         '<p>The RNN\'s answer is simple: <b>read the sequence step by step rather than all at once</b>. At every step take the next input and update the state you are holding:</p>' +
+         '<p style="text-align:center;font-size:1.15em">h &larr; tanh(W h + u x)</p>' +
+         '<p>The critical point: <b>W is the same matrix at every step</b>. We are not adding a new layer, we are applying the same layer again and again.</p>' +
+         '<p>See the consequence with the slider: whether the sequence is 2 steps or 32, the parameter count is <b>168</b>. Because what is counted is W (12×12 = 144), the input weights (12) and the output weights (12).</p>' +
+         '<p>In a feedforward network you would need T × 12 weights for the input layer alone, and the model would have to be rebuilt whenever T changed.</p>' +
+         '<p>The price is right here: the entire past has to squeeze into <b>a single 12 dimensional vector</b>. In the next steps we measure what that squeezing costs.</p>',
+    learned:'<b>An RNN applies the same weights again at every step.</b><br><br>The parameter count is independent of the sequence length: <b>168</b> here for a 2 step sequence and for a 32 step one alike.<br><br>Which is why a single model can process sequences of any length. In return, the entire past is compressed into a single <b>12 dimensional state</b>.',
+    controls:[{k:'ti', lb:'SEQUENCE LENGTH', min:0, max:4, step:1, val:0}],
+  },
+  {
+    t:'Does it really remember',
+    goal:'You will measure that the RNN\'s memory works, and where it collapses.',
+    todo:'Increase the sequence length. At what length does the explained ratio fall below zero?',
+    kind:'controls', viz:'rnnHafiza', h:770, xp:50, state:{sahne:'ufuk'},
+    body:'<p>The task: we show T random numbers and at the end we ask for <b>the first one</b>. Everything in between is a distraction. The model has to carry the first number all the way to the end.</p>' +
+         '<p>The measure is the <b>explained ratio</b>: 1 is perfect, 0 means "the same as always saying the mean", and negative means worse than saying the mean. And the measurement is on <b>a separate test set</b>, because memorising the training set is very easy on this task.</p>' +
+         '<p><b>T = 2:</b> <b>96.0%</b>. Almost perfect.<br>' +
+         '<b>T = 4:</b> <b>88.8%</b>. Still good.<br>' +
+         '<b>T = 8:</b> <b>&minus;30.5%</b>. Collapsed.</p>' +
+         '<p>So the memory is real, but it ends somewhere between 4 and 8 steps.</p>' +
+         '<p>Look at the training loss on the cards as well: at T = 8 the training loss is <b>0.3017</b> while the test loss is <b>1.2905</b>. The model manages to memorise the training sequences but cannot learn the rule. That is the sign that the problem is not capacity but <b>the flow of information</b>: the first number does not reach the end.</p>' +
+         '<p>Raising the length further changes nothing, because the problem has already happened.</p>',
+    learned:'<b>An RNN\'s memory works but has a short horizon.</b><br><br>On the task of remembering the first number, the explained ratio is <b>96.0%</b> at T = 2, <b>88.8%</b> at T = 4 and <b>&minus;30.5%</b> at T = 8.<br><br>At T = 8 the training loss is 0.3017 and the test loss is 1.2905: the model memorises but cannot generalise. The problem is not capacity, it is <b>information not reaching the end</b>.',
+    controls:[{k:'ti', lb:'SEQUENCE LENGTH', min:0, max:4, step:1, val:0}],
+  },
+  {
+    t:'Why: the influence fades with distance',
+    goal:'You will directly measure the quantity that sets the horizon.',
+    todo:'Look at the plot. In how many steps does the sensitivity halve?',
+    kind:'static', viz:'rnnHafiza', h:770, xp:50, state:{sahne:'sonum'},
+    body:'<p>Now let us set training aside and look at the network itself. The question: <b>how sensitive is the output to an input t steps earlier?</b></p>' +
+         '<p>That derivative can be computed directly and <b>requires no training</b>. We took the measurement on 48 different sequences and averaged it.</p>' +
+         '<p>The result is almost a straight line on a log scale. So the decay is <b>exponential</b>. The average per step ratio is <b>0.5866</b>.</p>' +
+         '<p>The sensitivity halves in <b>4 steps</b>, falls to a tenth in <b>7 steps</b> and to a hundredth in <b>9 steps</b>. The influence of an input 8 steps back is <b>2.74%</b> of the last step\'s. At 31 steps back it is <b>3.62 × 10⁻⁸</b>.</p>' +
+         '<p>Now put the two measurements side by side. In the previous step training collapsed between T = 4 and T = 8. Here the influence falls to a few percent in exactly that range. <b>Two independent measurements point at the same place.</b></p>' +
+         '<p>The cause is familiar from the exploding gradient lesson: at every step there is a multiplication by the tanh derivative (below 1) and by W. 31 steps, 31 multiplications. The difference here is that the factors stay below 1: not an explosion but a <b>decay</b>.</p>',
+    learned:'<b>An RNN\'s horizon is set by the exponential decay of an input\'s influence on the output.</b><br><br>The per step ratio is <b>0.5866</b>: the sensitivity halves in <b>4 steps</b> and falls to a hundredth in <b>9</b>. 8 steps back is <b>2.74%</b>, 31 steps back is <b>3.6 × 10⁻⁸</b>.<br><br>This measurement was taken on an untrained network: the decay is not a training flaw, it is <b>the structure itself</b>.',
+  },
+  {
+    t:'So what should be done',
+    goal:'You will see which direction the fix for the decay looks in.',
+    todo:'Answer the question.',
+    kind:'static', viz:'rnnHafiza', h:770, xp:50, state:{sahne:'sonum'},
+    body:'<p>The source of the decay is clear: there is a multiplication at every step and most of the factors are below 1. So the fix should be clear too: <b>open a path where information can pass without being multiplied</b>.</p>' +
+         '<p>That sentence should sound familiar. We measured exactly this in the skip connections lesson: writing h + F(h) turns the derivative into I + J and a copy of the gradient passes through unmultiplied. What we did there along depth has to be done here <b>along time</b>.</p>' +
+         '<p>That is exactly what <b>LSTM</b> does. It adds a <b>cell</b> alongside the state and, rather than rewriting it at every step, updates it <b>selectively</b> through gates. When a gate is closed the cell is carried through unchanged, so the factor becomes 1 and the decay stops.</p>' +
+         '<p>All three approaches are different forms of the same idea:</p>' +
+         '<p><b>Gates</b> (LSTM, GRU): the model decides when to update the information.<br>' +
+         '<b>Attention</b>: every step can look <b>directly</b> at every step in the past, whatever the distance. The path length becomes 1.<br>' +
+         '<b>Skips</b>: jumping connections along the time axis.</p>' +
+         '<p>The reason attention largely displaced the RNN is hidden in this measurement: in an RNN information has to pass through 31 multiplications for 31 steps, while in attention it passes through <b>one</b>.</p>',
+    learned:'<b>The fix for the decay is not capacity, it is opening a path where information passes without being multiplied.</b><br><br>Skip connections did that along depth; <b>LSTM gates</b> do the same along time: while a gate is closed the cell is carried unchanged and the factor is 1.<br><br><b>Attention</b> shortens the path entirely: every step looks directly at every past step, <b>one</b> multiplication instead of 31.',
+    quiz:{
+      q:'You use an RNN in a document classification model. It does well on short reviews but misses information at the beginning of long reports. You raise the hidden state from 12 dimensions to 256 and almost nothing changes. Why?',
+      opts:[
+        {t:'The problem is not capacity but information flow: the influence decays exponentially with distance and the dimension does not change that',
+         why:'Correct. As you measured in this lesson, the sensitivity decays at a per step ratio of 0.5866 and falls to a hundredth in 9 steps. That ratio comes from the multiplication applied at every step, not from the size of the hidden state. Indeed at T = 8 the training loss was 0.3017 while the test loss was 1.2905: the model could memorise, so its capacity was sufficient. What was missing was information reaching the end.'},
+        {t:'256 dimensions are still not enough, it has to be even larger',
+         why:'That repeats the same mistake on a larger scale. The decay rate depends on the multiplication at every step, not on the dimension. This lesson measured directly that capacity was sufficient: the model could memorise the training sequences.'},
+        {t:'It needs to be trained for longer',
+         why:'If the gradient barely reaches the early steps, taking more steps does not change that. The influence of 31 steps back was measured at 3.6 × 10⁻⁸ in this lesson, and it was measured on an untrained network, so it comes from the structure itself.'},
+        {t:'Gradient clipping needs to be added',
+         why:'Clipping cuts very large gradients; the problem here is that the gradient is very small. A tool pointing the wrong way. As you measured in the exploding gradient lesson, clipping trims the tail, it does not repair the decay.'},
+      ], correct:0 },
+  },
+  ],
+};
