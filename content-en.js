@@ -4109,3 +4109,166 @@ DERSLER_EN['halusinasyon'] = {
   },
   ],
 };
+
+DERSLER_EN['perplexity'] = {
+  ad:'Perplexity: measuring a model\'s surprise',
+  alt:'We measure it in a setup where we know the true entropy of the source, so perplexity can be tested against a ceiling.',
+  kaynaklar:[{"y":"Shannon, C. E.","t":"1951","b":"Prediction and Entropy of Printed English","n":"Bell System Technical Journal 30(1)"},
+             {"y":"Jelinek, F. et al.","t":"1977","b":"Perplexity: A Measure of the Difficulty of Speech Recognition Tasks","n":"JASA 62(S1)"},
+             {"y":"Jurafsky, D. & Martin, J. H.","t":"2024","b":"Speech and Language Processing, 3rd edition draft, Chapter 3","n":"Stanford","u":"https://web.stanford.edu/~jurafsky/slp3/"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'How many options is it confused between',
+    goal:'You will see what perplexity measures and how to read it.',
+    todo:'Raise the order. When does the perplexity settle onto the green line?',
+    kind:'controls', viz:'perplexity', h:770, xp:25, state:{sahne:'olcum'},
+    body:'<p>A language model gives a probability distribution at every step. A good model gives the right symbol a high probability. The standard way of reducing that to a single number is <b>perplexity</b>:</p>' +
+         '<p style="text-align:center;font-size:1.1em">perplexity = e<sup>mean negative log likelihood</sup></p>' +
+         '<p>Read it like this: at every step, how many options is the model as confused between as if it were choosing at random? A perplexity of 4 means the same as tossing a coin between four options.</p>' +
+         '<p>Here we build the source ourselves: a four letter alphabet and a <b>first order Markov chain</b>. Every letter depends only on the one before it. Because we know the transition probabilities we can compute the true entropy <b>exactly</b>.</p>' +
+         '<p>There are three reference points:</p>' +
+         '<p>knowing nothing &rarr; perplexity <b>4</b> (the alphabet size)<br>' +
+         'knowing the letter frequencies &rarr; <b>3.8582</b><br>' +
+         'knowing the previous letter too &rarr; <b>2.9422</b> (the true lower bound)</p>' +
+         '<p>Now let us measure the models. The 1-gram (no context) gets <b>3.8714</b>: it sits on the frequency bound. The 2-gram (one letter of context) gets <b>2.9465</b>: within <b>0.14%</b> of the true lower bound.</p>',
+    learned:'<b>Perplexity measures how many options the model is confused between.</b><br><br>On this source, knowing nothing gives <b>4</b>, knowing only the letter frequencies gives <b>3.8582</b>, and knowing the previous letter gives <b>2.9422</b>.<br><br>Measured: 1-gram <b>3.8714</b>, 2-gram <b>2.9465</b>. The second is within <b>0.14%</b> of the theoretical lower bound.',
+    controls:[{k:'ni', lb:'n-GRAM ORDER', min:0, max:3, step:1, val:0}],
+  },
+  {
+    t:'More context is not always better',
+    goal:'You will measure why too much context can hurt.',
+    todo:'Raise the order from 2 to 4. Does the perplexity fall or rise?',
+    kind:'controls', viz:'perplexity', h:770, xp:50, state:{sahne:'olcum'},
+    body:'<p>The 2-gram sat on the lower bound. So longer context should be even better, should it not?</p>' +
+         '<p>The measurement:</p>' +
+         '<p>2-gram <b>2.9465</b> &nbsp;·&nbsp; 3-gram <b>2.9472</b> &nbsp;·&nbsp; 4-gram <b>2.9558</b></p>' +
+         '<p>It gets <b>worse</b> as it lengthens. The difference is small but the direction is clear and the reason is instructive.</p>' +
+         '<p>The source is first order. So anything beyond the previous letter <b>carries no information</b>. The 3-gram and 4-gram raise the number of contexts from 4 to <b>16</b> and then <b>64</b> in search of information that is not there.</p>' +
+         '<p>When a separate count is kept for every context, each count is computed from fewer samples. The 1/&radic;N rule from the probability lesson applies here too: an estimate made from few samples is noisy, and that noise goes straight into the perplexity.</p>' +
+         '<p>This is the language model version of the bias-variance tradeoff. Lengthening the context reduces bias but raises variance. If there really is no long dependency in the source, there is no bias to gain and only variance remains.</p>',
+    learned:'<b>Lengthening the context only adds variance if there is no information to carry.</b><br><br>Because the source is first order: 2-gram <b>2.9465</b>, 3-gram <b>2.9472</b>, 4-gram <b>2.9558</b>. It gets worse as it lengthens.<br><br>The number of contexts goes from 4 to 16 to 64 and every count is computed from fewer samples. <b>The bias-variance tradeoff in language model form.</b>',
+    controls:[{k:'ni', lb:'n-GRAM ORDER', min:1, max:3, step:1, val:1}],
+  },
+  {
+    t:'Is perplexity comparable',
+    goal:'You will see why the same model gives a different number when only the segmentation changes.',
+    todo:'Look at the two bars. The same information, the same quality, the same number?',
+    kind:'static', viz:'perplexity', h:770, xp:50, state:{sahne:'token'},
+    body:'<p>Now the critical question: can we compare the perplexity of two models?</p>' +
+         '<p>Let us segment the same source two different ways. The first is letter by letter (alphabet of 4). In the second we merge the letters <b>in pairs</b> into single tokens (alphabet of 16). The text is the same, the information is the same.</p>' +
+         '<p>The result:</p>' +
+         '<p>perplexity per symbol: <b>2.9465</b><br>perplexity per token: <b>8.7474</b></p>' +
+         '<p>Almost a <b>3 fold</b> difference. And both models know the same thing.</p>' +
+         '<p>The reason is simple: the token model predicts <b>two letters at once</b> on every prediction. Naturally a harder job, hence a higher perplexity.</p>' +
+         '<p>Now compare the same two models by negative log likelihood <b>per symbol</b>: <b>1.080613</b> and <b>1.084380</b>. A difference of only <b>0.35%</b>.</p>' +
+         '<p>So what is comparable is not perplexity but <b>information per character</b>. Putting the perplexity values of two models with different tokenisers side by side is meaningless; a model with a better tokeniser shows a higher perplexity purely because it compresses more text per token.</p>' +
+         '<p>This is why in practice bits per character (bpc) or bits per byte (bpb) is reported. Both are independent of the segmentation.</p>',
+    learned:'<b>Perplexity depends on the tokenisation, so it cannot be compared directly between models.</b><br><br>The same source and the same information: <b>2.9465</b> per symbol, <b>8.7474</b> per token. About a <b>3 fold</b> difference.<br><br>The NLL per symbol, meanwhile, is <b>1.080613</b> and <b>1.084380</b>: only <b>0.35%</b> apart. For comparison you should use <b>bits per character</b>.',
+  },
+  {
+    t:'What it measures and what it does not',
+    goal:'You will see which decisions perplexity can support.',
+    todo:'Answer the question.',
+    kind:'static', viz:'perplexity', h:770, xp:50, state:{sahne:'token'},
+    body:'<p>Perplexity measures <b>one thing</b> very well: how well the model compresses a distribution of text. That measurement is robust, cheap, and done without labels.</p>' +
+         '<p>What it does not measure:</p>' +
+         '<p><b>Correctness.</b> A model can produce facts that are wrong but fluent. As you measured in the hallucination lesson, fluency and correctness are different things and perplexity only sees fluency.</p>' +
+         '<p><b>Usefulness.</b> Following instructions, hitting a format, giving a short answer: none of that shows up in perplexity. After fine-tuning, perplexity usually <b>rises</b> while the model becomes more useful.</p>' +
+         '<p><b>Comparability.</b> We measured it in the previous step: a different tokeniser gives a 3 fold different number.</p>' +
+         '<p>And one more thing not to forget: perplexity belongs to <b>the data it was measured on</b>. The same model measured on a different domain gives a very different number. Reporting a perplexity without saying which dataset it was measured on is the same as reporting an accuracy without saying which test set.</p>' +
+         '<p>Its correct use: <b>the same data, the same tokeniser, one variable</b>. In that setup perplexity is a very sensitive and very cheap indicator of progress.</p>',
+    learned:'<b>Perplexity measures compression; it does not measure correctness, usefulness or instruction following.</b><br><br>It also belongs to <b>the data and the tokenisation</b> it was measured with: the same information under a different segmentation gives a 3 fold different number.<br><br>Its correct use is <b>the same data, the same tokeniser, one variable</b>. In that setup it is a very sensitive and very cheap indicator.',
+    quiz:{
+      q:'You are comparing two language models. Model A has a perplexity of 12.4 and model B has 18.7. Model A uses a vocabulary of 32,000 tokens and B uses 128,000. What do you conclude?',
+      opts:[
+        {t:'Nothing: different vocabularies make perplexity incomparable, you have to compute bits per character',
+         why:'Correct. As you measured in this lesson, segmenting the same source two different ways took the perplexity from 2.9465 to 8.7474, about 3 fold, and both models had the same information. A larger vocabulary carries more text per token, so prediction per token naturally becomes harder. What was comparable was the information per symbol: in the same measurement, 1.080613 and 1.084380, a difference of 0.35%.'},
+        {t:'Model A is better, because its perplexity is lower',
+         why:'A lower perplexity is only meaningful under the same tokenisation. In this lesson two models with the same information got 2.9465 and 8.7474 purely because of a difference in segmentation. B\'s larger vocabulary may be carrying more text per token.'},
+        {t:'Model B is better, because it uses a larger vocabulary',
+         why:'Vocabulary size on its own is not an indicator of quality. A large vocabulary compresses more text per token and that raises the perplexity, but it says nothing about whether the model is better or worse.'},
+        {t:'The difference is small, they can be considered similar',
+         why:'To comment on the size of a difference the measurements first have to be in the same unit. Two perplexities measured with different vocabularies are not in the same unit, so the difference between them cannot be interpreted.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['olcek-yasalari'] = {
+  ad:'Scaling laws: what growth buys and what it costs',
+  alt:'We know the true entropy of the source from the perplexity lesson, which lets us compare the floor our fitted scaling law reaches against the truth.',
+  kaynaklar:[{"y":"Kaplan, J. et al.","t":"2020","b":"Scaling Laws for Neural Language Models","n":"arXiv:2001.08361"},
+             {"y":"Hoffmann, J. et al.","t":"2022","b":"Training Compute-Optimal Large Language Models","n":"NeurIPS 2022"},
+             {"y":"Hestness, J. et al.","t":"2017","b":"Deep Learning Scaling is Predictable, Empirically","n":"arXiv:1712.00409"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'The loss follows a power law in the data',
+    goal:'You will see what a scaling law looks like and what its two terms are.',
+    todo:'Look at the plot. Do the points sit on a straight line on log-log axes?',
+    kind:'static', viz:'olcekYasalari', h:770, xp:25, state:{sahne:'egri'},
+    body:'<p>We use the source from the perplexity lesson: a four letter, first order Markov chain. Its true entropy is <b>1.079172</b> and we know that exactly.</p>' +
+         '<p>We train the same model on different amounts of data and measure the test loss. With 50 samples it is <b>1.149203</b>, with 100,000 samples <b>1.079538</b>.</p>' +
+         '<p>Subtract the true entropy from the loss and what remains is the <b>excess loss</b>: the model\'s error arising purely from a shortage of data. The plot shows that on log-log axes and the points sit on a <b>straight line</b>.</p>' +
+         '<p>Being a straight line on log-log axes means a power law:</p>' +
+         '<p style="text-align:center;font-size:1.15em">L(N) = L<sub>∞</sub> + A · N<sup>−α</sup></p>' +
+         '<p>The fitted values: α = <b>0.6624</b>, log-log R² = <b>0.9568</b>.</p>' +
+         '<p>The two terms mean very different things. <b>A · N⁻ᵃ</b> goes to zero as the data grows: that is the reducible error. <b>L∞</b> never goes anywhere.</p>' +
+         '<p>The critical point: L∞ does not belong to the model, it belongs to <b>the data</b>. It is the source\'s own uncertainty. No model, with any amount of data, can go below it. We measured this directly in the perplexity lesson: no n-gram order went below the theoretical lower bound.</p>',
+    learned:'<b>The loss follows a power law in the amount of data: L(N) = L∞ + A·N⁻ᵃ.</b><br><br>On this source the measured exponent is α = <b>0.6624</b> and the log-log linearity is R² = <b>0.9568</b>.<br><br>The two terms are very different: <b>A·N⁻ᵃ</b> goes to zero with data, <b>L∞</b> does not. L∞ belongs to <b>the data</b>, not to the model.',
+  },
+  {
+    t:'Does the fitted floor find the truth',
+    goal:'You will see whether a scaling law can find a number it was never told.',
+    todo:'Compare the two cards: the fitted L∞ against the true entropy.',
+    kind:'static', viz:'olcekYasalari', h:770, xp:50, state:{sahne:'egri'},
+    body:'<p>In the previous step, while fitting L∞, we <b>did not use the true entropy</b>. The procedure was this: try different values of L∞ and pick the one that makes the log-log plot <b>straightest</b>. Even the upper limit of the search comes not from the true entropy but from the lowest observed loss (the floor of a power law has to lie below the observed values).</p>' +
+         '<p>The result:</p>' +
+         '<p>fitted L∞: <b>1.0792</b><br>true entropy: <b>1.079172</b><br>difference: <b>0.00003</b></p>' +
+         '<p>So the scaling law <b>found the source\'s entropy on its own</b>, to five decimal places. It was never told.</p>' +
+         '<p>That is the basis of the most valuable practical use of scaling laws. In real language models nobody knows L∞. But a law fitted from small scale runs gives a number for the question "how far can we get with this data and this family of architectures".</p>' +
+         '<p>And the number it gives is a <b>limit</b>: as you approach L∞ the return from more data shrinks. On this source, going from 50 samples to 100,000 takes the excess loss from <b>7.0 × 10⁻²</b> to <b>3.7 × 10⁻⁴</b>, so 2000 times the data buys a factor of 191.</p>',
+    learned:'<b>A scaling law can find an irreducible loss it was never told.</b><br><br>The search for L∞ was done without ever using the true entropy and the result came out as <b>1.0792</b>; the true value is <b>1.079172</b>. The difference is <b>0.00003</b>.<br><br>Returns diminish: 2000 times the data lowers the excess loss by only <b>191 times</b>. As you approach L∞ the value of every new sample falls.',
+  },
+  {
+    t:'Predicting the large from the small',
+    goal:'You will measure the place where scaling laws really earn their keep.',
+    todo:'Does the dashed orange curve catch the blue points outside the fitting region too?',
+    kind:'static', viz:'olcekYasalari', h:770, xp:50, state:{sahne:'ekstra'},
+    body:'<p>Now the real question: can this law predict a scale you have <b>not yet measured</b>?</p>' +
+         '<p>Let us test it. We fit the law using only the six points with <b>N ≤ 2000</b>. Then we predict the points from 5,000 up to 100,000 and compare against the truth. Those points never entered the fit.</p>' +
+         '<p>The relative errors:</p>' +
+         '<p>N = 5,000 &rarr; <b>0.044%</b> &nbsp;·&nbsp; 10,000 &rarr; <b>0.005%</b> &nbsp;·&nbsp; 20,000 &rarr; <b>0.030%</b> &nbsp;·&nbsp; 100,000 &rarr; <b>0.021%</b></p>' +
+         '<p>The largest error is <b>0.044%</b>. So a law fitted from six small runs predicts a scale <b>50 times</b> larger with an error under half a per mille.</p>' +
+         '<p>The real world counterpart: if training a model at full scale costs millions, you can work out in advance where that training will land using a few small scale runs. Choosing between architectures, deciding on the data mixture and planning a budget are all done this way.</p>' +
+         '<p>An honest detail: the exponent of the law fitted on small data is α = <b>0.7953</b>, while the full fit gives <b>0.6624</b>. So <b>the exponent was found wrong</b>, and yet the prediction held. The reason is that at large N the prediction is determined almost entirely by L∞. The accuracy of the prediction comes from getting <b>the floor</b> right, not the exponent.</p>',
+    learned:'<b>A law fitted from small scale runs can predict the large scale.</b><br><br>A law fitted with only the <b>six points</b> at N ≤ 2000 predicts scales 50 times larger with an error of at most <b>0.044%</b>.<br><br>But note: the exponent found on small data is <b>0.7953</b> while the truth is <b>0.6624</b>. The exponent is wrong and the prediction is right, because at large N the result is determined by <b>L∞</b>.',
+  },
+  {
+    t:'Where it breaks',
+    goal:'You will see how far scaling laws can be trusted.',
+    todo:'Answer the question.',
+    kind:'static', viz:'olcekYasalari', h:770, xp:50, state:{sahne:'ekstra'},
+    body:'<p>Scaling laws are powerful but not magic. What we measured also shows their limits.</p>' +
+         '<p><b>The fit is not perfect.</b> The full fit\'s log-log R² is <b>0.9568</b> and the small data fit\'s is <b>0.8856</b>. The points sit on a line but there is scatter, and that scatter turns into uncertainty in the prediction.</p>' +
+         '<p><b>The exponent is not reliable.</b> Two different subsets of the same data give two different values of α: 0.6624 and 0.7953. Trusting an exponent reported in a paper on its own would be a mistake.</p>' +
+         '<p><b>A law is only valid in the regime it was fitted in.</b> Here we changed one thing: the amount of data. The architecture, the tokenisation, the learning rate and the source itself were all fixed. Change one of those and the curve shifts and the old law is void.</p>' +
+         '<p><b>And L∞ is always there.</b> This is the most overlooked consequence of scaling. Growing reduces the excess loss, it does not reduce the irreducible loss. If the accuracy you need on a task lies below L∞, <b>growing will never bring it</b>; you need better data or a different definition of the problem.</p>' +
+         '<p>We arrive at the same place as the closing of the perplexity lesson: a measurement is only useful if you know <b>what it measures</b>.</p>',
+    learned:'<b>A scaling law is a tool for prediction, not a guarantee.</b><br><br>The log-log fit is not perfect (R² <b>0.9568</b> and <b>0.8856</b>), the exponent changes with the subset (<b>0.6624</b> and <b>0.7953</b>), and the law is only valid in the regime it was fitted in.<br><br>Most importantly: <b>L∞ is always there.</b> Growing lowers the reducible loss, not the irreducible one.',
+    quiz:{
+      q:'A team fitted a scaling law from small scale runs and predicted a loss of 2.10 for a model 100 times larger. But for the model to be useful on the target task the loss has to go below 1.60. The fitted law\'s L∞ is 2.05. What do you do?',
+      opts:[
+        {t:'I give up on growing and go back to the data or the problem definition: with L∞ at 2.05 no scale reaches 1.60',
+         why:'Correct. As you measured in this lesson, L∞ belongs to the data rather than the model and no model can go below it; in the perplexity lesson no n-gram order went below the theoretical lower bound either. The predicted 2.10 is already very close to the L∞ of 2.05, so the gain available from scale is nearly exhausted. The route to 1.60 is not a bigger model but more informative data or a redefined task.'},
+        {t:'I grow it 10,000 times, the power law keeps falling',
+         why:'The falling part of a power law is only the A·N⁻ᵃ term and that goes to zero; L∞ remains. In this lesson 2000 times the data lowered the excess loss by 191 times, and the return shrank rapidly as it approached the floor. With a floor of 2.05, reaching 1.60 is mathematically impossible.'},
+        {t:'I remeasure the exponent, α may have been computed wrong',
+         why:'The exponent really is unreliable and in this lesson two subsets gave 0.6624 and 0.7953. But the exponent only determines how fast the floor is approached, not where the floor is. A correct α does not make 1.60 reachable either.'},
+        {t:'I do not trust the prediction, I train at full scale and see',
+         why:'As you measured in this lesson, a law fitted from small runs predicted a 50 times larger scale with an error of 0.044%, so the prediction is good enough to take seriously. Spending millions on a training run to try something whose answer is already computable defeats the purpose of scaling laws.'},
+      ], correct:0 },
+  },
+  ],
+};
