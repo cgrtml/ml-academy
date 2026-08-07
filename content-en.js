@@ -926,3 +926,83 @@ DERSLER_EN['sizinti'] = {
   },
   ],
 };
+
+DERSLER_EN['mat-matris'] = {
+  ad:'A matrix is not a table of numbers, it is an operation on space',
+  alt:'You will come to see matrices not as a rule to memorise but as a machine that moves shapes around.',
+  kaynaklar:[{"y":"Strang, G.","t":"2016","b":"Introduction to Linear Algebra, 5th edition, Chapters 1-2","n":"Wellesley-Cambridge Press"},
+             {"y":"Deisenroth, M. P., Faisal, A. A. & Ong, C. S.","t":"2020","b":"Mathematics for Machine Learning, Chapter 2","n":"Cambridge University Press","u":"https://mml-book.github.io/"},
+             {"y":"Goodfellow, I., Bengio, Y. & Courville, A.","t":"2016","b":"Deep Learning, Chapter 2","n":"MIT Press","u":"https://www.deeplearningbook.org/"}],
+  rota:0,
+  adimlar:[
+  {
+    t:'A matrix moves a shape',
+    goal:'You will see what the four numbers of a matrix do to space.',
+    todo:'Move the three sliders. How does the shape change? Which number does the area ratio turn out to equal?',
+    kind:'controls', viz:'matrisDonusum', h:700, xp:25, state:{sahne:'donusum', c:0},
+    body:'<p>A matrix is made of four numbers. Those four numbers write a rule that carries <b>every point</b> in the plane to another point.</p>' +
+         '<p>The grey shape is the original house. The coloured shape is what it becomes after the matrix is applied. The blue grid behind it went through the same operation: the matrix does not just bend the shape, it bends <b>all of space</b>.</p>' +
+         '<p>As you play with the sliders, notice this: <b>b</b> tilts the shape sideways but the area never changes. Only <b>a</b> and <b>d</b> grow the area.</p>' +
+         '<p>Watch the area ratio and the determinant card side by side. <b>Those two are always the same number.</b> The determinant is not a dry calculation, it is the answer to "by what factor does this matrix scale area?"</p>' +
+         '<p>An example: with a = 2 and d = 1.5 the determinant is 3, and the area of the shape really does become exactly 3 times bigger. Move b as much as you like, that does not change.</p>',
+    learned:'<b>A matrix is not a table of numbers, it is an operation applied to space.</b><br><br>The determinant is the factor by which that operation scales area. This is not a metaphor, it is a measurable equality: the new area divided by the old area is exactly |determinant|.<br><br>Tilting (b) never changes the area, because it does not enter the determinant.',
+    controls:[{k:'a', lb:'a · how much to stretch x', min:0.2, max:2.5, step:0.1, val:1},
+              {k:'b', lb:'b · how much to tilt', min:-1.5, max:1.5, step:0.1, val:0},
+              {k:'d', lb:'d · how much to stretch y', min:0, max:2.5, step:0.1, val:1}],
+  },
+  {
+    t:'If the determinant is zero, information is gone',
+    goal:'You will see why a transformation can become impossible to undo.',
+    todo:'Set d to 0. What happens to the shape?',
+    kind:'controls', viz:'matrisDonusum', h:700, xp:50, state:{sahne:'tekil', c:0},
+    body:'<p>Bring d down to zero. The shape collapses onto a line and the area becomes <b>0.000</b>.</p>' +
+         '<p>What happened is this: the matrix squashed the two dimensional plane onto a one dimensional line. Two different points now land in <b>the same place</b>.</p>' +
+         '<p>The consequence is serious: you cannot undo the transformation. You cannot look at the output and say what the input was, because infinitely many inputs give that same output. Matrices like this are called <b>singular</b> and they have no inverse.</p>' +
+         '<p>This is not an abstract worry in machine learning. If two columns in a dataset are multiples of each other (say "metres" and "centimetres"), the matrix built from that data is singular in exactly this way. That is why linear regression cannot give a single right answer in that situation.</p>' +
+         '<p>Trouble starts before the determinant reaches zero as well: as the area gets squashed, the reverse calculation becomes less and less reliable. The lesson on condition number gives you a measure for that.</p>',
+    learned:'<b>If the determinant is zero, the transformation destroys information and cannot be undone.</b><br><br>The area drops to zero, different inputs land on the same output, and the matrix has no inverse.<br><br>Its counterpart in the data: columns that are multiples of each other. The equation built from that data has no unique solution.',
+    controls:[{k:'a', lb:'a', min:0.2, max:2.5, step:0.1, val:1.5},
+              {k:'b', lb:'b', min:-1.5, max:1.5, step:0.1, val:0.8},
+              {k:'d', lb:'d', min:0, max:2.5, step:0.1, val:1.5}],
+  },
+  {
+    t:'Multiplication: applying one after the other',
+    goal:'You will see why matrix multiplication is sensitive to order.',
+    todo:'Compare the two orders. Are the results the same?',
+    kind:'controls', viz:'matrisDonusum', h:720, xp:50, state:{sahne:'sira'},
+    body:'<p>Multiplying two matrices means <b>applying two operations one after the other</b>. It has no other meaning.</p>' +
+         '<p>A: rotate by 90 degrees. B: stretch by a factor of two in the x direction.</p>' +
+         '<p>The picture on the left is stretch first, then rotate. The one on the right is rotate first, then stretch. <b>The two shapes end up in different places.</b></p>' +
+         '<p>Look at the matrices: A·B = [0, &minus;1; 2, 0], B·A = [0, &minus;2; 1, 0]. The same two matrices, a different order, a different result. With numbers 3 × 5 equals 5 × 3; <b>with matrices it does not</b>.</p>' +
+         '<p>The reason is visible in the picture: the stretch favours the x axis. Stretch before rotating and the x axis gets stretched, then that stretched thing turns. Rotate first and whatever was on the x axis has moved somewhere else, so the stretch is applied to something different.</p>' +
+         '<p>The determinants, on the other hand, are equal: both are <b>2</b>. Because determinants multiply, and multiplying numbers does not care about order. <b>The area grows by the same factor in both cases, but the shape ends up somewhere else.</b></p>',
+    learned:'<b>Matrix multiplication is sensitive to order: AB is generally not equal to BA.</b><br><br>A·B = [0, &minus;1; 2, 0] but B·A = [0, &minus;2; 1, 0].<br><br>The determinants are still equal (both 2), because det(AB) = det(A)·det(B) and multiplying numbers does not care about order. <b>The change in area is the same, the destination is not.</b>',
+    controls:[{k:'sira', lb:'WHICH ONE TO HIGHLIGHT', min:0, max:1, step:1, val:0}],
+  },
+  {
+    t:'A neural network layer is one matrix multiplication',
+    goal:'You will see why matrices are everywhere in artificial intelligence.',
+    todo:'Answer the question.',
+    kind:'static', viz:'matrisDonusum', h:770, xp:50, state:{sahne:'katman'},
+    body:'<p>There are three inputs and four neurons. Each neuron multiplies the three inputs by its own weights and adds them up.</p>' +
+         '<p>Instead of writing that out one at a time, we lay the weights into a 4 × 3 matrix and multiply it by the input vector. The output comes straight out: <b>&minus;0.70, 2.30, &minus;0.30, 0.60</b>.</p>' +
+         '<p>Check the first neuron by hand: 0.5×1 + (&minus;0.2)×2 + 0.8×(&minus;1) = 0.5 &minus; 0.4 &minus; 0.8 = <b>&minus;0.70</b>. Matrix multiplication does this for all four neurons at once.</p>' +
+         '<p>There are 12 multiplications here. In a real language model a single layer carries 4096 inputs and 4096 outputs: <b>16,777,216</b> multiplications. And that is one layer, for one word.</p>' +
+         '<p>Here is the critical part: all of those multiplications are <b>independent of each other</b>. None of them waits for another one\'s result, so all of them can happen at the same time. Graphics cards were designed for exactly this kind of work: running thousands of small calculations in parallel.</p>' +
+         '<p>Part of why AI accelerated over the last decade sits right here. Matrix multiplication matches, one to one, the thing hardware does best.</p>',
+    learned:'<b>A neural network layer is, by definition, a matrix multiplication.</b><br><br>12 multiplications for three inputs and four neurons. <b>16,777,216</b> for 4096 inputs and 4096 outputs, per layer and per word.<br><br>Because the multiplications are independent of each other, the work can be parallelised. That is where the role of graphics cards in AI comes from.',
+    quiz:{
+      q:'You grow a layer from 512 inputs to 1024, and the number of outputs from 512 to 1024 as well. What happens to the number of multiplications in that layer?',
+      opts:[
+        {t:'It becomes 4 times larger',
+         why:'Correct. The number of multiplications is inputs × outputs, so when both double the result becomes 2 × 2 = 4 times larger. 512×512 = 262,144 becomes 1024×1024 = 1,048,576. This is the answer to "why does doubling the size of a model cost four times as much", and it explains why the training cost of large models grows so quickly.'},
+        {t:'It becomes 2 times larger',
+         why:'That would be right if the inputs doubled while the outputs stayed fixed. Here both double, and since the count is inputs × outputs the effect multiplies.'},
+        {t:'It does not change, because it is still a single multiplication',
+         why:'Being a single matrix multiplication does not change the number of operations. A 512×512 matrix holds 262,144 numbers while a 1024×1024 matrix holds 1,048,576, and each one corresponds to a multiplication.'},
+        {t:'It becomes 8 times larger',
+         why:'That would happen if three dimensions doubled at once. Here there are two: inputs and outputs. 2 × 2 = 4.'},
+      ], correct:0 },
+  },
+  ],
+};
