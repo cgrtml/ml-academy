@@ -4588,3 +4588,160 @@ DERSLER_EN['self-cons'] = {
   },
   ],
 };
+
+DERSLER_EN['talimat-ayar'] = {
+  ad:'Teaching obedience: instruction tuning',
+  alt:'Pretraining teaches the model the operations but leaves no way of telling it which one you want. Instruction tuning opens that route, and adds no new ability.',
+  kaynaklar:[{"y":"Wei, J. et al.","t":"2022","b":"Finetuned Language Models Are Zero-Shot Learners (FLAN)","n":"ICLR 2022","u":"https://arxiv.org/abs/2109.01652"},
+             {"y":"Sanh, V. et al.","t":"2022","b":"Multitask Prompted Training Enables Zero-Shot Task Generalization (T0)","n":"ICLR 2022","u":"https://arxiv.org/abs/2110.08207"},
+             {"y":"Ouyang, L. et al.","t":"2022","b":"Training Language Models to Follow Instructions with Human Feedback (InstructGPT)","n":"NeurIPS 2022","u":"https://arxiv.org/abs/2203.02155"},
+             {"y":"Zhou, C. et al.","t":"2023","b":"LIMA: Less Is More for Alignment","n":"NeurIPS 2023","u":"https://arxiv.org/abs/2305.11206"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'Why a base model does not obey',
+    goal:'You will see what the "ability profile" of a model coming out of pretraining actually is.',
+    todo:'Change the dominant task. Where does the peak go, and what happens to the average?',
+    kind:'controls', viz:'talimatAyari', h:760, xp:50, state:{sahne:'temel'},
+    body:'<p>A small, completely closed world: the input is a sequence of three digits (0 to 5, so <b>216</b> inputs in total) and the output is a single digit. There are five tasks: <b>sum</b> (mod 6), <b>max</b>, <b>min</b>, <b>first</b>, <b>last</b>.</p>' +
+         '<p>The pretraining corpus is a mixture of these tasks but <b>it does not say which task it is</b>: the text only has the input and the output side by side. The tasks make up 40%, 25%, 15%, 12% and 8% of the corpus.</p>' +
+         '<p>The only thing a model coming out of such a corpus can do is give the <b>most likely output</b> for every input. The result: 93.5% on the dominant task and 18 to 23% on the others. The average over the five tasks is <b>36.1%</b>.</p>' +
+         '<p>Now change the dominant task. The peak moves with it while the average stays between 36% and 44%. The model did not get better at anything; only its default changed.</p>' +
+         '<p>One detail: when "max" is dominant, the accuracy on "min" falls to <b>10.2%</b>, which is <b>below</b> random guessing (16.7%). On a task where the default is systematically opposite, a model is worse than chance.</p>',
+    learned:'<b>A base model\'s ability profile is the task distribution of its pretraining corpus.</b><br><br>93.5% on the dominant task, 18 to 23% on the others, an average of 36.1%. Change the dominant task and the peak moves while the average stays almost the same.<br><br>The model does not "know how to add", it "assumes addition". What is missing is not the ability but <b>a way of saying which ability you want</b>.',
+    controls:[{k:'bas', lb:'DOMINANT TASK IN PRETRAINING', min:0, max:4, step:1, val:0}],
+  },
+  {
+    t:'How many examples per instruction',
+    goal:'You will see why instruction tuning works with so little data.',
+    todo:'Increase the number of examples per instruction. Which task is the hardest, and why?',
+    kind:'controls', viz:'talimatAyari', h:760, xp:50, state:{sahne:'kimlik'},
+    body:'<p>Now we attach an <b>instruction</b> to every task and show the model a few examples: "with this instruction, this input gives that output".</p>' +
+         '<p>What the model does here is critical: it is <b>not learning a new operation</b>. It is eliminating those of its five known operations that contradict the examples. If more than one survives, it picks the one that was most frequent in pretraining.</p>' +
+         '<p>The result is surprisingly fast. With a single example the average goes from 36.1% to <b>73.1%</b>, with three examples to <b>96.1%</b>, with five to <b>99.1%</b>.</p>' +
+         '<p>The tasks differ. <b>sum</b> is at 100% with a single example: it hardly collides with any other operation. <b>first</b> is the hardest, reaching only 46.9% with one example: it gives the same answer as "max" and "min" on <b>42.1%</b> of the inputs, so telling them apart takes more examples.</p>' +
+         '<p>The general rule here: the cost of teaching an instruction is not the cost of teaching the operation but the cost of <b>separating it from the others it knows</b>.</p>',
+    learned:'<b>Instruction tuning does not teach an operation, it identifies which operation is wanted.</b><br><br>A single example per instruction takes the average from 36.1% to 73.1%, and three examples to 96.1%.<br><br>Difficulty is measured not by the complexity of the operation but by <b>its collision with similar operations</b>: "sum" is at 100% with one example while "first" is at 46.9%, because "first" and "max" give the same answer on 42.1% of the inputs.',
+    controls:[{k:'mi', lb:'EXAMPLES PER INSTRUCTION', min:0, max:5, step:1, val:0}],
+  },
+  {
+    t:'The total budget: fifty examples',
+    goal:'You will see how small instruction tuning is next to pretraining.',
+    todo:'Increase the total number of examples. Where does the curve hit the ceiling?',
+    kind:'controls', viz:'talimatAyari', h:760, xp:50, state:{sahne:'ayar'},
+    body:'<p>Now the examples come from a pool: n examples are distributed randomly across the five instructions. That is how real instruction tuning datasets work.</p>' +
+         '<p>The curve: 36.1% at 0 examples, 82.1% at 10, 95.2% at 20, <b>100.0% at 50</b>. Anything beyond that is wasted.</p>' +
+         '<p>The comparison matters. The pretraining this model needed to learn the operations is thousands of input-output pairs. Making them <b>addressable</b> costs 50 examples.</p>' +
+         '<p>The counterpart in real models is at this scale too. The LIMA study showed that instruction tuning with <b>1000</b> well chosen examples can compete with much larger datasets. Pretraining, meanwhile, is on the order of trillions of tokens.</p>' +
+         '<p>Careful: this does not mean "little data is enough", it means "<b>little data is enough to surface what is already in the pretraining</b>". In the next step we measure the limit of that.</p>',
+    learned:'<b>Instruction tuning is a very small step next to pretraining.</b><br><br>A total of 50 examples for five tasks takes the accuracy from 36.1% to 100.0%; 10 examples already give 82.1%.<br><br>Pretraining builds the ability and instruction tuning opens a door to it. The two are not on the same data scale, and they do not need to be.',
+    controls:[{k:'ni', lb:'TOTAL INSTRUCTION EXAMPLES', min:0, max:9, step:1, val:0}],
+  },
+  {
+    t:'You cannot tune open an ability that is not there',
+    goal:'You will measure the limit of instruction tuning.',
+    todo:'Compare the two curves. Then answer the question.',
+    kind:'static', viz:'talimatAyari', h:760, xp:75, state:{sahne:'yeni'},
+    body:'<p>We add a sixth task: <b>median</b> (the middle value of three numbers). That operation is <b>completely absent</b> from the pretraining mixture. Everything else is the same: the same instruction format, the same example pool, the same model.</p>' +
+         '<p>The result is two separate worlds. With the same 100 examples the five old tasks reach <b>100.0%</b> while the new one only goes from 24.1% to <b>29.7%</b>.</p>' +
+         '<p>The reason is in the mechanism: on the old tasks the model was eliminating among operations it knew. On the new task <b>there is no right candidate to eliminate down to</b>. Only one option remains: memorising the inputs it has seen one by one.</p>' +
+         '<p>Memorisation is a form of learning too, but the price is entirely different. It has to cover all 216 inputs, and the curve crawls accordingly: 34.9% at 200 examples, 48.6% at 500, <b>64.9% at 1000</b>. The job the five old tasks finished in 50 examples is not finished by this one in 1000.</p>' +
+         '<p>The practical counterpart: you <b>cannot make</b> a model do something it cannot do by instruction tuning. Tuning gets the model to output what it knows in the requested form at the requested time. If the ability is missing, the work to do is pretraining, continued training on domain data, or supporting the model with an external tool.</p>' +
+         '<p>A caveat: real instruction tuning does more than what we measured here. Style, format, refusal behaviour and safety boundaries are also shaped at this stage. But all of those are about "how to answer", not about "what is known".</p>',
+    learned:'<b>Instruction tuning surfaces an ability, it does not create one.</b><br><br>The same 100 examples take the five old tasks to 100.0% while taking a task absent from pretraining from 24.1% to 29.7%. Even at 1000 examples it is 64.9%, because there the only route is memorisation.<br><br>The decision rule: if the model answers in the right form with the wrong content, the problem is not in instruction tuning. Form problems are solved by tuning, content problems by data or by access.',
+    quiz:{
+      q:'A company wants an assistant that works on its own legal documents. A general model answers in the requested format neatly but cannot get the content right on questions about the company\'s contract types. What is the most sensible first step?',
+      opts:[
+        {t:'Continued training on domain data, or retrieval augmented generation (RAG); instruction tuning will not close this gap',
+         why:'Correct. The model already gets the format right, so instruction following works. What is missing is content knowledge, that is something absent from pretraining. You measured it in the lesson: on a task absent from pretraining, 100 examples only took the accuracy from 24.1% to 29.7%, and even 1000 gave 64.9%. If knowledge is missing you either teach the model that data or put it in front of the model at answer time.'},
+        {t:'Collect more instruction tuning data',
+         why:'This is exactly the situation the lesson measured as not working. Instruction tuning makes what the model knows addressable; it does not add content it does not know. There is partial progress through memorisation but the price is very high: 64.9% at 1000 examples.'},
+        {t:'Write a more detailed prompt',
+         why:'A good prompt calls existing ability more reliably. Here the model already answers in the right form and the problem is content. A prompt cannot teach the model a contract type it does not know.'},
+        {t:'Pick a larger general model',
+         why:'It may help but it does not target the problem directly: the company\'s own contracts are in no general model\'s pretraining. A large model guesses better; it does not know the right information.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['zincir-prompt'] = {
+  ad:'Splitting the problem: prompt chaining',
+  alt:'Breaking a large job into separate calls is common advice. The splitting itself gains nothing; what gains is the checkpoint you put at the seams.',
+  kaynaklar:[{"y":"Wu, T. et al.","t":"2022","b":"AI Chains: Transparent and Controllable Human-AI Interaction by Chaining LLM Prompts","n":"CHI 2022","u":"https://arxiv.org/abs/2110.01691"},
+             {"y":"Khot, T. et al.","t":"2023","b":"Decomposed Prompting: A Modular Approach for Solving Complex Tasks","n":"ICLR 2023","u":"https://arxiv.org/abs/2210.02406"},
+             {"y":"Madaan, A. et al.","t":"2023","b":"Self-Refine: Iterative Refinement with Self-Feedback","n":"NeurIPS 2023","u":"https://arxiv.org/abs/2303.17651"},
+             {"y":"Huang, J. et al.","t":"2024","b":"Large Language Models Cannot Self-Correct Reasoning Yet","n":"ICLR 2024","u":"https://arxiv.org/abs/2310.01798"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'Splitting on its own gains nothing',
+    goal:'You will see why a common piece of advice is empty by itself.',
+    todo:'Look at the two curves. Where does the dashed orange one pass relative to the thick blue?',
+    kind:'static', viz:'zincirPrompt', h:760, xp:50, state:{sahne:'bolme'},
+    body:'<p>There is an eight step job with a 10% chance of error per step. Two designs:</p>' +
+         '<p><b>A single prompt.</b> You describe the whole job to the model and ask for the answer in one go.<br>' +
+         '<b>A chain.</b> Eight separate calls, where each call\'s output is the next one\'s input.</p>' +
+         '<p>If the per step error is the same in both designs, so is the result: <b>0.9⁸ = 43.0%</b>. On the plot the dashed orange curve passes exactly over the thick blue one, because both compute the same product.</p>' +
+         '<p>This is the same error accumulation as in the chain-of-thought lesson. Splitting does not remove that product, it only changes the brackets.</p>' +
+         '<p>So is splitting useless? No, but its benefit is in <b>visibility</b> rather than accuracy. When a chain fails you can see where the first error was. On failed attempts the first error is at step <b>3.95</b> on average: about <b>36.9%</b> of the job is sound and it is clear where to resume.</p>' +
+         '<p>A single prompt does not give you that; all you have is a wrong answer. In the next step we turn that visibility into accuracy.</p>',
+    learned:'<b>With the same per step error, splitting does not change the accuracy.</b><br><br>A single prompt gives 43.0% and eight separate calls give 43.0%. The difference is zero.<br><br>The real return from splitting is that the intermediate results become <b>visible</b>: on failed attempts the first error is at step 3.95 on average, so 36.9% of the job is recoverable. That visibility is not a gain by itself, it is an <b>opportunity</b>.',
+  },
+  {
+    t:'Putting a checkpoint at the seam',
+    goal:'You will measure what checking the intermediate result adds to accuracy.',
+    todo:'Change the catch rate. Where does the return from adding retries end?',
+    kind:'controls', viz:'zincirPrompt', h:760, xp:50, state:{sahne:'kontrol'},
+    body:'<p>The same split chain with one addition: after every step there is a <b>checker</b> that looks at the intermediate result. If it finds it wrong, that step is repeated.</p>' +
+         '<p>The checker has two numbers: the <b>catch rate r</b> (the probability of catching a wrong intermediate result) and the <b>false alarm rate f</b> (the probability of thinking a correct result is wrong). In this step f = 0.05 is fixed.</p>' +
+         '<p>The probability of a step finishing correctly with R retries is solvable in closed form, so the numbers here are <b>exact</b> rather than sampled:</p>' +
+         '<p style="font-family:monospace">c₀ = 1 − ε<br>c<sub>R</sub> = (1−ε)(1−f) + [(1−ε)f + εr] · c<sub>R−1</sub></p>' +
+         '<p>At r = 0.95 a single retry takes the chain from 43.0% to <b>85.8%</b>, and three retries to <b>95.2%</b>. The fourth and fifth retries add almost nothing: the dashed line shows the limit of infinite retries at 95.4%.</p>' +
+         '<p>If the false alarm rate were zero the same checker would do a little better: 89.0% with one retry and 95.6% with three. The difference looks small, but in the next step we see the real bill for false alarms.</p>' +
+         '<p>A weak checker gives a weak gain: at r = 0.50 three retries only reach 63.4%. At r = 0, that is a checker that catches nothing, the accuracy falls <b>below</b> 43.0% (to 41.3%), because the false alarms are still operating.</p>',
+    learned:'<b>What brings the gain is not the splitting but the checkpoint placed at the seam.</b><br><br>With r = 0.95 and f = 0.05: one retry takes 43.0% to 85.8%, three retries to 95.2%, and infinite retries to 95.4%.<br><br>The return from retries saturates very quickly. Paying for anything beyond the third buys almost nothing.',
+    controls:[{k:'ri', lb:'CHECKER CATCH RATE', min:0, max:3, step:1, val:3}],
+  },
+  {
+    t:'When a checker does harm',
+    goal:'You will learn the exact condition for a checkpoint to be worth having.',
+    todo:'Change the false alarm rate. Exactly where does each curve cross the uncontrolled baseline?',
+    kind:'controls', viz:'zincirPrompt', h:760, xp:50, state:{sahne:'kalite'},
+    body:'<p>Now let us see the checker\'s quality on two axes at once. The horizontal axis is the catch rate r and each curve is a different false alarm rate f. There are three retries.</p>' +
+         '<p>The dashed horizontal line is the accuracy of the unchecked chain (43.0%). Every curve crosses that line <b>exactly at r = f</b>. The f = 0.20 curve at r = 0.20, the f = 0.50 curve at r = 0.50.</p>' +
+         '<p>That is no coincidence, it is an equality that falls out of the formula. When the condition for c = 1 − ε is simplified, what remains is <b>f = r</b>. So:</p>' +
+         '<p><b>If r > f the checker gains. If r = f it does exactly nothing. If r < f it does harm.</b> And in all three cases you pay for extra calls.</p>' +
+         '<p>The lesson here is often skipped in practice. The advice "have the model check its answer" rests on the assumption that the check <b>produces fewer false alarms than it catches</b>. A model checking its own answer may not satisfy that condition: the same wrong belief drives both the answer and the check. That is exactly what Huang et al. (2024) found: self-correction without an external signal usually <b>lowers</b> accuracy on reasoning tasks.</p>',
+    learned:'<b>A checker gains as long as its catch rate exceeds its false alarm rate.</b><br><br>Every curve crosses the unchecked baseline exactly at r = f; that is an algebraic equality, not measurement noise.<br><br>At r = 0 and f = 0.20 the accuracy falls from 43.0% to 35.4% and you pay 9.75 calls on top. <b>A bad checker is worse than no checker.</b>',
+    controls:[{k:'fi', lb:'FALSE ALARM RATE', min:0, max:3, step:1, val:1}],
+  },
+  {
+    t:'Seeing the bill',
+    goal:'You will read the price of accuracy in calls.',
+    todo:'Change the catch and false alarm rates, then answer the question.',
+    kind:'controls', viz:'zincirPrompt', h:760, xp:75, state:{sahne:'maliyet'},
+    body:'<p>Each curve takes a fixed checker and raises the retries from 0 to 5. Going right means more calls, going up means more accuracy.</p>' +
+         '<p>The expected number of calls is also in closed form: k₀ = 1, k<sub>R</sub> = 1 + [(1−ε)f + εr] · k<sub>R−1</sub>, with a total of 8 · k<sub>R</sub>.</p>' +
+         '<p>A good checker is cheap. With r = 0.95 and f = 0, three retries take the accuracy to 95.6% and cost <b>8.84</b> calls in total: 10% more than the unchecked chain.</p>' +
+         '<p>False alarms charge you twice. At the same r = 0.95 with f = 0.50, three retries only bring the accuracy to 81.4% and cost <b>16.03</b> calls: twice the computation for less accuracy.</p>' +
+         '<p>The general design rule: the quality of the checker matters far more than the number of retries. Giving a weak checker more retries is usually putting money in the wrong place.</p>' +
+         '<p>A note: in this model the checker and the generator are assumed <b>independent</b>. In reality, having the same model check its own output partially destroys that independence, so r falls and f rises. This is why <b>external</b> signals such as a separate model, a rule based validator or running the code are valuable.</p>',
+    learned:'<b>The quality of the checker matters more than the number of retries.</b><br><br>r = 0.95, f = 0: three retries give 95.6% accuracy at 8.84 calls.<br>r = 0.95, f = 0.50: three retries give 81.4% accuracy at 16.03 calls.<br><br>The same catch rate, twice the computation and lower accuracy. False alarms grow both the bill and the error rate.<br><br>If the checker and the generator are not independent (the same model checking its own output) r falls and f rises; this is why external validators are valuable.',
+    controls:[{k:'ri', lb:'CATCH RATE', min:0, max:3, step:1, val:3},
+              {k:'fi', lb:'FALSE ALARM RATE', min:0, max:3, step:1, val:1}],
+    quiz:{
+      q:'You have an eight step document processing chain and you have the model check the intermediate results. After turning the check on, the accuracy fell from 43% to 38% and the number of calls doubled. What is the right diagnosis?',
+      opts:[
+        {t:'The checker\'s false alarm rate exceeds its catch rate',
+         why:'Correct. That is the exact condition you saw in the lesson: the accuracy only falls below the unchecked baseline when r < f. The check is mistaking correct intermediate results for wrong ones and triggering unnecessary retries, damaging both the accuracy and the bill. The fix is not more retries but a better check signal: a separate validator, a schema check, or running the code.'},
+        {t:'There are not enough retries, you should raise them',
+         why:'The wrong direction. When r < f, raising the retries lowers the accuracy further and grows the cost; the r = 0, f = 0.20 curve in the lesson did exactly that. Giving a bad checker more retries deepens the damage.'},
+        {t:'You should split the chain into fewer steps',
+         why:'Reducing the number of steps shortens the error product but does not explain the observation: the problem appeared after turning the check on, so it is in the check rather than in the splitting. And you measured in the first step that splitting itself does not change the accuracy.'},
+        {t:'The model is too small for this task',
+         why:'Possible but inconsistent with the observation. With the model unchanged, turning the check on lowered the accuracy; the only thing that changed was the checking mechanism. Fix that first.'},
+      ], correct:0 },
+  },
+  ],
+};
