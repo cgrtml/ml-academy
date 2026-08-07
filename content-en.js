@@ -4272,3 +4272,168 @@ DERSLER_EN['olcek-yasalari'] = {
   },
   ],
 };
+
+DERSLER_EN['oz-gozetim'] = {
+  ad:'Self-supervision: making the label out of the data',
+  alt:'If there is no label, invent one. In this setup the raw counts carry provably zero information about the topic, so all of the gain comes from the pretext task.',
+  kaynaklar:[{"y":"Devlin, J. et al.","t":"2019","b":"BERT: Pre-training of Deep Bidirectional Transformers","n":"NAACL 2019"},
+             {"y":"Chen, T. et al.","t":"2020","b":"A Simple Framework for Contrastive Learning of Visual Representations","n":"ICML 2020"},
+             {"y":"Balestriero, R. et al.","t":"2023","b":"A Cookbook of Self-Supervised Learning","n":"arXiv:2304.12210"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'Making the label out of the data itself',
+    goal:'You will see the idea of a pretext task and why this lesson is a fair test.',
+    todo:'Increase the number of labels. Does the orange curve separate from the random line?',
+    kind:'controls', viz:'ozGozetim', h:770, xp:25, state:{sahne:'etiket'},
+    body:'<p>Labelled data is expensive and unlabelled data is plentiful. The idea of self-supervision: <b>produce the label from the data itself</b>.</p>' +
+         '<p>In language models this takes the form of "predict the next symbol". A 40 symbol document gives <b>39 supervised examples</b> without any human effort. For millions of documents the number becomes astronomical, and none of it was labelled.</p>' +
+         '<p>But the real question is: does solving that pretext task teach anything <b>useful</b>?</p>' +
+         '<p>We set the test up fairly. There are three topics, each generating text with a different transition matrix. All three matrices are <b>doubly stochastic</b>: the deviation of the row and column sums from 1 is exactly <b>0</b>.</p>' +
+         '<p>The consequence is critical: the stationary distribution of a doubly stochastic chain is <b>uniform</b>. So all three topics produce every symbol equally often and <b>single symbol counts carry zero information about the topic</b>. That is not an assumption, it is a mathematical consequence of the setup.</p>' +
+         '<p>The measurement confirms it: with a single symbol representation the accuracy wanders between <b>31% and 39%</b> up to 20 labels. Random guessing is <b>33.3%</b>. Adding labels changes nothing, because there is no signal to learn.</p>' +
+         '<p>The pretext representation (pairwise transition statistics), meanwhile, reaches <b>98.0% with 5 labels</b> per topic.</p>',
+    learned:'<b>A pretext task produces a supervision signal without labels.</b><br><br>A 40 symbol document gives <b>39</b> supervised examples and none of them was labelled.<br><br>In this setup the single symbol counts provably carry zero information (doubly stochastic transitions, a uniform stationary distribution) and the measurement confirms it: <b>31 to 39%</b> up to 20 labels, that is random. The pretext representation gets <b>98.0% with 5 labels</b>.',
+    controls:[{k:'ki', lb:'LABELLED EXAMPLES', min:0, max:4, step:1, val:0}],
+  },
+  {
+    t:'A few labels are enough',
+    goal:'You will measure where the real gain from pretraining lies.',
+    todo:'Raise the number of labels from 1 to 5. Where does the green curve go?',
+    kind:'controls', viz:'ozGozetim', h:770, xp:50, state:{sahne:'etiket'},
+    body:'<p>Accuracy with the pretext representation, by number of labels:</p>' +
+         '<p>1 label &rarr; <b>69.0%</b> &nbsp;·&nbsp; 2 &rarr; <b>90.7%</b> &nbsp;·&nbsp; 5 &rarr; <b>98.0%</b> &nbsp;·&nbsp; 10 &rarr; <b>97.7%</b> &nbsp;·&nbsp; 20 &rarr; <b>97.7%</b></p>' +
+         '<p>With <b>two</b> labels per topic it passes 90%, and with <b>five</b> it saturates. Beyond five nothing is added.</p>' +
+         '<p>In the same column the single symbol representation: 34.3%, 36.0%, 38.7%, 37.7%, 31.0%. So <b>even 20 labels</b> do not lift it above random.</p>' +
+         '<p>That asymmetry is the whole economy of self-supervision. The pretraining was done with <b>unlabelled</b> data and it handled the expensive part, the representation. What remains is fitting a classifier on top of that representation with a handful of labels.</p>' +
+         '<p>The same idea as in the transfer learning lesson, except that here even the source task is <b>unlabelled</b>. The labelling cost is zero.</p>' +
+         '<p>And note: the representation was learned <b>without knowing the topic</b>. The pretext task only asked "what comes next". Knowledge of the topic is a <b>by-product</b> of answering that question well.</p>',
+    learned:'<b>The gain from pretraining is that it lowers the number of labels the downstream task needs.</b><br><br>With the pretext representation: 1 label <b>69.0%</b>, 2 labels <b>90.7%</b>, 5 labels <b>98.0%</b>. Beyond five it saturates.<br><br>The single symbol representation is at <b>31.0%</b> even with 20 labels. The representation was learned without knowing the topic: topic knowledge is a <b>by-product</b> of solving the pretext task.',
+    controls:[{k:'ki', lb:'LABELLED EXAMPLES', min:0, max:4, step:1, val:0}],
+  },
+  {
+    t:'How much raw data does it need',
+    goal:'You will see that the pretext task has an appetite for data as well.',
+    todo:'Increase the document length. When does the pretext representation become perfect?',
+    kind:'controls', viz:'ozGozetim', h:770, xp:50, state:{sahne:'uzunluk'},
+    body:'<p>We fix the number of labels at <b>one</b> per topic and vary the document length. So the labelled data is at its minimum and the unlabelled data varies.</p>' +
+         '<p>10 symbols &rarr; <b>54.7%</b> &nbsp;·&nbsp; 20 &rarr; <b>69.3%</b> &nbsp;·&nbsp; 80 &rarr; <b>84.0%</b> &nbsp;·&nbsp; 200 &rarr; <b>100.0%</b></p>' +
+         '<p>The pretext representation has an appetite for data too. On short documents the transition statistics are estimated noisily: a 10 symbol document gives 9 transitions, not enough to estimate 16 possible kinds of transition.</p>' +
+         '<p>At 200 symbols there are 199 transitions and the representation becomes <b>perfect</b>: 100% with a single label.</p>' +
+         '<p>The single symbol representation is completely unaffected by length: 40.7%, 39.0%, 34.3%, 35.0%, 36.0%. More data does not bring a signal into existence. That is another face of the irreducible loss from the scaling laws lesson.</p>' +
+         '<p>The practical counterpart: self-supervision needs <b>a lot</b> of unlabelled data. That is why language models are trained on trillions of symbols. Labels are free but <b>raw data is not</b>.</p>',
+    learned:'<b>The pretext task needs data too; labels being free does not mean raw data is free.</b><br><br>With a single label per topic, by document length: <b>54.7%</b> at 10 symbols, <b>84.0%</b> at 80, <b>100.0%</b> at 200.<br><br>The single symbol representation is unaffected by length (between 40.7% and 36.0%): <b>more data does not bring a signal into existence</b>.',
+    controls:[{k:'ti', lb:'DOCUMENT LENGTH', min:0, max:4, step:1, val:0}],
+  },
+  {
+    t:'When the pretext task asks the wrong question',
+    goal:'You will see what the representation learned and what it did not.',
+    todo:'Answer the question.',
+    kind:'static', viz:'ozGozetim', h:770, xp:50, state:{sahne:'basarisiz'},
+    body:'<p>Let us change the downstream task: is the <b>first</b> symbol of the document a 0?</p>' +
+         '<p>That task is also readable from the data, and it is very easy. But the measurement:</p>' +
+         '<p>pretext representation: <b>56.7%</b> &nbsp;·&nbsp; single symbol: <b>59.0%</b> &nbsp;·&nbsp; always saying "no": <b>74.0%</b></p>' +
+         '<p>Both are worse than a predictor that <b>learns nothing at all</b>. Even with twenty labels.</p>' +
+         '<p>The reason is structural. Both representations are <b>frequency</b> representations: how often a symbol or a transition is seen. Frequency carries no <b>positional</b> information. Shuffle the document from beginning to end and the transition counts stay almost the same.</p>' +
+         '<p>The pretext task asked "what comes next" and learned exactly the answer to that: transition statistics. Because it never asked "where", it learned nothing about position.</p>' +
+         '<p>The general lesson: <b>what self-supervision teaches is determined by the question the pretext task asks</b>. If the pretext task is well chosen the downstream task comes almost for free; if it is badly chosen the representation is not merely harmless but <b>misleading</b>, because the accuracy you measure falls below the baseline.</p>' +
+         '<p>Which is why in practice choosing the pretext task matters as much as an architectural decision, and its outcome can only be known <b>by measuring</b>.</p>',
+    learned:'<b>What self-supervision teaches is determined by the question the pretext task asks.</b><br><br>On the "is the first symbol a 0" task the pretext representation gets <b>56.7%</b> while the majority class baseline is <b>74.0%</b>: <b>below</b> the baseline.<br><br>Because both representations are frequency representations they carry no positional information. The match between a pretext task and a downstream task <b>cannot be known without measuring</b>.',
+    quiz:{
+      q:'You have a medical image dataset: 500,000 unlabelled images and 200 labelled. You plan to pretrain with self-supervision. You are considering "rotate the image by a multiple of 90 degrees and predict how much it was rotated" as the pretext task. The downstream task is whether there is a tumour. What should you watch out for?',
+      opts:[
+        {t:'What the pretext task teaches is determined by the question it asks: rotation prediction teaches orientation and layout, and may not teach texture, so measuring is essential',
+         why:'Correct. In this lesson the pretext task asked "what comes next" and so learned transition statistics, reaching 98% with 5 labels on topic classification; but on the "what is the first symbol" task it fell below even the majority class baseline, 56.7% against 74.0%. The match between a pretext task and a downstream task cannot be known without measuring. In medical images, moreover, many tissues are already invariant to rotation, so the pretext task can become unsolvable or solvable by a shortcut.'},
+        {t:'500,000 unlabelled images is plenty, pretraining will definitely help',
+         why:'The amount of raw data is necessary but not sufficient. In this lesson the single symbol representation stayed at chance level even when the document length grew 20 fold: data does not bring a signal into existence. What determines whether the signal exists is the question the pretext task asks.'},
+        {t:'200 labels is too few, you should collect more labels first',
+         why:'Solving exactly this situation is the whole point of self-supervision. In this lesson, with the pretext representation, 2 labels per topic reached 90.7% and 5 labels reached 98.0%. On top of the right representation, 200 labels may be more than enough.'},
+        {t:'It is safer to train directly on the 200 labels instead of pretraining',
+         why:'That is the option with the most to lose. In this lesson the right representation gave 98% with 5 labels while the wrong one stayed at 31% even with 20. The difference comes from the representation, and training from scratch on 200 labels will not build it.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['icl'] = {
+  ad:'Teaching by example: in-context learning',
+  alt:'Behaviour changing without a single weight changing. When we measure it, it turns out to be a selection rather than a learning.',
+  kaynaklar:[{"y":"Brown, T. et al.","t":"2020","b":"Language Models are Few-Shot Learners","n":"NeurIPS 2020"},
+             {"y":"Xie, S. M. et al.","t":"2022","b":"An Explanation of In-context Learning as Implicit Bayesian Inference","n":"ICLR 2022"},
+             {"y":"Min, S. et al.","t":"2022","b":"Rethinking the Role of Demonstrations","n":"EMNLP 2022"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'The weights are fixed, the behaviour changes',
+    goal:'You will see a measurable definition of in-context learning.',
+    todo:'Increase the number of examples in the context. Where does the excess loss go?',
+    kind:'controls', viz:'baglamIciOgrenme', h:770, xp:25, state:{sahne:'kayip', gorulmus:1},
+    body:'<p>In-context learning is a model changing its behaviour according to the examples in the prompt <b>without a single weight being updated</b>. That is the surprising part: no training, but adaptation.</p>' +
+         '<p>To measure it we control the setup completely. Suppose three tasks were seen during pretraining: the three topics from the self-supervision lesson. The model knows those three transition matrices and they <b>will never change</b>.</p>' +
+         '<p>Now we give the model a context: k examples from one of those three tasks. The model does not know which task it is. The only thing it can do is infer from the context.</p>' +
+         '<p>The measure is the <b>excess loss</b>: the model\'s loss minus the loss of a predictor that <b>knows</b> the task. Zero means "as good as if it knew the task". Both are measured on exactly the same examples.</p>' +
+         '<p>The result:</p>' +
+         '<p>0 examples &rarr; <b>0.2833</b> &nbsp;·&nbsp; 4 &rarr; <b>0.0743</b> &nbsp;·&nbsp; 16 &rarr; <b>0.0090</b> &nbsp;·&nbsp; 64 &rarr; <b>0.0000</b></p>' +
+         '<p>With 64 examples the excess loss is <b>zero</b>. The model matches the task knowing predictor exactly. And not a single weight changed.</p>',
+    learned:'<b>In-context learning is adaptation from the context while the weights stay fixed.</b><br><br>Excess loss against a task knowing predictor: <b>0.2833</b> at 0 examples, <b>0.0743</b> at 4, <b>0.0090</b> at 16, <b>0.0000</b> at 64.<br><br>The ICL model and the oracle were measured on exactly the same examples. At 64 examples <b>no gap remains</b>.',
+    controls:[{k:'ki', lb:'EXAMPLES IN CONTEXT', min:0, max:7, step:1, val:0}],
+  },
+  {
+    t:'The mechanism: which task am I in',
+    goal:'You will see what in-context learning is actually doing.',
+    todo:'Increase the number of examples. Where does the posterior entropy go?',
+    kind:'controls', viz:'baglamIciOgrenme', h:770, xp:50, state:{sahne:'sonsal', gorulmus:1},
+    body:'<p>The excess loss falling to zero is nice, but <b>how</b> does it happen?</p>' +
+         '<p>At every step the model holds a <b>belief distribution</b> over the three tasks. Every new example in the context updates that belief. The measure of it is the posterior entropy: high means "I do not know which one it is", low means "I am sure".</p>' +
+         '<p>With an empty context the entropy is <b>1.0986</b>. That is exactly <b>ln 3</b>: no preference among the three tasks, complete uncertainty.</p>' +
+         '<p>As examples are added: <b>0.4649</b> at 4 examples, <b>0.0629</b> at 16, <b>0.0001</b> at 64.</p>' +
+         '<p>So in-context learning, despite its name, is <b>not a learning</b>. The model is not learning anything new; it is <b>inferring which of the tasks it already has</b> it is in. The technical name is implicit Bayesian inference.</p>' +
+         '<p>This is the same Bayes calculation as in the probability lesson: the prior is uniform over all tasks and the context is evidence. Every example sharpens the posterior a little further.</p>' +
+         '<p>And the distinction matters in practice: a model "learning" a task from a prompt is a sign that the task was <b>already somewhere</b> in its pretraining.</p>',
+    learned:'<b>In-context learning is a selection, not a learning.</b><br><br>The model holds a belief distribution over tasks. With an empty context the entropy is <b>1.0986 = ln 3</b> (complete uncertainty), and at 64 examples <b>0.0001</b>.<br><br>No new ability is acquired; <b>a choice is made among existing ones</b>. This is implicit Bayesian inference.',
+    controls:[{k:'ki', lb:'EXAMPLES IN CONTEXT', min:0, max:7, step:1, val:0}],
+  },
+  {
+    t:'A task that was not in pretraining',
+    goal:'You will measure the limit of in-context learning.',
+    todo:'Change the task and increase the number of examples. Does the excess loss fall to zero?',
+    kind:'controls', viz:'baglamIciOgrenme', h:770, xp:50, state:{sahne:'kayip'},
+    body:'<p>Now we give the model a context from a task it <b>never saw</b> during pretraining. A fourth transition matrix, again doubly stochastic, but different from all three.</p>' +
+         '<p>The excess loss:</p>' +
+         '<p>0 examples &rarr; <b>0.6023</b> &nbsp;·&nbsp; 8 &rarr; <b>0.4074</b> &nbsp;·&nbsp; 32 &rarr; <b>0.3686</b> &nbsp;·&nbsp; 64 &rarr; <b>0.3690</b></p>' +
+         '<p>It improves somewhat and then <b>sticks at around 0.369</b>. However many examples you give, it does not go below that.</p>' +
+         '<p>The same on the accuracy side: with 64 examples ICL gets <b>25.0%</b> and the task knowing predictor <b>45.1%</b>. That 20 point gap does not close.</p>' +
+         '<p>The reason is clear: the model is choosing among three tasks and the right answer is not among those three. However long the context gets, it cannot select an option that does not exist.</p>' +
+         '<p>The mechanism from the previous step already said this: ICL is a selection, and a selection can only be made among the options available.</p>',
+    learned:'<b>In-context learning can only select tasks the model already has.</b><br><br>On an unseen task the excess loss sticks at around <b>0.369</b> and does not fall even with 64 examples. On a seen task the same number is <b>0.0000</b>.<br><br>The 20 point gap in accuracy does not close either: ICL <b>25.0%</b>, the oracle <b>45.1%</b>.',
+    controls:[{k:'gorulmus', lb:'TASK', min:0, max:1, step:1, val:1},
+              {k:'ki', lb:'EXAMPLES IN CONTEXT', min:0, max:7, step:1, val:7}],
+  },
+  {
+    t:'Being sure is not being right',
+    goal:'You will see the most dangerous property of in-context learning.',
+    todo:'Answer the question.',
+    kind:'static', viz:'baglamIciOgrenme', h:770, xp:50, state:{sahne:'sonsal', gorulmus:0, ki:7},
+    body:'<p>Something else happens on the unseen task, and it is the most important measurement in this lesson.</p>' +
+         '<p>Look at the posterior entropy: <b>1.0986</b> with an empty context and <b>0.0123</b> at 64 examples.</p>' +
+         '<p>So even on a task it <b>never saw</b>, the model decides which task it is in and becomes <b>sure</b> of its decision. The posterior collapses to almost a single point.</p>' +
+         '<p>But the excess loss is stuck at 0.369. The model is sure and wrong.</p>' +
+         '<p>This is the same pattern we measured in the Gaussian Process and Bayesian network lessons: an uncertainty estimate is also a model, and outside the model\'s limits it <b>underestimates</b> the uncertainty. Here a posterior defined over three tasks cannot account for the existence of a fourth, because it has no place to express it.</p>' +
+         '<p>The practical consequence: the impression that a model "understood" the task you gave it in a prompt and is producing stable answers is not proof that it is doing that task <b>correctly</b>. Looking sure can also come from having locked onto the closest thing it saw in pretraining.</p>' +
+         '<p>Which is why the output of few-shot prompts should not be accepted without being measured on <b>a separate evaluation set</b> for that task.</p>',
+    learned:'<b>In in-context learning, being sure is not proof of being right.</b><br><br>On an unseen task the posterior entropy falls from <b>1.0986 to 0.0123</b>: the model is sure. But the excess loss is stuck at <b>0.369</b> and the accuracy at <b>25.0%</b> (the oracle is at 45.1%).<br><br>The model locks onto the closest task it saw in pretraining. Few-shot prompts should not be accepted without measurement on <b>a separate evaluation set</b>.',
+    quiz:{
+      q:'At a company you give 30 examples in a prompt to classify a very specialised document type. The model produces consistent, confident and fast answers. Your manager says "the model has learned the task". How do you respond?',
+      opts:[
+        {t:'Consistency and confidence are not proof of correctness; we need to measure on a separate evaluation set',
+         why:'Correct. In this lesson we measured the posterior entropy falling from 1.0986 to 0.0123 even on a task the model had never seen: it decided which task it was in and became sure. But the excess loss stayed stuck at 0.369 and the accuracy at 25.0%, far below the oracle\'s 45.1%. So looking sure can come from having locked onto the closest thing seen in pretraining. The only way to tell is to measure.'},
+        {t:'Correct, 30 examples is sufficient evidence',
+         why:'In this lesson we went up to 64 examples and the excess loss on the unseen task stayed at 0.369. The number of examples does not solve the problem if the task is not in the model\'s repertoire; it only raises confidence in the wrong option.'},
+        {t:'If we add more examples to the prompt it will become certain',
+         why:'As you measured in this lesson, on an unseen task going from 8 examples to 64 took the excess loss from 0.4074 to 0.3690, which is almost nothing. Adding examples does not create an option that does not exist.'},
+        {t:'We should update the model\'s weights with these examples',
+         why:'Fine-tuning really can add the task to the model\'s repertoire and may be a reasonable suggestion. But the question asked was whether the model has learned the task right now, and the answer to that is to measure. Moving to fine-tuning without measuring is applying a fix without knowing whether the problem exists.'},
+      ], correct:0 },
+  },
+  ],
+};
