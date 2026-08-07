@@ -4911,3 +4911,148 @@ DERSLER_EN['hafiza'] = {
   },
   ],
 };
+
+DERSLER_EN['cokdilli'] = {
+  ad:'The blind spot of multilingual models',
+  alt:'The model does not "not know" a language; the tokeniser does not recognise it. The difference shows up on the bill.',
+  kaynaklar:[{"y":"Ahia, O. et al.","t":"2023","b":"Do All Languages Cost the Same? Tokenization in the Era of Commercial Language Models","n":"EMNLP 2023","u":"https://arxiv.org/abs/2305.13707"},
+             {"y":"Petrov, A. et al.","t":"2023","b":"Language Model Tokenizers Introduce Unfairness Between Languages","n":"NeurIPS 2023","u":"https://arxiv.org/abs/2305.15425"},
+             {"y":"Rust, P. et al.","t":"2021","b":"How Good is Your Tokenizer? On the Monolingual Performance of Multilingual Language Models","n":"ACL 2021","u":"https://arxiv.org/abs/2012.15613"},
+             {"y":"Conneau, A. et al.","t":"2020","b":"Unsupervised Cross-lingual Representation Learning at Scale (XLM-R)","n":"ACL 2020","u":"https://arxiv.org/abs/1911.02116"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'The merge budget goes to the majority',
+    goal:'You will see, at the level of mechanism, why a tokeniser shreds some languages.',
+    todo:'Change the English share of the corpus. How are the first 20 merges divided?',
+    kind:'controls', viz:'cokDilli', h:760, xp:50, state:{sahne:'butce'},
+    body:'<p>In the BPE lesson you saw how a tokeniser is trained: at every step the most frequent character pair is merged. Here we really train the same algorithm on a <b>trilingual</b> corpus.</p>' +
+         '<p>The critical point: the criterion "most frequent" knows nothing about language. A pair\'s frequency comes with the share of the language it appears in. So <b>the merge budget is distributed according to corpus share</b>.</p>' +
+         '<p>The measurement: with the corpus split evenly, the first 20 merges divide 40.8% / 40.8% / 18.3%. Raise the English share to 85% and the split becomes <b>72.5% / 15.0% / 12.5%</b>; at 95% it is <b>75.8% / 13.3% / 10.8%</b>.</p>' +
+         '<p>Nobody here is punishing the minority language. The algorithm is being faithful to its objective: it picks the merge that reduces the total token count most. Those merges are in the dominant language.</p>' +
+         '<p>Early merges matter particularly, because they cover the most frequent pieces. Merges added later fall on rarer pieces.</p>',
+    learned:'<b>A tokeniser\'s merge budget is distributed according to the language shares in the corpus.</b><br><br>On an even corpus the first 20 merges split 40.8% / 40.8% / 18.3%; on a 95% corpus, 75.8% / 13.3% / 10.8%.<br><br>That is not a bug but the definition of BPE: the most frequent pair wins and frequency comes with corpus share. The result is that the dominant language\'s words stay whole while the others get shredded.',
+    controls:[{k:'pi', lb:'ENGLISH SHARE OF THE CORPUS', min:0, max:3, step:1, val:2}],
+  },
+  {
+    t:'The same tokeniser, three words',
+    goal:'You will see the shredding concretely.',
+    todo:'Change the corpus share and look at the piece counts.',
+    kind:'controls', viz:'cokDilli', h:760, xp:50, state:{sahne:'ornek'},
+    body:'<p>One word from each of three languages, using the same trained BPE. An important detail: none of these words is in the training list. Measuring a tokeniser on a word it memorised would be meaningless, because there it gives a single token anyway.</p>' +
+         '<p>The difference in shredding you see on screen is a real measurement but <b>on a synthetic corpus</b>. The absolute numbers here are not the numbers of real models; what they show is the mechanism.</p>' +
+         '<p>The magnitudes in real models have been measured. Petrov et al. (2023) showed that in commercial tokenisers the difference in shredding between languages reaches <b>15 fold</b> for some language pairs. Ahia et al. (2023) measured how the API bill for the same content changes several fold with the language.</p>' +
+         '<p>Turkish sits in a particularly disadvantaged place on this table: because of its agglutinative structure a single word carries many units of meaning, and if the tokeniser does not recognise those units it takes the word apart letter by letter.</p>',
+    learned:'<b>The same tokeniser with the same budget produces whole words in some languages and piles of letters in others.</b><br><br>The corpus here is synthetic and the absolute numbers do not represent real models; they show the mechanism.<br><br>For real measurements: in commercial tokenisers the difference in shredding between languages reaches 15 fold for some language pairs (Petrov et al., 2023).',
+    controls:[{k:'pi', lb:'ENGLISH SHARE OF THE CORPUS', min:0, max:3, step:1, val:2}],
+  },
+  {
+    t:'The bill for shredding',
+    goal:'You will compute how the fertility ratio turns into three separate costs.',
+    todo:'Change the ratio. How much of the text fits into the same context window?',
+    kind:'controls', viz:'cokDilli', h:760, xp:50, state:{sahne:'sonuc'},
+    body:'<p>The fertility ratio r is how many times more tokens the same content takes compared with the dominant language. From here on it is pure arithmetic, not measurement:</p>' +
+         '<p><b>Price.</b> If you pay per token the same text costs r times as much. Twice as much at r = 2.</p>' +
+         '<p><b>Context.</b> Because the window is fixed in tokens, only <b>1/r</b> of the text fits into the same window. Half at r = 2, a third at r = 3. So the phrase "a 128 thousand token window" means a different amount of text depending on the language.</p>' +
+         '<p><b>Latency.</b> Because generation advances token by token, the same answer takes r times as long.</p>' +
+         '<p>All three penalties come from the same number, and none of them is the model "not knowing" the language. This is a fixable engineering problem: a tokeniser trained on a balanced corpus, a language specific tokeniser, or a fallback mechanism that drops to the byte level.</p>' +
+         '<p>There is one further effect: as shredding grows, the same sentence spreads over a longer token sequence and the dependency distance the model needs grows. As Rust et al. (2021) showed, tokeniser quality on its own noticeably affects per language performance.</p>',
+    learned:'<b>The fertility ratio r multiplies three costs at once.</b><br><br>Price r times, text fitting in the same window 1/r, latency r times. At r = 2: twice the price, half the window, twice the time.<br><br>"A 128 thousand token context" is not a language independent promise. And it comes from the tokeniser not recognising the language rather than the model not knowing it, which means it is fixable.',
+    controls:[{k:'oi', lb:'FERTILITY RATIO', min:0, max:3, step:1, val:2}],
+  },
+  {
+    t:'What can be done',
+    goal:'You will see the ways of closing the blind spot and the price of each.',
+    todo:'Answer the question.',
+    kind:'controls', viz:'cokDilli', h:760, xp:75, state:{sahne:'butce'},
+    body:'<p>Since the source of the problem is the corpus balance, the fixes start there:</p>' +
+         '<p><b>Balancing the corpus.</b> Artificially raising the share of minority languages when sampling for tokeniser training. XLM-R does this with an exponential resampling (Conneau et al., 2020). The price: some loss of efficiency in the dominant language.</p>' +
+         '<p><b>Growing the vocabulary.</b> More merges means more pieces for everybody. The price is a larger embedding table and a heavier final layer. And the early merges still go to the dominant language; this is a patch rather than a fix.</p>' +
+         '<p><b>A language specific tokeniser.</b> The most efficient option for a system that will work in one language. The price: the loss of cross-lingual transfer and a separate model to maintain.</p>' +
+         '<p><b>A byte level fallback.</b> Dropping everything unknown to bytes prevents breakage but does not fix the shredding; if anything it makes it worst.</p>' +
+         '<p>In practice, as an application developer you cannot choose the tokeniser, but you <b>can measure it</b>: counting tokens per word on your own texts is a five minute job and it directly corrects your estimates of cost, context and latency.</p>',
+    learned:'<b>The fix is at the tokeniser layer, not the model layer.</b><br><br>Balancing the corpus (at some loss of efficiency in the dominant language), growing the vocabulary (at an embedding cost, and the early merges still go to the dominant language), a language specific tokeniser (at the cost of transfer).<br><br>The shortest job on the application side: measure the tokens per word on your own texts. Estimates of cost, context and latency all depend on that number.',
+    controls:[{k:'pi', lb:'ENGLISH SHARE OF THE CORPUS', min:0, max:3, step:1, val:3}],
+    quiz:{
+      q:'You are building an assistant that works with Turkish documents. When the same documents are translated into English the token count halves. Your model\'s context window is 32 thousand tokens. Which of these is a direct consequence of that measurement?',
+      opts:[
+        {t:'Only about half as much Turkish text fits into the same window; you should design your chunking and retrieval accordingly',
+         why:'Correct. If the fertility ratio is r = 2 then the text that fits in the window is 1/r = 50%. That is pure arithmetic. The practical consequence: you should measure document chunks in tokens rather than characters or words, and allocate a larger chunk budget for Turkish in your retrieval design.'},
+        {t:'The model understands Turkish worse than English',
+         why:'The measurement does not say that. The token count is a property of the tokeniser, not of the model\'s ability to understand a language. It is true that shredding indirectly affects performance (Rust et al., 2021), but what this measurement says directly is about cost, context and latency.'},
+        {t:'You should translate the documents into English first and process them that way',
+         why:'That can lower the cost in some situations, but translation adds its own errors, loses nuance from the original, and requires an extra model call. It is not a direct consequence of the measurement but a possible intervention, and it has to be evaluated separately.'},
+        {t:'You should move to a model with a larger context window',
+         why:'That eases the symptom, but it is not what the measurement says. And growing the window does not remove the price and latency penalties; both stay proportional to the token count.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['tokenizer-fark'] = {
+  ad:'Why tokenisers behave differently',
+  alt:'Two models split the same text into different numbers of pieces. Where that difference comes from is written in the corpus the tokeniser was trained on.',
+  kaynaklar:[{"y":"Sennrich, R. et al.","t":"2016","b":"Neural Machine Translation of Rare Words with Subword Units","n":"ACL 2016","u":"https://arxiv.org/abs/1508.07909"},
+             {"y":"Kudo, T. & Richardson, J.","t":"2018","b":"SentencePiece: A simple and language independent subword tokenizer","n":"EMNLP 2018","u":"https://arxiv.org/abs/1808.06226"},
+             {"y":"Singh, A. K. & Strouse, D. J.","t":"2024","b":"Tokenization counts: the impact of tokenization on arithmetic in frontier LLMs","n":"arXiv:2402.14903","u":"https://arxiv.org/abs/2402.14903"},
+             {"y":"Petrov, A. et al.","t":"2023","b":"Language Model Tokenizers Introduce Unfairness Between Languages","n":"NeurIPS 2023","u":"https://arxiv.org/abs/2305.15425"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'Who wins as the vocabulary grows',
+    goal:'You will see how the merge budget is distributed across kinds of text.',
+    todo:'Increase the number of merges. Which curve falls and which one does not?',
+    kind:'controls', viz:'tokenizerFarki', h:760, xp:50, state:{sahne:'sozluk'},
+    body:'<p>A BPE tokeniser is really being trained here. The corpus is <b>weighted towards natural language</b>: ordinary words appear 100 times, numbers 3 times, code fragments 2 times. An imbalance similar to the composition of real corpora.</p>' +
+         '<p>The measurement is on words <b>not seen</b> in training, and the end of word marker is not counted. The unit is tokens per character: smaller is better.</p>' +
+         '<p>The result is clear. As the number of merges goes from 20 to 200:</p>' +
+         '<p><b>Natural language:</b> 0.692 → 0.462. About a third better.<br>' +
+         '<b>Code:</b> 0.800 → 0.725. A small improvement.<br>' +
+         '<b>Numbers:</b> 1.000 → 0.900. Almost nothing.</p>' +
+         '<p>1.000 for numbers means <b>every digit is its own token</b>. Growing the vocabulary tenfold does not change that, because numbers are rare in the corpus and get no share of the merge budget.</p>' +
+         '<p>One detail: when 200 merges are requested the training <b>stops at 143</b>, because there is no pair left in the corpus to merge. Vocabulary size is not a wish, it is as much as the corpus allows.</p>',
+    learned:'<b>The merge budget goes to whichever kind of text is frequent in the corpus.</b><br><br>From 20 to 200 merges: natural language 0.692 → 0.462, code 0.800 → 0.725, numbers 1.000 → 0.900.<br><br>1.000 for numbers means every digit is its own token, and growing the vocabulary does not fix it. Vocabulary size is not a wish either: training stops when the corpus runs out.',
+    controls:[{k:'si', lb:'NUMBER OF MERGES', min:0, max:3, step:1, val:2}],
+  },
+  {
+    t:'The same vocabulary, three kinds of text',
+    goal:'You will see the difference on concrete pieces.',
+    todo:'Change the number of merges and look at the pieces.',
+    kind:'controls', viz:'tokenizerFarki', h:760, xp:50, state:{sahne:'ornek'},
+    body:'<p>One example from each of three kinds of text, with the same trained tokeniser. None of them is in the training corpus.</p>' +
+         '<p>The natural language word splits into meaningful pieces: <b>deger | l | e | n | d | ir | me</b>. The root and the suffixes appear separately, because they got a share of the merge budget by being frequent in the corpus.</p>' +
+         '<p>A number, meanwhile, splits at an odd place like <b>202 | 4</b>. That split point has no mathematical meaning; it comes purely from the sequence "202" having happened to appear in the corpus.</p>' +
+         '<p>That oddity has a concrete price. Singh and Strouse (2024) measured that how numbers are split directly affects the arithmetic performance of large language models. Tokenisers that split digits one by one give better results than those that split them into inconsistent groups. This is why some modern models use special rules for numbers.</p>' +
+         '<p>Code is in a similar position: <b>get | C | on | f | i | g</b>. "get" stayed whole because it is in the corpus and the rest was taken apart into letters.</p>' +
+         '<p>The conclusion: two models splitting the same text into different numbers of pieces is not a difference in quality but <b>a difference in training corpus</b>. A tokeniser trained on a code heavy corpus splits code into fewer pieces, because the pieces of code are in its vocabulary.</p>',
+    learned:'<b>Split points have a statistical rather than a semantic reason.</b><br><br>"2024" splitting as "202 | 4" is not a mathematical decision, it is the consequence of that sequence having appeared in the corpus.<br><br>That has a measurable price: how numbers are split directly affects models\' arithmetic performance (Singh & Strouse, 2024). Two models splitting the same text differently is a difference in corpus, not in quality.',
+    controls:[{k:'si', lb:'NUMBER OF MERGES', min:0, max:3, step:1, val:2}],
+  },
+  {
+    t:'What it means in practice',
+    goal:'You will see how a difference in tokeniser shows up in your application.',
+    todo:'Answer the question.',
+    kind:'controls', viz:'tokenizerFarki', h:760, xp:75, state:{sahne:'sozluk'},
+    body:'<p>A difference in tokeniser has four concrete consequences:</p>' +
+         '<p><b>1. Token counts do not transfer.</b> Text that takes 1000 tokens on one model can take 1400 on another. The answer to "does it fit in the context window" changes with the model and cannot be guessed; it <b>has to be measured</b>.</p>' +
+         '<p><b>2. Price comparisons are incomplete.</b> Comparing two providers\' price per million tokens assumes both split the same text into the same number of tokens. They do not. The comparison has to be made <b>with your own text</b>.</p>' +
+         '<p><b>3. Numbers and code need special attention.</b> You measured it: growing the vocabulary does not save numbers. On arithmetic heavy work, looking at how a model splits numbers can be a real criterion for choosing one.</p>' +
+         '<p><b>4. Chunk boundaries should be in tokens.</b> In retrieval augmented generation, splitting a document by character or word count produces chunks of very different sizes depending on the language and the content.</p>' +
+         '<p>One last note: tools like SentencePiece (Kudo & Richardson, 2018) made it possible to train a tokeniser on raw text without language specific preprocessing. That was one of the technical preconditions for multilingual models becoming widespread; but it did not solve the corpus imbalance problem, it only made it portable.</p>',
+    learned:'<b>Token counts do not transfer between models.</b><br><br>Four consequences: context window estimates are model specific; price comparisons have to be made with your own text; on number and code heavy work the tokeniser is a criterion for choosing a model; chunk boundaries should be set in tokens.<br><br>The answer to all four is the same: <b>measure</b>. It takes a few minutes and it beats guessing.',
+    controls:[{k:'si', lb:'NUMBER OF MERGES', min:0, max:3, step:1, val:0}],
+    quiz:{
+      q:'You are comparing the price per million tokens of two models: model A at 10 units and model B at 7. Your texts are mostly Turkish technical documentation and code. What do you do?',
+      opts:[
+        {t:'I run a sample of my own texts through both tokenisers, measure the token counts, and then multiply by the price',
+         why:'Correct. A price comparison is only valid if the same text splits into the same number of tokens, and as you measured in the lesson it does not: the same kind of text can cost several times more tokens depending on the corpus composition. The model that looks cheap can end up expensive if it splits your texts into more pieces. The measurement takes a few minutes and the decision is made with it.'},
+        {t:'Model B is cheaper, I pick it',
+         why:'That comparison assumes both tokenisers split the same text into the same number of tokens. You measured it in the lesson: splitting behaviour changes with corpus composition, and the difference grows especially on code and numbers.'},
+        {t:'I pick the model with the larger vocabulary',
+         why:'Vocabulary size on its own is not enough information. You measured it: a large vocabulary helps the kinds of text that are frequent in the corpus and barely helps the rare ones. For your Turkish and code heavy texts what matters is not the size of the vocabulary but what it was trained on.'},
+        {t:'I use both and take the average',
+         why:'That raises cost and complexity without making the decision. And the answer is already measurable; there is no need to guess.'},
+      ], correct:0 },
+  },
+  ],
+};
