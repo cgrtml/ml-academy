@@ -3517,3 +3517,154 @@ DERSLER_EN['enc-dec'] = {
   },
   ],
 };
+
+DERSLER_EN['token'] = {
+  ad:'Tokenisation: how text turns into numbers',
+  alt:'The first thing a language model sees. And why it matters especially in agglutinative languages like Turkish.',
+  kaynaklar:[{"y":"Sennrich, Haddow, Birch","t":"2016","b":"Neural Machine Translation of Rare Words with Subword Units (BPE)","n":"ACL 2016","u":"https://arxiv.org/abs/1508.07909"},
+             {"y":"Kudo, T. & Richardson, J.","t":"2018","b":"SentencePiece: A Simple and Language Independent Subword Tokenizer","n":"EMNLP 2018","u":"https://arxiv.org/abs/1808.06226"},
+             {"y":"Gage, P.","t":"1994","b":"A New Algorithm for Data Compression (the original BPE)","n":"The C Users Journal, 12(2)"},
+             {"y":"Rust, P. et al.","t":"2021","b":"How Good is Your Tokenizer? On the Monolingual Performance of Multilingual Language Models","n":"ACL 2021","u":"https://arxiv.org/abs/2012.15613"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'Why subwords rather than words?',
+    goal:'You will understand why tokenisation is not simply a matter of "split into words".',
+    todo:'Drag the number of merges from 0 to 40. Watch how the word gets assembled.',
+    kind:'controls', viz:'bpe', h:780, xp:50, state:{kelime:'kitaplarımızdan'},
+    body:'<p>A language model cannot read text directly. It first has to be cut into pieces called <b>tokens</b>, each of which maps to a number.</p>' +
+         '<p><b>Two naive routes and the problem with each:</b></p>' +
+         '<p>· <b>Character by character:</b> the vocabulary is tiny (a few hundred) but the sequences become very long. Because the cost of attention grows with the square of the sequence length, that is very expensive.<br>' +
+         '· <b>Word by word:</b> the sequences are short but the vocabulary explodes, and it is <b>a disaster for Turkish</b>. Hundreds of different words can be derived from the root "kitap" (book); they cannot each be their own token. And when a word arrives that is not in the vocabulary, the model is helpless.</p>' +
+         '<p><b>BPE (Byte Pair Encoding) finds the middle ground.</b> It merges frequently occurring character pairs step by step:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">1. "e"+"r" → "er"       (occurred 316 times)<br>2. "a"+"r" → "ar"       (264)<br>7. "l"+"ar" → "lar"     (176)  ← plural suffix<br>10. "kita"+"p" → "kitap" (152)  ← the root<br>11. "l"+"er" → "ler"    (148)  ← the vowel harmonic plural</p>' +
+         '<p><b>Nobody taught it Turkish grammar.</b> Purely by frequency it found the suffixes "lar" and "ler" and the root "kitap" on its own.</p>' +
+         '<p>The tokeniser on this page was <b>really trained</b>: a corpus of 38 words, 40 merges, a vocabulary of 64 tokens.</p>',
+    learned:'<b>BPE is: merge the most frequent pair, repeat.</b> The result sits somewhere between characters and words: a manageable vocabulary, short sequences, and no unknown words.<br><br>And the merges come out <b>meaningful</b>: roots and suffixes appear on their own.',
+    controls:[{k:'nb', lb:'MERGES LEARNED', min:0, max:40, step:1, val:0}],
+  },
+  {
+    t:'Why is Turkish expensive?',
+    goal:'You will see, across different words, why tokenisation is a matter of cost and quality.',
+    todo:'Change the word. Look especially at <b>"kalemlerimizden"</b>, which never appears in the corpus.',
+    kind:'controls', viz:'bpe', h:780, xp:60,
+    body:'<p>The results with the trained tokeniser:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">defterlerimiz    → defter | ler | imiz⏎          <b>3 tokens</b><br>evimizden        → ev | imi | z | de | n⏎        5 tokens<br>okulumuzdan      → okul | umu | z | d | a | n⏎   6 tokens<br>kitaplarımızdan  → kitapları | m | ı | z | d | a | n⏎   7 tokens<br>kalemlerimizden  → k|a|l|e|m | ler | imi | z | de | n⏎  <b style="color:#fb923c">10 tokens</b></p>' +
+         '<p><b>The last line is the critical one.</b> "kalem" (pen) never appeared in the corpus, so it fell apart into letters. But the suffixes, "ler", "imi", "de", were still caught. <b>BPE does not break when it meets an unknown word</b>, it splits it into pieces it knows. That is its biggest advantage over word based tokenisation.</p>' +
+         '<p><b>So why does this matter?</b> Three concrete reasons:</p>' +
+         '<p>· <b>Money.</b> APIs charge per token. The same sentence can take 50 to 100% more tokens in Turkish than in English, because most tokenisers were trained predominantly on English text.<br>' +
+         '· <b>The context window.</b> Less Turkish text fits into an 8000 token window.<br>' +
+         '· <b>Quality.</b> Rust et al. (2021) showed that tokeniser quality explains a significant part of the gap in monolingual performance of multilingual models. A language that is split badly is also represented badly in the model.</p>' +
+         '<p>Tokenisation is also the source of most of the strange mistakes language models make: counting letters, spelling a word backwards, arithmetic, all become hard because things are split across tokens. The model does not know how many letters "kitaplarımızdan" has, because it <b>does not see it as letters</b>.</p>',
+    learned:'<b>Tokenisation is invisible but affects everything:</b> cost, context window, quality and the model\'s strange mistakes.<br><br>BPE does not break on an unknown word, it splits it into pieces. But a tokeniser <b>trained predominantly on English</b> splits Turkish text inefficiently, and that is a loss of both money and quality.',
+    controls:[{k:'ki', lb:'WORD', min:0, max:4, step:1, val:0},
+              {k:'nb', lb:'MERGES', min:0, max:40, step:1, val:40}],
+    quiz:{
+      q:'A language model gets confused about how many "r" letters there are in "strawberry". What is the most fundamental reason?',
+      opts:[
+        {t:'The model is not big enough',
+         why:'Size helps but that is not the root cause; very large models make this mistake too.'},
+        {t:'The model does not see the word as letters; it sees it as token pieces, and the letters are hidden inside those pieces',
+         why:'Correct. "strawberry" may reach the model as a single token, or as "straw"+"berry". The model cannot directly see the <i>letters inside</i> that token, it only knows as much as it indirectly learned during training. This is why counting letters, finding syllables and spelling a word backwards are unexpectedly hard for language models. The usual fix is to use a tool: have the model write code and count with it.'},
+        {t:'Non-English characters are not supported',
+         why:'They are supported; the problem is not the character set but the way of seeing.'},
+        {t:'The model does not know the language',
+         why:'Knowing it does not fix this. The same mistake happens in every language, including English.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['attention'] = {
+  ad:'Attention: the system that models you',
+  alt:'ChatGPT, Claude, Gemini. The same mechanism sits at the heart of all of them. In this lesson we take it apart step by step.',
+  kaynaklar:[{"y":"Vaswani, A. et al.","t":"2017","b":"Attention Is All You Need","n":"NeurIPS 2017","u":"https://arxiv.org/abs/1706.03762"},
+             {"y":"Bahdanau, Cho, Bengio","t":"2015","b":"Neural Machine Translation by Jointly Learning to Align and Translate","n":"ICLR 2015","u":"https://arxiv.org/abs/1409.0473"},
+             {"y":"Jain, S. & Wallace, B.","t":"2019","b":"Attention Is Not Explanation","n":"NAACL 2019","u":"https://arxiv.org/abs/1902.10186"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'The problem: who is "it"?',
+    goal:'You will see the basic problem language models have to solve, and why reading in order is not enough.',
+    todo:'Read the sentence, then answer the question.',
+    kind:'static', viz:'attention', h:880, xp:30,
+    state:{ tokenlar:['kedi','masaya','çıktı','çünkü','o','meraklıydı'], q:4, faz:0 },
+    body:'<p>The sentence: <b>"the cat climbed on the table because it was curious"</b> (in Turkish on screen: "kedi masaya çıktı çünkü o meraklıydı").</p>' +
+         '<p>Who is <b>"it"</b>? You know instantly: the cat. But how did you know?</p>' +
+         '<p>There is no clue in the word "it" itself, it is two letters. Its meaning comes entirely from <b>the rest of the sentence</b>. And "cat" is four words back.</p>' +
+         '<p>Older language models (RNN, LSTM) read the sentence left to right one word at a time and accumulated it in a "memory". In long sentences the information from the beginning faded away. In 2017 one paper changed that completely: <b>"Attention Is All You Need"</b>.</p>' +
+         '<p>The idea: <b>let every word look at every other word in the sentence at once</b>, and let it <i>decide for itself</i> how much to look at each one.</p>',
+    learned:'<b>The meaning of language is not in the words but in the relationships between them.</b> Attention is the mechanism that computes those relationships for every word in one go, and it is the foundation of every language model you talk to today.',
+    quiz:{
+      q:'In the sentence "the cat climbed on the table because <b>it</b> was curious", what does the model have to do to resolve "it" correctly?',
+      opts:[
+        {t:'Memorise the grammar rules of the language',
+         why:'No. "it" can sometimes point to the cat and sometimes to the table: in "the cat climbed on the table because it was very high", "it" is the table. Rules are not enough, <b>context</b> is required.'},
+        {t:'<b>Compute</b> how related every word is to every other word',
+         why:'Correct. That is exactly what attention does: for every word it produces a relatedness score against all the others. The word "it" gives a high score to "cat" and a low one to "table", because the adjective "curious" fits a living thing.'},
+        {t:'Read the sentence backwards',
+         why:'Reading backwards (a bidirectional RNN) helps but does not solve the long dependency problem; the information still has to pass through a sequential memory.'},
+        {t:'Use a larger vocabulary',
+         why:'Vocabulary size helps with recognising words, not with establishing relationships between them.'},
+      ], correct:1 },
+  },
+  {
+    t:'Q, K, V: three roles',
+    goal:'You will follow the working mechanism of attention through five stages, with beams of light.',
+    todo:'Use NEXT to walk through the five stages. The thickness of a beam is the attention weight.',
+    kind:'phases', viz:'attention', h:880, xp:55,
+    learned:'<b>Attention is query·key → softmax → a weighted sum of the values.</b><br><br>Three operations. Every modern language model, including the system producing this sentence right now, is nothing more than this block stacked dozens of times.',
+    phases:[
+      {state:{ tokenlar:['kedi','masaya','çıktı','çünkü','o','meraklıydı'], q:4, faz:0, skor:[3.1,0.4,0.9,0.2,2,1.6] },
+       body:'<p>First every word turns into a <b>vector</b>, a list of a few hundred numbers. That vector is the word\'s "meaning coordinate".</p>' +
+            '<p>Now every word takes on three separate roles.</p>'},
+      {state:{ tokenlar:['kedi','masaya','çıktı','çünkü','o','meraklıydı'], q:4, faz:1, skor:[3.1,0.4,0.9,0.2,2,1.6] },
+       body:'<p><b style="color:#fb923c">QUERY (Q):</b> the word we are currently examining. Here it is <b>"o"</b> ("it").<br>Its question: <i>"who am I, whom should I take information from?"</i></p>' +
+            '<p><b style="color:#4cc4ff">KEY (K):</b> every word\'s "label". <i>"I hold this kind of information"</i></p>' +
+            '<p><b style="color:#22d3a0">VALUE (V):</b> the actual content each word carries.</p>' +
+            '<p>A library analogy: the <b>query</b> is the topic you are after, the <b>key</b> is the title on the spine, the <b>value</b> is the content of the book. You look at the titles for a match first, then take the content.</p>'},
+      {state:{ tokenlar:['kedi','masaya','çıktı','çünkü','o','meraklıydı'], q:4, faz:2, skor:[3.1,0.4,0.9,0.2,2,1.6] },
+       body:'<p><b>The scores are computed.</b> The query vector goes into a <b>dot product</b> with every key vector, that is the "multiply and add" you learned in an earlier lesson. If two vectors point in a similar direction the score comes out high.</p>' +
+            '<p>The matrix below is <b>Q·Kᵀ</b>. The row with the orange frame is our query ("o", meaning "it").</p>' +
+            '<p>"kedi" (cat) is clearly ahead at <b>3.1</b>. The model found that the pronoun points at the cat <b>without learning a single grammar rule</b>, purely from vector similarity.</p>'},
+      {state:{ tokenlar:['kedi','masaya','çıktı','çünkü','o','meraklıydı'], q:4, faz:3, skor:[3.1,0.4,0.9,0.2,2,1.6] },
+       body:'<p><b>Softmax.</b> The raw scores turned into weights that sum to 1. Now we can read them as "56% cat, 19% it, 12% curious…".</p>' +
+            '<p>The thickness of the beams shows those weights. The bundle going to "cat" is thick, the one going to "because" is almost nothing.</p>' +
+            '<p>The critical property of softmax: it is <b>differentiable</b>. That is what lets attention be learned by gradient descent, with the weight matrices that produce Q, K and V being tuned during training.</p>'},
+      {state:{ tokenlar:['kedi','masaya','çıktı','çünkü','o','meraklıydı'], q:4, faz:4, skor:[3.1,0.4,0.9,0.2,2,1.6] },
+       body:'<p><b>The last step: the weighted sum.</b> Every word\'s <b>value</b> vector is multiplied by its own weight and added up.</p>' +
+            '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:10px 14px;border-radius:8px">new_"it" = 0.56·V(cat) + 0.19·V(it) + 0.12·V(curious) + …</p>' +
+            '<p><b>The vector for "it" now largely carries the information of "cat".</b> The word did not change but its <i>representation</i> did, enriched by the context.</p>' +
+            '<p>And this happens <b>for every word in the sentence at the same time</b>. There is no sequential reading, just one large matrix multiplication. The fact that GPUs can do that job so quickly is the reason modern language models exist.</p>'},
+    ],
+  },
+  {
+    t:'Change the query',
+    goal:'You will see how different words look at the sentence differently, and that the attention map changes completely from word to word.',
+    todo:'Change the query word. Pay attention to <b>whom each word looks at</b>.',
+    kind:'controls', viz:'attention', h:880, xp:60,
+    state:{ tokenlar:['kedi','masaya','çıktı','çünkü','o','meraklıydı'], faz:3 },
+    body:'<p>Every word has its own attention map. As you move the slider:</p>' +
+         '<p>· <b>"o" (it)</b> → <b style="color:#22d3a0">kedi (cat)</b>. The pronoun locks onto the noun it points at.<br>' +
+         '· <b>"masaya" (table)</b> → <b>çıktı (climbed)</b>. The noun looks at the verb that concerns it.<br>' +
+         '· <b>"çünkü" (because)</b> → <b>çıktı</b> and <b>meraklıydı</b>. The conjunction looks at both sides it joins.<br>' +
+         '· <b>"meraklıydı" (was curious)</b> → <b>kedi</b> and <b>o</b>. The adjective looks for the thing it describes.</p>' +
+         '<p>None of these patterns was coded by hand. The model read billions of sentences and derived them <b>on its own</b>, from the single task of "predict the next word".</p>' +
+         '<p>Real models do not have a single attention but parallel <b>multi head</b> attention: one head tracks a grammatical relation, another semantic similarity, another a positional pattern. GPT-4 has roughly 96 layers × 96 heads.</p>',
+    learned:'<b>Attention patterns are not taught, they emerge.</b> From a single simple objective, "predict the next word", grammar, reference and semantic relationships appear on their own.<br><br><b>Including the system producing the sentence you are reading right now</b>, every modern language model is this block stacked dozens of times. The difference is scale: more layers, more heads, more data.',
+    controls:[{k:'q', lb:'QUERY WORD', min:0, max:5, step:1, val:4}],
+    quiz:{
+      q:'Where do attention weights come from during training?',
+      opts:[
+        {t:'They are defined by hand by linguists',
+         why:'No. Nobody wrote a rule saying "pronouns should look at nouns". These patterns appear as a <b>by-product</b> of training.'},
+        {t:'The weight matrices that produce Q, K and V are learned by gradient descent',
+         why:'Correct. Attention itself is not a learned parameter, it is a <b>computation</b>. What is learned are the matrices that transform word vectors into Q, K and V. While the model tries to reduce the "predict the next word" error, those matrices shape themselves so as to capture grammatical and semantic relationships.'},
+        {t:'They are computed and stored separately for every sentence',
+         why:'The weights are <i>recomputed</i> for every sentence but not stored, and what is learned is not them but the matrices that produce them.'},
+        {t:'They are read from a dictionary',
+         why:'No, there is no fixed table. The same word looks at completely different places in different sentences.'},
+      ], correct:1 },
+  },
+  ],
+};

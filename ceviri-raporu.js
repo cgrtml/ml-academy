@@ -83,8 +83,14 @@ enIds.filter(id => trIds.includes(id)).forEach(id => {
       if (a[k] && !b[k]) { sorun.push(ad+' "'+k+'" EN tarafında yok'); alanHata++; }
       else if (a[k] && b[k] && a[k] === b[k]) { sorun.push(ad+' "'+k+'" hâlâ Türkçe (birebir aynı)'); alanHata++; }
       else if (b[k] && TRCH.test(String(b[k]).replace(/<[^>]*>/g,''))) {
-        const kelime = String(b[k]).replace(/<[^>]*>/g,'').match(/[\wçğıöşüÇĞİÖŞÜ]*[ğüşıöçĞÜŞİÖÇ][\wçğıöşüÇĞİÖŞÜ]*/g) || [];
-        sorun.push(ad+' "'+k+'" içinde Türkçe kelime: ' + [...new Set(kelime)].slice(0,4).join(', ')); alanHata++; }
+        /* Türkçe aslında da aynen geçen kelimeler ALINTI sayılır: tokenizasyon ve
+           gömme derslerinde Türkçe örnek kelimeler bilerek korunuyor. */
+        const cikar = s => String(s||'').replace(/<[^>]*>/g,' ')
+          .match(/[\wçğıöşüÇĞİÖŞÜ]*[ğüşıöçĞÜŞİÖÇ][\wçğıöşüÇĞİÖŞÜ]*/g) || [];
+        const trKelime = new Set(cikar(a[k]));
+        const yeni = [...new Set(cikar(b[k]))].filter(w => !trKelime.has(w));
+        if (yeni.length){
+          sorun.push(ad+' "'+k+'" içinde çevrilmemiş Türkçe: ' + yeni.slice(0,4).join(', ')); alanHata++; }}
     });
   }
   if (sorun.length) console.log('  ' + id + '\n' + sorun.map(s => '      · ' + s).join('\n'));
