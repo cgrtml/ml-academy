@@ -6405,3 +6405,234 @@ DERSLER_EN['hiper-arama'] = {
   },
   ],
 };
+
+DERSLER_EN['softmax'] = {
+  ad:'Softmax and cross entropy',
+  alt:'The model produces three numbers. How do they turn into probabilities, and why do we take a logarithm instead of a square when measuring the error?',
+  kaynaklar:[{"y":"Bishop, C. M.","t":"2006","b":"Pattern Recognition and Machine Learning, Sections 4.3.4 and 5.2","n":"Springer"},
+             {"y":"Goodfellow, Bengio, Courville","t":"2016","b":"Deep Learning, Section 6.2.2","n":"MIT Press","u":"https://www.deeplearningbook.org/"},
+             {"y":"Zhang, A. et al.","t":"2022","b":"Dive into Deep Learning, Section 4.1","n":"d2l.ai"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'Turning three numbers into probabilities',
+    goal:'You will see why a model\'s raw output is not a probability and exactly what softmax does.',
+    todo:'Move the three raw scores. Do the percentages on the right always add up to 1?',
+    kind:'controls', viz:'softmaxCE', h:700, xp:25,
+    body:'<p>The last layer of a classification network produces three numbers: one for cat, one for dog, one for bird. They are called <b>logits</b> or raw scores. They can be negative, they can be greater than 1, and their sum can be anything.</p>' +
+         '<p>If we want probabilities we need two conditions: each must be between 0 and 1 and they must add up to exactly 1. Softmax does that like this:</p>' +
+         '<p style="text-align:center"><b>p<sub>i</sub> = e<sup>z<sub>i</sub></sup> / Σ e<sup>z<sub>j</sub></sup></b></p>' +
+         '<p>Exponentiating serves two purposes: it turns negative numbers positive, and it <b>magnifies the differences</b>. With scores of [2, 1, 0] the probabilities are [0.665, 0.245, 0.090]: a difference of 1 unit turns into a factor of 2.7 in probability.</p>',
+    learned:'<b>Softmax turns numbers into probabilities without disturbing the ordering.</b> The largest score gets the largest probability and the total is always 1.<br><br>Exponentiating magnifies the differences: if the score difference is 1 unit, the probability ratio becomes e = 2.718. This is why softmax is a "soft maximum": it picks the largest but leaves a share to the others.',
+    controls:[{k:'z0', lb:'cat score', min:-4, max:6, step:0.2, val:2},
+              {k:'z1', lb:'dog score', min:-4, max:6, step:0.2, val:1},
+              {k:'z2', lb:'bird score', min:-4, max:6, step:0.2, val:0}],
+  },
+  {
+    t:'The loss only looks at the correct class',
+    goal:'You will see why cross entropy does not care at all about the probabilities of the other classes.',
+    todo:'The right answer is cat. Lower the cat score and raise the dog score, and watch the loss explode.',
+    kind:'controls', viz:'softmaxCE', h:700, xp:40,
+    body:'<p>Cross entropy looks at one single thing: <b>the probability you gave the correct class.</b></p>' +
+         '<p style="text-align:center"><b>loss = −log( p(correct class) )</b></p>' +
+         '<p>How you split the probability between dog and bird does not matter at all. What matters is how much you gave the cat.</p>' +
+         '<p>The curve at the top right is the shape of that function. Note: as p → 0 the loss goes to infinity.</p>' +
+         '<p>p = 0.9 → loss 0.105 &nbsp;·&nbsp; p = 0.5 → 0.693 &nbsp;·&nbsp; p = 0.1 → 2.303 &nbsp;·&nbsp; p = 0.01 → <b>4.605</b> &nbsp;·&nbsp; p = 0.001 → 6.908</p>',
+    learned:'<b>Cross entropy punishes being confident and wrong mercilessly.</b> Giving the correct class 10% costs 2.303, giving it 1% costs <b>4.605</b> and 0.1% costs 6.908.<br><br>That is not a coincidence, it comes from information theory: −log p is a measure of "how surprised am I when this event happens". If a model gives something a 1% chance and it happens, the model was very surprised and it pays for it.',
+    controls:[{k:'z0', lb:'cat score (CORRECT)', min:-4, max:6, step:0.2, val:2},
+              {k:'z1', lb:'dog score', min:-4, max:6, step:0.2, val:1},
+              {k:'z2', lb:'bird score', min:-4, max:6, step:0.2, val:0}],
+  },
+  {
+    t:'So why not squared error?',
+    goal:'You will understand why using MSE in classification stops the learning, by looking at the gradient rather than the loss value.',
+    todo:'Take the cat score all the way down, that is make the model confident and wrong. Look at the two curves at the bottom right.',
+    kind:'controls', viz:'softmaxCE', h:700, xp:50,
+    body:'<p>Using "the square of the difference between the prediction and the truth" in classification looks reasonable. But it does not work, and the reason is not the size of the loss but its <b>derivative</b>.</p>' +
+         '<p>With softmax plus cross entropy the gradient comes out very clean: <b>∂loss/∂z = p − y</b>. If the model gives the correct class 0.1%, the gradient is 0.999, so it pushes at full strength.</p>' +
+         '<p>With softmax plus MSE the gradient gets multiplied by the derivative of softmax, and that derivative approaches zero when the model is confident. When the correct class is given 0.1%, the MSE gradient is only <b>0.000998</b>.</p>' +
+         '<p>The difference is a factor of <b>1001</b>. So MSE learns least at the moment the model is most wrong.</p>',
+    learned:'<b>The right question is not "which loss is larger" but "which loss teaches better".</b><br><br>The gradient of the softmax plus cross entropy pair is as simple as <b>p − y</b>, and it pushes harder the more wrong the model is.<br><br>With the softmax plus MSE pair the gradient is multiplied by the softmax derivative and dies out: 0.000998 at p = 0.001, 0.125 at p = 0.5. So it is weakest exactly where it is needed most.',
+    controls:[{k:'z0', lb:'cat score (CORRECT)', min:-4, max:6, step:0.2, val:2},
+              {k:'z1', lb:'dog score', min:-4, max:6, step:0.2, val:1},
+              {k:'z2', lb:'bird score', min:-4, max:6, step:0.2, val:0}],
+    quiz:{
+      q:'What is the real reason for using cross entropy instead of MSE in classification?',
+      opts:[
+        {t:'Cross entropy makes the error look larger',
+         why:'That is not even always true. On a confident and correct prediction the MSE loss is 0.0002 and the CE loss 0.0199; the ratio favours MSE. The issue is not the size of the loss.'},
+        {t:'When the model is confident and wrong, the cross entropy gradient stays strong while the MSE one approaches zero',
+         why:'Correct. When softmax and MSE are combined the gradient is multiplied by the softmax derivative, and that derivative dies as p approaches zero or one. When the correct class is given 0.1%, the CE gradient is 0.999 and the MSE gradient 0.000998, a factor of 1001. MSE stops exactly when learning is most needed.'},
+        {t:'Cross entropy is faster to compute',
+         why:'Both are computed with a handful of operations and the speed difference is negligible. The reason is not computational cost.'},
+        {t:'MSE cannot work with probabilities',
+         why:'Technically it works; you can compute the squared difference between a probability vector and a one-hot vector. The problem is not that it fails to run but that it stops the learning.'},
+      ], correct:1 },
+  },
+  {
+    t:'Temperature: same scores, different confidence',
+    goal:'You will see where the temperature parameter you saw in the sampling lesson sits inside softmax.',
+    todo:'Move the temperature. How do the probabilities change while the scores stay fixed?',
+    kind:'controls', viz:'softmaxCE', h:700, xp:35, state:{z0:2, z1:1, z2:0},
+    body:'<p>One more setting can be added to softmax: divide the scores by T first.</p>' +
+         '<p style="text-align:center"><b>p<sub>i</sub> = e<sup>z<sub>i</sub>/T</sup> / Σ e<sup>z<sub>j</sub>/T</sup></b></p>' +
+         '<p>The scores stay [2, 1, 0] throughout. The only thing that changes is T:</p>' +
+         '<p><b>T = 0.5:</b> [86.7%, 11.7%, 1.6%] · the model is confident<br>' +
+         '<b>T = 1:</b> [66.5%, 24.5%, 9.0%] · normal<br>' +
+         '<b>T = 2:</b> [50.6%, 30.7%, 18.6%] · hesitant<br>' +
+         '<b>T = 5:</b> [40.2%, 32.9%, 26.9%] · almost equal</p>' +
+         '<p>As T grows the distribution flattens; as T shrinks it piles onto the largest. The ordering never changes, only the <b>confidence</b>.</p>',
+    learned:'<b>Temperature changes not what the model says but how confident it looks.</b><br><br>The same [2, 1, 0] scores give 86.7% at T=0.5 and 40.2% at T=5. The ordering is fixed.<br><br>This is why temperature is used like a creativity dial in language models (the sampling lesson), and why T is raised in knowledge distillation to get the "soft" answers of the teacher model.',
+    controls:[{k:'T', lb:'TEMPERATURE T', min:0.2, max:5, step:0.1, val:1}],
+  },
+  ],
+};
+
+DERSLER_EN['dagilim-kaymasi'] = {
+  ad:'When the ground moves: distribution shift',
+  alt:'Not a single line of the model changed and its accuracy fell from 96% to 52%. The fault is not in the model but in the world moving.',
+  kaynaklar:[{"y":"Quiñonero-Candela, J. et al.","t":"2009","b":"Dataset Shift in Machine Learning","n":"MIT Press"},
+             {"y":"Sculley, D. et al.","t":"2015","b":"Hidden Technical Debt in Machine Learning Systems","n":"NeurIPS 2015"},
+             {"y":"Huyen, C.","t":"2024","b":"AI Engineering, the data shift chapter","n":"O'Reilly"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'96% in training, unknown in the world',
+    goal:'You will see why the model looks good on the training data and what that goodness rests on.',
+    todo:'With the shift at 0, look: how well does the yellow line fit the grey curve in this narrow region?',
+    kind:'controls', viz:'dagilimKaymasi', h:700, xp:20,
+    body:'<p>The true rule is the dashed grey <b>curve</b>: what falls above it is one class and what falls below it is the other.</p>' +
+         '<p>But the training data is gathered in only a narrow part of the curve. In that region the curve looks almost straight, so a linear model does the job perfectly well: <b>96.0% accuracy</b>.</p>' +
+         '<p>The model is not wrong. It is just <b>right for the world it has seen</b>.</p>',
+    learned:'<b>A model is right for the distribution its training data came from.</b> On this data the linear boundary gets 96.0% in the region where the curve looks straight.<br><br>The hidden assumption is this: the data that arrives in production will come from the same place. That is machine learning\'s quietest and most frequently broken assumption.',
+    controls:[{k:'kayma', lb:'DATA SHIFT', min:0, max:2.1, step:0.05, val:0}],
+  },
+  {
+    t:'The data moves, the model collapses',
+    goal:'You will see the accuracy fall to a coin flip without the model itself changing at all.',
+    todo:'Open the shift up to 2.1. The points with yellow rings are the examples the model gets wrong.',
+    kind:'controls', viz:'dagilimKaymasi', h:700, xp:45,
+    body:'<p>As the production data shifts to the right the points move into the region where the curve <b>bends</b>. The linear boundary cannot follow the truth there.</p>' +
+         '<p>shift 0.6 → accuracy 91.5% &nbsp;·&nbsp; shift 0.9 → 88.0% &nbsp;·&nbsp; shift 1.5 → 71.8% &nbsp;·&nbsp; shift 2.1 → <b>52.3%</b></p>' +
+         '<p>52.3% is almost a coin flip in a two class problem. The model\'s weights never changed. Same code, same server, same model file. The only thing that changed is who turned up.</p>' +
+         '<p>This situation is called <b>covariate shift</b>: the distribution of the inputs changed but the true relationship between input and label stayed the same.</p>',
+    learned:'<b>What broke is not the model but the model\'s assumption about the world.</b> While the accuracy fell from 96.0% to <b>52.3%</b> not a single parameter of the model changed.<br><br>In real life this looks like: a campaign brings in a new customer base, a sensor ages, a competitor changes its prices, a pandemic changes habits. The model stays the same and the world moves.',
+    controls:[{k:'kayma', lb:'DATA SHIFT', min:0, max:2.1, step:0.05, val:0}],
+  },
+  {
+    t:'So how will you notice this in production?',
+    goal:'You will learn why you cannot measure accuracy in production and what to watch instead.',
+    todo:'Look at the two cards at the bottom right. Which one can you compute in a real system?',
+    kind:'controls', viz:'dagilimKaymasi', h:700, xp:50,
+    body:'<p>The red card shows the accuracy. But in a real system <b>you cannot compute that number</b>, because production data has no labels. You find out whether a loan application will be repaid months later.</p>' +
+         '<p>The green card needs no label. It only compares <b>the distribution of the incoming inputs</b> with that of the training data: by how many standard deviations has the mean of x₁ moved?</p>' +
+         '<p>0.03σ at shift 0, 2.78σ at shift 1.5, <b>3.88σ</b> at shift 2.1. That number raises the alarm long before the accuracy collapses.</p>',
+    learned:'<b>In production accuracy arrives late while input shift is measured instantly.</b><br><br>This is why monitoring systems watch the input first: feature means, standard deviations, category distributions, missing value rates.<br><br>Then accuracy is computed retrospectively as the labels arrive. Both are set up together, but a system that trusts only the second one is blind.',
+    controls:[{k:'kayma', lb:'DATA SHIFT', min:0, max:2.1, step:0.05, val:0}],
+    quiz:{
+      q:'What should the first alarm for monitoring a model in production be?',
+      opts:[
+        {t:'Alarm if the model\'s accuracy falls below a certain threshold',
+         why:'That is what you would want, but in most systems it is impossible. Accuracy needs the true label, and the label either arrives far too late (loan repayment), never arrives (why did the user not click), or is expensive (expert labelling).'},
+        {t:'Alarm if the distribution of the incoming inputs deviates meaningfully from the training data',
+         why:'Correct. The input distribution needs no labels, is computed in real time, and gives a signal before the accuracy collapses. On this data the input shift rises to 3.88σ while the accuracy falls to 52%; you see the first instantly and the second perhaps never.'},
+        {t:'If the model is retrained every day there will be no problem',
+         why:'Retraining is a good reflex but it needs new labelled data. If there are no labels, what are you going to train on? And retraining blindly also hides when the problem started.'},
+        {t:'Alarm if the mean of the predictions changes',
+         why:'A useful additional signal that sometimes catches input shift. But it can mislead: the prediction distribution can stay fixed while the inputs move, or the predictions can move because of genuine seasonality. Watching the input directly is a more direct measure.'},
+      ], correct:1 },
+  },
+  {
+    t:'Kinds of shift and what to do about them',
+    goal:'You will tell the different kinds of shift apart and pick the right treatment for each.',
+    todo:'Answer the question.',
+    kind:'static', viz:'dagilimKaymasi', h:700, xp:45, state:{kayma:1.5},
+    body:'<p>There are three kinds and their treatments differ:</p>' +
+         '<p><b>Covariate shift:</b> the distribution of the inputs P(x) changed but P(y|x) is the same. That is what you saw in this lesson. Treatment: collect data from the new region, or reweight the examples.</p>' +
+         '<p><b>Label shift:</b> the proportion of the classes P(y) changed. For example the fraud rate went from 3% to 8%. Treatment: update the threshold and the class weights; most of the time there is no need to retrain the model.</p>' +
+         '<p><b>Concept shift:</b> the relationship itself P(y|x) changed. The same input now gives a different result. For example a word acquired a slang meaning. Treatment: retrain with new labelled data. There is no other remedy.</p>',
+    learned:'<b>Diagnose which shift it is first, then choose the treatment.</b><br><br>P(x) changed → covariate shift → data from the new region, reweighting.<br>P(y) changed → label shift → adjust the threshold and the class weights.<br>P(y|x) changed → concept shift → retrain with fresh labelled data.<br><br>In adversarial environments (spam, fraud, security) concept shift is the rule rather than the exception; retraining is not maintenance but part of the system.',
+    quiz:{
+      q:'A spam filter has been working well for months. Spammers find a new spelling trick and start getting past the filter. Which shift is this and what is the right treatment?',
+      opts:[
+        {t:'Covariate shift, collecting data from the new region is enough',
+         why:'It is not. In covariate shift the input distribution changes but the relationship "is this text spam" stays fixed. Here the attacker is deliberately breaking the relationship.'},
+        {t:'Concept shift, retraining with new labelled data is needed',
+         why:'Correct. The same text features now mean something different; the P(y|x) relationship itself changed. And here the shift is not accidental but adversarial and continuous. This is why spam filters are constantly retrained and a stream of fresh labels is an infrastructure requirement.'},
+        {t:'Label shift, updating the class weights is enough',
+         why:'In label shift the spam rate would change, say from 20% to 40%. Here it is not the rate but what spam looks like that changed.'},
+        {t:'There is no shift, the model overfitted',
+         why:'Overfitting shows up during training and the model would have generalised badly from day one. Here the model worked well for months and then broke. That is the signature of a world that changes over time.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['ozellik-onemi'] = {
+  ad:'Feature importance: which variable is the model looking at',
+  alt:'Two models fitted to the same data contradict each other about which variable matters. Neither of them is lying.',
+  kaynaklar:[{"y":"Breiman, L.","t":"2001","b":"Random Forests (permutation importance, Section 10)","n":"Machine Learning, 45(1)"},
+             {"y":"Molnar, C.","t":"2022","b":"Interpretable Machine Learning, Section 8.5","n":"open access","u":"https://christophm.github.io/interpretable-ml-book/"},
+             {"y":"Hooker, G., Mentch, L. & Zhou, S.","t":"2021","b":"Unrestricted Permutation Forces Extrapolation","n":"Statistics and Computing, 31(82)"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'Does a large coefficient mean it is important?',
+    goal:'You will see where ranking importance by the size of the coefficients breaks down.',
+    todo:'Look at the coefficient bars on the left. x₁ is almost zero. So is x₁ really unnecessary?',
+    kind:'controls', viz:'ozellikOnemi', h:700, xp:30,
+    body:'<p>We go back to the data from the ridge and lasso lessons. A reminder: x₁ is almost a copy of x₀ (correlation 0.986) and the true coefficients are <b>[3, 0, −2, 0, 0, 0]</b>.</p>' +
+         '<p>In the unpenalised model the coefficients are [3.87, <b>0.15</b>, 1.85, 0.00, 0.06, 0.05]. The coefficient of x₁ is almost zero, so it looks "unimportant".</p>' +
+         '<p>Now turn the MODEL slider to ridge. The same data, the same problem, but the coefficients have become [1.69, <b>1.59</b>, 1.31, ...]. Suddenly x₁ is as important as x₀.</p>' +
+         '<p>Which is right? Both. Because a coefficient is a property of <b>the model</b>, not of the data.</p>',
+    learned:'<b>The size of a coefficient is not a measure of importance.</b> On the same data the unpenalised model gives x₁ 0.15 and ridge gives it 1.59.<br><br>There are two further traps: coefficients change with <b>scale</b> (use kilometres instead of metres and the coefficient changes by a factor of 1000), and in non-linear models there is no such thing as a coefficient.',
+    controls:[{k:'ridgeMi', lb:'MODEL', min:0, max:1, step:1, val:0}],
+  },
+  {
+    t:'Permutation importance: shuffle and measure',
+    goal:'You will learn an importance measure that works independently of the model and looks directly at performance.',
+    todo:'Look at the purple bars on the right, then change the model and read the same bars again.',
+    kind:'controls', viz:'ozellikOnemi', h:700, xp:45,
+    body:'<p>Permutation importance is a simple idea: <b>shuffle a feature\'s values across the rows</b> and look at how much the test error degrades. If it degrades a lot, the model was leaning on that feature.</p>' +
+         '<p>It has two advantages over the coefficient: it is unaffected by scale and it works with every kind of model, in a tree as well as in a neural network.</p>' +
+         '<p>In the unpenalised model: <b>26.331</b> for x₀ and <b>−0.292</b> for x₁. Negative, meaning that shuffling x₁ <i>improves</i> the model slightly.</p>' +
+         '<p>In the ridge model: <b>5.807</b> for x₀ and <b>4.494</b> for x₁. The same x₁, the same data.</p>',
+    learned:'<b>Permutation importance depends on the model too.</b> x₁ is −0.292 in the unpenalised model and 4.494 in the ridge model.<br><br>We changed the measure, but did the problem go away? No. Because what we are measuring is still <b>what the model leans on</b>. Which variable really determines the data is a different question and permutation importance does not answer it.',
+    controls:[{k:'ridgeMi', lb:'MODEL', min:0, max:1, step:1, val:0}],
+  },
+  {
+    t:'Correlated features hide behind each other',
+    goal:'You will see why shuffling two features one at a time gives a different result from shuffling them together.',
+    todo:'In the ridge model look at the card at the bottom: how much does the error degrade when x₀ and x₁ are shuffled together?',
+    kind:'controls', viz:'ozellikOnemi', h:700, xp:50,
+    body:'<p>In the ridge model x₀ alone degrades the error by 5.807 and x₁ alone by 4.494. Their sum is 10.301.</p>' +
+         '<p>But shuffle the two <b>together</b> and the error degrades by <b>16.588</b>. Far more than the sum.</p>' +
+         '<p>The reason: when you shuffle x₀ alone, the model turns to x₁ and takes the information from there, because x₁ is almost the same column. So <b>each of them hides behind the other</b> and measuring them one at a time makes both look less important than they are.</p>' +
+         '<p>In the unpenalised model the picture is different: because the model loaded all the weight onto x₀, x₀ alone gives 26.331 and together they give 27.329. Almost the same.</p>',
+    learned:'<b>Correlated features hide each other when measured one at a time.</b> In the ridge model they total 10.301 separately and <b>16.588</b> together.<br><br>A practical rule: shuffle correlated features <b>as a group</b>. The question "how important is the income group" is both more meaningful and more stable than "how important is monthly income".',
+    controls:[{k:'ridgeMi', lb:'MODEL', min:0, max:1, step:1, val:1}],
+  },
+  {
+    t:'Importance is not causation',
+    goal:'You will make clear which question these measures answer and which they do not.',
+    todo:'Answer the question.',
+    kind:'static', viz:'ozellikOnemi', h:700, xp:50, state:{ridgeMi:1},
+    body:'<p>Remember this: the true coefficients of this data are <b>[3, 0, −2, 0, 0, 0]</b>. So x₁ has <b>no real effect at all</b> on the outcome, it is only a copy of x₀.</p>' +
+         '<p>Despite that, the permutation importance of x₁ in the ridge model comes out at 4.494, close to that of x₀. The measure is not wrong: the model <b>really is</b> leaning on x₁. But x₁ is not a causal driver.</p>' +
+         '<p>One more warning: permutation produces data points that do not exist. With a correlation of 0.986 between x₀ and x₁, shuffling the x₀ column creates (x₀, x₁) pairs that would never be seen in reality. The model was never trained in that region, so its predictions there are unreliable.</p>',
+    learned:'<b>Feature importance answers "what is the model leaning on", not "what would I have to change in reality for the outcome to change".</b><br><br>In this lesson x₁\'s real effect was exactly zero, and yet its importance in the ridge model came out at 4.494.<br><br>Three practical rules: say which model you computed the measure with, measure correlated features as a group, and run a separate study if you are going to make a causal claim.',
+    quiz:{
+      q:'A hospital model assigns high importance to the feature "how many visits were received in the patient\'s room". What should be done with that finding?',
+      opts:[
+        {t:'Try to improve patient outcomes by increasing the number of visits',
+         why:'The classic mistake. High importance does not mean that changing that variable will change the outcome. The number of visits is most probably a symptom of the severity of the illness rather than its cause. An intervention decision needs causal inference, not an importance ranking.'},
+        {t:'Investigate with a separate study whether this variable is a cause or a symptom of the outcome',
+         why:'Correct. An importance measure only says "the model is leaning on this". The number of visits may be correlated with the severity of the illness, that is it may be a symptom. A causal claim needs an experiment, a natural experiment or a causal graph.'},
+        {t:'Remove the feature from the model, because it is not causal',
+         why:'In a model built for prediction, symptoms can be valuable and throwing them out lowers the accuracy. The problem is not the presence of the feature but drawing a causal conclusion from it.'},
+        {t:'Retrain the model with lasso instead of ridge',
+         why:'Changing the type of penalty changes the importance ranking but does not answer the causal question. Indeed you saw in this lesson that two models gave contradictory rankings on the same data.'},
+      ], correct:1 },
+  },
+  ],
+};
