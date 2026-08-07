@@ -7251,6 +7251,264 @@ VIZ.ozTutarlilik = s => {
   }
 };
 
+
+/* ═══════════ TALİMAT İNCE AYARI ═══════════
+   Ön eğitim işlemleri öğretiyor ama hangisini istediğini söylemenin yolu yok.
+   Talimat ayarı yeni yetenek eklemiyor, var olanı adresleniyor hale getiriyor. */
+const TA = {};
+TA.A = 6;
+TA.GIRDI = (() => { const o = [];
+  for (let a = 0; a < 6; a++) for (let b = 0; b < 6; b++) for (let c = 0; c < 6; c++) o.push([a, b, c]);
+  return o; })();
+TA.GOREV = [
+  {ad:'topla',    f:x => (x[0] + x[1] + x[2]) % 6},
+  {ad:'en büyük', f:x => Math.max(x[0], x[1], x[2])},
+  {ad:'en küçük', f:x => Math.min(x[0], x[1], x[2])},
+  {ad:'ilk',      f:x => x[0]},
+  {ad:'son',      f:x => x[2]},
+];
+TA.YENI = {ad:'ortanca', f:x => [x[0], x[1], x[2]].sort((p, q) => p - q)[1]};
+TA.AGIR = [0.40, 0.25, 0.15, 0.12, 0.08];   /* ön eğitim karışımındaki paylar */
+TA.NLER = [0, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+TA.MLER = [0, 1, 2, 3, 5, 8];
+const _taC = {};
+/* baskın görev d ise ağırlıklar ona kayıyor · karışımın şekli aynı kalıyor */
+TA.agirlik = d => { const w = new Array(5).fill(0);
+  const sira = [d]; for (let k = 0; k < 5; k++) if (k !== d) sira.push(k);
+  sira.forEach((k, i) => w[k] = TA.AGIR[i]); return w; };
+/* temel model: her girdide görev karışımının en olası cevabı */
+TA.temel = d => {
+  const key = 't' + d;
+  if (_taC[key]) return _taC[key];
+  const w = TA.agirlik(d);
+  return (_taC[key] = TA.GIRDI.map(x => { const oy = new Array(TA.A).fill(0);
+    TA.GOREV.forEach((g, k) => oy[g.f(x)] += w[k]);
+    let en = -1, arg = -1;
+    for (let y = 0; y < TA.A; y++) if (oy[y] > en){ en = oy[y]; arg = y; }
+    return arg; }));
+};
+TA.temelDogruluk = (d, k) => {
+  const key = 'd' + d + ':' + k;
+  if (_taC[key] !== undefined) return _taC[key];
+  const t = TA.temel(d), g = k < 5 ? TA.GOREV[k] : TA.YENI;
+  let c = 0;
+  TA.GIRDI.forEach((x, i) => { if (t[i] === g.f(x)) c++; });
+  return (_taC[key] = c/TA.GIRDI.length);
+};
+/* TEK talimat · m örnek gördükten sonra o görevdeki doğruluk
+   Model yeni işlem öğrenmiyor: bildiği 5 işlemden örneklerle TUTARLI
+   olanları eliyor, birden fazlası kalırsa ön eğitimde en sık olanı seçiyor. */
+TA.talimat = (k, m) => {
+  const key = 'k' + k + ':' + m;
+  if (_taC[key] !== undefined) return _taC[key];
+  const r = rng(17 + k), t = TA.temel(0), hedef = TA.GOREV[k];
+  let top = 0, D = 400;
+  for (let d = 0; d < D; d++){
+    const orn = [];
+    for (let i = 0; i < m; i++){ const gi = Math.floor(TA.GIRDI.length*r());
+      orn.push([gi, hedef.f(TA.GIRDI[gi])]); }
+    let sec = -1, wt = -1;
+    if (m > 0) TA.GOREV.forEach((c, ci) => {
+      if (orn.every(([gi, y]) => c.f(TA.GIRDI[gi]) === y) && TA.AGIR[ci] > wt){ wt = TA.AGIR[ci]; sec = ci; } });
+    let dg = 0;
+    TA.GIRDI.forEach((x, gi) => {
+      const cevap = sec >= 0 ? TA.GOREV[sec].f(x) : t[gi];
+      if (cevap === hedef.f(x)) dg++; });
+    top += dg/TA.GIRDI.length; }
+  return (_taC[key] = top/D);
+};
+/* TOPLAM n örnek, talimatlara rastgele dağılıyor.
+   yeniVar: 6. görev ön eğitimde YOK · onda tutarlı aday çıkmıyor,
+   model sadece gördüğü girdileri ezberleyebiliyor. */
+TA.ayar = (n, yeniVar) => {
+  const key = 'a' + n + ':' + (yeniVar ? 1 : 0);
+  if (_taC[key]) return _taC[key];
+  const gorevler = yeniVar ? [...TA.GOREV, TA.YENI] : TA.GOREV;
+  const yeniIdx = yeniVar ? 5 : -1;
+  const r = rng(9), t = TA.temel(0);
+  let D = 200, hepsi = 0, eski = 0, yeni = 0;
+  for (let d = 0; d < D; d++){
+    const orn = gorevler.map(() => []);
+    for (let i = 0; i < n; i++){ const k = Math.floor(gorevler.length*r()),
+      gi = Math.floor(TA.GIRDI.length*r());
+      orn[k].push([gi, gorevler[k].f(TA.GIRDI[gi])]); }
+    let ed = 0, et = 0, yd = 0, yt = 0;
+    gorevler.forEach((g, k) => {
+      let sec = -1, wt = -1;
+      if (orn[k].length) TA.GOREV.forEach((c, ci) => {
+        if (orn[k].every(([gi, y]) => c.f(TA.GIRDI[gi]) === y) && TA.AGIR[ci] > wt){ wt = TA.AGIR[ci]; sec = ci; } });
+      const ezber = new Map(orn[k].map(([gi, y]) => [gi, y]));
+      TA.GIRDI.forEach((x, gi) => {
+        let cevap;
+        if (sec >= 0) cevap = TA.GOREV[sec].f(x);
+        else if (ezber.has(gi)) cevap = ezber.get(gi);
+        else cevap = t[gi];
+        const ok = cevap === g.f(x) ? 1 : 0;
+        if (k === yeniIdx){ yd += ok; yt++; } else { ed += ok; et++; } }); });
+    eski += ed/et; if (yt) yeni += yd/yt;
+    hepsi += (ed + yd)/(et + yt); }
+  return (_taC[key] = { hepsi: hepsi/D, eski: eski/D, yeni: yt0(yeni, D, yeniVar) });
+};
+function yt0(s, d, v){ return v ? s/d : null; }
+
+VIZ.talimatAyari = s => {
+  clear();
+  const sahne = s.sahne || 'temel';
+  const bas = Math.max(0, Math.min(4, s.bas === undefined ? 0 : Math.round(s.bas)));
+  const mi = Math.max(0, Math.min(5, s.mi === undefined ? 0 : Math.round(s.mi)));
+  const m = TA.MLER[mi];
+  const ni = Math.max(0, Math.min(9, s.ni === undefined ? 0 : Math.round(s.ni)));
+  const n = TA.NLER[ni];
+  const RENK = [K.orange, K.blue, K.purple, K.green, K.yellow];
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+  const nEkseni = P => TA.NLER.forEach((nv, i) =>
+    txt(String(nv), P.sx(i), P.R.y + P.R.h + 28, K.mut, 14));
+
+  if (sahne === 'kimlik'){
+    baslikSerit('TALİMAT AYARI · TALİMAT BAŞINA KAÇ ÖRNEK',
+      'Model yeni bir işlem öğrenmiyor. Bildiği 5 işlemden hangisini kastettiğini anlıyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.3, 5.3, 0, 1.08);
+    frame(P, 'o talimattan görülen örnek sayısı', 'doğruluk', [], [0, 0.25, 0.5, 0.75, 1]);
+    TA.MLER.forEach((mv, i) => txt(String(mv), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    TA.GOREV.forEach((g, k) => {
+      cx.strokeStyle = RENK[k]; cx.lineWidth = 3; cx.beginPath();
+      TA.MLER.forEach((mv, i) => { const y = P.sy(TA.talimat(k, mv));
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      TA.MLER.forEach((mv, i) => dot(P.sx(i), P.sy(TA.talimat(k, mv)), 4, RENK[k])); });
+    /* efsane sag altta: m>=5 te tum egriler 0.97 nin ustunde, o bolge bos */
+    TA.GOREV.forEach((g, k) => {
+      const yy = P.sy(0.40 - k*0.075);
+      cx.strokeStyle = RENK[k]; cx.lineWidth = 3;
+      cx.beginPath(); cx.moveTo(P.R.x + P.R.w - 156, yy - 5);
+      cx.lineTo(P.R.x + P.R.w - 120, yy - 5); cx.stroke();
+      txt(g.ad, P.R.x + P.R.w - 110, yy, RENK[k], 16, 'left'); });
+    dot(P.sx(mi), P.sy(TA.talimat(3, m)), 9, K.red);
+    const bx = 830;
+    kart(bx, 200, 260, 'ÖRNEK SAYISI', String(m), K.blue, 'talimat başına');
+    kart(bx + 280, 200, 260, 'EN KOLAY · topla', '%' + (100*TA.talimat(0, m)).toFixed(1), K.orange);
+    kart(bx, 330, 260, 'EN ZOR · ilk', '%' + (100*TA.talimat(3, m)).toFixed(1), K.green);
+    kart(bx + 280, 330, 260, '5 GÖREV ORTALAMASI',
+         '%' + (100*[0,1,2,3,4].reduce((a, k) => a + TA.talimat(k, m), 0)/5).toFixed(1), K.purple);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('NEDEN BU KADAR AZ ÖRNEK YETİYOR', bx + 270, 494, K.mut, 18);
+    txt('Model işlemi sıfırdan öğrenmiyor: örneklerle', bx + 18, 534, K.txt, 18, 'left');
+    txt('çelişen işlemleri eliyor. 5 aday varken bu', bx + 18, 564, K.txt, 18, 'left');
+    txt('birkaç örnekte bitiyor.', bx + 18, 594, K.txt, 18, 'left');
+    txt('"ilk" en zoru: "en büyük" ve "en küçük" ile', bx + 18, 634, K.green, 18, 'left');
+    txt('girdilerin %42.1 inde aynı cevabı veriyor.', bx + 18, 664, K.green, 18, 'left');
+  }
+
+  else if (sahne === 'ayar'){
+    baslikSerit('TALİMAT AYARI · TOPLAM BÜTÇE',
+      'n örnek 5 talimata rastgele dağılıyor. Ön eğitimde olan işlemler, ne kadar örnekle açılıyor?', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 9.35, 0, 1.08);
+    frame(P, 'toplam talimat örneği', 'doğruluk', [], [0, 0.25, 0.5, 0.75, 1]);
+    nEkseni(P);
+    cx.strokeStyle = K.green; cx.lineWidth = 3.6; cx.beginPath();
+    TA.NLER.forEach((nv, i) => { const y = P.sy(TA.ayar(nv, false).hepsi);
+      i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+    cx.stroke();
+    TA.NLER.forEach((nv, i) => dot(P.sx(i), P.sy(TA.ayar(nv, false).hepsi), 5, K.green));
+    dot(P.sx(ni), P.sy(TA.ayar(n, false).hepsi), 9, K.yellow);
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(1/TA.A)); cx.lineTo(P.R.x + P.R.w, P.sy(1/TA.A)); cx.stroke();
+    cx.setLineDash([]);
+    txt('rastgele taban %16.7', P.R.x + 16, P.sy(1/TA.A) - 12, K.mut, 15, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'ÖRNEK SAYISI', String(n), K.blue);
+    kart(bx + 280, 200, 260, 'DOĞRULUK', '%' + (100*TA.ayar(n, false).hepsi).toFixed(1),
+         TA.ayar(n, false).hepsi > 0.99 ? K.green : K.orange);
+    kart(bx, 330, 260, 'AYARSIZ (n = 0)', '%' + (100*TA.ayar(0, false).hepsi).toFixed(1), K.mut);
+    kart(bx + 280, 330, 260, '50 ÖRNEKTE', '%' + (100*TA.ayar(50, false).hepsi).toFixed(1), K.green);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('ÖLÇEK MESELESİ DEĞİL', bx + 270, 494, K.mut, 18);
+    txt('Ön eğitim milyonlarca örnek istiyor. Talimat', bx + 18, 534, K.txt, 18, 'left');
+    txt('ayarı 5 talimat için toplam 50 örnekte bitiyor:', bx + 18, 564, K.txt, 18, 'left');
+    txt('%' + (100*TA.ayar(0, false).hepsi).toFixed(1) + ' ten %' +
+        (100*TA.ayar(50, false).hepsi).toFixed(1) + ' e.', bx + 18, 594, K.green, 19, 'left');
+    txt('Çünkü öğretilen şey işlem değil, hangi işlemin', bx + 18, 634, K.txt, 18, 'left');
+    txt('istendiğini söyleyen adres.', bx + 18, 664, K.txt, 18, 'left');
+  }
+
+  else if (sahne === 'yeni'){
+    baslikSerit('TALİMAT AYARI · ÖN EĞİTİMDE OLMAYAN İŞLEM',
+      'Altıncı görev ("ortanca") ön eğitim karışımında hiç yok. Aynı örneklerle ne oluyor?', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 9.35, 0, 1.08);
+    frame(P, 'toplam talimat örneği', 'doğruluk', [], [0, 0.25, 0.5, 0.75, 1]);
+    nEkseni(P);
+    [['eski', K.green], ['yeni', K.red]].forEach(([alan, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = 3.6; cx.beginPath();
+      TA.NLER.forEach((nv, i) => { const y = P.sy(TA.ayar(nv, true)[alan]);
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      TA.NLER.forEach((nv, i) => dot(P.sx(i), P.sy(TA.ayar(nv, true)[alan]), 5, renk)); });
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(1/TA.A)); cx.lineTo(P.R.x + P.R.w, P.sy(1/TA.A)); cx.stroke();
+    cx.setLineDash([]);
+    txt('rastgele taban %16.7', P.R.x + P.R.w - 14, P.sy(1/TA.A) - 12, K.mut, 15, 'right');
+    txt('ön eğitimde olan 5 görev', P.R.x + 16, P.sy(0.92), K.green, 17, 'left');
+    txt('ön eğitimde olmayan görev', P.R.x + 16, P.sy(0.44), K.red, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, '5 ESKİ · n=100', '%' + (100*TA.ayar(100, true).eski).toFixed(1), K.green);
+    kart(bx + 280, 200, 260, 'YENİ · n=100', '%' + (100*TA.ayar(100, true).yeni).toFixed(1), K.red);
+    kart(bx, 330, 260, 'YENİ · n=1000', '%' + (100*TA.ayar(1000, true).yeni).toFixed(1), K.orange,
+         '10 kat örnekle');
+    kart(bx + 280, 330, 260, 'YENİ · ayarsız', '%' + (100*TA.ayar(0, true).yeni).toFixed(1), K.mut);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.red, 2);
+    txt('TALİMAT AYARI YETENEK EKLEMİYOR', bx + 270, 494, K.mut, 18);
+    txt('Aynı 100 örnek beş eski görevi %' +
+        (100*TA.ayar(100, true).eski).toFixed(0) + ' e taşırken', bx + 18, 534, K.txt, 18, 'left');
+    txt('yeni görevi %' + (100*TA.ayar(0, true).yeni).toFixed(1) + ' ten %' +
+        (100*TA.ayar(100, true).yeni).toFixed(1) + ' e ancak getiriyor.', bx + 18, 564, K.txt, 18, 'left');
+    txt('Yeni görevde model eleyecek aday bulamıyor;', bx + 18, 606, K.red, 18, 'left');
+    txt('geriye tek yol kalıyor: girdileri ezberlemek.', bx + 18, 636, K.red, 18, 'left');
+    txt('O yüzden eğri düz değil ama çok yavaş: 1000', bx + 18, 676, K.orange, 18, 'left');
+    txt('örnekte bile %' + (100*TA.ayar(1000, true).yeni).toFixed(1) + '.', bx + 18, 702, K.orange, 18, 'left');
+  }
+
+  else {
+    baslikSerit('TALİMAT AYARI · TEMEL MODEL NE YAPIYOR',
+      'Ön eğitim metninde talimat yok, sadece girdi-çıktı var. Model hangi görevi yaptığını seçemiyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.7, 4.7, 0, 1.08);
+    frame(P, '', 'doğruluk', [], [0, 0.25, 0.5, 0.75, 1]);
+    const gen = (P.R.w/5)*0.54;
+    TA.GOREV.forEach((g, k) => {
+      const d = TA.temelDogruluk(bas, k), x = P.sx(k), y0 = P.sy(0), y1 = P.sy(d);
+      box(x - gen/2, y1, gen, y0 - y1, k === bas ? 'rgba(34,197,94,.30)' : 'rgba(239,68,68,.20)',
+          k === bas ? K.green : K.red, 2);
+      txt('%' + (100*d).toFixed(1), x, y1 - 12, k === bas ? K.green : K.red, 16);
+      txt(g.ad, x, P.R.y + P.R.h + 28, k === bas ? K.green : K.mut, 16, 'center',
+          k === bas ? 700 : 400); });
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(1/TA.A)); cx.lineTo(P.R.x + P.R.w, P.sy(1/TA.A)); cx.stroke();
+    cx.setLineDash([]);
+    txt('kesikli: rastgele taban %16.7', P.R.x + P.R.w - 14, P.R.y + 30, K.mut, 16, 'right');
+    const ort = TA.GOREV.reduce((a, g, k) => a + TA.temelDogruluk(bas, k), 0)/5;
+    let enDusuk = 0;
+    for (let k = 1; k < 5; k++) if (TA.temelDogruluk(bas, k) < TA.temelDogruluk(bas, enDusuk)) enDusuk = k;
+    const bx = 830;
+    kart(bx, 200, 260, 'BASKIN GÖREV', TA.GOREV[bas].ad, K.green, 'ön eğitimin %40 ı');
+    kart(bx + 280, 200, 260, 'O GÖREVDE', '%' + (100*TA.temelDogruluk(bas, bas)).toFixed(1), K.green);
+    kart(bx, 330, 260, 'EN KÖTÜ GÖREV', TA.GOREV[enDusuk].ad, K.red,
+         '%' + (100*TA.temelDogruluk(bas, enDusuk)).toFixed(1));
+    kart(bx + 280, 330, 260, '5 GÖREV ORTALAMASI', '%' + (100*ort).toFixed(1), K.purple);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('YETENEK PROFİLİ = KORPUS PROFİLİ', bx + 270, 494, K.mut, 18);
+    txt('Temel model 216 girdinin her birinde tek bir', bx + 18, 534, K.txt, 18, 'left');
+    txt('cevap veriyor ve o cevabı korpusta en sık geçen', bx + 18, 564, K.txt, 18, 'left');
+    txt('görev belirliyor.', bx + 18, 594, K.txt, 18, 'left');
+    txt('Baskın görevi değiştir: zirve onunla birlikte', bx + 18, 634, K.green, 18, 'left');
+    txt('yer değiştiriyor, ortalama %36 – %44 te kalıyor.', bx + 18, 664, K.green, 18, 'left');
+    txt('Model bir şeyde iyi değil, sadece varsayılanı öyle.', bx + 18, 700, K.mut, 17, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

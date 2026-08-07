@@ -110,7 +110,7 @@ const ROTALAR = [
     {id:'oz-gozetim',     ad:'Kendi kendine gözetim: etiketi veriden üretmek',  sure:17, durum:'hazir'},
     {id:'olcek-yasalari',  ad:'Ölçek yasaları: büyütmenin getirisi ve bedeli',  sure:16, durum:'hazir'},
     {id:'perplexity',     ad:'Perplexity: bir modelin şaşkınlığını ölçmek',    sure:16, durum:'hazir'},
-    {id:'talimat-ayar',   ad:'İtaat öğretmek: talimat ince ayarı',             sure:14, durum:'planli'},
+    {id:'talimat-ayar',   ad:'İtaat öğretmek: talimat ince ayarı',             sure:16, durum:'hazir'},
     {id:'icl',            ad:'Örnekle öğretmek: in-context learning',          sure:17, durum:'hazir'},
     {id:'zincir-prompt',  ad:'Problemi bölmek: zincirleme promptlar',          sure:12, durum:'planli'},
     {id:'gramer',         ad:'Çıktıyı kalıba sıkıştırmak: gramer ve şema',     sure:12, durum:'planli'},
@@ -10333,6 +10333,165 @@ DERSLER['self-cons'] = {
       'yakalaması yaklaşık 9 kat hesap tutuyor: <b>modeli düzeltmek, oy satın almaktan ucuz</b>.<br><br>' +
       'Oy çokluğu yerine bir doğrulayıcıyla puanlamak genelde daha iyidir, çünkü doğrulayıcı ' +
       '"en sık" olana değil doğru olana bakar.',
+    xp:75,
+  },
+]};
+
+/* ─────────────── TALİMAT İNCE AYARI ─────────────── */
+DERSLER['talimat-ayar'] = {
+  ad:'İtaat öğretmek: talimat ince ayarı',
+  alt:'Ön eğitim modele işlemleri öğretiyor ama hangisini istediğini söylemenin bir yolu yok. Talimat ayarı o yolu açıyor, ve yeni bir yetenek eklemiyor.',
+  kaynaklar:[
+    {y:'Wei, J. ve ark.', t:'2022', b:'Finetuned Language Models Are Zero-Shot Learners (FLAN)', n:'ICLR 2022', u:'https://arxiv.org/abs/2109.01652'},
+    {y:'Sanh, V. ve ark.', t:'2022', b:'Multitask Prompted Training Enables Zero-Shot Task Generalization (T0)', n:'ICLR 2022', u:'https://arxiv.org/abs/2110.08207'},
+    {y:'Ouyang, L. ve ark.', t:'2022', b:'Training Language Models to Follow Instructions with Human Feedback (InstructGPT)', n:'NeurIPS 2022', u:'https://arxiv.org/abs/2203.02155'},
+    {y:'Zhou, C. ve ark.', t:'2023', b:'LIMA: Less Is More for Alignment', n:'NeurIPS 2023', u:'https://arxiv.org/abs/2305.11206'},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'Temel model neden itaat etmiyor',
+    goal:'Ön eğitimden çıkan modelin "yetenek profili"nin aslında ne olduğunu göreceksin.',
+    todo:'Baskın görevi değiştir. Zirve nereye gidiyor, ortalama ne oluyor?',
+    kind:'controls', viz:'talimatAyari', h:760,
+    controls:[{k:'bas', lb:'ÖN EĞİTİMDE BASKIN GÖREV', min:0, max:4, step:1, val:0,
+      fmt:v => TA.GOREV[Math.round(v)].ad}],
+    state:{sahne:'temel'},
+    derive:s => { const b = Math.round(s.bas);
+      return {zirve: TA.temelDogruluk(b, b),
+              ort: [0,1,2,3,4].reduce((a, k) => a + TA.temelDogruluk(b, k), 0)/5}; },
+    live:s => [['BASKIN', TA.GOREV[Math.round(s.bas)].ad],
+               ['O GÖREVDE', '%' + (100*s.zirve).toFixed(1), K.green],
+               ['ORTALAMA', '%' + (100*s.ort).toFixed(1), K.purple],
+               ['RASTGELE', '%16.7', K.mut]],
+    body:'<p>Küçük ve tamamen kapalı bir dünya: girdi üç basamaklı bir dizi (0-5 arası, ' +
+      'toplam <b>216</b> girdi), çıktı tek bir basamak. Beş görev var: <b>topla</b> (mod 6), ' +
+      '<b>en büyük</b>, <b>en küçük</b>, <b>ilk</b>, <b>son</b>.</p>' +
+      '<p>Ön eğitim korpusu bu görevlerin karışımı ama <b>hangi görev olduğu yazmıyor</b>: ' +
+      'metinde sadece girdi ve çıktı yan yana duruyor. Görevlerin korpustaki payları ' +
+      '%40, %25, %15, %12, %8.</p>' +
+      '<p>Böyle bir korpustan çıkan modelin yapabileceği tek şey, her girdi için ' +
+      '<b>en olası çıktıyı</b> vermek. Sonuç: baskın görevde %93.5, diğerlerinde %18 – %23. ' +
+      'Beş görev ortalaması <b>%36.1</b>.</p>' +
+      '<p>Şimdi baskın görevi değiştir. Zirve onunla birlikte yer değiştiriyor ama ortalama ' +
+      '%36 ile %44 arasında kalıyor. Model hiçbir şeyde daha iyi olmadı; sadece varsayılanı değişti.</p>' +
+      '<p>Bir ayrıntı: "en büyük" baskın olduğunda "en küçük" doğruluğu <b>%10.2</b> ye, ' +
+      'yani rastgele tahminin (%16.7) <b>altına</b> düşüyor. Varsayılanın sistematik olarak ' +
+      'ters düştüğü bir görevde model rastgeleden de kötüdür.</p>',
+    learned:'<b>Temel modelin yetenek profili, ön eğitim korpusunun görev dağılımıdır.</b><br><br>' +
+      'Baskın görevde %93.5, diğerlerinde %18 – %23, ortalama %36.1. Baskın görevi değiştirince ' +
+      'zirve yer değiştiriyor, ortalama neredeyse aynı kalıyor.<br><br>' +
+      'Model "toplama yapmayı biliyor" değil, "toplama yapmayı varsayıyor". ' +
+      'Eksik olan yetenek değil, <b>hangi yeteneği istediğini söyleme yolu</b>.',
+    xp:50,
+  },
+  {
+    t:'Talimat başına kaç örnek gerekiyor',
+    goal:'Talimat ayarının neden bu kadar az veriyle çalıştığını göreceksin.',
+    todo:'Talimat başına örnek sayısını artır. Hangi görev en zoru, neden?',
+    kind:'controls', viz:'talimatAyari', h:760,
+    controls:[{k:'mi', lb:'TALİMAT BAŞINA ÖRNEK', min:0, max:5, step:1, val:0,
+      fmt:v => TA.MLER[Math.round(v)] + ' örnek'}],
+    state:{sahne:'kimlik'},
+    derive:s => { const m = TA.MLER[Math.round(s.mi)];
+      return {ort: [0,1,2,3,4].reduce((a, k) => a + TA.talimat(k, m), 0)/5,
+              ilk: TA.talimat(3, m)}; },
+    live:s => [['ÖRNEK', String(TA.MLER[Math.round(s.mi)])],
+               ['ORTALAMA', '%' + (100*s.ort).toFixed(1), K.purple],
+               ['EN ZOR (ilk)', '%' + (100*s.ilk).toFixed(1), K.green],
+               ['HEDEF', 'ortalama > %95']],
+    unlock:s => s.ort > 0.95,
+    unlockMsg:'Beş görev ortalamasını %95 in üstüne çıkaran örnek sayısını bul',
+    body:'<p>Şimdi her göreve bir <b>talimat</b> ekliyoruz ve modele birkaç örnek gösteriyoruz: ' +
+      '"bu talimatla bu girdi şu çıktıyı verir".</p>' +
+      '<p>Modelin burada yaptığı şey kritik: <b>yeni bir işlem öğrenmiyor</b>. Bildiği beş ' +
+      'işlemden örneklerle çelişenleri eliyor. Birden fazlası ayakta kalırsa ön eğitimde ' +
+      'en sık olanı seçiyor.</p>' +
+      '<p>Sonuç şaşırtıcı derecede hızlı. Tek örnekte ortalama %36.1 den <b>%73.1</b> e, ' +
+      'üç örnekte <b>%96.1</b> e, beş örnekte <b>%99.1</b> e çıkıyor.</p>' +
+      '<p>Görevler arasında fark var. <b>topla</b> tek örnekte %100: hiçbir başka işlemle ' +
+      'kolay kolay çakışmıyor. <b>ilk</b> en zoru, tek örnekte ancak %46.9: "en büyük" ve ' +
+      '"en küçük" ile girdilerin <b>%42.1</b> inde aynı cevabı veriyor, o yüzden ayırt etmek ' +
+      'daha çok örnek istiyor.</p>' +
+      '<p>Buradaki genel kural şu: bir talimatı öğretmenin maliyeti, o işlemi öğretmenin ' +
+      'maliyeti değil, onu <b>diğer bildiklerinden ayırmanın</b> maliyetidir.</p>',
+    learned:'<b>Talimat ayarı işlem öğretmiyor, hangi işlemin istendiğini belirliyor.</b><br><br>' +
+      'Talimat başına tek örnek ortalamayı %36.1 den %73.1 e, üç örnek %96.1 e çıkarıyor.<br><br>' +
+      'Zorluk, işlemin karmaşıklığıyla değil <b>benzer işlemlerle çakışmasıyla</b> ölçülüyor: ' +
+      '"topla" tek örnekte %100 iken "ilk" %46.9, çünkü "ilk" ile "en büyük" girdilerin ' +
+      '%42.1 inde aynı cevabı veriyor.',
+    xp:50,
+  },
+  {
+    t:'Toplam bütçe: elli örnek',
+    goal:'Talimat ayarının ön eğitimin yanında ne kadar küçük kaldığını göreceksin.',
+    todo:'Toplam örnek sayısını artır. Eğri nerede tavana vuruyor?',
+    kind:'controls', viz:'talimatAyari', h:760,
+    controls:[{k:'ni', lb:'TOPLAM TALİMAT ÖRNEĞİ', min:0, max:9, step:1, val:0,
+      fmt:v => TA.NLER[Math.round(v)] + ' örnek'}],
+    state:{sahne:'ayar'},
+    derive:s => ({dg: TA.ayar(TA.NLER[Math.round(s.ni)], false).hepsi}),
+    live:s => [['ÖRNEK', String(TA.NLER[Math.round(s.ni)])],
+               ['DOĞRULUK', '%' + (100*s.dg).toFixed(1), K.green],
+               ['AYARSIZ', '%36.1', K.mut],
+               ['HEDEF', '%100']],
+    unlock:s => s.dg >= 0.999,
+    unlockMsg:'Beş görevi de %100 e çıkaran toplam örnek sayısını bul',
+    body:'<p>Şimdi örnekler bir havuzdan geliyor: n örnek beş talimata rastgele dağılıyor. ' +
+      'Bu, gerçek talimat ayarı veri kümelerinin çalışma şeklidir.</p>' +
+      '<p>Eğri: 0 örnekte %36.1, 10 örnekte %82.1, 20 örnekte %95.2, <b>50 örnekte %100.0</b>. ' +
+      'Ondan sonrası boşa gidiyor.</p>' +
+      '<p>Karşılaştırma önemli. Bu modelin işlemleri öğrenmesi için gereken ön eğitim, ' +
+      'binlerce girdi-çıktı çiftidir. Onları <b>adreslenebilir</b> hale getirmek ' +
+      '50 örnek tutuyor.</p>' +
+      '<p>Gerçek modellerdeki karşılığı da bu ölçekte. LIMA çalışması, iyi seçilmiş ' +
+      '<b>1000</b> örnekle yapılan talimat ayarının çok daha büyük veri kümeleriyle ' +
+      'yarışabildiğini gösterdi. Ön eğitim ise trilyon token mertebesinde.</p>' +
+      '<p>Dikkat: bu "az veri yeter" demek değil, "<b>az veri, ön eğitimde zaten var olan ' +
+      'şeyi açığa çıkarmaya</b> yeter" demek. Sonraki adımda bunun sınırını ölçeceğiz.</p>',
+    learned:'<b>Talimat ayarı ön eğitimin yanında çok küçük bir adımdır.</b><br><br>' +
+      'Beş görev için toplam 50 örnek doğruluğu %36.1 den %100.0 e taşıyor; 10 örnek zaten ' +
+      '%82.1 veriyor.<br><br>' +
+      'Ön eğitim yeteneği kuruyor, talimat ayarı ona bir kapı açıyor. İkisinin veri ölçeği ' +
+      'aynı büyüklükte değil ve olması da gerekmiyor.',
+    xp:50,
+  },
+  {
+    t:'Olmayan yeteneği ayarla açamazsın',
+    goal:'Talimat ayarının sınırını ölçeceksin.',
+    todo:'İki eğriyi karşılaştır. Sonra soruyu cevapla.',
+    kind:'static', viz:'talimatAyari', h:760,
+    state:{sahne:'yeni'},
+    body:'<p>Altıncı bir görev ekliyoruz: <b>ortanca</b> (üç sayının ortadaki değeri). ' +
+      'Bu işlem ön eğitim karışımında <b>hiç yok</b>. Diğer her şey aynı: aynı talimat ' +
+      'formatı, aynı örnek havuzu, aynı model.</p>' +
+      '<p>Sonuç iki ayrı dünya. Aynı 100 örnekle beş eski görev <b>%100.0</b> a çıkarken, ' +
+      'yeni görev %24.1 den ancak <b>%29.7</b> ye geliyor.</p>' +
+      '<p>Sebep mekanizmada: eski görevlerde model bildiği işlemler arasından eliyordu. ' +
+      'Yeni görevde <b>elenecek doğru aday yok</b>. Geriye tek seçenek kalıyor: gördüğü ' +
+      'girdileri tek tek ezberlemek.</p>' +
+      '<p>Ezber de bir öğrenme, ama fiyatı bambaşka. 216 girdinin tamamını kapsaması gerekiyor ' +
+      've eğri buna göre sürünüyor: 200 örnekte %34.9, 500 örnekte %48.6, <b>1000 örnekte %64.9</b>. ' +
+      'Beş eski görevin 50 örnekte bitirdiği işi bu görev 1000 örnekte bitiremiyor.</p>' +
+      '<p>Pratikteki karşılığı: bir modelin yapamadığı bir şeyi talimat ayarıyla ' +
+      '<b>yaptıramazsın</b>. Ayar, modelin bildiğini istenen biçimde ve istenen zamanda ' +
+      'dışarı vermesini sağlar. Yetenek eksikse yapılacak iş ön eğitim, alan verisiyle ' +
+      'devam eğitimi ya da modeli dışarıdan araçla desteklemektir.</p>' +
+      '<p>Bir uyarı: gerçek talimat ayarı burada ölçtüğümüzden fazlasını da yapar. Üslup, ' +
+      'biçim, reddetme davranışı ve güvenlik sınırları da bu aşamada şekillenir. Ama bunların ' +
+      'hepsi "nasıl cevap verileceği" ile ilgilidir, "neyin bilindiği" ile değil.</p>',
+    quiz:{ q:'Bir şirket, kendi hukuk metinlerinde çalışan bir asistan istiyor. Genel bir model, sorulan formatta düzgün cevap veriyor ama şirketin sözleşme tipleriyle ilgili sorularda içeriği tutturamıyor. En makul ilk adım hangisi?',
+      opts:[
+        {t:'Alan verisiyle devam eğitimi ya da erişimli üretim (RAG); talimat ayarı bu boşluğu kapatmaz', why:'Doğru. Model formatı zaten tutturuyor, yani talimat takibi çalışıyor. Eksik olan içerik bilgisi, yani ön eğitimde olmayan bir şey. Derste ölçtün: ön eğitimde bulunmayan görevde 100 örnek doğruluğu %24.1 den ancak %29.7 ye getiriyordu, 1000 örnekte bile %64.9. Bilgi eksikse ya modele o veriyi öğretmek ya da cevap anında önüne koymak gerekir.'},
+        {t:'Daha fazla talimat ayarı verisi toplamak', why:'Derste ölçülen tam olarak bunun işe yaramadığı durum. Talimat ayarı modelin bildiklerini adresleniyor hale getirir; bilmediği içeriği eklemez. Ezber yoluyla kısmi ilerleme olur ama fiyatı çok yüksektir: 1000 örnekte %64.9.'},
+        {t:'Promptu daha ayrıntılı yazmak', why:'İyi prompt, var olan yeteneği daha güvenilir çağırır. Burada model zaten doğru biçimde cevap veriyor, sorun içerikte. Prompt bilmediği bir sözleşme tipini modele öğretemez.'},
+        {t:'Daha büyük bir genel model seçmek', why:'Yardımcı olabilir ama sorunu doğrudan hedeflemiyor: şirketin kendi sözleşmeleri hiçbir genel modelin ön eğitiminde yok. Büyük model daha iyi tahmin eder, doğru bilgiyi bilmez.'},
+      ], correct:0 },
+    learned:'<b>Talimat ayarı yeteneği açığa çıkarır, yaratmaz.</b><br><br>' +
+      'Aynı 100 örnek beş eski görevi %100.0 a taşırken ön eğitimde olmayan görevi ' +
+      '%24.1 den %29.7 ye getiriyor. 1000 örnekte bile %64.9, çünkü orada tek yol ezber.<br><br>' +
+      'Karar kuralı: model doğru biçimde ama yanlış içerikle cevap veriyorsa sorun talimat ' +
+      'ayarında değildir. Biçim sorunları ayarla, içerik sorunları veriyle ya da erişimle çözülür.',
     xp:75,
   },
 ]};

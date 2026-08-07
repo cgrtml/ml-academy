@@ -2508,6 +2508,100 @@ console.log('═══ ÖZ-TUTARLILIK ═══');
   iddia('ÖT · iyi model 11 oyla kötü modelin 41 oyunu geçiyor', 1,
         OT.oy(8, 0.10, 0, 11) > OT.oy(8, 0.20, 0, 41) ? 1 : 0, 0);
 }
+console.log('═══ TALİMAT İNCE AYARI ═══');
+{
+  iddia('TA · girdi sayısı (6³)', 216, TA.GIRDI.length, 0);
+  iddia('TA · ön eğitilmiş görev sayısı', 5, TA.GOREV.length, 0);
+  iddia('TA · ağırlıklar toplamı', 1, TA.AGIR.reduce((a, z) => a + z, 0), 6);
+  /* yeni gorev gercekten farkli bir islem mi: hicbir eski gorevle ozdes degil */
+  { let ozdes = 0;
+    TA.GOREV.forEach(g => { let ayni = 0;
+      TA.GIRDI.forEach(x => { if (g.f(x) === TA.YENI.f(x)) ayni++; });
+      if (ayni === TA.GIRDI.length) ozdes++; });
+    iddia('TA · ortanca hiçbir eski görevle özdeş değil', 0, ozdes, 0); }
+  /* gorev ciftlerinin cakismasi: dersteki %42.1 iddiasi */
+  { const cak = (i, j) => { let c = 0;
+      TA.GIRDI.forEach(x => { if (TA.GOREV[i].f(x) === TA.GOREV[j].f(x)) c++; });
+      return 100*c/TA.GIRDI.length; };
+    iddia('TA · çakışma · ilk / en büyük', 42.1, cak(3, 1), 1);
+    iddia('TA · çakışma · ilk / en küçük', 42.1, cak(3, 2), 1);
+    iddia('TA · çakışma · topla / en büyük', 16.2, cak(0, 1), 1);
+    iddia('TA · çakışma · en büyük / en küçük', 2.8, cak(1, 2), 1); }
+
+  /* 1. adım · temel model */
+  iddia('TA · temel · baskın topla · topla', 93.5, 100*TA.temelDogruluk(0, 0), 1);
+  iddia('TA · temel · baskın topla · en büyük', 22.7, 100*TA.temelDogruluk(0, 1), 1);
+  iddia('TA · temel · baskın topla · en küçük', 18.1, 100*TA.temelDogruluk(0, 2), 1);
+  iddia('TA · temel · baskın topla · ilk', 23.1, 100*TA.temelDogruluk(0, 3), 1);
+  { const ort = d2 => 100*[0,1,2,3,4].reduce((a, k) => a + TA.temelDogruluk(d2, k), 0)/5;
+    iddia('TA · temel ortalama · baskın topla', 36.1, ort(0), 1);
+    iddia('TA · temel ortalama · baskın en büyük', 43.1, ort(1), 1);
+    iddia('TA · temel ortalama · baskın ilk', 44.3, ort(3), 1);
+    /* baskin gorev degisse de ortalama dar bir bantta kaliyor */
+    let lo = 100, hi = 0;
+    for (let d2 = 0; d2 < 5; d2++){ lo = Math.min(lo, ort(d2)); hi = Math.max(hi, ort(d2)); }
+    iddia('TA · ortalama bandı · en düşük', 36.1, lo, 1);
+    iddia('TA · ortalama bandı · en yüksek', 44.3, hi, 1); }
+  /* baskin gorev her zaman zirve mi */
+  { let ihlal = 0;
+    for (let d2 = 0; d2 < 5; d2++) for (let k = 0; k < 5; k++)
+      if (k !== d2 && TA.temelDogruluk(d2, k) > TA.temelDogruluk(d2, d2)) ihlal++;
+    iddia('TA · zirve her zaman baskın görevde', 0, ihlal, 0); }
+  iddia('TA · en büyük baskınken en küçük', 10.2, 100*TA.temelDogruluk(1, 2), 1);
+  iddia('TA · o değer rastgele tabanın altında', 1,
+        TA.temelDogruluk(1, 2) < 1/TA.A ? 1 : 0, 0);
+
+  /* 2. adım · talimat başına örnek */
+  iddia('TA · talimat · topla · 1 örnek', 100.0, 100*TA.talimat(0, 1), 1);
+  iddia('TA · talimat · en büyük · 1 örnek', 85.3, 100*TA.talimat(1, 1), 1);
+  iddia('TA · talimat · ilk · 1 örnek', 46.9, 100*TA.talimat(3, 1), 1);
+  iddia('TA · talimat · ilk · 3 örnek', 92.3, 100*TA.talimat(3, 3), 1);
+  { const ort = m => 100*[0,1,2,3,4].reduce((a, k) => a + TA.talimat(k, m), 0)/5;
+    iddia('TA · talimat ortalaması · 0 örnek', 36.1, ort(0), 1);
+    iddia('TA · talimat ortalaması · 1 örnek', 73.1, ort(1), 1);
+    iddia('TA · talimat ortalaması · 3 örnek', 96.1, ort(3), 1);
+    iddia('TA · talimat ortalaması · 5 örnek', 99.1, ort(5), 1);
+    /* ornek sayisinda monoton */
+    let ihlal = 0;
+    for (let i = 1; i < TA.MLER.length; i++) if (ort(TA.MLER[i]) < ort(TA.MLER[i-1]) - 0.01) ihlal++;
+    iddia('TA · talimat ortalaması monoton artıyor', 0, ihlal, 0); }
+  /* en cakisan gorev en yavas ogreniliyor: ilk & son en dusuk, topla en yuksek */
+  { let enDusuk = 0;
+    for (let k = 1; k < 5; k++) if (TA.talimat(k, 1) < TA.talimat(enDusuk, 1)) enDusuk = k;
+    iddia('TA · 1 örnekte en zor görev (ilk = 3)', 3, enDusuk, 0);
+    let enYuksek = 0;
+    for (let k = 1; k < 5; k++) if (TA.talimat(k, 1) > TA.talimat(enYuksek, 1)) enYuksek = k;
+    iddia('TA · 1 örnekte en kolay görev (topla = 0)', 0, enYuksek, 0); }
+
+  /* 3. adım · toplam bütçe */
+  iddia('TA · bütçe · n=0', 36.1, 100*TA.ayar(0, false).hepsi, 1);
+  iddia('TA · bütçe · n=10', 82.1, 100*TA.ayar(10, false).hepsi, 1);
+  iddia('TA · bütçe · n=20', 95.2, 100*TA.ayar(20, false).hepsi, 1);
+  iddia('TA · bütçe · n=50', 100.0, 100*TA.ayar(50, false).hepsi, 1);
+  iddia('TA · bütçe · n=20 henüz %100 değil', 1, TA.ayar(20, false).hepsi < 0.999 ? 1 : 0, 0);
+  iddia('TA · n=0 doğruluğu temel modelin ortalamasına eşit (fark)', 0,
+        100*Math.abs(TA.ayar(0, false).hepsi -
+          [0,1,2,3,4].reduce((a, k) => a + TA.temelDogruluk(0, k), 0)/5), 1);
+
+  /* 4. adım · ön eğitimde olmayan işlem */
+  iddia('TA · yeni görev · ayarsız', 24.1, 100*TA.ayar(0, true).yeni, 1);
+  iddia('TA · yeni görev · n=100', 29.7, 100*TA.ayar(100, true).yeni, 1);
+  iddia('TA · yeni görev · n=500', 48.6, 100*TA.ayar(500, true).yeni, 1);
+  iddia('TA · yeni görev · n=1000', 64.9, 100*TA.ayar(1000, true).yeni, 1);
+  iddia('TA · eski görevler · n=100', 100.0, 100*TA.ayar(100, true).eski, 1);
+  iddia('TA · eski görevler · n=50', 99.8, 100*TA.ayar(50, true).eski, 1);
+  /* ayni butcede eski hep yeniden ilerde */
+  { let ihlal = 0;
+    for (const nv of TA.NLER){ const r2 = TA.ayar(nv, true);
+      if (r2.eski < r2.yeni) ihlal++; }
+    iddia('TA · her bütçede eski görevler yeniden ilerde', 0, ihlal, 0); }
+  /* eski gorevler doyduktan sonra bile yeni gorev doymuyor */
+  iddia('TA · eski n=100 de doymuş, yeni n=1000 de bile değil', 1,
+        (TA.ayar(100, true).eski >= 0.999 && TA.ayar(1000, true).yeni < 0.7) ? 1 : 0, 0);
+  /* yeni gorev ezberle ilerliyor: 200 → 1000 arasinda belirgin artis */
+  iddia('TA · yeni görev n=200 den n=1000 e artış (puan)', 30.0,
+        100*(TA.ayar(1000, true).yeni - TA.ayar(200, true).yeni), 1);
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
