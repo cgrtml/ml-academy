@@ -3733,6 +3733,194 @@ console.log('═══ AÇIK MI KAPALI MI ═══');
       Math.abs(AK.apiToplam(h, 8)/h*1e6 - 8)));
     iddia('AK - API birim maliyeti hacimden bagimsiz', 0, enBuyuk, 9); }
 }
+console.log('═══ AI UYGULAMA YIĞINI ═══');
+{
+  iddia('YG - katman sayisi', 6, YG.katmanlar.length, 0);
+  iddia('YG - toplam gecikme', 900, YG.toplam(), 0);
+  /* paylar toplami 1 */
+  { let s = 0;
+    for (let i = 0; i < YG.katmanlar.length; i++) s += YG.pay(i);
+    iddia('YG - paylar toplami 1', 1, s, 9); }
+  iddia('YG - model cagrisi payi', 86.7, 100*YG.pay(3), 1);
+  iddia('YG - getirme payi', 5.0, 100*YG.pay(1), 1);
+  iddia('YG - diger bes katmanin toplami', 13.3, 100*(1 - YG.pay(3)), 1);
+
+  /* Amdahl */
+  iddia('YG - getirme sinir', 1.053, YG.sinir(1), 3);
+  iddia('YG - model cagrisi sinir', 7.500, YG.sinir(3), 3);
+  iddia('YG - model 2x kazanc', 1.765, YG.kazanc(3, 2), 3);
+  iddia('YG - model 4x kazanc', 2.857, YG.kazanc(3, 4), 3);
+  iddia('YG - model 10x kazanc', 4.545, YG.kazanc(3, 10), 3);
+  iddia('YG - getirme 2x kazanc', 1.026, YG.kazanc(1, 2), 3);
+  iddia('YG - getirme 100x kazanc', 1.052, YG.kazanc(1, 100), 3);
+  /* s=1 de kazanc tam 1 */
+  { let enBuyuk = 0;
+    for (let i = 0; i < YG.katmanlar.length; i++)
+      enBuyuk = Math.max(enBuyuk, Math.abs(YG.kazanc(i, 1) - 1));
+    iddia('YG - hizlanma 1 iken kazanc 1', 0, enBuyuk, 9); }
+  /* kazanc hicbir zaman siniri asmiyor */
+  { let ihlal = 0;
+    for (let i = 0; i < YG.katmanlar.length; i++)
+      YG.hizlandirmalar.forEach(s2 => { if (YG.kazanc(i, s2) > YG.sinir(i) + 1e-9) ihlal++; });
+    iddia('YG - kazanc Amdahl sinirini asmiyor', 0, ihlal, 0); }
+  /* payi buyuk olanin siniri da buyuk */
+  { let ihlal = 0;
+    for (let i = 0; i < YG.katmanlar.length; i++)
+      for (let j = 0; j < YG.katmanlar.length; j++)
+        if (YG.pay(i) > YG.pay(j) && YG.sinir(i) <= YG.sinir(j)) ihlal++;
+    iddia('YG - buyuk pay buyuk sinir demek', 0, ihlal, 0); }
+  /* vektor aramayi 100x hizlandirmak ~ modeli 1.06x hizlandirmak */
+  { let a = 1, z = 3;
+    for (let i = 0; i < 60; i++){ const m = (a + z)/2;
+      if (YG.kazanc(3, m) < YG.kazanc(1, 100)) a = m; else z = m; }
+    iddia('YG - getirme 100x in model karsiligi', 1.06, (a + z)/2, 2); }
+
+  /* onbellek */
+  iddia('YG - onbelleksiz gecikme', 900, YG.onbellekli(0), 0);
+  iddia('YG - %50 isabette gecikme', 506.5, YG.onbellekli(0.5), 1);
+  iddia('YG - %80 isabette gecikme', 270.4, YG.onbellekli(0.8), 1);
+  iddia('YG - %95 isabette gecikme', 152.4, YG.onbellekli(0.95), 1);
+  iddia('YG - modeli 2x hizlandirmak', 510, YG.yeniToplam(3, 2), 0);
+  iddia('YG - %50 onbellek modeli 2x den iyi', 1,
+        YG.onbellekli(0.5) < YG.yeniToplam(3, 2) ? 1 : 0, 0);
+  iddia('YG - modeli 100x hizlandirmak', 127.8, YG.yeniToplam(3, 100), 1);
+  iddia('YG - %95 onbellek modeli 100x e yakin', 1,
+        YG.onbellekli(0.95) < 1.3*YG.yeniToplam(3, 100) ? 1 : 0, 0);
+  /* isabet arttikca gecikme dusuyor */
+  { let ihlal = 0;
+    for (let i = 1; i < YG.onbellekOranlari.length; i++)
+      if (YG.onbellekli(YG.onbellekOranlari[i]) >
+          YG.onbellekli(YG.onbellekOranlari[i-1])) ihlal++;
+    iddia('YG - isabet arttikca gecikme dusuyor', 0, ihlal, 0); }
+}
+console.log('═══ TOKENIZER FARKI ═══');
+{
+  iddia('TF - metin turu sayisi', 3, TF.turler.length, 0);
+  /* olcum kelimeleri egitim korpusunda YOK */
+  { let sizinti = 0;
+    TF.turler.forEach(t => t.kelimeler.forEach(k => {
+      if (TF.korpus[k] !== undefined) sizinti++; }));
+    iddia('TF - olcum kelimeleri korpusta yok', 0, sizinti, 0); }
+  /* parcalar birlestirilince kelimeyi veriyor */
+  { const B = TF.egit(100); let bozuk = 0;
+    TF.turler.forEach(t => t.kelimeler.forEach(k => {
+      if (TF.parcala(k, B).join('') !== k + TF.SON) bozuk++; }));
+    iddia('TF - parcalar kelimeyi veriyor', 0, bozuk, 0); }
+  /* istenen birlesme sayisi gercekten uygulanmis mi */
+  iddia('TF - 20 birlesme istendi', 20, TF.egit(20).length, 0);
+  iddia('TF - 100 birlesme istendi', 100, TF.egit(100).length, 0);
+  iddia('TF - 200 istenince korpus 143 te tukeniyor', 143, TF.egit(200).length, 0);
+
+  /* karakter basina token */
+  iddia('TF - dogal dil - 20 birlesme', 0.692, TF.karakterBasina(0, 20), 3);
+  iddia('TF - dogal dil - 200 birlesme', 0.462, TF.karakterBasina(0, 200), 3);
+  iddia('TF - sayi - 20 birlesme', 1.000, TF.karakterBasina(1, 20), 3);
+  iddia('TF - sayi - 200 birlesme', 0.900, TF.karakterBasina(1, 200), 3);
+  iddia('TF - kod - 20 birlesme', 0.800, TF.karakterBasina(2, 20), 3);
+  iddia('TF - kod - 200 birlesme', 0.725, TF.karakterBasina(2, 200), 3);
+  /* sayi 1.000 = her rakam kendi tokeni */
+  iddia('TF - kucuk sozlukte her rakam kendi tokeni', 1,
+        Math.abs(TF.karakterBasina(1, 20) - 1) < 1e-9 ? 1 : 0, 0);
+  /* sozluk buyudukce her turde iyilesme (ya da esit) */
+  { let ihlal = 0;
+    for (let t = 0; t < 3; t++)
+      for (let i = 1; i < TF.sozlukler.length; i++)
+        if (TF.karakterBasina(t, TF.sozlukler[i]) >
+            TF.karakterBasina(t, TF.sozlukler[i-1]) + 1e-12) ihlal++;
+    iddia('TF - sozluk buyudukce token orani dusuyor', 0, ihlal, 0); }
+  /* dogal dil EN COK iyilesen tur */
+  { const iy = t => TF.karakterBasina(t, 20) - TF.karakterBasina(t, 200);
+    iddia('TF - dogal dilin iyilesmesi', 0.231, iy(0), 3);
+    iddia('TF - sayinin iyilesmesi', 0.100, iy(1), 3);
+    iddia('TF - kodun iyilesmesi', 0.075, iy(2), 3);
+    iddia('TF - dogal dil en cok iyilesen tur', 1,
+          (iy(0) > iy(1) && iy(0) > iy(2)) ? 1 : 0, 0); }
+  /* buyuk sozlukte sayi dogal dilin ~2 kati */
+  iddia('TF - 200 birlesmede sayi / dogal dil orani', 1.95,
+        TF.karakterBasina(1, 200)/TF.karakterBasina(0, 200), 2);
+}
+console.log('═══ LLM SINIFLANDIRICI ═══');
+{
+  iddia('LS2 - gurultu tavani', 88.1, 100*LS2.tavan(), 1);
+  iddia('LS2 - 0 etiketle yazi tura', 50.0, 100*LS2.kucuk(0), 1);
+  iddia('LS2 - 8 etiket', 63.6, 100*LS2.kucuk(8), 1);
+  iddia('LS2 - 32 etiket', 75.7, 100*LS2.kucuk(32), 1);
+  iddia('LS2 - 128 etiket', 84.2, 100*LS2.kucuk(128), 1);
+  iddia('LS2 - 512 etiket', 87.2, 100*LS2.kucuk(512), 1);
+  iddia('LS2 - 2000 etiket', 88.0, 100*LS2.kucuk(2000), 1);
+  /* etiket arttikca dogruluk artiyor */
+  { let ihlal = 0;
+    for (let i = 1; i < LS2.nler.length; i++)
+      if (LS2.kucuk(LS2.nler[i]) < LS2.kucuk(LS2.nler[i-1]) - 1e-12) ihlal++;
+    iddia('LS2 - etiket arttikca dogruluk artiyor', 0, ihlal, 0); }
+  /* tavan asilmiyor */
+  { let asan = 0;
+    LS2.nler.forEach(n => { if (LS2.kucuk(n) > LS2.tavan() + 0.005) asan++; });
+    iddia('LS2 - gurultu tavani asilmiyor', 0, asan, 0); }
+  /* LLM veri miktarindan BAGIMSIZ */
+  { let ihlal = 0;
+    LS2.nler.forEach(n => { if (LS2.llm(n, false) !== LS2.LLM_SIFIR) ihlal++;
+      if (LS2.llm(n, true) !== LS2.LLM_AZ) ihlal++; });
+    iddia('LS2 - LLM dogrulugu etiket sayisindan bagimsiz', 0, ihlal, 0); }
+  /* kesisimler */
+  iddia('LS2 - sifir atisliyi gecen etiket sayisi', 32, LS2.kesisim(false), 0);
+  iddia('LS2 - birkac ornekliyi gecen etiket sayisi', 128, LS2.kesisim(true), 0);
+  iddia('LS2 - kesisimden once kucuk model geride', 1,
+        LS2.kucuk(8) < LS2.LLM_SIFIR ? 1 : 0, 0);
+
+  /* maliyet */
+  iddia('LS2 - basabas - 32 etiket', 8008, LS2.basabasHacim(32), 0);
+  iddia('LS2 - basabas - 128 etiket', 32032, LS2.basabasHacim(128), 0);
+  iddia('LS2 - basabas - 512 etiket', 128128, LS2.basabasHacim(512), 0);
+  /* basabas noktasinda iki maliyet esit */
+  { let enBuyuk = 0;
+    [32, 128, 512].forEach(n => { const b = LS2.basabasHacim(n);
+      enBuyuk = Math.max(enBuyuk,
+        Math.abs(LS2.llmMaliyet(b) - LS2.kucukMaliyet(b, n))/LS2.llmMaliyet(b)); });
+    iddia('LS2 - basabas noktasinda maliyetler esit (bagil)', 0, enBuyuk, 6); }
+  iddia('LS2 - 1M istekte LLM maliyeti', 2000, LS2.llmMaliyet(1e6), 0);
+  iddia('LS2 - 1M istekte kucuk model (512 etiket)', 258, LS2.kucukMaliyet(1e6, 512), 0);
+  /* basabas etiket sayisiyla dogru orantili */
+  { let enBuyuk = 0;
+    [32, 128, 512].forEach(n => enBuyuk = Math.max(enBuyuk,
+      Math.abs(LS2.basabasHacim(n)/n - LS2.basabasHacim(32)/32)));
+    iddia('LS2 - basabas etiket sayisiyla dogru orantili', 0, enBuyuk, 6); }
+}
+console.log('═══ AI vs KLASİK ML ═══');
+{
+  iddia('AV - asama sayisi', 7, AV.asamalar.length, 0);
+  iddia('AV - klasik ML paylari toplami', 100, AV.toplamML(), 0);
+  iddia('AV - AI muhendisligi paylari toplami', 100, AV.toplamAI(), 0);
+  iddia('AV - karsilastirma satiri', 6, AV.satirlar.length, 0);
+  /* her satirda dort alan dolu mu */
+  { let eksik = 0;
+    AV.satirlar.forEach(r => { if (!r.konu || !r.ml || !r.ai || !r.kanit) eksik++; });
+    iddia('AV - tablo satirlari eksiksiz', 0, eksik, 0); }
+  /* veri toplama ML de AI dan cok daha buyuk */
+  { const v = AV.asamalar.find(a => a.ad.indexOf('veri') === 0);
+    iddia('AV - veri toplama ML payi', 32, v.ml, 0);
+    iddia('AV - veri toplama AI payi', 6, v.ai, 0); }
+  /* prompt tasarimi klasik ML de YOK */
+  { const p = AV.asamalar.find(a => a.ad.indexOf('prompt') === 0);
+    iddia('AV - prompt tasarimi klasik ML de yok', 0, p.ml, 0);
+    iddia('AV - prompt tasarimi AI payi', 22, p.ai, 0); }
+  /* degerlendirme + izleme AI de daha agir */
+  { const dg = AV.asamalar.find(a => a.ad.indexOf('değerlendirme') === 0);
+    const iz = AV.asamalar.find(a => a.ad.indexOf('dağıtım') === 0);
+    iddia('AV - degerlendirme AI de agirlasiyor', 1, dg.ai > dg.ml ? 1 : 0, 0);
+    iddia('AV - izleme AI de agirlasiyor', 1, iz.ai > iz.ml ? 1 : 0, 0);
+    iddia('AV - degerlendirme + izleme AI toplami', 53, dg.ai + iz.ai, 0);
+    iddia('AV - degerlendirme + izleme ML toplami', 20, dg.ml + iz.ml, 0); }
+  /* model egitimi ve ozellik muhendisligi AI de kuculuyor */
+  { const oz = AV.asamalar.find(a => a.ad.indexOf('özellik') === 0);
+    const me = AV.asamalar.find(a => a.ad.indexOf('model') === 0);
+    iddia('AV - ozellik muhendisligi AI de kuculuyor', 1, oz.ai < oz.ml ? 1 : 0, 0);
+    iddia('AV - model egitimi AI de kuculuyor', 1, me.ai < me.ml ? 1 : 0, 0);
+    iddia('AV - ilk uc asamanin ML toplami', 70,
+          AV.asamalar[1].ml + AV.asamalar[2].ml + AV.asamalar[3].ml, 0);
+    iddia('AV - ayni uc asamanin AI toplami', 11,
+          AV.asamalar[1].ai + AV.asamalar[2].ai + AV.asamalar[3].ai, 0); }
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

@@ -115,11 +115,11 @@ const ROTALAR = [
     {id:'zincir-prompt',  ad:'Problemi bölmek: zincirleme promptlar',          sure:16, durum:'hazir'},
     {id:'gramer',         ad:'Çıktıyı kalıba sıkıştırmak: gramer ve şema',     sure:16, durum:'hazir'},
     {id:'hafiza',         ad:'Konuşma hafızası: model neyi hatırlar',          sure:16, durum:'hazir'},
-    {id:'tokenizer-fark',  ad:'Tokenizer\'lar neden farklı davranır',            sure:12, durum:'planli'},
+    {id:'tokenizer-fark',  ad:'Tokenizer\'lar neden farklı davranır',            sure:12, durum:'hazir'},
     {id:'cokdilli',       ad:'Çok dilli modellerin kör noktası',               sure:14, durum:'hazir'},
     {id:'alan-model',     ad:'Alana özel modeller: genelci mi, uzman mı',      sure:16, durum:'hazir'},
     {id:'temel-model',    ad:'Temel modeller: tek modelden her şeye',          sure:16, durum:'hazir'},
-    {id:'llm-siniflandirici',  ad:'LLM\'i sınıflandırıcıya çevirmek',                sure:12, durum:'planli'},
+    {id:'llm-siniflandirici',  ad:'LLM\'i sınıflandırıcıya çevirmek',                sure:12, durum:'hazir'},
     {id:'konu-kesif',     ad:'Gömmelerden konuya: kümeleme ile konu bulmak',   sure:16, durum:'hazir'},
   ],
 },
@@ -137,8 +137,8 @@ const ROTALAR = [
     {id:'maliyet',   ad:'Maliyet ve gecikme',              sure:12, durum:'hazir'},
     {id:'kuantizasyon',   ad:'Kuantizasyon: modeli küçültmenin bedeli',        sure:16, durum:'hazir'},
     {id:'acik-kapali',    ad:'Açık mı kapalı mı: modele nasıl erişirsin',      sure:12, durum:'hazir'},
-    {id:'yigin',          ad:'AI uygulama yığını: kim neyi inşa eder',         sure:10, durum:'planli'},
-    {id:'ai-vs-ml',       ad:'AI mühendisliği klasik ML\'den nasıl ayrışır',    sure:10, durum:'planli'},
+    {id:'yigin',          ad:'AI uygulama yığını: kim neyi inşa eder',         sure:14, durum:'hazir'},
+    {id:'ai-vs-ml',       ad:'AI mühendisliği klasik ML\'den nasıl ayrışır',    sure:10, durum:'hazir'},
     {id:'proje-karari',   ad:'Bir AI projesine nasıl karar verilir',           sure:16, durum:'hazir'},
     {id:'adillik',        ad:'Modelin aynadaki yüzü: adillik ve şeffaflık',    sure:16, durum:'hazir'},
     {id:'automl',         ad:'AutoML: modelini seçen model',                   sure:16, durum:'hazir'},
@@ -12728,6 +12728,546 @@ DERSLER['acik-kapali'] = {
       'taşıyacak.<br><br>' +
       'Ve "açık" tek bir şey değildir: ağırlıkların yayınlanması, eğitim verisinin ' +
       'açıklanması ve lisansın izin verdikleri ayrı sorulardır.',
+    xp:75,
+  },
+]};
+
+/* --------------- AI UYGULAMA YIGINI --------------- */
+DERSLER['yigin'] = {
+  ad:'AI uygulama yığını: kim neyi inşa eder',
+  alt:'Bir AI ürününde katmanların hepsi eşit değil. Hangisine yatırım yapacağını duyguyla değil aritmetikle seçebilirsin.',
+  kaynaklar:[
+    {y:'Amdahl, G. M.', t:'1967', b:'Validity of the Single Processor Approach to Achieving Large Scale Computing Capabilities', n:'AFIPS 1967', u:'https://doi.org/10.1145/1465482.1465560'},
+    {y:'Dean, J. & Barroso, L. A.', t:'2013', b:'The Tail at Scale', n:'CACM 56(2)', u:'https://doi.org/10.1145/2408776.2408794'},
+    {y:'Kwon, W. ve ark.', t:'2023', b:'Efficient Memory Management for Large Language Model Serving with PagedAttention (vLLM)', n:'SOSP 2023', u:'https://arxiv.org/abs/2309.06180'},
+    {y:'Sculley, D. ve ark.', t:'2015', b:'Hidden Technical Debt in Machine Learning Systems', n:'NeurIPS 2015', u:'https://papers.nips.cc/paper/5656-hidden-technical-debt-in-machine-learning-systems'},
+  ],
+  rota:4,
+  adimlar:[
+  {
+    t:'Gecikme nereye gidiyor',
+    goal:'Yığındaki katmanların gerçek ağırlıklarını göreceksin.',
+    todo:'Katmanları ve paylarını incele.',
+    kind:'controls', viz:'aiYigini', h:800,
+    controls:[{k:'ki', lb:'KATMAN', min:0, max:5, step:1, val:3,
+      fmt:v => YG.katmanlar[Math.round(v)].ad}],
+    state:{sahne:'dagilim'},
+    body:'<p>Tipik bir erişimli üretim isteği altı katmandan geçiyor: giriş ve ' +
+      'yetkilendirme, vektör aramayla getirme, bağlam kurma, model çağrısı, çıktı ' +
+      'doğrulama, kayıt ve izleme. Toplam <b>900 ms</b>.</p>' +
+      '<p>Ama dağılım hiç eşit değil. Model çağrısı tek başına <b>780 ms</b>, yani ' +
+      'bütçenin <b>%86.7</b> si. Diğer beş katmanın toplamı %13.3.</p>' +
+      '<p>Bu, AI ürünlerinde çok yaygın bir şekildir ve mühendislik sezgisiyle ters ' +
+      'düşer. Vektör veritabanı seçmek, gömme boyutunu ayarlamak, getirme algoritmasını ' +
+      'iyileştirmek gibi işler zihinsel olarak büyük görünür ama bütçenin <b>%5</b> ine ' +
+      'dokunur.</p>' +
+      '<p>Sağdaki "sınır" sütunu, o katmanı <b>tamamen sıfırlasanız</b> bile elde ' +
+      'edeceğiniz uçtan uca kazancı gösteriyor. Getirme için bu <b>1.05×</b>: vektör ' +
+      'aramayı sonsuz hızlandırmak isteği %5 kısaltır.</p>' +
+      '<p>Bir sonraki adımda bu sınırın nereden geldiğini göreceğiz.</p>',
+    learned:'<b>AI yığınında gecikme neredeyse tamamen model çağrısındadır.</b><br><br>' +
+      '900 ms lik bütçenin 780 ms si (%86.7) model çağrısı. Getirme %5.0, bağlam kurma ' +
+      '%1.3, doğrulama %3.9.<br><br>' +
+      'Getirme katmanını tamamen sıfırlasanız bile uçtan uca kazanç 1.05×, yani %5. ' +
+      'Zihinsel olarak büyük görünen işler bütçesel olarak küçük olabilir.',
+    xp:50,
+  },
+  {
+    t:'Bir katmanı hızlandırmak ne kazandırır',
+    goal:'Amdahl yasasını kendi yığınında uygulayacaksın.',
+    todo:'Katmanı ve hızlanma katsayısını değiştir. Hangi katman sınırı yüksek?',
+    kind:'controls', viz:'aiYigini', h:760,
+    controls:[
+      {k:'ki', lb:'KATMAN', min:0, max:5, step:1, val:1,
+       fmt:v => YG.katmanlar[Math.round(v)].ad},
+      {k:'si', lb:'HIZLANMA', min:0, max:4, step:1, val:2,
+       fmt:v => YG.hizlandirmalar[Math.round(v)] + ' kat'}],
+    state:{sahne:'amdahl'},
+    derive:s => ({kz: YG.kazanc(Math.round(s.ki), YG.hizlandirmalar[Math.round(s.si)])}),
+    live:s => [['KATMAN', YG.katmanlar[Math.round(s.ki)].ad],
+               ['PAY', '%' + (100*YG.pay(Math.round(s.ki))).toFixed(1)],
+               ['KAZANC', s.kz.toFixed(2) + 'x', K.green],
+               ['HEDEF', 'kazanc > 2x']],
+    unlock:s => s.kz > 2,
+    unlockMsg:'Uçtan uca kazancı 2 katın üstüne çıkaran katman ve hızlanmayı bul',
+    body:'<p>Amdahl yasası 1967 den beri aynı şeyi söylüyor: payı p olan bir parçayı ' +
+      's kat hızlandırırsan toplam kazanç</p>' +
+      '<p style="font-family:monospace">1 / [(1 − p) + p/s]</p>' +
+      '<p>ve s sonsuza giderken sınır <b>1/(1 − p)</b> olur.</p>' +
+      '<p>Yığındaki sayılar:</p>' +
+      '<p><b>Getirme</b> (%5.0 pay): 2 kat hızlandırınca kazanç <b>1.03×</b>, ' +
+      '100 kat hızlandırınca <b>1.05×</b>. Sınırı 1.05.<br>' +
+      '<b>Model çağrısı</b> (%86.7 pay): 2 kat hızlandırınca <b>1.76×</b>, ' +
+      '4 kat <b>2.86×</b>, 10 kat <b>4.55×</b>. Sınırı <b>7.50×</b>.</p>' +
+      '<p>Yani vektör aramayı 100 kat hızlandırmak, model çağrısını 1.06 kat ' +
+      'hızlandırmakla aynı şeyi veriyor. Mühendislik enerjisinin nereye gideceği ' +
+      'burada belli oluyor.</p>' +
+      '<p>Bir uyarı: bu hesap <b>ortalama</b> gecikme içindir. Kuyruk gecikmesi ' +
+      '(p99) farklı davranır ve orada küçük katmanlar bile kötü günlerinde bütçeyi ' +
+      'domine edebilir. Dean ve Barroso nun (2013) anlattığı gibi, ortalamayı ' +
+      'iyileştirmek kuyruğu iyileştirmez.</p>',
+    learned:'<b>Amdahl: payı p olan katmanı sonsuz hızlandırmanın sınırı 1/(1−p).</b><br><br>' +
+      'Getirme (%5.0): 100 kat hızlandırınca bile kazanç 1.05×. Model çağrısı (%86.7): ' +
+      '2 kat 1.76×, 10 kat 4.55×, sınır 7.50×.<br><br>' +
+      'Vektör aramayı 100 kat hızlandırmak, model çağrısını 1.06 kat hızlandırmakla ' +
+      'aynı sonucu verir. Uyarı: bu hesap ortalama içindir, kuyruk gecikmesi ayrı bir ' +
+      'konudur.',
+    xp:50,
+  },
+  {
+    t:'Hızlandırmak yerine atlamak',
+    goal:'Amdahl sınırını aşmanın tek yolunu göreceksin.',
+    todo:'Önbellek isabet oranını artır. Modeli 2 kat hızlandırmayı nerede geçiyor?',
+    kind:'controls', viz:'aiYigini', h:760,
+    controls:[{k:'oi', lb:'ONBELLEK ISABET ORANI', min:0, max:4, step:1, val:0,
+      fmt:v => '%' + (100*YG.onbellekOranlari[Math.round(v)]).toFixed(0)}],
+    state:{sahne:'onbellek'},
+    derive:s => ({g: YG.onbellekli(YG.onbellekOranlari[Math.round(s.oi)])}),
+    live:s => [['ISABET', '%' + (100*YG.onbellekOranlari[Math.round(s.oi)]).toFixed(0)],
+               ['GECIKME', s.g.toFixed(0) + ' ms', K.green],
+               ['MODEL 2x', YG.yeniToplam(3, 2).toFixed(0) + ' ms', K.orange],
+               ['HEDEF', 'model 2x i gec']],
+    unlock:s => s.g < YG.yeniToplam(3, 2),
+    unlockMsg:'Modeli 2 kat hızlandırmaktan iyi bir isabet oranı bul',
+    body:'<p>Amdahl sınırı bir katmanı <b>hızlandırmak</b> için geçerli. Katmanı ' +
+      'tamamen <b>atlarsanız</b> o sınır kalkar, çünkü katmanın payı da düşer.</p>' +
+      '<p>Önbellek tam olarak bunu yapar: isabet durumunda model çağrısı ve bağlam ' +
+      'kurma hiç yapılmaz.</p>' +
+      '<p>Ölçüm: %50 isabet oranıyla ortalama gecikme <b>506 ms</b>. Modeli 2 kat ' +
+      'hızlandırmak <b>510 ms</b> veriyor. Yani iki müdahale neredeyse aynı sonucu ' +
+      'üretiyor, ama biri bir sözlük, diğeri bir altyapı projesi.</p>' +
+      '<p>%80 isabette 270 ms (3.33× kazanç), %95 te 152 ms (5.91×). Model çağrısını ' +
+      '100 kat hızlandırmak bile 128 ms de kalıyordu.</p>' +
+      '<p>Buradan çıkan tasarım kuralı: <b>en hızlı çağrı, yapılmayan çağrıdır.</b> ' +
+      'Önbellekleme, erken çıkış (kolay istekleri küçük modele yönlendirmek), ve ' +
+      'gereksiz çağrıları eleyen ön kontroller, model hızlandırmadan çok daha ucuz ' +
+      've çoğu zaman daha etkilidir.</p>' +
+      '<p>Elbette önbellek her yerde çalışmaz: isteklerin tekrar etmesi gerekir. ' +
+      'Ama tekrar oranı çoğu üründe tahmin edilenden yüksektir ve ölçmesi ' +
+      'bir öğleden sonra sürer.</p>',
+    learned:'<b>Amdahl sınırı hızlandırmak için geçerlidir; atlamak sınırı kaldırır.</b><br><br>' +
+      '%50 önbellek isabetiyle ortalama gecikme 506 ms; modeli 2 kat hızlandırmak 510 ms. ' +
+      'Biri bir sözlük, diğeri bir altyapı projesi.<br><br>' +
+      '%95 isabette 152 ms, yani modeli 100 kat hızlandırmaktan (128 ms) çok da uzak değil. ' +
+      'En hızlı çağrı yapılmayan çağrıdır.',
+    xp:50,
+  },
+  {
+    t:'Kim neyi inşa eder',
+    goal:'Yığındaki katmanları sorumluluk ve maliyet açısından yerleştireceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'controls', viz:'aiYigini', h:800,
+    controls:[{k:'ki', lb:'KATMAN', min:0, max:5, step:1, val:1,
+      fmt:v => YG.katmanlar[Math.round(v)].ad}],
+    state:{sahne:'dagilim'},
+    body:'<p>Gecikme yığının sadece bir ekseni. Diğer eksenlerde ağırlık başka yerlere ' +
+      'kayıyor:</p>' +
+      '<p><b>Maliyet.</b> Model çağrısı burada da baskın, çünkü token başına ödeme ' +
+      'yapılıyor. Getirme ve doğrulama katmanları ucuzdur.</p>' +
+      '<p><b>Kalite.</b> Burada tablo tersine döner. Cevap kalitesini belirleyen şey ' +
+      'çoğu zaman <b>getirme</b> katmanıdır: yanlış belgeyi getirirseniz en iyi model ' +
+      'bile doğru cevap veremez. Yani gecikmenin %5 i olan katman, kalitenin çok daha ' +
+      'büyük bir payını taşır.</p>' +
+      '<p><b>Bakım.</b> Sculley ve arkadaşlarının (2015) anlattığı gibi, uzun vadeli ' +
+      'maliyetin çoğu model kodunda değil çevresindeki boru hatlarındadır: veri ' +
+      'güncelleme, gömme yeniden hesaplama, izleme, sürüm yönetimi.</p>' +
+      '<p><b>Sorumluluk.</b> Model katmanı genellikle satın alınır ya da indirilir. ' +
+      'Getirme, doğrulama ve izleme katmanları <b>size aittir</b> ve ürünün ayırt edici ' +
+      'tarafı da oradadır. Herkesin aynı modeli kullandığı bir dünyada rekabet, modelin ' +
+      'etrafındaki katmanlarda olur.</p>' +
+      '<p>Kısaca: gecikme için model katmanına, kalite için getirme katmanına, ' +
+      'sürdürülebilirlik için izleme katmanına bakın. Üçü farklı yerlerde.</p>',
+    quiz:{ q:'Ürününüzün ortalama gecikmesi 900 ms ve kullanıcılar yavaş buluyor. Ekip vektör veritabanını daha hızlı bir alternatifle değiştirmeyi öneriyor; bu değişiklik getirme süresini 45 ms den 10 ms ye indirecek. Ne dersiniz?',
+      opts:[
+        {t:'Uçtan uca kazanç yaklaşık %4 olur; önce önbellek ya da model katmanına bakılmalı', why:'Doğru. Getirme bütçenin %5.0 i ve 45 ms den 10 ms ye inmek 35 ms kazandırır, yani 900 den 865 e: yaklaşık %4. Derste ölçtüğün gibi bu katmanı tamamen sıfırlasanız bile sınır 1.05×. Aynı emekle %50 önbellek isabeti 506 ms verirdi. Not: değişiklik kaliteyi artırıyorsa ayrı bir gerekçe olabilir, ama gecikme gerekçesi zayıf.'},
+        {t:'Mantıklı, 35 ms ciddi bir kazanç', why:'35 ms 900 ms nin içinde yaklaşık %4 tür ve kullanıcının fark etmesi olası değildir. Amdahl hesabı tam olarak bu tür sezgileri düzeltmek içindir.'},
+        {t:'Vektör veritabanı hiç önemli değil, dokunmayın', why:'Fazla katı. Getirme katmanı gecikme için önemsiz ama kalite için belirleyicidir: yanlış belge getirilirse en iyi model bile doğru cevap veremez. Karar gerekçesi gecikme olmamalı, kalite olabilir.'},
+        {t:'Model çağrısını paralelleştirin', why:'Tek bir isteğin model çağrısı genelde paralelleştirilemez (üretim ardışıktır). Ayrıca öneri gecikme sorununu çözmüyor, sadece başka bir yere taşıyor. Ölçüme dayalı ilk adım önbellek olurdu.'},
+      ], correct:0 },
+    learned:'<b>Gecikme, kalite ve bakım yükü yığında farklı katmanlarda oturur.</b><br><br>' +
+      'Gecikme ve maliyet model çağrısında (%86.7). Kalite büyük ölçüde getirme ' +
+      'katmanında, ki gecikmenin sadece %5 i. Bakım yükü çevresel boru hatlarında.<br><br>' +
+      'Model katmanı genelde satın alınır; getirme, doğrulama ve izleme size aittir ' +
+      've ürünün ayırt edici tarafı oradadır.',
+    xp:75,
+  },
+]};
+
+/* --------------- TOKENIZER FARKI --------------- */
+DERSLER['tokenizer-fark'] = {
+  ad:'Tokenizer\'lar neden farklı davranır',
+  alt:'İki model aynı metni farklı sayıda parçaya böler. Farkın nereden geldiği, tokenizerin hangi korpusla eğitildiğinde yazılıdır.',
+  kaynaklar:[
+    {y:'Sennrich, R. ve ark.', t:'2016', b:'Neural Machine Translation of Rare Words with Subword Units', n:'ACL 2016', u:'https://arxiv.org/abs/1508.07909'},
+    {y:'Kudo, T. & Richardson, J.', t:'2018', b:'SentencePiece: A simple and language independent subword tokenizer', n:'EMNLP 2018', u:'https://arxiv.org/abs/1808.06226'},
+    {y:'Singh, A. K. & Strouse, D. J.', t:'2024', b:'Tokenization counts: the impact of tokenization on arithmetic in frontier LLMs', n:'arXiv:2402.14903', u:'https://arxiv.org/abs/2402.14903'},
+    {y:'Petrov, A. ve ark.', t:'2023', b:'Language Model Tokenizers Introduce Unfairness Between Languages', n:'NeurIPS 2023', u:'https://arxiv.org/abs/2305.15425'},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'Sözlük büyüdükçe kim kazanıyor',
+    goal:'Birleşme bütçesinin metin türleri arasında nasıl dağıldığını göreceksin.',
+    todo:'Birleşme sayısını artır. Hangi eğri iniyor, hangisi inmiyor?',
+    kind:'controls', viz:'tokenizerFarki', h:760,
+    controls:[{k:'si', lb:'BIRLESME SAYISI', min:0, max:3, step:1, val:2,
+      fmt:v => TF.sozlukler[Math.round(v)] + ' birlesme'}],
+    state:{sahne:'sozluk'},
+    derive:s => ({d: TF.karakterBasina(0, TF.sozlukler[Math.round(s.si)]),
+                  y: TF.karakterBasina(1, TF.sozlukler[Math.round(s.si)])}),
+    live:s => [['BIRLESME', String(TF.sozlukler[Math.round(s.si)])],
+               ['DOGAL DIL', s.d.toFixed(3), TF.turler[0].renk],
+               ['SAYI', s.y.toFixed(3), TF.turler[1].renk],
+               ['ORAN', (s.y/s.d).toFixed(2) + 'x', K.purple]],
+    body:'<p>Burada bir BPE tokenizer gerçekten eğitiliyor. Korpus <b>doğal dil ağırlıklı</b>: ' +
+      'sıradan kelimeler 100 kez geçiyor, sayılar 3 kez, kod parçaları 2 kez. ' +
+      'Gerçek korpusların bileşimine benzer bir dengesizlik.</p>' +
+      '<p>Ölçüm, eğitimde <b>görülmeyen</b> kelimeler üzerinde ve kelime sonu işareti ' +
+      'sayılmıyor. Ölçü birimi karakter başına token: küçük olması iyidir.</p>' +
+      '<p>Sonuç net. Birleşme sayısı 20 den 200 e çıkarken:</p>' +
+      '<p><b>Doğal dil:</b> 0.692 → 0.462. Yaklaşık üçte bir iyileşme.<br>' +
+      '<b>Kod:</b> 0.800 → 0.725. Küçük bir iyileşme.<br>' +
+      '<b>Sayı:</b> 1.000 → 0.900. Neredeyse hiç.</p>' +
+      '<p>Sayılarda 1.000 şu demek: <b>her rakam kendi tokenı</b>. Sözlüğü on kat ' +
+      'büyütmek bunu değiştirmiyor, çünkü sayılar korpusta nadir ve birleşme bütçesinden ' +
+      'pay alamıyorlar.</p>' +
+      '<p>Bir ayrıntı: 200 birleşme istendiğinde eğitim <b>143 te duruyor</b>, çünkü ' +
+      'korpusta birleştirilecek çift kalmıyor. Sözlük boyu bir dilek değil, korpusun ' +
+      'izin verdiği kadar.</p>',
+    learned:'<b>Birleşme bütçesi korpusta sık geçen metin türüne gider.</b><br><br>' +
+      '20 den 200 birleşmeye: doğal dil 0.692 → 0.462, kod 0.800 → 0.725, sayı ' +
+      '1.000 → 0.900.<br><br>' +
+      'Sayılarda 1.000 her rakamın kendi tokenı olması demektir ve sözlüğü büyütmek ' +
+      'bunu düzeltmez. Sözlük boyu da bir dilek değildir: korpus tükendiğinde eğitim durur.',
+    xp:50,
+  },
+  {
+    t:'Aynı sözlük, üç metin türü',
+    goal:'Farkı somut parçalar üzerinde göreceksin.',
+    todo:'Birleşme sayısını değiştirip parçalara bak.',
+    kind:'controls', viz:'tokenizerFarki', h:760,
+    controls:[{k:'si', lb:'BIRLESME SAYISI', min:0, max:3, step:1, val:2,
+      fmt:v => TF.sozlukler[Math.round(v)] + ' birlesme'}],
+    state:{sahne:'ornek'},
+    body:'<p>Aynı eğitilmiş tokenizerle üç metin türünden birer örnek. Hiçbiri eğitim ' +
+      'korpusunda yok.</p>' +
+      '<p>Doğal dil kelimesi anlamlı parçalara bölünüyor: <b>deger | l | e | n | d | ir | me</b>. ' +
+      'Kök ve ekler ayrı ayrı görünüyor, çünkü onlar korpusta sık geçtiği için birleşme ' +
+      'bütçesinden pay almışlar.</p>' +
+      '<p>Sayı ise <b>202 | 4</b> gibi tuhaf bir yerden bölünüyor. Bu bölme noktasının ' +
+      'matematiksel bir anlamı yok; sadece "202" dizisinin korpusta tesadüfen geçmiş ' +
+      'olmasından geliyor.</p>' +
+      '<p>Bu tuhaflığın somut bir bedeli var. Singh ve Strouse (2024), sayıların nasıl ' +
+      'bölündüğünün büyük dil modellerinin aritmetik başarımını doğrudan etkilediğini ' +
+      'ölçtü. Rakamları tek tek bölen tokenizerler, tutarsız gruplar halinde bölenlerden ' +
+      'daha iyi sonuç veriyor. Bu yüzden bazı modern modeller sayılar için özel kural ' +
+      'kullanır.</p>' +
+      '<p>Kod da benzer bir durumda: <b>get | C | on | f | i | g</b>. "get" korpusta ' +
+      'olduğu için bütün kalmış, geri kalanı harflerine ayrılmış.</p>' +
+      '<p>Buradan çıkan sonuç şu: iki modelin aynı metni farklı sayıda parçaya bölmesi ' +
+      'bir kalite farkı değil, <b>eğitim korpusu farkıdır</b>. Kod ağırlıklı bir korpusla ' +
+      'eğitilmiş tokenizer kodu daha az parçaya böler, çünkü kodun parçaları onun ' +
+      'sözlüğünde vardır.</p>',
+    learned:'<b>Bölme noktalarının anlamsal değil istatistiksel bir sebebi vardır.</b><br><br>' +
+      '"2024" ün "202 | 4" diye bölünmesi matematiksel bir karar değil, o dizinin ' +
+      'korpusta geçmiş olmasının sonucudur.<br><br>' +
+      'Bunun ölçülebilir bir bedeli var: sayıların nasıl bölündüğü modellerin aritmetik ' +
+      'başarımını doğrudan etkiliyor (Singh & Strouse, 2024). İki modelin aynı metni ' +
+      'farklı bölmesi kalite farkı değil, korpus farkıdır.',
+    xp:50,
+  },
+  {
+    t:'Pratikte ne anlama geliyor',
+    goal:'Tokenizer farkının uygulamanıza yansımasını göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'controls', viz:'tokenizerFarki', h:760,
+    controls:[{k:'si', lb:'BIRLESME SAYISI', min:0, max:3, step:1, val:0,
+      fmt:v => TF.sozlukler[Math.round(v)] + ' birlesme'}],
+    state:{sahne:'sozluk'},
+    body:'<p>Tokenizer farkının dört somut sonucu var:</p>' +
+      '<p><b>1. Token sayımı taşınamaz.</b> Bir modelde 1000 token eden metin, başka ' +
+      'bir modelde 1400 token edebilir. "Bağlam penceresine sığar mı" sorusunun cevabı ' +
+      'modele göre değişir ve tahmin edilemez; <b>ölçmek gerekir</b>.</p>' +
+      '<p><b>2. Fiyat karşılaştırmaları eksik.</b> İki sağlayıcının milyon token fiyatını ' +
+      'karşılaştırmak, ikisinin aynı metni aynı sayıda tokene böldüğünü varsayar. ' +
+      'Bölmezler. Karşılaştırma <b>kendi metninizle</b> yapılmalı.</p>' +
+      '<p><b>3. Sayılar ve kod özel dikkat ister.</b> Ölçtün: sözlük büyütmek sayıları ' +
+      'kurtarmıyor. Aritmetik ağırlıklı bir işte modelin sayıları nasıl böldüğüne bakmak, ' +
+      'model seçiminin gerçek bir kriteri olabilir.</p>' +
+      '<p><b>4. Parçalama sınırları token cinsinden olmalı.</b> Erişimli üretimde belgeyi ' +
+      'karakter ya da kelime sayısına göre bölmek, dile ve içeriğe göre çok farklı ' +
+      'boyutlarda parçalar üretir.</p>' +
+      '<p>Son bir not: SentencePiece (Kudo & Richardson, 2018) gibi araçlar tokenizeri ' +
+      'ham metin üzerinde, dile özgü ön işleme olmadan eğitebilir hale getirdi. ' +
+      'Bu, çok dilli modellerin yaygınlaşmasının teknik ön koşullarından biriydi; ' +
+      'ama korpus dengesizliği sorununu çözmedi, sadece taşınabilir kıldı.</p>',
+    quiz:{ q:'İki modelin milyon token fiyatını karşılaştırıyorsunuz: A modeli 10 birim, B modeli 7 birim. Metinleriniz ağırlıklı olarak Türkçe teknik doküman ve kod içeriyor. Ne yaparsınız?',
+      opts:[
+        {t:'Kendi metinlerinizden bir örneği iki tokenizerdan da geçirip token sayısını ölçer, sonra fiyatı çarparım', why:'Doğru. Fiyat karşılaştırması ancak aynı metin aynı sayıda tokene bölünüyorsa geçerlidir ve derste ölçtüğün gibi bölünmez: aynı metin türü, korpus bileşimine göre kat kat farklı token edebilir. Ucuz görünen model, sizin metinlerinizi daha çok parçaya bölüyorsa pahalıya gelebilir. Ölçüm birkaç dakika sürer ve karar bu ölçümle verilir.'},
+        {t:'B modeli daha ucuz, onu seçerim', why:'Bu karşılaştırma, iki tokenizerin aynı metni aynı sayıda tokene böldüğünü varsayıyor. Derste ölçtün: bölme davranışı korpus bileşimine göre değişiyor ve özellikle kod ile sayılarda fark büyüyor.'},
+        {t:'Sözlüğü büyük olan modeli seçerim', why:'Sözlük boyu tek başına yeterli bilgi değil. Ölçtün: büyük sözlük korpusta sık geçen türlere yarıyor, nadir olanlara neredeyse hiç. Türkçe ve kod ağırlıklı metinleriniz için önemli olan sözlüğün boyu değil, neyle eğitildiği.'},
+        {t:'İkisini de kullanıp ortalamasını alırım', why:'Maliyeti ve karmaşıklığı artırır, kararı da vermez. Ayrıca sorunun cevabı zaten ölçülebilir; tahmin etmeye gerek yok.'},
+      ], correct:0 },
+    learned:'<b>Token sayımı modeller arasında taşınmaz.</b><br><br>' +
+      'Dört sonuç: bağlam penceresi tahminleri modele özeldir; fiyat karşılaştırmaları ' +
+      'kendi metninizle yapılmalıdır; sayı ve kod ağırlıklı işlerde tokenizer bir model ' +
+      'seçim kriteridir; parçalama sınırları token cinsinden konmalıdır.<br><br>' +
+      'Hepsinin ortak cevabı aynı: <b>ölçün</b>. Birkaç dakika sürer ve tahminden ' +
+      'çok daha iyidir.',
+    xp:75,
+  },
+]};
+
+/* --------------- LLM SINIFLANDIRICI --------------- */
+DERSLER['llm-siniflandirici'] = {
+  ad:'LLM\'i sınıflandırıcıya çevirmek',
+  alt:'Bir LLM e "bu yorum olumlu mu" diye sormak çalışır ve hemen çalışır. Ne zaman küçük bir modele geçmek gerektiği ise ölçülebilir bir soru.',
+  kaynaklar:[
+    {y:'Brown, T. ve ark.', t:'2020', b:'Language Models are Few-Shot Learners', n:'NeurIPS 2020', u:'https://arxiv.org/abs/2005.14165'},
+    {y:'Hsieh, C.-Y. ve ark.', t:'2023', b:'Distilling Step-by-Step! Outperforming Larger Language Models with Less Training Data and Smaller Model Sizes', n:'ACL 2023 Findings', u:'https://arxiv.org/abs/2305.02301'},
+    {y:'Zhao, Z. ve ark.', t:'2021', b:'Calibrate Before Use: Improving Few-Shot Performance of Language Models', n:'ICML 2021', u:'https://arxiv.org/abs/2102.09690'},
+    {y:'Bucila, C., Caruana, R. & Niculescu-Mizil, A.', t:'2006', b:'Model Compression', n:'KDD 2006', u:'https://doi.org/10.1145/1150402.1150464'},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'Ne zaman küçük modele geçmeli',
+    goal:'İki yaklaşımın kesişim noktasını ölçeceksin.',
+    todo:'Etiket sayısını artır. Yeşil eğri kesikli çizgileri nerede geçiyor?',
+    kind:'controls', viz:'llmSiniflandirici', h:760,
+    controls:[{k:'ni', lb:'ETIKETLI ORNEK', min:0, max:5, step:1, val:3,
+      fmt:v => LS2.nler[Math.round(v)] + ' ornek'}],
+    state:{sahne:'egri'},
+    derive:s => ({k: LS2.kucuk(LS2.nler[Math.round(s.ni)])}),
+    live:s => [['ETIKET', String(LS2.nler[Math.round(s.ni)])],
+               ['KUCUK MODEL', '%' + (100*s.k).toFixed(1),
+                s.k > LS2.LLM_SIFIR ? K.green : K.orange],
+               ['SIFIR ATISLI LLM', '%72', K.orange],
+               ['HEDEF', 'birkac ornekliyi gec']],
+    unlock:s => s.k > LS2.LLM_AZ,
+    unlockMsg:'Birkaç örnekli LLM i geçen etiket sayısını bul',
+    body:'<p>Bir sınıflandırma işi var ve elinizde hiç etiketli veri yok. İki yol:</p>' +
+      '<p><b>LLM e sorun.</b> Prompt yazın, hemen çalışsın. Doğruluk etiket sayısından ' +
+      '<b>bağımsızdır</b>: sıfır etiketle de aynı, bin etiketle de aynı.</p>' +
+      '<p><b>Küçük bir model eğitin.</b> Etiket toplayın, lojistik regresyon ya da küçük ' +
+      'bir sınıflandırıcı eğitin. Doğruluk etiketle birlikte artar.</p>' +
+      '<p>Küçük modelin eğrisi burada gerçekten ölçülüyor (24 boyutlu, lojistik regresyon, ' +
+      'her nokta 10 bağımsız koşunun ortalaması): 8 etiketle %63.6, 32 ile %75.7, ' +
+      '128 ile %84.2, 512 ile %87.2. Gürültü tavanı <b>%88.1</b>.</p>' +
+      '<p>LLM in sayıları ise <b>varsayım</b>, ölçüm değil: sıfır atışlı %72, birkaç ' +
+      'örnekli %80. Kendi işinizde bu iki sayıyı ölçmelisiniz; buradaki ders ' +
+      'sayıların kendisi değil, <b>eğrilerin şekli</b>.</p>' +
+      '<p>Kesişimler: küçük model <b>32 etiketle</b> sıfır atışlı LLM i, ' +
+      '<b>128 etiketle</b> birkaç örnekli LLM i geçiyor.</p>' +
+      '<p>Bu sayılar çoğu insanın tahmininden küçüktür. "Model eğitmek için binlerce ' +
+      'etiket gerekir" sezgisi, basit sınıflandırma işleri için genellikle yanlıştır.</p>',
+    learned:'<b>LLM in doğruluğu etiket sayısından bağımsız bir taban çizgisidir.</b><br><br>' +
+      'Küçük model 8 etiketle %63.6, 32 ile %75.7, 128 ile %84.2, 512 ile %87.2 ' +
+      '(tavan %88.1).<br><br>' +
+      'Bu varsayımlarla kesişimler 32 ve 128 etikette. Sayılar tahmin edilenden küçüktür: ' +
+      '"model eğitmek binlerce etiket ister" sezgisi basit sınıflandırma işlerinde ' +
+      'genellikle yanlıştır.',
+    xp:50,
+  },
+  {
+    t:'Fatura',
+    goal:'İki yaklaşımın maliyet şeklini karşılaştıracaksın.',
+    todo:'Etiket sayısını ve hacmi değiştir. Başabaş nerede?',
+    kind:'controls', viz:'llmSiniflandirici', h:760,
+    controls:[
+      {k:'ni', lb:'ETIKETLI ORNEK', min:1, max:5, step:1, val:3,
+       fmt:v => LS2.nler[Math.round(v)] + ' ornek'},
+      {k:'hi', lb:'AYLIK ISTEK', min:0, max:4, step:1, val:2,
+       fmt:v => { const h = LS2.hacimler[Math.round(v)];
+         return h >= 1e6 ? (h/1e6) + 'M' : (h/1e3) + 'K'; }}],
+    state:{sahne:'maliyet'},
+    derive:s => ({bb: LS2.basabasHacim(LS2.nler[Math.round(s.ni)])}),
+    live:s => { const h = LS2.hacimler[Math.round(s.hi)], n = LS2.nler[Math.round(s.ni)];
+      return [['LLM', LS2.llmMaliyet(h).toFixed(0), K.orange],
+              ['KUCUK', LS2.kucukMaliyet(h, n).toFixed(0),
+               LS2.kucukMaliyet(h, n) < LS2.llmMaliyet(h) ? K.green : K.red],
+              ['BASABAS', s.bb.toFixed(0) + ' istek', K.purple]]; },
+    body:'<p>Maliyet şekilleri tamamen farklı.</p>' +
+      '<p><b>LLM:</b> her çağrıda ödersiniz. Maliyet hacimle doğrusal artar ve hiç ' +
+      'doymaz.</p>' +
+      '<p><b>Küçük model:</b> maliyet neredeyse tamamen bir kerelik etiketleme masrafıdır. ' +
+      'Sonrasında çıkarım maliyeti LLM in binde biri mertebesindedir.</p>' +
+      '<p>Etiket başına 0.5, LLM çağrısı başına 0.002 birim varsayarsak başabaş noktası ' +
+      'basit bir bölme: <b>n × 0.5 / 0.002</b>.</p>' +
+      '<p>32 etiketle başabaş <b>8.008 istek</b>. 128 etiketle 32.032. 512 etiketle ' +
+      '128.128.</p>' +
+      '<p>Yani orta ölçekli bir üründe bile küçük model, ilk ayın içinde kendini ' +
+      'amorti eder. Aylık 1 milyon istekte LLM 2000 birim tutarken 512 etiketli ' +
+      'küçük model 258 birim tutuyor.</p>' +
+      '<p>Bunun pratik sonucu, yaygın bir tasarım kalıbıdır: <b>LLM ile başla, LLM ile ' +
+      'etiketle, küçük modele geç.</b> LLM in kendisi etiketleyici olarak kullanılır ' +
+      've bu, damıtmanın (Bucila ve ark., 2006) modern hali sayılabilir. Hsieh ve ' +
+      'arkadaşlarının (2023) gösterdiği gibi, LLM in sadece etiketini değil gerekçesini ' +
+      'de kullanmak daha az veriyle daha iyi küçük modeller veriyor.</p>',
+    learned:'<b>LLM maliyeti hacimle doğrusal, küçük model maliyeti neredeyse tamamen ' +
+      'bir kerelik etiketleme masrafıdır.</b><br><br>' +
+      'Başabaş noktası n × etiket ücreti / çağrı ücreti. 32 etiketle 8.008 istek, ' +
+      '512 etiketle 128.128 istek.<br><br>' +
+      'Yaygın tasarım kalıbı: LLM ile başla, LLM ile etiketle, küçük modele geç. ' +
+      'Bu, damıtmanın modern halidir.',
+    xp:50,
+  },
+  {
+    t:'LLM skorlarına güvenmek',
+    goal:'LLM i sınıflandırıcı olarak kullanırken gözden kaçan sorunu göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'controls', viz:'llmSiniflandirici', h:760,
+    controls:[{k:'ni', lb:'ETIKETLI ORNEK', min:0, max:5, step:1, val:2,
+      fmt:v => LS2.nler[Math.round(v)] + ' ornek'}],
+    state:{sahne:'egri'},
+    body:'<p>Bir LLM i sınıflandırıcı olarak kullanırken üç şey kolayca gözden kaçıyor:</p>' +
+      '<p><b>1. Skorlar kalibre değildir.</b> LLM in "evet" tokenına verdiği olasılığı ' +
+      'güven skoru gibi kullanmak yaygın ama tehlikelidir. Zhao ve arkadaşları (2021), ' +
+      'birkaç örnekli sınıflandırmada bu skorların örneklerin sırasına, biçimine ve ' +
+      'hangi sınıfın önce geldiğine bile duyarlı olduğunu gösterdi ve düzeltmeden ' +
+      'kullanılmamasını önerdi. Dilbilgisi dersinde ölçtüğün maskeleme sapması da ' +
+      'aynı ailedendir.</p>' +
+      '<p><b>2. Sınıf dengesi kontrol edilemez.</b> Küçük bir modelde eşiği kaydırarak ' +
+      'kesinlik ve duyarlılık arasında istediğiniz noktayı seçebilirsiniz. LLM de bu ' +
+      'ayar prompt üzerinden dolaylı ve kaba yapılır.</p>' +
+      '<p><b>3. Sürüm değişince davranış değişir.</b> Sağlayıcı modeli güncellediğinde ' +
+      'sınıflandırıcınız da değişir, üstelik haberiniz olmadan. Kendi eğittiğiniz küçük ' +
+      'model donmuş durur.</p>' +
+      '<p>Buna karşılık LLM in tartışmasız üstün olduğu yerler de var: <b>sınıf tanımı ' +
+      'sık değişiyorsa</b>, <b>sınıf sayısı çok fazlaysa</b> ya da <b>hiç etiket ' +
+      'toplayamıyorsanız</b>. Prompt değiştirmek yeniden eğitmekten çok daha hızlıdır.</p>' +
+      '<p>Doğru soru "hangisi daha iyi" değil: <b>bu iş ne kadar sabit</b>. Sabit bir ' +
+      'iş küçük modele, değişken bir iş LLM e gider.</p>',
+    quiz:{ q:'Bir destek biletini 5 kategoriye ayıran bir sınıflandırıcı kuruyorsunuz. Aylık 200 bin bilet var, kategoriler yılda bir iki kez değişiyor ve elinizde etiketli veri yok. Nasıl başlarsınız?',
+      opts:[
+        {t:'LLM ile başlayıp aynı LLM ile birkaç yüz bilet etiketler, sonra küçük modele geçerim', why:'Doğru. Üç ölçüm de bu yönü gösteriyor: küçük model birkaç yüz etiketle LLM i geçiyor (128 etikette %84.2), başabaş hacim bu etiket sayısında 32 bin istek civarı ve sizin hacminiz aylık 200 bin, ve kategoriler nadiren değiştiği için iş yeterince sabit. LLM i etiketleyici olarak kullanmak da veri toplama maliyetini düşürür. Kategoriler değiştiğinde süreç tekrarlanır.'},
+        {t:'Kalıcı olarak LLM kullanırım, en basiti', why:'Hacim buna karşı: aylık 200 bin istekte LLM maliyeti başabaş noktasının kat kat üstünde. Ayrıca sürüm değişikliklerinde sınıflandırıcınız habersiz değişir. Kategoriler yılda bir iki kez değiştiği için bu iş yeterince sabit.'},
+        {t:'Önce birkaç bin bilet elle etiketletirim', why:'Çalışır ama gereksiz pahalı. Ölçtün: 128 etikette küçük model zaten LLM in üstüne çıkıyor ve tavana yaklaşıyor. Ayrıca LLM in kendisi etiketleyici olarak kullanılabilirken elle etiketlemeye başlamak zaman kaybı.'},
+        {t:'Kategoriler değişebildiği için sınıflandırma yerine kural yazarım', why:'Kurallar 5 kategorili doğal dil sınıflandırmasında genelde kırılgandır ve kategoriler değiştiğinde onları da yeniden yazmak gerekir. Ayrıca yılda bir iki değişiklik, yeniden eğitmeyi engelleyecek bir sıklık değil.'},
+      ], correct:0 },
+    learned:'<b>Doğru soru "hangisi daha iyi" değil, "bu iş ne kadar sabit".</b><br><br' +
+      '>LLM in üç zayıf noktası: skorları kalibre değildir, sınıf dengesi eşikle ' +
+      'ayarlanamaz, ve sağlayıcı sürümü değişince davranış habersiz değişir.<br><br>' +
+      'Buna karşılık sınıf tanımı sık değişiyorsa, sınıf sayısı çok fazlaysa ya da hiç ' +
+      'etiket toplanamıyorsa LLM tartışmasız üstündür.',
+    xp:75,
+  },
+]};
+
+/* --------------- AI vs ML --------------- */
+DERSLER['ai-vs-ml'] = {
+  ad:'AI mühendisliği klasik ML\'den nasıl ayrışır',
+  alt:'İki çalışma biçimi aynı problemin farklı yerlerinde duruyor. Farkı bu müfredatta ölçtüğün sonuçlarla kuracağız.',
+  kaynaklar:[
+    {y:'Sculley, D. ve ark.', t:'2015', b:'Hidden Technical Debt in Machine Learning Systems', n:'NeurIPS 2015', u:'https://papers.nips.cc/paper/5656-hidden-technical-debt-in-machine-learning-systems'},
+    {y:'Bommasani, R. ve ark.', t:'2021', b:'On the Opportunities and Risks of Foundation Models', n:'arXiv:2108.07258', u:'https://arxiv.org/abs/2108.07258'},
+    {y:'Shankar, S. ve ark.', t:'2024', b:'Who Validates the Validators? Aligning LLM-Assisted Evaluation of LLM Outputs with Human Preferences', n:'UIST 2024', u:'https://arxiv.org/abs/2404.12272'},
+    {y:'Paleyes, A. ve ark.', t:'2022', b:'Challenges in Deploying Machine Learning: a Survey of Case Studies', n:'ACM Computing Surveys 55(6)', u:'https://arxiv.org/abs/2011.09926'},
+  ],
+  rota:4,
+  adimlar:[
+  {
+    t:'Emek nereye gidiyor',
+    goal:'İki çalışma biçiminin nerede zaman harcadığını göreceksin.',
+    todo:'Aşamalar arasında gez. Hangi aşamada iki sütun en çok ayrışıyor?',
+    kind:'controls', viz:'aiVsMl', h:800,
+    controls:[{k:'ai2', lb:'ASAMA', min:0, max:6, step:1, val:4,
+      fmt:v => AV.asamalar[Math.round(v)].ad}],
+    state:{sahne:'emek'},
+    body:'<p>Klasik ML de bir proje şöyle akar: veri topla, etiketle, özellik çıkar, ' +
+      'model eğit, değerlendir, dağıt. Emeğin yarısından fazlası ilk üç adımdadır.</p>' +
+      '<p>AI mühendisliğinde model hazır geliyor. Veri toplama ve özellik mühendisliği ' +
+      'neredeyse kayboluyor, model eğitimi bir prompt yazmaya iniyor.</p>' +
+      '<p>Ama emek yok olmuyor, <b>yer değiştiriyor</b>. Üç yere gidiyor: prompt ve bağlam ' +
+      'tasarımı, değerlendirme, ve dağıtım ile izleme.</p>' +
+      '<p>Son ikisi özellikle şaşırtıcıdır. AI mühendisliğinde <b>değerlendirme daha ' +
+      'zordur</b>, çünkü çıktı serbest metindir: tek bir doğru cevap yoktur ve otomatik ' +
+      'ölçüm kurmak başlı başına bir problemdir. Shankar ve arkadaşlarının (2024) ' +
+      'çalışması, LLM çıktılarını yine LLM ile değerlendirmenin bile insan tercihleriyle ' +
+      'hizalanması gereken ayrı bir iş olduğunu gösteriyor.</p>' +
+      '<p>Dağıtım ve izleme de ağırlaşıyor, çünkü model sizin değil: sürümü değişebilir, ' +
+      'gecikmesi dalgalanabilir, maliyeti çağrı başına akar.</p>' +
+      '<p>Buradaki paylar kesin ölçümler değil, bu müfredat boyunca gördüğün derslerin ' +
+      'dağılımını yansıtan bir taslaktır. Amaç sayıları ezberlemek değil, <b>emeğin ' +
+      'kaybolmadığını, taşındığını</b> görmek.</p>',
+    learned:'<b>AI mühendisliğinde emek kaybolmaz, yer değiştirir.</b><br><br>' +
+      'Veri toplama, özellik mühendisliği ve model eğitimi küçülür; prompt ve bağlam ' +
+      'tasarımı, değerlendirme, dağıtım ve izleme büyür.<br><br>' +
+      'En çok şaşırtan taraf değerlendirmedir: çıktı serbest metin olduğu için tek doğru ' +
+      'cevap yoktur ve otomatik ölçüm kurmak başlı başına bir problemdir.',
+    xp:50,
+  },
+  {
+    t:'Altı eksende karşılaştırma',
+    goal:'Farkı, kendi ölçtüğün sonuçlarla bağlayacaksın.',
+    todo:'Her satırın sağındaki kanıta bak.',
+    kind:'static', viz:'aiVsMl', h:800,
+    state:{sahne:'tablo'},
+    body:'<p>Tablodaki her satırın sağında, bu müfredatta gerçekten ölçtüğün bir sonuç var. ' +
+      'Fark bir kanaat değil, ölçümlerin toplamı:</p>' +
+      '<p><b>Veri ihtiyacı.</b> LLM sınıflandırıcı dersinde ölçtün: küçük model 128 ' +
+      'etiketle sıfır atışlı LLM i geçiyordu. Klasik ML de aynı doğruluğa gitmek için ' +
+      'bu sayı çok daha büyüktür ve etiketler baştan gerekir.</p>' +
+      '<p><b>İlk çalışan sürüm.</b> Talimat ayarı dersinde 50 örneğin beş görevi %100 e ' +
+      'taşıdığını ölçtün. AI tarafında bu bir öğleden sonra işidir.</p>' +
+      '<p><b>Birim maliyet.</b> Açık mı kapalı mı dersinde başabaş noktasını 728 milyon ' +
+      'token/ay olarak hesapladın. Klasik ML de çıkarım maliyeti neredeyse sıfırdır; ' +
+      'AI tarafında her çağrı para eder.</p>' +
+      '<p><b>Belirleyici katman.</b> Yığın dersinde ölçtün: gecikmenin %86.7 si model ' +
+      'çağrısında ama kaliteyi getirme katmanı belirliyor.</p>' +
+      '<p><b>Başarısızlık şekli.</b> Düşünme zinciri dersinde ayrışmayan görevde modelin ' +
+      '%10.4 te sabit kaldığını gördün, üstelik akıcı ve ikna edici metin üreterek. ' +
+      'Klasik ML sessizce doğruluk kaybeder; AI akıcı biçimde yanılır ve bu daha ' +
+      'tehlikelidir.</p>' +
+      '<p><b>Değerlendirme.</b> Skor tablosu dersinde 100 model arasından seçilen ' +
+      'birincinin 3.11 puan şişik olduğunu hesapladın. AI tarafında değerlendirme sabit ' +
+      'bir test kümesiyle bitmez; sürekli ve örneklemeli olmak zorundadır.</p>',
+    learned:'<b>Fark bir kanaat değil, ölçümlerin toplamıdır.</b><br><br>' +
+      'Veri ihtiyacı, ilk sürüm süresi, birim maliyet, belirleyici katman, başarısızlık ' +
+      'şekli ve değerlendirme biçimi: altı eksenin her birinde bu müfredatta ölçtüğün ' +
+      'bir sonuç var.<br><br>' +
+      'En kritik fark başarısızlık şeklidir: klasik ML sessizce doğruluk kaybeder, ' +
+      'AI akıcı biçimde yanılır.',
+    xp:50,
+  },
+  {
+    t:'Hangi biçimde çalışmalı',
+    goal:'İki yaklaşım arasında seçim yapmayı bir kurala bağlayacaksın.',
+    todo:'Soruyu cevapla.',
+    kind:'controls', viz:'aiVsMl', h:800,
+    controls:[{k:'ai2', lb:'ASAMA', min:0, max:6, step:1, val:1,
+      fmt:v => AV.asamalar[Math.round(v)].ad}],
+    state:{sahne:'emek'},
+    body:'<p>İkisi rakip değil. Seçim kuralı da basit:</p>' +
+      '<p><b>Girdi ve çıktı yapılı, hacim yüksek, tanım sabitse klasik ML.</b> ' +
+      'Kredi skoru, arıza tespiti, talep tahmini. Birim maliyet neredeyse sıfırdır, ' +
+      'model donmuştur, değerlendirme nettir.</p>' +
+      '<p><b>Girdi ya da çıktı serbest metinse, tanım değişkense, veri yoksa AI mühendisliği.</b> ' +
+      'Belge özetleme, destek asistanı, içerik sınıflandırma. Sıfırdan başlarsınız ve ' +
+      'ilk gün çalışan bir şey elde edersiniz.</p>' +
+      '<p>Ve çoğu gerçek sistemde <b>ikisi birden</b> vardır: LLM ile başlanır, LLM ile ' +
+      'etiketlenir, sabitleşen parçalar küçük modellere devredilir. LLM sınıflandırıcı ' +
+      'dersinde ölçtüğün kalıp tam olarak budur.</p>' +
+      '<p>Değişmeyen şeyler de var ve bu müfredatın omurgası onlar: taban oranı, ' +
+      'aşırı uyum, dağılım kayması, değerlendirmenin dürüstlüğü, adillik ölçütleri ' +
+      'arasındaki takas. Bunlar model ailesine bağlı değil; Paleyes ve arkadaşlarının ' +
+      '(2022) vaka çalışmalarında görülen zorlukların çoğu, model türünden bağımsız ' +
+      'olarak aynı yerlerde ortaya çıkıyor.</p>' +
+      '<p>Kısaca: araç değişti, sorular değişmedi. <b>Ölçmeden inanmamak</b> her ikisinde ' +
+      'de aynı şeyi ifade ediyor.</p>',
+    quiz:{ q:'Bir şirkette hem "gelen faturaları 12 kaleme ayıran" bir iş hem de "müşteri e-postalarına taslak cevap yazan" bir iş var. Nasıl bir mimari kurarsınız?',
+      opts:[
+        {t:'Fatura kalemleri için küçük eğitilmiş model, taslak cevaplar için LLM; ikisini aynı izleme ve değerlendirme çatısına bağlarım', why:'Doğru. Fatura kalemleri yapılı, hacim yüksek ve tanım sabit: klasik ML nin tam alanı ve birim maliyeti neredeyse sıfır. Taslak cevap ise serbest metin çıktısı: LLM in alanı. İkisini ayrı ayrı kurmak doğru ama izleme ve değerlendirmeyi ortak tutmak şart, çünkü derste ölçtüğün gibi asıl emek orada birikiyor ve iki sistem de aynı dağılım kayması, taban oranı ve değerlendirme dürüstlüğü sorunlarını paylaşıyor.'},
+        {t:'İkisi için de LLM kullanırım, tek mimari daha basit', why:'Fatura kalemlerinde hacim yüksek ve tanım sabit; LLM in çağrı başına maliyeti burada kalıcı bir yük olur. Derste ölçtün: küçük model birkaç yüz etiketle LLM i geçiyor ve başabaş hacim çoğu üründe hızla aşılıyor.'},
+        {t:'İkisi için de klasik ML kullanırım', why:'Taslak cevap yazmak serbest metin üretimidir; klasik ML bunu yapamaz. Yapılı sınıflandırma için doğru olan araç, üretim için doğru değildir.'},
+        {t:'Önce hangisinin daha kârlı olduğunu ölçüp sadece onu yaparım', why:'Proje kararı dersindeki hesap her iş için ayrı ayrı yapılmalı ve ikisi birbirini dışlamıyor. Ayrıca soru mimariyi soruyor, önceliklendirmeyi değil.'},
+      ], correct:0 },
+    learned:'<b>Araç değişti, sorular değişmedi.</b><br><br>' +
+      'Yapılı girdi-çıktı, yüksek hacim ve sabit tanım varsa klasik ML; serbest metin, ' +
+      'değişken tanım ve veri yokluğu varsa AI mühendisliği. Çoğu gerçek sistemde ikisi ' +
+      'birden bulunur.<br><br>' +
+      'Değişmeyenler bu müfredatın omurgasıdır: taban oranı, aşırı uyum, dağılım kayması, ' +
+      'değerlendirmenin dürüstlüğü, adillik takasları. Hepsi model ailesinden bağımsızdır.',
     xp:75,
   },
 ]};

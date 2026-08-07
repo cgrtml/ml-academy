@@ -10592,6 +10592,590 @@ VIZ.acikKapali = s => {
   }
 };
 
+
+/* ═══════════ AI UYGULAMA YIĞINI ═══════════
+   Uctan uca gecikmenin katmanlara dagilimi ve bir katmani
+   hizlandirmanin ne kazandirdigi. Tamami Amdahl aritmetigi. */
+const YG = {};
+YG.katmanlar = [
+  { ad:'giriş / yetkilendirme', ms: 8,   renk:'#64748b' },
+  { ad:'getirme (vektör arama)', ms: 45, renk:'#3b82f6' },
+  { ad:'bağlam kurma',           ms: 12, renk:'#a855f7' },
+  { ad:'model çağrısı',          ms: 780, renk:'#f97316' },
+  { ad:'çıktı doğrulama',        ms: 35, renk:'#22c55e' },
+  { ad:'kayıt / izleme',         ms: 20, renk:'#eab308' },
+];
+YG.hizlandirmalar = [1, 2, 4, 10, 100];
+YG.toplam = () => YG.katmanlar.reduce((a, k) => a + k.ms, 0);
+YG.pay = i => YG.katmanlar[i].ms/YG.toplam();
+/* i. katman s kat hizlanirsa uctan uca sure · Amdahl */
+YG.yeniToplam = (i, s) => YG.toplam() - YG.katmanlar[i].ms + YG.katmanlar[i].ms/s;
+YG.kazanc = (i, s) => YG.toplam()/YG.yeniToplam(i, s);
+/* sonsuz hizlanma siniri: 1/(1-p) */
+YG.sinir = i => 1/(1 - YG.pay(i));
+/* onbellek: isteklerin h orani onbellekten donuyor (model cagrisi atlaniyor) */
+YG.onbellekOranlari = [0, 0.2, 0.5, 0.8, 0.95];
+YG.onbellekli = h => {
+  const modelMs = YG.katmanlar[3].ms;
+  const digerleri = YG.toplam() - modelMs;
+  /* onbellek isabetinde model cagrisi ve baglam kurma atlanir */
+  const isabet = digerleri - YG.katmanlar[2].ms + 5;
+  return h*isabet + (1 - h)*YG.toplam();
+};
+
+
+VIZ.aiYigini = s => {
+  clear();
+  const sahne = s.sahne || 'dagilim';
+  const ki = Math.max(0, Math.min(5, s.ki === undefined ? 3 : Math.round(s.ki)));
+  const si = Math.max(0, Math.min(4, s.si === undefined ? 2 : Math.round(s.si)));
+  const hiz = YG.hizlandirmalar[si];
+  const oi = Math.max(0, Math.min(4, s.oi === undefined ? 0 : Math.round(s.oi)));
+  const onbellek = YG.onbellekOranlari[oi];
+  const kart = (x, y, wd, ad, deger, rnk, alt) => {
+    box(x, y, wd, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + wd/2, y + 28, K.mut, 15);
+    txt(deger, x + wd/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + wd/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'amdahl'){
+    baslikSerit('AI YIĞINI · BİR KATMANI HIZLANDIRMAK NE KAZANDIRIR',
+      'Seçilen katman s kat hızlanırsa uçtan uca kazanç. Kesikli çizgi sonsuz hızlanma sınırı.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 4.35, 0.9, 6.2);
+    frame(P, 'katmanın hızlanma katsayısı', 'uçtan uca kazanç', [], [1, 2, 3, 4, 5, 6]);
+    YG.hizlandirmalar.forEach((sv, i) =>
+      txt(sv + '×', P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    YG.katmanlar.forEach((kk, i) => {
+      cx.strokeStyle = kk.renk; cx.lineWidth = i === ki ? 3.8 : 1.6;
+      cx.globalAlpha = i === ki ? 1 : 0.35; cx.beginPath();
+      YG.hizlandirmalar.forEach((sv, q) => { const y = P.sy(Math.min(6.2, YG.kazanc(i, sv)));
+        q ? cx.lineTo(P.sx(q), y) : cx.moveTo(P.sx(q), y); });
+      cx.stroke(); cx.globalAlpha = 1; });
+    YG.hizlandirmalar.forEach((sv, q) =>
+      dot(P.sx(q), P.sy(Math.min(6.2, YG.kazanc(ki, sv))), 5, YG.katmanlar[ki].renk));
+    cx.strokeStyle = YG.katmanlar[ki].renk; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(Math.min(6.2, YG.sinir(ki))));
+    cx.lineTo(P.R.x + P.R.w, P.sy(Math.min(6.2, YG.sinir(ki)))); cx.stroke();
+    cx.setLineDash([]);
+    txt('sınır ' + YG.sinir(ki).toFixed(2) + '×', P.R.x + P.R.w - 14,
+        P.sy(Math.min(6.2, YG.sinir(ki))) - 12, YG.katmanlar[ki].renk, 16, 'right');
+    const bx = 830;
+    kart(bx, 200, 260, 'KATMAN', YG.katmanlar[ki].ad, YG.katmanlar[ki].renk,
+         '%' + (100*YG.pay(ki)).toFixed(1) + ' pay');
+    kart(bx + 280, 200, 260, hiz + '× HIZLANDIRINCA', YG.kazanc(ki, hiz).toFixed(2) + '×',
+         K.green);
+    kart(bx, 330, 260, 'SONSUZ HIZLANMADA', YG.sinir(ki).toFixed(2) + '×', K.purple,
+         'katman sıfır olsa bile');
+    kart(bx + 280, 330, 260, 'YENİ SÜRE', YG.yeniToplam(ki, hiz).toFixed(0) + ' ms', K.orange,
+         'eski ' + YG.toplam() + ' ms');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('AMDAHL YASASI', bx + 270, 494, K.mut, 18);
+    txt('Payı p olan bir katmanı sonsuz hızlandırsan bile', bx + 18, 534, K.txt, 18, 'left');
+    txt('uçtan uca kazanç 1/(1−p) ile sınırlıdır.', bx + 18, 562, K.txt, 18, 'left');
+    txt('Bu katmanın payı %' + (100*YG.pay(ki)).toFixed(1) + ', yani sınırı ' +
+        YG.sinir(ki).toFixed(2) + '×.', bx + 18, 602, YG.katmanlar[ki].renk, 18, 'left');
+    txt('Getirmeyi tamamen sıfırlasan bile kazanç ' +
+        YG.sinir(1).toFixed(2) + '×.', bx + 18, 642, K.blue, 18, 'left');
+    txt('Model çağrısını 2 kat hızlandırmak ise ' +
+        YG.kazanc(3, 2).toFixed(2) + '× veriyor.', bx + 18, 670, K.orange, 18, 'left');
+    txt('Hangi katmana yatırım yapacağın burada belli oluyor.', bx + 18, 706, K.mut, 17, 'left');
+  }
+
+  else if (sahne === 'onbellek'){
+    baslikSerit('AI YIĞINI · KATMANI HIZLANDIRMAK YERİNE ATLAMAK',
+      'Önbellek isabetinde model çağrısı ve bağlam kurma hiç yapılmıyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 4.35, 0, 950);
+    frame(P, 'önbellek isabet oranı', 'ortalama gecikme (ms)', [], [0, 200, 400, 600, 800]);
+    YG.onbellekOranlari.forEach((hv, i) =>
+      txt('%' + (100*hv).toFixed(0), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    cx.strokeStyle = K.green; cx.lineWidth = 3.6; cx.beginPath();
+    YG.onbellekOranlari.forEach((hv, i) => { const y = P.sy(YG.onbellekli(hv));
+      i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+    cx.stroke();
+    YG.onbellekOranlari.forEach((hv, i) => dot(P.sx(i), P.sy(YG.onbellekli(hv)), 5, K.green));
+    /* karsilastirma: modeli 2 kat hizlandirmak */
+    cx.strokeStyle = K.orange; cx.lineWidth = 2.5; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(YG.yeniToplam(3, 2)));
+    cx.lineTo(P.R.x + P.R.w, P.sy(YG.yeniToplam(3, 2))); cx.stroke();
+    cx.setLineDash([]);
+    txt('modeli 2× hızlandırmak: ' + YG.yeniToplam(3, 2).toFixed(0) + ' ms',
+        P.R.x + P.R.w - 14, P.sy(YG.yeniToplam(3, 2)) - 12, K.orange, 16, 'right');
+    const bx = 830;
+    kart(bx, 200, 260, 'İSABET ORANI', '%' + (100*onbellek).toFixed(0), K.blue);
+    kart(bx + 280, 200, 260, 'ORTALAMA GECİKME', YG.onbellekli(onbellek).toFixed(0) + ' ms',
+         K.green);
+    kart(bx, 330, 260, 'ÖNBELLEKSİZ', YG.toplam() + ' ms', K.mut);
+    kart(bx + 280, 330, 260, 'KAZANÇ',
+         (YG.toplam()/YG.onbellekli(onbellek)).toFixed(2) + '×', K.purple);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('EN HIZLI ÇAĞRI YAPILMAYAN ÇAĞRIDIR', bx + 270, 494, K.mut, 16);
+    txt('Amdahl sınırı bir katmanı hızlandırmak için', bx + 18, 534, K.txt, 18, 'left');
+    txt('geçerlidir. Katmanı tamamen atlarsan o sınır', bx + 18, 562, K.txt, 18, 'left');
+    txt('kalkar, çünkü artık payı da düşüyor.', bx + 18, 590, K.txt, 18, 'left');
+    txt('%50 isabetle ortalama gecikme ' + YG.onbellekli(0.5).toFixed(0) + ' ms:',
+        bx + 18, 630, K.green, 18, 'left');
+    txt('modeli 2 kat hızlandırmaktan (' + YG.yeniToplam(3, 2).toFixed(0) + ' ms) iyi.',
+        bx + 18, 658, K.green, 18, 'left');
+    txt('Ve önbellek, modeli hızlandırmaktan çok daha ucuz.', bx + 18, 698, K.mut, 17, 'left');
+  }
+
+  else {
+    baslikSerit('AI YIĞINI · GECİKME NEREYE GİDİYOR',
+      'Tipik bir erişimli üretim isteğinin uçtan uca ' + YG.toplam() + ' ms lik bütçesi.', []);
+    const T = YG.toplam();
+    let x = 200;
+    const genislik = 1050;
+    YG.katmanlar.forEach((kk, i) => {
+      const w = genislik*kk.ms/T;
+      box(x, 250, w, 90, i === ki ? kk.renk + '55' : kk.renk + '22', kk.renk, i === ki ? 3 : 2);
+      if (w > 60) txt(kk.ms + ' ms', x + w/2, 302, K.txt, 17);
+      x += w; });
+    txt('0 ms', 200, 370, K.mut, 15, 'left');
+    txt(T + ' ms', 200 + genislik, 370, K.mut, 15, 'right');
+    YG.katmanlar.forEach((kk, i) => {
+      const y = 430 + i*46;
+      box(200, y - 18, 26, 26, kk.renk + '55', kk.renk, 2);
+      txt(kk.ad, 240, y, i === ki ? K.txt : K.mut, 18, 'left', i === ki ? 700 : 400);
+      txt(kk.ms + ' ms', 700, y, kk.renk, 18, 'right');
+      txt('%' + (100*YG.pay(i)).toFixed(1), 800, y, K.mut, 17, 'right');
+      txt('sınır ' + YG.sinir(i).toFixed(2) + '×', 940, y, K.mut, 17, 'right'); });
+    const bx = 1010;
+    kart(bx, 420, 360, 'TOPLAM', T + ' ms', K.blue);
+    kart(bx, 550, 360, 'MODEL ÇAĞRISININ PAYI', '%' + (100*YG.pay(3)).toFixed(1), K.orange);
+    box(bx, 680, 360, 60, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('Diğer beş katmanın toplamı %' + (100*(1 - YG.pay(3))).toFixed(1),
+        bx + 180, 716, K.mut, 17);
+  }
+};
+
+
+/* ═══════════ TOKENIZER FARKLARI ═══════════
+   Ayni metni farkli sozluk boylariyla egitilmis BPE ler nasil boluyor,
+   ve bunun sayi/kod gibi metinlerde ne anlama geldigi. Gercek egitim. */
+const TF = {};
+TF.SON = '_';
+TF.AYRAC = String.fromCharCode(1);
+TF.sozlukler = [20, 50, 100, 200];
+/* korpus: dogal dil agirlikli · sayilar ve kod nadir */
+TF.korpus = (() => {
+  const o = {};
+  const dil = ['bir','icin','daha','sonra','kadar','olarak','model','veri','sistem',
+    'ogrenme','deger','sonuc','ornek','fonksiyon','degisken','islem','hesap','analiz',
+    'metin','kelime','cumle','sayfa','baslik','kaynak','yontem','arastirma','gelistirme'];
+  dil.forEach(k => o[k] = 100);
+  /* sayilar korpusta cok nadir */
+  ['2019','2020','2021','512','1024'].forEach(k => o[k] = 3);
+  /* kod parcalari nadir */
+  ['getValue','setState','onClick'].forEach(k => o[k] = 2);
+  return o;
+})();
+const _tfC = {};
+TF.egit = hedef => {
+  const key = 'e' + hedef;
+  if (_tfC[key]) return _tfC[key];
+  let kelimeler = Object.entries(TF.korpus).map(([k, f]) => ({ parca: [...k, TF.SON], f }));
+  const birlesmeler = [];
+  for (let adim = 0; adim < hedef; adim++){
+    const say = {};
+    kelimeler.forEach(({ parca, f }) => {
+      for (let i = 0; i < parca.length - 1; i++){
+        const c = parca[i] + TF.AYRAC + parca[i+1];
+        say[c] = (say[c] || 0) + f; } });
+    let en = null;
+    Object.entries(say).forEach(([c, n]) => { if (!en || n > en.n) en = { c, n }; });
+    if (!en || en.n < 1e-9) break;
+    const ab = en.c.split(TF.AYRAC), a = ab[0], b = ab[1];
+    birlesmeler.push({ a, b, yeni: a + b });
+    kelimeler = kelimeler.map(({ parca, f }) => {
+      const yeni = []; let i = 0;
+      while (i < parca.length){
+        if (i < parca.length - 1 && parca[i] === a && parca[i+1] === b){ yeni.push(a + b); i += 2; }
+        else { yeni.push(parca[i]); i++; } }
+      return { parca: yeni, f }; });
+  }
+  return (_tfC[key] = birlesmeler);
+};
+TF.parcala = (kelime, B) => {
+  let p = [...kelime, TF.SON];
+  B.forEach(({ a, b }) => {
+    const yeni = []; let i = 0;
+    while (i < p.length){
+      if (i < p.length - 1 && p[i] === a && p[i+1] === b){ yeni.push(a + b); i += 2; }
+      else { yeni.push(p[i]); i++; } }
+    p = yeni; });
+  return p;
+};
+/* uc metin turu · hicbiri egitim korpusunda AYNEN yok */
+TF.turler = [
+  { ad:'doğal dil', renk:'#22c55e',
+    kelimeler:['degerlendirme','sonuclari','ornekleme','gelistirici','yontemleri'] },
+  { ad:'sayı',      renk:'#f97316', kelimeler:['2024','3141','8192','4096','1729'] },
+  { ad:'kod',       renk:'#ef4444', kelimeler:['getConfig','setValue','onSubmit','useState','addItem'] },
+];
+TF.dogurganlik = (ti, hedef) => {
+  const key = 'd' + ti + ':' + hedef;
+  if (_tfC[key] !== undefined) return _tfC[key];
+  const B = TF.egit(hedef), t = TF.turler[ti];
+  /* kelime sonu isareti sayilmiyor: olcum gercek metin parcalari uzerinde */
+  let s = 0;
+  t.kelimeler.forEach(k => s += TF.parcala(k, B).length - 1);
+  return (_tfC[key] = s/t.kelimeler.length);
+};
+TF.karakterBasina = (ti, hedef) => {
+  const key = 'c' + ti + ':' + hedef;
+  if (_tfC[key] !== undefined) return _tfC[key];
+  const B = TF.egit(hedef), t = TF.turler[ti];
+  let tok = 0, kar = 0;
+  t.kelimeler.forEach(k => { tok += TF.parcala(k, B).length - 1; kar += k.length; });
+  return (_tfC[key] = tok/kar);
+};
+
+VIZ.tokenizerFarki = s => {
+  clear();
+  const sahne = s.sahne || 'sozluk';
+  const si = Math.max(0, Math.min(3, s.si === undefined ? 2 : Math.round(s.si)));
+  const soz = TF.sozlukler[si];
+  const kart = (x, y, wd, ad, deger, rnk, alt) => {
+    box(x, y, wd, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + wd/2, y + 28, K.mut, 15);
+    txt(deger, x + wd/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + wd/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'ornek'){
+    const B = TF.egit(soz);
+    baslikSerit('TOKENIZER FARKI · AYNI SÖZLÜK, ÜÇ METİN TÜRÜ',
+      soz + ' birleşmeyle eğitilmiş BPE. Kelimelerin hiçbiri eğitim korpusunda yok.', []);
+    TF.turler.forEach((t, ti) => {
+      const k = t.kelimeler[0], p = TF.parcala(k, B), y = 250 + ti*150;
+      txt(t.ad, 160, y, t.renk, 19, 'left', 700);
+      txt(k, 160, y + 34, K.txt, 21, 'left');
+      txt(p.length + ' token', 160, y + 66, t.renk, 18, 'left');
+      let x = 460;
+      p.forEach(tk => {
+        const g0 = tk === TF.SON ? 'son' : tk;
+        const w = Math.max(44, 16*g0.length + 22);
+        box(x, y - 20, w, 44, 'rgba(7,10,15,.75)', tk === TF.SON ? K.mut : t.renk, 2);
+        txt(g0, x + w/2, y + 8, tk === TF.SON ? K.mut : K.txt, g0.length > 5 ? 15 : 18);
+        x += w + 8; });
+    });
+    txt('Doğal dil parçaları sözlükte var, sayı ve kod parçaları yok.',
+        160, 700, K.mut, 18, 'left');
+    txt('Aynı uzunluktaki metin, türüne göre kat kat farklı token ediyor.',
+        160, 732, K.txt, 18, 'left');
+  }
+
+  else {
+    baslikSerit('TOKENIZER FARKI · SÖZLÜK BÜYÜDÜKÇE KİM KAZANIYOR',
+      'Korpus doğal dil ağırlıklı. Sayılar ve kod nadir. Ölçüm görülmeyen kelimelerde.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 3.35, 0, 1.15);
+    frame(P, 'birleşme sayısı', 'karakter başına token', [], [0, 0.25, 0.5, 0.75, 1]);
+    TF.sozlukler.forEach((sv, i) => txt(String(sv), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    TF.turler.forEach((t, ti) => {
+      cx.strokeStyle = t.renk; cx.lineWidth = 3.6; cx.beginPath();
+      TF.sozlukler.forEach((sv, i) => { const y = P.sy(TF.karakterBasina(ti, sv));
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      TF.sozlukler.forEach((sv, i) => dot(P.sx(i), P.sy(TF.karakterBasina(ti, sv)), 5, t.renk)); });
+    TF.turler.forEach((t, ti) => {
+      const yy = P.sy(1.12 - ti*0.075);
+      cx.strokeStyle = t.renk; cx.lineWidth = 3.6;
+      cx.beginPath(); cx.moveTo(P.R.x + 16, yy - 5); cx.lineTo(P.R.x + 52, yy - 5); cx.stroke();
+      txt(t.ad, P.R.x + 62, yy, t.renk, 16, 'left'); });
+    const bx = 830;
+    kart(bx, 200, 260, 'BİRLEŞME', String(soz), K.blue);
+    kart(bx + 280, 200, 260, 'DOĞAL DİL', TF.karakterBasina(0, soz).toFixed(3),
+         TF.turler[0].renk, 'karakter başına token');
+    kart(bx, 330, 260, 'SAYI', TF.karakterBasina(1, soz).toFixed(3), TF.turler[1].renk,
+         (TF.karakterBasina(1, soz)/TF.karakterBasina(0, soz)).toFixed(2) + '× doğal dil');
+    kart(bx + 280, 330, 260, 'KOD', TF.karakterBasina(2, soz).toFixed(3), TF.turler[2].renk,
+         (TF.karakterBasina(2, soz)/TF.karakterBasina(0, soz)).toFixed(2) + '× doğal dil');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('SÖZLÜK KİME BÜYÜYOR', bx + 270, 494, K.mut, 18);
+    txt('Birleşme sayısı arttıkça doğal dil hızla', bx + 18, 534, K.txt, 18, 'left');
+    txt('iyileşiyor: ' + TF.karakterBasina(0, 30).toFixed(3) + ' ten ' +
+        TF.karakterBasina(0, 300).toFixed(3) + ' e.', bx + 18, 562, K.txt, 18, 'left');
+    txt('Sayılar neredeyse hiç iyileşmiyor: ' + TF.karakterBasina(1, 30).toFixed(3) + ' ten',
+        bx + 18, 602, K.orange, 18, 'left');
+    txt(TF.karakterBasina(1, 300).toFixed(3) + ' e. Korpusta nadir oldukları için',
+        bx + 18, 630, K.orange, 18, 'left');
+    txt('birleşme bütçesinden pay alamıyorlar.', bx + 18, 658, K.orange, 18, 'left');
+    txt('Tokenizer bir tercihtir ve tercihin kimden yana', bx + 18, 698, K.mut, 17, 'left');
+    txt('olduğu korpusun bileşiminde yazılıdır.', bx + 18, 722, K.mut, 17, 'left');
+  }
+};
+
+
+/* ═══════════ LLM'İ SINIFLANDIRICIYA ÇEVİRMEK ═══════════
+   Sifir atisli LLM ile az veriyle egitilmis kucuk model arasindaki
+   kesisim, ve LLM skorlarinin kalibrasyonu. Kapali form + gercek egitim. */
+const LS2 = {};
+LS2.nler = [0, 8, 32, 128, 512, 2000];
+LS2.LLM_SIFIR = 0.72;      /* sifir atisli LLM · varsayim, olcum degil */
+LS2.LLM_AZ = 0.80;         /* birkac ornekli LLM · varsayim */
+LS2.D = 24;
+LS2.TEST = 3000;
+const _lsC = {};
+/* kucuk modelin ogrenme egrisi · GERCEK egitim (lojistik regresyon) */
+LS2.wGercek = (() => { const r = rng(9), w = [];
+  for (let i = 0; i < LS2.D; i++) w.push(omNormal(r));
+  const n = Math.sqrt(w.reduce((s, z) => s + z*z, 0));
+  return w.map(z => z/n); })();
+LS2.veri = (n, seed) => { const r = rng(seed), X = [], y = [];
+  for (let i = 0; i < n; i++){ const x = [];
+    for (let j = 0; j < LS2.D; j++) x.push(omNormal(r));
+    const z = x.reduce((s, v2, j) => s + v2*LS2.wGercek[j], 0);
+    y.push(r() < 1/(1 + Math.exp(-4.5*z)) ? 1 : 0);
+    X.push(x); }
+  return { X, y }; };
+LS2.egit = (X, y) => { const w = new Array(LS2.D).fill(0), n = X.length;
+  if (n === 0) return w;
+  for (let t = 0; t < 300; t++){ const g = new Array(LS2.D).fill(0);
+    for (let i = 0; i < n; i++){ let z = 0;
+      for (let j = 0; j < LS2.D; j++) z += w[j]*X[i][j];
+      const e = 1/(1 + Math.exp(-z)) - y[i];
+      for (let j = 0; j < LS2.D; j++) g[j] += e*X[i][j]; }
+    for (let j = 0; j < LS2.D; j++) w[j] -= 0.5*(g[j]/n + 0.03*w[j]); }
+  return w; };
+LS2.TEKRAR = 10;
+LS2.kucuk = n => {
+  const key = 'k' + n;
+  if (_lsC[key] !== undefined) return _lsC[key];
+  if (n === 0) return (_lsC[key] = 0.5);
+  const T = LS2.veri(LS2.TEST, 4321);
+  let top = 0;
+  for (let t = 0; t < LS2.TEKRAR; t++){
+    const E = LS2.veri(n, 100 + 31*t), w = LS2.egit(E.X, E.y);
+    let d = 0;
+    for (let i = 0; i < T.X.length; i++){ let z = 0;
+      for (let j = 0; j < LS2.D; j++) z += w[j]*T.X[i][j];
+      if ((z > 0 ? 1 : 0) === T.y[i]) d++; }
+    top += d/T.X.length; }
+  return (_lsC[key] = top/LS2.TEKRAR);
+};
+LS2.tavan = () => {
+  if (_lsC['tv'] !== undefined) return _lsC['tv'];
+  const T = LS2.veri(LS2.TEST, 4321);
+  let d = 0;
+  for (let i = 0; i < T.X.length; i++){ let z = 0;
+    for (let j = 0; j < LS2.D; j++) z += LS2.wGercek[j]*T.X[i][j];
+    if ((z > 0 ? 1 : 0) === T.y[i]) d++; }
+  return (_lsC['tv'] = d/T.X.length);
+};
+/* LLM sabit: veri miktarindan bagimsiz */
+LS2.llm = (n, azOrnek) => azOrnek ? LS2.LLM_AZ : LS2.LLM_SIFIR;
+LS2.kesisim = azOrnek => {
+  for (const n of LS2.nler) if (LS2.kucuk(n) > LS2.llm(n, azOrnek)) return n;
+  return -1;   /* hicbir butcede gecemiyor */
+};
+/* maliyet: LLM cagri basina, kucuk model neredeyse bedava */
+LS2.LLM_CAGRI = 0.002;     /* birim */
+LS2.KUCUK_CAGRI = 0.000002;
+LS2.ETIKET = 0.5;          /* etiket basina maliyet */
+LS2.hacimler = [1e3, 1e4, 1e5, 1e6, 1e7];
+LS2.llmMaliyet = h => h*LS2.LLM_CAGRI;
+LS2.kucukMaliyet = (h, n) => h*LS2.KUCUK_CAGRI + n*LS2.ETIKET;
+LS2.basabasHacim = n => n*LS2.ETIKET/(LS2.LLM_CAGRI - LS2.KUCUK_CAGRI);
+
+VIZ.llmSiniflandirici = s => {
+  clear();
+  const sahne = s.sahne || 'egri';
+  const ni = Math.max(0, Math.min(5, s.ni === undefined ? 3 : Math.round(s.ni)));
+  const n = LS2.nler[ni];
+  const hi = Math.max(0, Math.min(4, s.hi === undefined ? 2 : Math.round(s.hi)));
+  const hacim = LS2.hacimler[hi];
+  const az = !!s.az;
+  const kart = (x, y, wd, ad, deger, rnk, alt) => {
+    box(x, y, wd, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + wd/2, y + 28, K.mut, 15);
+    txt(deger, x + wd/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + wd/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'maliyet'){
+    baslikSerit('LLM SINIFLANDIRICI · FATURA',
+      'LLM çağrı başına ödenir. Küçük model bir kerelik etiket maliyeti ister, sonra bedavaya yakındır.', []);
+    const P = plot(rect(140, 200, 640, 400), 2.8, 7.2, 0, 4.6);
+    frame(P, 'aylık istek sayısı (log)', 'aylık maliyet (log)', [3, 4, 5, 6, 7], [0, 1, 2, 3, 4]);
+    cx.strokeStyle = K.orange; cx.lineWidth = 3.6; cx.beginPath();
+    for (let q = 0; q <= 100; q++){ const e = 2.8 + 4.4*q/100, h = Math.pow(10, e);
+      const y = P.sy(Math.log10(LS2.llmMaliyet(h)));
+      q ? cx.lineTo(P.sx(e), y) : cx.moveTo(P.sx(e), y); }
+    cx.stroke();
+    cx.strokeStyle = K.green; cx.lineWidth = 3.6; cx.beginPath();
+    for (let q = 0; q <= 100; q++){ const e = 2.8 + 4.4*q/100, h = Math.pow(10, e);
+      const y = P.sy(Math.log10(LS2.kucukMaliyet(h, n === 0 ? 8 : n)));
+      q ? cx.lineTo(P.sx(e), y) : cx.moveTo(P.sx(e), y); }
+    cx.stroke();
+    const bb = LS2.basabasHacim(n === 0 ? 8 : n);
+    dot(P.sx(Math.log10(bb)), P.sy(Math.log10(LS2.llmMaliyet(bb))), 8, K.yellow);
+    txt('turuncu: LLM · her çağrıda öde', P.R.x + 16, P.sy(4.5), K.orange, 16, 'left');
+    txt('yeşil: küçük model · etiket + neredeyse sıfır', P.R.x + 16, P.sy(4.2), K.green, 16, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'ETİKET SAYISI', String(n === 0 ? 8 : n), K.blue);
+    kart(bx + 280, 200, 260, 'BAŞABAŞ HACİM',
+         bb >= 1e6 ? (bb/1e6).toFixed(1) + 'M' : bb >= 1e3 ? (bb/1e3).toFixed(1) + 'K' : bb.toFixed(0),
+         K.purple, 'istek');
+    kart(bx, 330, 260, 'BU HACİMDE LLM', LS2.llmMaliyet(hacim).toFixed(0), K.orange);
+    kart(bx + 280, 330, 260, 'BU HACİMDE KÜÇÜK',
+         LS2.kucukMaliyet(hacim, n === 0 ? 8 : n).toFixed(0),
+         LS2.kucukMaliyet(hacim, n === 0 ? 8 : n) < LS2.llmMaliyet(hacim) ? K.green : K.red);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('İKİ FARKLI MALİYET ŞEKLİ', bx + 270, 494, K.mut, 18);
+    txt('LLM in maliyeti hacimle doğrusal artar.', bx + 18, 534, K.txt, 18, 'left');
+    txt('Küçük modelin maliyeti neredeyse tamamen', bx + 18, 562, K.txt, 18, 'left');
+    txt('bir kerelik etiketleme masrafıdır.', bx + 18, 590, K.txt, 18, 'left');
+    txt(String(n === 0 ? 8 : n) + ' etiketle başabaş noktası ' +
+        (bb >= 1e3 ? (bb/1e3).toFixed(1) + ' bin' : bb.toFixed(0)) + ' istek.',
+        bx + 18, 630, K.purple, 18, 'left');
+    txt('Üstünde küçük model her zaman ucuz ve fark', bx + 18, 668, K.green, 18, 'left');
+    txt('hacimle birlikte açılmaya devam eder.', bx + 18, 696, K.green, 18, 'left');
+  }
+
+  else {
+    baslikSerit('LLM SINIFLANDIRICI · NE ZAMAN KÜÇÜK MODELE GEÇMELİ',
+      'LLM veri miktarından bağımsız sabit. Küçük model etiketle öğreniyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 5.35, 0.45, 0.95);
+    frame(P, 'etiketli örnek sayısı', 'doğruluk', [], [0.5, 0.6, 0.7, 0.8, 0.9]);
+    LS2.nler.forEach((nv, i) => txt(String(nv), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    cx.strokeStyle = K.green; cx.lineWidth = 3.6; cx.beginPath();
+    LS2.nler.forEach((nv, i) => { const y = P.sy(LS2.kucuk(nv));
+      i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+    cx.stroke();
+    LS2.nler.forEach((nv, i) => dot(P.sx(i), P.sy(LS2.kucuk(nv)), 5, K.green));
+    [[LS2.LLM_SIFIR, K.orange, 'sıfır atışlı LLM'],
+     [LS2.LLM_AZ, K.blue, 'birkaç örnekli LLM']].forEach(([val, renk, ad], gi) => {
+      cx.strokeStyle = renk; cx.lineWidth = 3; cx.setLineDash([7, 5]);
+      cx.beginPath(); cx.moveTo(P.R.x, P.sy(val)); cx.lineTo(P.R.x + P.R.w, P.sy(val)); cx.stroke();
+      cx.setLineDash([]);
+      txt(ad + ' %' + (100*val).toFixed(0), P.R.x + P.R.w - 14, P.sy(val) - 12, renk, 16, 'right'); });
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([4, 4]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(LS2.tavan()));
+    cx.lineTo(P.R.x + P.R.w, P.sy(LS2.tavan())); cx.stroke();
+    cx.setLineDash([]);
+    txt('gürültü tavanı %' + (100*LS2.tavan()).toFixed(1), P.R.x + 16, P.sy(LS2.tavan()) - 12, K.mut, 15, 'left');
+    txt('yeşil: küçük model', P.R.x + 16, P.sy(0.47), K.green, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'ETİKET SAYISI', String(n), K.blue);
+    kart(bx + 280, 200, 260, 'KÜÇÜK MODEL', '%' + (100*LS2.kucuk(n)).toFixed(1),
+         LS2.kucuk(n) > LS2.LLM_SIFIR ? K.green : K.orange);
+    kart(bx, 330, 260, 'SIFIR ATIŞLI LLM', '%' + (100*LS2.LLM_SIFIR).toFixed(0), K.orange);
+    kart(bx + 280, 330, 260, 'KESİŞİM', String(LS2.kesisim(false)) + ' etiket', K.purple,
+         'sıfır atışlıyı geçtiği');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('LLM BİR TABAN ÇİZGİSİDİR', bx + 270, 494, K.mut, 18);
+    txt('LLM in doğruluğu etiket sayısından bağımsız:', bx + 18, 534, K.txt, 18, 'left');
+    txt('veri toplamadan hemen bir taban verir.', bx + 18, 562, K.txt, 18, 'left');
+    txt('Küçük model ' + LS2.kesisim(false) + ' etiketle sıfır atışlıyı,',
+        bx + 18, 602, K.green, 18, 'left');
+    txt(LS2.kesisim(true) + ' etiketle birkaç örnekliyi geçiyor.', bx + 18, 630, K.green, 18, 'left');
+    txt('Asıl soru "hangisi daha iyi" değil, "kaç etiket', bx + 18, 670, K.mut, 17, 'left');
+    txt('toplayabilirim".', bx + 18, 696, K.mut, 17, 'left');
+  }
+};
+
+
+/* ═══════════ AI MÜHENDİSLİĞİ vs KLASİK ML ═══════════
+   Iki calisma bicimini emek ve zaman dagilimiyla karsilastiriyoruz.
+   Sayilar varsayim degil, dersin kendi olcumlerinden toplaniyor. */
+const AV = {};
+/* asamalar ve iki yaklasimda gorece emek payi */
+AV.asamalar = [
+  { ad:'problem tanımı',        ml: 10, ai: 14, renk:'#a855f7' },
+  { ad:'veri toplama + etiket', ml: 32, ai:  6, renk:'#ef4444' },
+  { ad:'özellik mühendisliği',  ml: 18, ai:  2, renk:'#f97316' },
+  { ad:'model eğitimi',         ml: 20, ai:  3, renk:'#3b82f6' },
+  { ad:'prompt / bağlam tasarımı', ml: 0, ai: 22, renk:'#22c55e' },
+  { ad:'değerlendirme',         ml: 12, ai: 26, renk:'#eab308' },
+  { ad:'dağıtım + izleme',      ml:  8, ai: 27, renk:'#14b8a6' },
+];
+AV.toplamML = () => AV.asamalar.reduce((a, x) => a + x.ml, 0);
+AV.toplamAI = () => AV.asamalar.reduce((a, x) => a + x.ai, 0);
+/* dersten toplanan sayilarla kurulan karsilastirma tablosu */
+AV.satirlar = [
+  { konu:'Veri ihtiyacı', ml:'binlerce etiket', ai:'0 – birkaç yüz',
+    kanit:'llm-siniflandirici: 128 etikette küçük model önde' },
+  { konu:'İlk çalışan sürüm', ml:'haftalar', ai:'saatler',
+    kanit:'talimat-ayar: 50 örnekle beş görev %100' },
+  { konu:'Birim maliyet', ml:'neredeyse sıfır', ai:'çağrı başına',
+    kanit:'acik-kapali: başabaş 728M token/ay' },
+  { konu:'Belirleyici katman', ml:'özellik + model', ai:'getirme + değerlendirme',
+    kanit:'yigin: gecikmenin %86.7 si modelde, kalite getirmede' },
+  { konu:'Başarısızlık şekli', ml:'sessiz doğruluk kaybı', ai:'akıcı ama yanlış',
+    kanit:'cot: ayrışmayan görevde %10.4 te sabit' },
+  { konu:'Değerlendirme', ml:'sabit test kümesi', ai:'sürekli, örneklemeli',
+    kanit:'leaderboard: 100 modelde birinci 3.11 puan şişik' },
+];
+
+
+VIZ.aiVsMl = s => {
+  clear();
+  const sahne = s.sahne || 'emek';
+  const ai = Math.max(0, Math.min(AV.asamalar.length - 1,
+    s.ai2 === undefined ? 4 : Math.round(s.ai2)));
+  const kart = (x, y, wd, ad, deger, rnk, alt) => {
+    box(x, y, wd, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + wd/2, y + 28, K.mut, 15);
+    txt(deger, x + wd/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + wd/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'tablo'){
+    baslikSerit('AI MÜHENDİSLİĞİ vs KLASİK ML · ALTI EKSEN',
+      'Her satırın sağındaki kanıt, bu müfredatta ölçtüğün bir sonuç.', []);
+    txt('KONU', 170, 232, K.mut, 16, 'left');
+    txt('KLASİK ML', 440, 232, K.blue, 16, 'left');
+    txt('AI MÜHENDİSLİĞİ', 700, 232, K.green, 16, 'left');
+    txt('BU MÜFREDATTA ÖLÇTÜĞÜN', 1000, 232, K.mut, 16, 'left');
+    cx.strokeStyle = K.axis; cx.lineWidth = 1.5;
+    cx.beginPath(); cx.moveTo(160, 248); cx.lineTo(1440, 248); cx.stroke();
+    AV.satirlar.forEach((r, i) => {
+      const y = 288 + i*72;
+      txt(r.konu, 170, y, K.txt, 18, 'left', 700);
+      txt(r.ml, 440, y, K.blue, 17, 'left');
+      txt(r.ai, 700, y, K.green, 17, 'left');
+      txt(r.kanit, 1000, y, K.mut, 15, 'left');
+      cx.strokeStyle = 'rgba(148,163,184,.15)'; cx.lineWidth = 1;
+      cx.beginPath(); cx.moveTo(160, y + 22); cx.lineTo(1440, y + 22); cx.stroke(); });
+    txt('İki sütun rakip değil: aynı problemin farklı yerlerinde duruyorlar.',
+        170, 740, K.mut, 18, 'left');
+  }
+
+  else {
+    const A = AV.asamalar[ai];
+    baslikSerit('AI MÜHENDİSLİĞİ vs KLASİK ML · EMEK NEREYE GİDİYOR',
+      'Aynı problemi iki farklı çalışma biçimiyle çözerken emeğin dağılımı.', []);
+    const P = plot(rect(150, 210, 1250, 380), -0.7, 6.7, 0, 36);
+    frame(P, '', 'emek payı (%)', [], [0, 10, 20, 30]);
+    const gen = (P.R.w/7)*0.30;
+    AV.asamalar.forEach((a, i) => {
+      const x = P.sx(i), y0 = P.sy(0);
+      const yM = P.sy(a.ml), yA = P.sy(a.ai);
+      box(x - gen - 4, yM, gen, y0 - yM, 'rgba(59,130,246,.30)',
+          i === ai ? K.blue : 'rgba(59,130,246,.6)', i === ai ? 3 : 2);
+      box(x + 4, yA, gen, y0 - yA, 'rgba(34,197,94,.30)',
+          i === ai ? K.green : 'rgba(34,197,94,.6)', i === ai ? 3 : 2);
+      if (a.ml > 0) txt(a.ml, x - gen/2 - 4, yM - 10, K.blue, 15);
+      if (a.ai > 0) txt(a.ai, x + gen/2 + 4, yA - 10, K.green, 15);
+      const kelime = a.ad.split(' ');
+      kelime.forEach((w, q) =>
+        txt(w, x, P.R.y + P.R.h + 26 + q*20, i === ai ? K.txt : K.mut, 14,
+            'center', i === ai ? 700 : 400)); });
+    txt('mavi: klasik ML', P.R.x + 16, P.R.y + 28, K.blue, 17, 'left');
+    txt('yeşil: AI mühendisliği', P.R.x + 16, P.R.y + 54, K.green, 17, 'left');
+    const bx = 150;
+    kart(bx, 660, 300, 'SEÇİLİ AŞAMA', A.ad, A.renk);
+    kart(bx + 320, 660, 220, 'KLASİK ML', '%' + A.ml, K.blue);
+    kart(bx + 560, 660, 220, 'AI MÜH.', '%' + A.ai, K.green);
+    kart(bx + 800, 660, 220, 'FARK', (A.ai - A.ml > 0 ? '+' : '') + (A.ai - A.ml),
+         A.ai > A.ml ? K.green : K.blue);
+    box(bx + 1040, 660, 210, 106, 'rgba(7,10,15,.7)', K.axis, 2);
+    txt('TOPLAM', bx + 1145, 688, K.mut, 15);
+    txt(AV.toplamML() + ' / ' + AV.toplamAI(), bx + 1145, 726, K.mut, 22);
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
