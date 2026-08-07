@@ -6851,3 +6851,212 @@ DERSLER_EN['regresyon'] = {
   },
   ],
 };
+
+DERSLER_EN['spline'] = {
+  ad:'Splines: bending the curve piece by piece',
+  alt:'Two forms of flexibility compete on the same parameter budget. At 19 parameters a spline makes 4 times less error than a polynomial and its worst deviation is under a third.',
+  kaynaklar:[{"y":"Hastie, Tibshirani, Friedman","t":"2009","b":"The Elements of Statistical Learning, Sections 5.1-5.2","n":"Springer"},
+             {"y":"Runge, C.","t":"1901","b":"Über empirische Funktionen und die Interpolation zwischen äquidistanten Ordinaten","n":"Zeitschrift für Mathematik und Physik, 46"},
+             {"y":"de Boor, C.","t":"1978","b":"A Practical Guide to Splines","n":"Springer"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'Every coefficient of a polynomial affects everywhere',
+    goal:'You will see why a global model changes everywhere at once when its flexibility is raised.',
+    todo:'Raise the number of parameters. What does the curve do at the edges?',
+    kind:'controls', viz:'spline', h:700, xp:30, state:{spMi:0},
+    body:'<p>The dashed grey curve is the true function: a sharp peak in the middle and flat at the edges. There are 40 noisy measurements.</p>' +
+         '<p>A polynomial fits that curve by raising its <b>degree</b>. But when you change one coefficient of a polynomial the whole curve changes. Raising the degree to catch the peak in the middle produces unwanted oscillations at the edges.</p>' +
+         '<p>Look at the error: 1.73e-2 at 6 parameters, 3.71e-3 at 14, 2.40e-3 at 30. It improves but slows down.</p>' +
+         '<p>The real issue is the <b>worst deviation</b>: 0.204 at 14 parameters and 0.159 at 30. You doubled the parameters and the worst error barely moved.</p>',
+    learned:'<b>A polynomial is a global model: every coefficient affects the whole curve.</b><br><br>So fitting one region breaks another. Runge showed this in 1901: with equally spaced points the oscillation at the edges grows as the degree rises.<br><br>The worst deviation is 0.204 at 14 parameters and 0.159 at 30. The parameters doubled and the worst error stayed almost the same.',
+    controls:[{k:'param', lb:'NUMBER OF PARAMETERS', min:6, max:30, step:1, val:6}],
+  },
+  {
+    t:'A spline: add a knot and bend only there',
+    goal:'You will see why using a local basis gives a better result on the same budget.',
+    todo:'Drag the METHOD slider to SPLINE, then raise the number of parameters. The green notches at the bottom are the knots.',
+    kind:'controls', viz:'spline', h:700, xp:45,
+    body:'<p>A cubic spline does the same job differently. It cuts the curve at <b>knot</b> points and fits a separate cubic polynomial to each piece, in such a way that the curve and its derivatives stay continuous where the pieces meet.</p>' +
+         '<p>The critical difference: a knot\'s coefficient affects only <b>its own region</b>. Adding a knot in the middle does not disturb the edges.</p>' +
+         '<p>Compare at 19 parameters: the polynomial error is <b>3.06e-3</b> and the spline error <b>7.37e-4</b>. The spline is more than four times better. The worst deviation is <b>0.050</b> against 0.181, less than a third.</p>',
+    learned:'<b>A spline is a local basis: adding a knot affects only that region.</b><br><br>At the same 19 parameters the spline makes an error of 7.37e-4 and the polynomial 3.06e-3. The difference in the worst deviation is sharper: 0.050 against 0.181.<br><br>Cubic splines are preferred because they are the lowest degree choice with a continuous second derivative, that is the cheapest curve that looks smooth to the eye.',
+    controls:[{k:'param', lb:'NUMBER OF PARAMETERS', min:6, max:30, step:1, val:6},
+              {k:'spMi', lb:'METHOD', min:0, max:1, step:1, val:0}],
+  },
+  {
+    t:'Splines saturate too',
+    goal:'You will see why more knots stop helping past a certain point.',
+    todo:'In spline mode raise the parameters from 19 to 30. Does the error improve?',
+    kind:'controls', viz:'spline', h:700, xp:50,
+    body:'<p>The spline curve flattens out after 19 parameters: 7.37e-4 at 19, 7.61e-4 at 24, 7.59e-4 at 30. Adding knots no longer buys anything.</p>' +
+         '<p>The reason is familiar: the noise floor. The data has noise with a standard deviation of 0.05 and the model is now chasing the noise rather than the true curve.</p>' +
+         '<p>So splines are not magic and they are subject to the same bias-variance trade-off. Their difference is that they <b>place the same amount of flexibility more cleverly</b>.</p>' +
+         '<p>In practice the number of knots is also chosen by cross validation. As an alternative a <b>smoothing spline</b> is used: a knot is placed at every data point but a penalty is applied to the curvature, that is the curve version of the ridge idea.</p>',
+    learned:'<b>A spline lets you put the flexibility where you need it.</b><br><br>The number of knots is a hyperparameter chosen by cross validation; on this data the gain ends after 19 parameters (from 7.37e-4 to 7.59e-4).<br><br>A smoothing spline makes that choice differently: it puts a knot at every point but applies a curvature penalty. Its penalty coefficient λ plays exactly the same role as the λ in the ridge lesson.',
+    controls:[{k:'param', lb:'NUMBER OF PARAMETERS', min:6, max:30, step:1, val:19},
+              {k:'spMi', lb:'METHOD', min:0, max:1, step:1, val:1}],
+    quiz:{
+      q:'In a time series the curve is flat almost everywhere but changes very fast in one region. Which approach?',
+      opts:[
+        {t:'Raise the degree of the polynomial',
+         why:'The high degree needed to catch the fast changing region creates oscillation in the flat regions. In this lesson the polynomial\'s worst deviation stayed at 0.159 even with 30 parameters, because the error piles up at the edges of the flat regions.'},
+        {t:'Place the knots unevenly, densely in the fast changing region',
+         why:'Correct. That is the real power of a spline: you can put the flexibility where it is needed. A few knots suffice in the flat regions and many are put in the fast changing one. In practice the knots are usually placed at the percentiles of the data, so they automatically get denser where the data is dense.'},
+        {t:'Split the data in two and build two separate models',
+         why:'It can work, but the curve breaks at the join; the continuity of the derivative is lost and jumps appear in the predictions. A spline imposes a continuity condition precisely to prevent that break.'},
+        {t:'Collect more data',
+         why:'It lowers the noise floor and improves every model, but it does not solve the source of the problem. A global polynomial will keep breaking one region while fitting another even with infinite data.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['pekistirmeli'] = {
+  ad:'Reinforcement learning: learning from reward',
+  alt:'No labels, no right answers. Only +1 for reaching the goal and −1 for falling in the pit. The agent solves it on its own in 400 episodes.',
+  kaynaklar:[{"y":"Sutton, R. S. & Barto, A. G.","t":"2018","b":"Reinforcement Learning: An Introduction, 2nd edition, Section 6.5","n":"MIT Press","u":"http://incompleteideas.net/book/the-book.html"},
+             {"y":"Watkins, C. J. C. H. & Dayan, P.","t":"1992","b":"Q-learning","n":"Machine Learning, 8(3-4)"},
+             {"y":"Mnih, V. et al.","t":"2015","b":"Human-level Control through Deep Reinforcement Learning","n":"Nature, 518"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'No teacher, only reward',
+    goal:'You will meet a form of learning that is fundamentally different from supervised learning.',
+    todo:'Look at the grid. The green arrows are the moves the agent learned and the yellow line is the path it follows.',
+    kind:'controls', viz:'qOgrenme', h:720, xp:25, state:{eps:0.15, gamma:0.95},
+    body:'<p>In every lesson so far there was a <b>right answer</b>: a y for every x. Here there is none.</p>' +
+         '<p>The agent starts in the S cell at the bottom left. It has four moves. Until it reaches the goal (+1) or falls into the pit (−1) it <b>receives no feedback at all</b>: the reward of the intermediate steps is zero.</p>' +
+         '<p>Nobody tells it "go up". It just tries, sees the result, and assigns a <b>value</b> to every cell-move pair. Q-learning\'s update rule is a single line:</p>' +
+         '<p style="text-align:center"><b>Q(s,a) ← Q(s,a) + α · [ r + γ·max<sub>a\'</sub>Q(s\',a\') − Q(s,a) ]</b></p>' +
+         '<p>The numbers in the corners are the learned values. Notice how the reward seeps backwards from the goal.</p>',
+    learned:'<b>In reinforcement learning there are no labels, there is delayed reward.</b><br><br>The agent learns from nobody which move is right; it sees the result and propagates value backwards. This is called the <b>credit assignment problem</b>: to which move do you attribute a reward that arrives ten moves later?<br><br>Q-learning\'s answer: to every move, write the discounted value of the best move that follows it.',
+    controls:[{k:'bolum', lb:'EPISODES TRAINED', min:20, max:400, step:20, val:400}],
+  },
+  {
+    t:'Nothing is learned without exploration',
+    goal:'You will see why doing only what you already know to be best means learning nothing.',
+    todo:'Lower the exploration rate to 0. Then raise it slowly. When does it start finding the goal?',
+    kind:'controls', viz:'qOgrenme', h:720, xp:45, state:{gamma:0.95, bolum:400},
+    body:'<p>The agent starts out believing every value is zero. If it always does <b>what it knows to be best</b> (ε = 0) it picks the first move to break the tie and does the same thing forever. It never sees the goal, so no value is ever updated.</p>' +
+         '<p><b>ε = 0:</b> the policy fails and the reward signal reached <b>0 cells</b>. The agent learned nothing.</p>' +
+         '<p>Making a random move with probability ε breaks that vicious circle. At <b>ε = 0.05</b> the agent finds the 10 step shortest path and wins 96% of the episodes during training.</p>',
+    learned:'<b>No exploration, no learning.</b> At ε = 0 the reward signal reaches no cell at all and the agent is left with zero information.<br><br>This is called the <b>exploration-exploitation dilemma</b>: do you do the best thing you know, or do you look to see whether something better exists? You cannot do both at once.<br><br>ε-greedy is the simplest solution to that dilemma: try something random with probability ε and do the best thing the rest of the time.',
+    controls:[{k:'eps', lb:'EXPLORATION RATE ε', min:0, max:0.9, step:0.05, val:0}],
+  },
+  {
+    t:'Too much exploration is not free either',
+    goal:'You will understand where the cost of exploration shows up and why the policy is still learned.',
+    todo:'Raise ε to 0.9. Is the policy still learned? And what happened to the success rate during training?',
+    kind:'controls', viz:'qOgrenme', h:720, xp:50, state:{gamma:0.95, bolum:400},
+    body:'<p>As ε grows the agent makes more mistakes during training. The success rate over the last 50 episodes:</p>' +
+         '<p><b>ε=0.05:</b> 96.0% &nbsp;·&nbsp; <b>ε=0.15:</b> 92.0% &nbsp;·&nbsp; <b>ε=0.5:</b> 42.0% &nbsp;·&nbsp; <b>ε=0.9:</b> <b>6.0%</b></p>' +
+         '<p>But note this: at ε=0.9 the agent wins only 6% of the episodes, and yet <b>the policy it learned is still the 10 step shortest path</b>. On top of that the reward signal reached all 31 cells, against 18 at ε=0.05.</p>' +
+         '<p>The reason is that Q-learning is <b>off-policy</b>: the update rule uses not the move actually made but the <b>max</b>, that is the best move. So the agent can learn a sober policy while walking around drunk.</p>',
+    learned:'<b>Q-learning is off-policy: it learns a policy different from the one it behaves with.</b><br><br>At ε=0.9 the agent wins only 6% of the training episodes but the policy it learns is still the 10 step shortest path.<br><br>The cost of exploration is not in the learned policy but in <b>the bill paid while learning</b>. On a real robot or a live recommendation system that bill is real money, which is why ε is usually decayed over time.',
+    controls:[{k:'eps', lb:'EXPLORATION RATE ε', min:0, max:0.9, step:0.05, val:0.15}],
+  },
+  {
+    t:'The discount factor: how far the reward reaches',
+    goal:'You will see why γ is not just a setting but the thing that determines the agent\'s horizon.',
+    todo:'Lower γ to 0.5. Look at the value in the start cell and at how many cells the signal reached.',
+    kind:'controls', viz:'qOgrenme', h:720, xp:55, state:{eps:0.15, bolum:400},
+    body:'<p>γ sets the present value of a future reward. If the goal is 10 steps away, the value of the start cell is roughly <b>γ¹⁰</b>.</p>' +
+         '<p><b>γ=0.5:</b> Q(start) = 0.0020, theoretical γ¹⁰ = 0.0010 &nbsp;·&nbsp; the signal reached 11 cells<br>' +
+         '<b>γ=0.9:</b> 0.3874, theoretical 0.3487 &nbsp;·&nbsp; 19 cells<br>' +
+         '<b>γ=0.95:</b> 0.6302, theoretical 0.5987 &nbsp;·&nbsp; 19 cells<br>' +
+         '<b>γ=1:</b> 1.0000, theoretical 1.0000 &nbsp;·&nbsp; 19 cells</p>' +
+         '<p>At γ=0.5 the reward becomes <b>invisible</b> from the starting point. In a larger maze the signal would be lost entirely on the way and the agent would never learn.</p>' +
+         '<p>A small note of honesty: the measured values come out slightly above the theoretical γ¹⁰. That is called <b>maximisation bias</b>: because the max in the update rule picks the largest of a set of noisy estimates, it drifts systematically upwards.</p>',
+    learned:'<b>γ determines how far the agent can see.</b> If the goal is k steps away, the value of the start is roughly γ<sup>k</sup>.<br><br>With γ=0.5 a reward 10 steps away falls to 0.0020 and the signal is confined to 11 cells; with γ=0.95 it is 0.6302 and 19 cells.<br><br>In long horizon problems (chess, robot walking) γ is set at 0.99 or above. In short horizon ones (an ad click) even 0.9 can be too much.',
+    controls:[{k:'gamma', lb:'DISCOUNT FACTOR γ', min:0.5, max:1, step:0.05, val:0.95}],
+    quiz:{
+      q:'You are training a chess agent. The reward only comes at the end of the game and a typical game lasts 80 moves. What happens if you choose γ = 0.9?',
+      opts:[
+        {t:'It will be fine, 0.9 is a standard value',
+         why:'Being standard does not mean it suits this problem. γ is chosen according to the length of the problem; for an 80 move game 0.9 is a very short horizon.'},
+        {t:'The value of the first moves becomes almost zero and the agent cannot learn the opening',
+         why:'Correct. 0.9^80 is about 0.0002. So the value of winning the game practically vanishes by the time it reaches the first move. You saw the same thing in this lesson with γ=0.5 over 10 steps: Q(start) falls to 0.0020 and the signal is confined to 11 cells. In long horizon problems γ is set at 0.99 or above.'},
+        {t:'The agent thinks too far ahead and misses short term moves',
+         why:'That is the risk of a large γ. 0.9 is on the contrary a small value and makes the agent too short sighted.'},
+        {t:'γ affects the learning rate, not the horizon',
+         why:'The learning rate is α, a different parameter. γ sets the present value of a future reward, that is the horizon.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['a-yildiz'] = {
+  ad:'A* search: finding a path cleverly with a heuristic',
+  alt:'The same maze, three methods. Dijkstra opens 311 cells and finds the shortest path; greedy opens 117 but brings back a path 34% longer. A* is not somewhere between the two, it takes the best of both.',
+  kaynaklar:[{"y":"Hart, P. E., Nilsson, N. J. & Raphael, B.","t":"1968","b":"A Formal Basis for the Heuristic Determination of Minimum Cost Paths","n":"IEEE Trans. Systems Science and Cybernetics, 4(2)"},
+             {"y":"Russell, S. & Norvig, P.","t":"2020","b":"Artificial Intelligence: A Modern Approach, 4th edition, Section 3.5","n":"Pearson"},
+             {"y":"Pohl, I.","t":"1970","b":"Heuristic Search Viewed as Path Finding in a Graph (weighted A*)","n":"Artificial Intelligence, 1(3-4)"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'If the map is known there is no need to learn',
+    goal:'You will see the fundamental difference between reinforcement learning and search.',
+    todo:'With Dijkstra selected, look: the blue cells are the ones expanded. It expands almost everywhere.',
+    kind:'controls', viz:'aramaYildiz', h:900, xp:25, state:{w:1},
+    body:'<p>In the previous lesson the agent did not know the map and learned it by trying 400 episodes. Here the map is <b>completely known</b>: where the walls are, where the goal is, what every move costs.</p>' +
+         '<p>So there is no need to learn. The problem is different: <b>find the shortest path while doing the least work.</b></p>' +
+         '<p>Dijkstra gives the simplest answer: expand by distance from the start, that is spread equally in every direction. The result is a guaranteed shortest path of <b>35 steps</b>. The price is expanding <b>311</b> of the 348 walkable cells.</p>' +
+         '<p>Note: it knows where the goal is but never uses that information.</p>',
+    learned:'<b>Dijkstra knows where the goal is but does not use it.</b> It spreads equally in every direction, expands 311 of 348 cells, and guarantees the shortest path (35 steps).<br><br>This is the fundamental difference from reinforcement learning: there the model was unknown and learned by trying, here the model is known and merely computed.',
+    controls:[{k:'tur', lb:'METHOD', min:0, max:2, step:1, val:0}],
+  },
+  {
+    t:'Trusting the heuristic alone',
+    goal:'You will see why heading blindly towards the goal is fast but wrong.',
+    todo:'Select GREEDY. How many cells does it expand? How many steps is the path it finds?',
+    kind:'controls', viz:'aramaYildiz', h:900, xp:45, state:{w:1},
+    body:'<p>Greedy search does the exact opposite: it does not care about the past at all and looks only at <b>the estimated remaining distance to the goal</b>. That is called a <b>heuristic</b>; here we use the Manhattan distance.</p>' +
+         '<p>The result is very fast: it expands only <b>117</b> cells, a third of Dijkstra\'s.</p>' +
+         '<p>But the path it finds is <b>47 steps</b>. The shortest is 35. So a path <b>34% longer</b>.</p>' +
+         '<p>The reason is the design of the maze: the short path goes through the passage above, but greedy search tries to head straight for the goal, veers downwards and has to come back.</p>',
+    learned:'<b>Greedy search is fast but has no guarantee.</b> It expands 117 cells and finds a path of 47 steps; the shortest is 35.<br><br>The reason is that it never asks "what have I spent to get here". It only looks at "what is left from here", and that makes it think a long detour is cheap.',
+    controls:[{k:'tur', lb:'METHOD', min:0, max:2, step:1, val:0}],
+  },
+  {
+    t:'A*: add the two together',
+    goal:'You will see why combining the two pieces of information is both fast and guaranteed.',
+    todo:'Select A*. Compare the cells expanded and the path length with the other two.',
+    kind:'controls', viz:'aramaYildiz', h:900, xp:50, state:{w:1},
+    body:'<p>A*\'s idea is a single line:</p>' +
+         '<p style="text-align:center"><b>f(n) = g(n) + h(n)</b></p>' +
+         '<p><b>g(n):</b> the cost really spent from the start to here. What Dijkstra looks at.<br>' +
+         '<b>h(n):</b> the estimated cost remaining from here to the goal. What greedy looks at.</p>' +
+         '<p>The result: <b>245 cells, 35 steps.</b> It does 21% less work than Dijkstra and still finds the path with a guarantee.</p>' +
+         '<p>The guarantee has a condition: the heuristic must <b>never overestimate the real cost</b>. That is called admissibility. The Manhattan distance is admissible here, because with walls in the way the real path is always longer than or equal to the Manhattan distance.</p>',
+    learned:'<b>A* = the past cost plus an estimate of the future.</b> f(n) = g(n) + h(n).<br><br>In this maze it expands 245 cells (Dijkstra 311) and still finds the 35 step shortest path.<br><br>The optimality guarantee depends on the heuristic being <b>admissible</b>: it must never estimate the real remaining cost as larger than it is. Take h(n) = 0 and A* becomes exactly Dijkstra.',
+    controls:[{k:'tur', lb:'METHOD', min:0, max:2, step:1, val:0}],
+  },
+  {
+    t:'Trusting the heuristic too much',
+    goal:'You will see the dial that trades speed for optimality.',
+    todo:'With A* selected, raise the weight. How many steps is the path at 3?',
+    kind:'controls', viz:'aramaYildiz', h:900, xp:55,
+    body:'<p>Writing f(n) = g(n) + <b>w</b>·h(n) and growing w means trusting the heuristic more.</p>' +
+         '<p><b>w=1:</b> 245 cells, 35 steps, optimal<br>' +
+         '<b>w=1.5:</b> <b>154</b> cells, 35 steps, still optimal<br>' +
+         '<b>w=3:</b> 153 cells, <b>37 steps</b>, no longer optimal</p>' +
+         '<p>At w=1.5 the workload nearly halves and the path is still the shortest. That is not a guarantee, it just happened that way in this maze. The theoretical guarantee is this: weighted A* finds a path at most <b>w times</b> longer than the shortest.</p>',
+    learned:'<b>Weighted A* trades speed for optimality and the bound of the trade is known.</b><br><br>At w=1.5 the cells expanded fall from 245 to 154; at w=3 the path becomes 37 steps instead of 35.<br><br>The theoretical guarantee: the path found is at most <b>w times</b> longer than the shortest. This is why in games and robotics w is usually set between 1.2 and 2: the loss is invisible and the gain is measurable.',
+    controls:[{k:'tur', lb:'METHOD', min:0, max:2, step:1, val:1},
+              {k:'w', lb:'HEURISTIC WEIGHT', min:1, max:3, step:0.5, val:1}],
+    quiz:{
+      q:'In a game 200 characters find paths at the same time and you have a budget of 16 milliseconds per frame. A path being a few steps longer escapes the player\'s eye. What do you do?',
+      opts:[
+        {t:'Dijkstra, because it guarantees the shortest path',
+         why:'The guarantee is the most expensive feature here. Dijkstra expands 311 of 348 cells in this maze; multiplied by 200 characters the frame budget blows up. And the player does not see a difference of a few steps anyway.'},
+        {t:'Weighted A*, because it halves the cells expanded and lengthens the path by at most a factor of w',
+         why:'Correct. In this maze w=1.5 goes from 245 cells to 154 and the path still came out at 35 steps. The only thing guaranteed is that the path will be at most w times longer, which is more than good enough for a game. This is the standard approach in game engines.'},
+        {t:'Greedy search, because it expands the fewest cells',
+         why:'It is true that it expands the fewest (117), but the path it finds is 47 steps, 34% longer. Characters visibly taking absurd routes is a flaw the player will notice.'},
+        {t:'Teach path finding with Q-learning',
+         why:'The map is already known. Trying to learn a known model is trying to estimate something that can be computed; it is both slow and unnecessary.'},
+      ], correct:1 },
+  },
+  ],
+};
