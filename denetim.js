@@ -2717,6 +2717,119 @@ console.log('═══ ZİNCİRLEME PROMPT ═══');
             ZP.toplamCagri(ZP.EPS, rv, fv, ZP.Rler[i-1]) - 1e-12) ihlal++;
     iddia('ZP · çağrı sayısı tekrar hakkında monoton artıyor', 0, ihlal, 0); }
 }
+console.log('═══ DİLBİLGİSİ KISITI ═══');
+{
+  iddia('GR · toplam dizi (3⁵)', 243, GR.tumDiziler.length, 0);
+  iddia('GR · geçerli dizi', 16, GR.V.length, 0);
+  /* dilbilgisi gercekten iki kurali birden uyguluyor mu */
+  { let tekrar = 0, sonC = 0;
+    GR.V.forEach(x => { for (let i = 1; i < GR.L; i++) if (x[i] === x[i-1]) tekrar++;
+      if (x[GR.L-1] !== 2) sonC++; });
+    iddia('GR · geçerli dizilerde ard arda tekrar yok', 0, tekrar, 0);
+    iddia('GR · geçerli diziler C ile bitiyor', 0, sonC, 0); }
+  /* iki dagilim da olasilik dagilimi mi */
+  { const A = GR.analiz(1);
+    let sg = 0, sy = 0;
+    GR.V.forEach(x => { sg += A.G.get(x.join('')); sy += A.Y.get(x.join('')); });
+    iddia('GR · küresel dağılım toplamı', 1, sg, 9);
+    iddia('GR · yerel dağılım toplamı', 1, sy, 9); }
+
+  /* 1. adım · geçerlilik */
+  iddia('GR · P(geçerli) · w=0', 6.58, 100*GR.analiz(0).Pg, 2);
+  iddia('GR · P(geçerli) · w=1', 3.18, 100*GR.analiz(1).Pg, 2);
+  iddia('GR · P(geçerli) · w=2', 0.46, 100*GR.analiz(2).Pg, 2);
+  iddia('GR · beklenen deneme · w=0', 15.2, 1/GR.analiz(0).Pg, 1);
+  iddia('GR · beklenen deneme · w=1', 31.5, 1/GR.analiz(1).Pg, 1);
+  iddia('GR · beklenen deneme · w=2', 219.3, 1/GR.analiz(2).Pg, 1);
+  /* egilim arttikca gecerlilik dusuyor */
+  { let ihlal = 0;
+    for (let i = 1; i < GR.wler.length; i++)
+      if (GR.analiz(GR.wler[i]).Pg >= GR.analiz(GR.wler[i-1]).Pg) ihlal++;
+    iddia('GR · eğilim arttıkça geçerlilik düşüyor', 0, ihlal, 0); }
+  /* serbest acgozlu her w de gecersiz, maskeli her w de gecerli */
+  { let serbestGecerli = 0, maskeliGecersiz = 0;
+    GR.wler.forEach(wv => { const A = GR.analiz(wv);
+      if (GR.gecerli(A.serbest)) serbestGecerli++;
+      if (!GR.gecerli(A.maskeli)) maskeliGecersiz++; });
+    iddia('GR · serbest açgözlü hiçbir w de geçerli değil', 0, serbestGecerli, 0);
+    iddia('GR · maskeli açgözlü her w de geçerli', 0, maskeliGecersiz, 0); }
+  iddia('GR · serbest açgözlü AAAAA mı (A=0 sayısı)', 5,
+        GR.analiz(1).serbest.filter(z => z === 0).length, 0);
+  iddia('GR · maskeli açgözlü ABABC mi', 1,
+        GR.yaz(GR.analiz(1).maskeli.join('')) === 'ABABC' ? 1 : 0, 0);
+
+  /* 2. adım · iki dağılım farklı */
+  iddia('GR · TV uzaklığı · w=1', 0.1554, GR.analiz(1).tv, 4);
+  iddia('GR · TV uzaklığı · w=0 (düzgün model)', 0.1667, GR.analiz(0).tv, 4);
+  iddia('GR · TV uzaklığı · w=2', 0.2594, GR.analiz(2).tv, 4);
+  iddia('GR · ters dönen çift · w=1', 15, GR.analiz(1).ters, 0);
+  iddia('GR · ters dönen çift · w=0', 24, GR.analiz(0).ters, 0);
+  /* duzgun modelde bile sapma sifir degil */
+  iddia('GR · düzgün modelde sapma hâlâ var', 1, GR.analiz(0).tv > 0.1 ? 1 : 0, 0);
+  { const A = GR.analiz(1);
+    iddia('GR · ABABC küresel', 0.1405, A.G.get(A.gs[0]), 4);
+    iddia('GR · ABABC yerel', 0.2369, A.Y.get(A.gs[0]), 4);
+    iddia('GR · küresel 3. ACBAC mi', 1, GR.yaz(A.gs[2]) === 'ACBAC' ? 1 : 0, 0);
+    iddia('GR · yerel 3. ACABC mi', 1, GR.yaz(A.ys[2]) === 'ACABC' ? 1 : 0, 0);
+    /* metindeki iki deger */
+    let acbac = 0, acabc = 0;
+    GR.V.forEach(x => { const k = x.join('');
+      if (GR.yaz(k) === 'ACBAC'){ acbac = A.G.get(k); }
+      if (GR.yaz(k) === 'ACABC'){ acabc = A.G.get(k); } });
+    iddia('GR · ACBAC küresel', 0.1043, acbac, 4);
+    iddia('GR · ACABC küresel', 0.0797, acabc, 4);
+    iddia('GR · en olası dizi ikisinde de aynı', 1, A.gs[0] === A.ys[0] ? 1 : 0, 0); }
+
+  /* 3. adım · şişme kimliği */
+  { let enBuyuk = 0;
+    GR.wler.forEach(wv => { const A = GR.analiz(wv);
+      GR.V.forEach(x => { const k = x.join('');
+        enBuyuk = Math.max(enBuyuk, Math.abs(A.Y.get(k)/A.G.get(k) - A.Pg/A.Zc.get(k))); }); });
+    iddia('GR · kimlik: şişme = P(geçerli)/ΠZ (en büyük sapma × 1e15)', 0,
+          Math.round(enBuyuk*1e15)/1000, 2); }
+  iddia('GR · en çok şişen · w=1', 1.686, GR.analiz(1).enSisme, 3);
+  iddia('GR · en çok sönen · w=1', 0.444, GR.analiz(1).enSonme, 3);
+  iddia('GR · en çok şişen · w=0', 1.333, GR.analiz(0).enSisme, 3);
+  iddia('GR · en çok sönen · w=0', 0.667, GR.analiz(0).enSonme, 3);
+  /* daha az kutle korunan yol daha cok sisiyor: ters siralama tam uyumlu */
+  { const A = GR.analiz(1);
+    const dizi = GR.V.map(x => { const k = x.join('');
+      return { z: A.Zc.get(k), o: A.Y.get(k)/A.G.get(k) }; }).sort((a, b) => a.z - b.z);
+    let ihlal = 0;
+    for (let i = 1; i < dizi.length; i++) if (dizi[i].o > dizi[i-1].o + 1e-12) ihlal++;
+    iddia('GR · ΠZ arttıkça şişme monoton azalıyor', 0, ihlal, 0); }
+  /* sisme = 1 olan dizi ancak PZ = P(gecerli) ise olur */
+  { const A = GR.analiz(1);
+    let tam1 = 0;
+    GR.V.forEach(x => { const k = x.join('');
+      if (Math.abs(A.Y.get(k)/A.G.get(k) - 1) < 1e-9 &&
+          Math.abs(A.Zc.get(k) - A.Pg) > 1e-9) tam1++; });
+    iddia('GR · şişme 1 ise ΠZ = P(geçerli)', 0, tam1, 0); }
+
+  /* 4. adım · takas */
+  /* reddet-tekrarla gercekten KURESEL dagilimi veriyor mu · simulasyon */
+  { const M = GR.model(1), A = GR.analiz(1), r0 = rng(41), D = 300000;
+    const sec = dagilim => { const u = r0(); let acc = 0;
+      for (let s = 0; s < 3; s++){ acc += dagilim[s]; if (u < acc) return s; }
+      return 2; };
+    const say = new Map(); GR.V.forEach(x => say.set(x.join(''), 0));
+    let kabul = 0, deneme = 0;
+    while (kabul < D){ const x = [sec(M.P0)];
+      for (let t = 1; t < GR.L; t++) x.push(sec(M.T[x[t-1]]));
+      deneme++;
+      if (GR.gecerli(x)){ say.set(x.join(''), say.get(x.join('')) + 1); kabul++; } }
+    let tvG = 0, tvY = 0;
+    GR.V.forEach(x => { const k = x.join('');
+      tvG += Math.abs(say.get(k)/D - A.G.get(k));
+      tvY += Math.abs(say.get(k)/D - A.Y.get(k)); });
+    iddia('GR · reddet-tekrarla küresele uzaklık (TV)', 0, tvG/2, 2);
+    iddia('GR · reddet-tekrarla yerele uzaklık (TV)', 0.16, tvY/2, 2);
+    iddia('GR · reddet-tekrarla küresel dağılımı veriyor', 1, tvG < tvY ? 1 : 0, 0);
+    iddia('GR · gözlenen kabul oranı P(geçerli) ye eşit (yüzde puan)', 0,
+          100*Math.abs(D/deneme - A.Pg), 1); }
+  iddia('GR · w=2 de deneme sayısı w=0 ın 14 katından fazla', 1,
+        (1/GR.analiz(2).Pg) > 14*(1/GR.analiz(0).Pg) ? 1 : 0, 0);
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

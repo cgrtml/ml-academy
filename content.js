@@ -113,7 +113,7 @@ const ROTALAR = [
     {id:'talimat-ayar',   ad:'İtaat öğretmek: talimat ince ayarı',             sure:16, durum:'hazir'},
     {id:'icl',            ad:'Örnekle öğretmek: in-context learning',          sure:17, durum:'hazir'},
     {id:'zincir-prompt',  ad:'Problemi bölmek: zincirleme promptlar',          sure:16, durum:'hazir'},
-    {id:'gramer',         ad:'Çıktıyı kalıba sıkıştırmak: gramer ve şema',     sure:12, durum:'planli'},
+    {id:'gramer',         ad:'Çıktıyı kalıba sıkıştırmak: gramer ve şema',     sure:16, durum:'hazir'},
     {id:'hafiza',         ad:'Konuşma hafızası: model neyi hatırlar',          sure:12, durum:'planli'},
     {id:'tokenizer-fark',  ad:'Tokenizer\'lar neden farklı davranır',            sure:12, durum:'planli'},
     {id:'cokdilli',       ad:'Çok dilli modellerin kör noktası',               sure:12, durum:'planli'},
@@ -10657,6 +10657,168 @@ DERSLER['zincir-prompt'] = {
       'faturayı hem hata oranını büyütür.<br><br>' +
       'Kontrolcü ile üretici bağımsız değilse (aynı modele kendi çıktısını kontrol ettirmek) ' +
       'r düşer ve f yükselir; dış doğrulayıcılar bu yüzden değerlidir.',
+    xp:75,
+  },
+]};
+
+/* ─────────────── DİLBİLGİSİ KISITI ─────────────── */
+DERSLER['gramer'] = {
+  ad:'Çıktıyı kalıba sıkıştırmak: gramer ve şema',
+  alt:'Modeli geçerli JSON üretmeye zorlamak kolay. Zorlamanın modelin dağılımını da değiştirdiğini fark etmek zor.',
+  kaynaklar:[
+    {y:'Willard, B. T. & Louf, R.', t:'2023', b:'Efficient Guided Generation for Large Language Models', n:'arXiv:2307.09702', u:'https://arxiv.org/abs/2307.09702'},
+    {y:'Geng, S. ve ark.', t:'2023', b:'Grammar-Constrained Decoding for Structured NLP Tasks without Finetuning', n:'EMNLP 2023', u:'https://arxiv.org/abs/2305.13971'},
+    {y:'Park, K. ve ark.', t:'2024', b:'Grammar-Aligned Decoding', n:'NeurIPS 2024', u:'https://arxiv.org/abs/2405.21047'},
+    {y:'Tam, Z. R. ve ark.', t:'2024', b:'Let Me Speak Freely? A Study on the Impact of Format Restrictions on Performance of Large Language Models', n:'EMNLP 2024 Industry', u:'https://arxiv.org/abs/2408.02442'},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'Serbest üretim kalıbı tutturamıyor',
+    goal:'Neden bir kalıp zorlamaya ihtiyaç duyulduğunu göreceksin.',
+    todo:'Modelin eğilimini değiştir. Geçerlilik olasılığı nereye iniyor?',
+    kind:'controls', viz:'gramerKisiti', h:760,
+    controls:[{k:'wi', lb:'MODELİN A YA EĞİLİMİ', min:0, max:4, step:1, val:2,
+      fmt:v => 'w = ' + GR.wler[Math.round(v)].toFixed(1)}],
+    state:{sahne:'serbest'},
+    derive:s => ({pg: GR.analiz(GR.wler[Math.round(s.wi)]).Pg}),
+    live:s => [['w', GR.wler[Math.round(s.wi)].toFixed(1)],
+               ['P(GEÇERLİ)', '%' + (100*s.pg).toFixed(2), K.red],
+               ['DENEME', (1/s.pg).toFixed(1), K.orange],
+               ['MASKELİ', '1 çağrı', K.green]],
+    body:'<p>Küçük ve kapalı bir kalıp: beş sembollük diziler, alfabe {A, B, C}. ' +
+      'Dilbilgisi iki kural koyuyor: <b>ard arda aynı sembol olmayacak</b> ve ' +
+      '<b>son sembol C olacak</b>. 243 dizinin sadece <b>16</b> sı geçerli.</p>' +
+      '<p>Model bir Markov zinciri ve A ya eğilimli. Serbest bıraktığında en olası sembolü ' +
+      'seçe seçe <b>AAAAA</b> üretiyor: kalıbın iki kuralını da çiğniyor. Model kuralı ' +
+      'bilmiyor, bilmesi de beklenemez, çünkü kural çıktının biçimi hakkında.</p>' +
+      '<p>Rastgele örneklemede durum daha iyi değil: w = 1 de geçerlilik olasılığı sadece ' +
+      '<b>%3.18</b>. Geçerli bir çıktı almak için ortalama <b>31.5</b> deneme gerekiyor. ' +
+      'Eğilim arttıkça bu 219 denemeye kadar çıkıyor.</p>' +
+      '<p>Çözüm basit görünüyor: her adımda <b>geçerli bir devama izin vermeyen sembolleri ' +
+      'maskele</b>, kalanlar arasından seç. Böylece çıktı %100 geçerli olur ve tek çağrı yeter. ' +
+      'Maskeli açgözlü çözümleme burada <b>ABABC</b> veriyor.</p>' +
+      '<p>Gerçek sistemlerde bu tam olarak yapılan şeydir: JSON şeması, düzenli ifade ya da ' +
+      'bir gramerden çıkarılan otomat, her adımda hangi tokenların açık kalacağını söyler.</p>',
+    learned:'<b>Maskeleme, çıktının kalıba uymasını tek çağrıda garanti eder.</b><br><br>' +
+      '243 diziden 16 sı geçerli. Serbest açgözlü çözümleme AAAAA veriyor (geçersiz); ' +
+      'rastgele örneklemede geçerlilik %3.18, yani ortalama 31.5 deneme.<br><br>' +
+      'Maskeli çözümleme tek çağrıda ABABC veriyor ve her zaman geçerli. ' +
+      'Bu kadar ucuz bir garantinin bir bedeli olmalı; sonraki adımda ne olduğunu göreceğiz.',
+    xp:50,
+  },
+  {
+    t:'Maskeleme, koşullama değildir',
+    goal:'Kısıtlı çözümlemenin modelin dağılımını nasıl değiştirdiğini göreceksin.',
+    todo:'Mavi ve turuncu çubukları karşılaştır. Sıralama nerede bozuluyor?',
+    kind:'controls', viz:'gramerKisiti', h:760,
+    controls:[{k:'wi', lb:'MODELİN A YA EĞİLİMİ', min:0, max:4, step:1, val:2,
+      fmt:v => 'w = ' + GR.wler[Math.round(v)].toFixed(1)}],
+    state:{sahne:'iki'},
+    derive:s => { const A = GR.analiz(GR.wler[Math.round(s.wi)]);
+      return {tv: A.tv, ters: A.ters}; },
+    live:s => [['TV UZAKLIĞI', s.tv.toFixed(4), K.red],
+               ['TERS ÇİFT', s.ters + ' / 120', K.orange],
+               ['GEÇERLİ DİZİ', '16']],
+    body:'<p>Aynı model, aynı dilbilgisi, iki farklı soru:</p>' +
+      '<p><b>Küresel koşullama.</b> "Modelin dağılımını al, geçersizleri at, kalanı ' +
+      'normalize et." Yani p(x | x geçerli). Reddet-tekrarla yönteminin verdiği dağılım ' +
+      'tam olarak budur.</p>' +
+      '<p><b>Yerel maskeleme.</b> "Her adımda geçersiz devamları at, kalan tokenları ' +
+      'normalize et, seç, devam et." Kısıtlı çözümlemenin yaptığı budur.</p>' +
+      '<p>Bunlar aynı şey değil. w = 1 de iki dağılım arasındaki toplam değişim uzaklığı ' +
+      '<b>0.1554</b>. 16 dizinin 120 çiftinin <b>15</b> inde sıralama ters dönüyor.</p>' +
+      '<p>Somut örnek: küresel dağılımda üçüncü sırada <b>ACBAC</b> (0.1043) var, ' +
+      'ACABC ise 0.0797 ile geride. Maskeli çözümlemede sıra tersine dönüyor: ' +
+      '<b>ACABC</b> (0.1148) üçüncü, ACBAC (0.1006) dördüncü.</p>' +
+      '<p>En olası dizi ikisinde de ABABC ama payları çok farklı: küreselde 0.1405, ' +
+      'yerelde <b>0.2369</b>. Maskeleme onu neredeyse iki katına çıkarmış.</p>' +
+      '<p>Bu, kısıtlı çözümlemeyi kullanmamak için bir sebep değil; ne yaptığını bilmek için ' +
+      'bir sebep. Ürettiğin örnekler modelin "geçerli çıktılar üzerindeki inancı" değil, ' +
+      'maskeleme sürecinin ürettiği başka bir dağılımdır.</p>',
+    learned:'<b>Kısıtlı çözümleme p(x | geçerli) örneklemez.</b><br><br>' +
+      'İki dağılım arasındaki toplam değişim uzaklığı 0.1554; 120 çiftin 15 inde sıralama ' +
+      'ters dönüyor. En olası dizinin payı 0.1405 ten 0.2369 a çıkıyor.<br><br>' +
+      'Modelin "en olası geçerli cevabı" ile maskeli çözümlemenin bulduğu cevap ' +
+      'aynı olmak zorunda değildir. Bu farkı kapatmayı hedefleyen çalışmalar var ' +
+      '(gramer-hizalı çözümleme), ama düz maskeleme bu farkı taşır.',
+    xp:50,
+  },
+  {
+    t:'Sapma nereden geliyor',
+    goal:'Şişmenin tam formülünü göreceksin.',
+    todo:'Noktaların kırmızı eğriye göre yerine bak.',
+    kind:'controls', viz:'gramerKisiti', h:760,
+    controls:[{k:'wi', lb:'MODELİN A YA EĞİLİMİ', min:0, max:4, step:1, val:2,
+      fmt:v => 'w = ' + GR.wler[Math.round(v)].toFixed(1)}],
+    state:{sahne:'sisme'},
+    live:s => { const A = GR.analiz(GR.wler[Math.round(s.wi)]);
+      return [['EN ÇOK ŞİŞEN', A.enSisme.toFixed(3) + '×', K.orange],
+              ['EN ÇOK SÖNEN', A.enSonme.toFixed(3) + '×', K.blue],
+              ['P(GEÇERLİ)', '%' + (100*A.Pg).toFixed(2), K.purple]]; },
+    body:'<p>Sebebi tek satırda yazılabiliyor. Maskeli çözümlemede her adımda izin verilen ' +
+      'tokenların toplam olasılığı Z<sub>t</sub> kadardır ve seçim bu sayıya bölünerek ' +
+      'yeniden normalize edilir. Bir dizinin yerel olasılığı:</p>' +
+      '<p style="font-family:monospace">p<sub>yerel</sub>(x) = p(x) · Π 1/Z<sub>t</sub><br>' +
+      'p<sub>küresel</sub>(x) = p(x) / P(geçerli)</p>' +
+      '<p>İkisinin oranı sadeleşiyor:</p>' +
+      '<p style="font-family:monospace">şişme = P(geçerli) / ΠZ<sub>t</sub></p>' +
+      '<p>Grafikteki 16 noktanın tamamı kırmızı eğrinin üstünde, makine hassasiyetinde ' +
+      '(en büyük sapma 2×10⁻¹⁶). Yani bu bir eğilim değil, bir <b>kimlik</b>.</p>' +
+      '<p>Okunuşu şu: yolu boyunca <b>çok kütle atılan</b> diziler şişer, az atılanlar söner. ' +
+      'Maskeleme "dar geçitlerden" geçen dizileri ödüllendiriyor, çünkü orada küçük bir sayıya ' +
+      'bölüyor. w = 1 de en çok şişen dizi <b>1.686 kat</b>, en çok sönen <b>0.444 kat</b>.</p>' +
+      '<p>Kritik nokta: bu sapmanın kaynağı modelin kötülüğü değil. Tamamen düzgün bir modelde ' +
+      '(w = 0) bile TV uzaklığı <b>0.1667</b>, üstelik sıralamadaki ters dönme sayısı orada ' +
+      'en yüksek: <b>24</b>. Sapma <b>dilbilgisinin şeklinden</b> geliyor.</p>',
+    learned:'<b>şişme = P(geçerli) / ΠZ<sub>t</sub></b><br><br>' +
+      'Yolu boyunca çok olasılık kütlesi maskelenen diziler şişer. w = 1 de en çok şişen ' +
+      '1.686 kat, en çok sönen 0.444 kat.<br><br>' +
+      'Bu bir yaklaşıklık değil, cebirsel kimlik: 16 noktanın hepsi eğrinin üstünde ' +
+      '(sapma 2×10⁻¹⁶). Ve tamamen düzgün bir modelde bile sapma var (TV = 0.1667), ' +
+      'yani sorumlu model değil dilbilgisi.',
+    xp:50,
+  },
+  {
+    t:'Hangi yolu seçmeli',
+    goal:'İki yöntemin faturasını karşılaştıracaksın.',
+    todo:'Eğilimi değiştirip iki eğriyi izle, sonra soruyu cevapla.',
+    kind:'controls', viz:'gramerKisiti', h:760,
+    controls:[{k:'wi', lb:'MODELİN A YA EĞİLİMİ', min:0, max:4, step:1, val:2,
+      fmt:v => 'w = ' + GR.wler[Math.round(v)].toFixed(1)}],
+    state:{sahne:'maliyet'},
+    live:s => { const A = GR.analiz(GR.wler[Math.round(s.wi)]);
+      return [['P(GEÇERLİ)', '%' + (100*A.Pg).toFixed(2), K.green],
+              ['DENEME', (1/A.Pg).toFixed(1), K.orange],
+              ['TV SAPMASI', A.tv.toFixed(4), K.red]]; },
+    body:'<p>İki yöntem, iki fatura:</p>' +
+      '<p><b>Reddet-tekrarla.</b> Geçerli bir çıktı gelene kadar örnekle. Dağılım tam olarak ' +
+      'p(x | geçerli), yani sapma sıfır. Bedeli beklenen 1/P(geçerli) çağrı: w = 0 da 15.2, ' +
+      'w = 1 de 31.5, w = 2 de <b>219.3</b>. Kalıp daraldıkça ya da model kalıba uzaklaştıkça ' +
+      'bu maliyet patlıyor.</p>' +
+      '<p><b>Maskeleme.</b> Her zaman tek çağrı, her zaman geçerli. Bedeli sapma ve sapma ' +
+      'modelin iyileşmesiyle kaybolmuyor.</p>' +
+      '<p>Pratikte maskeleme neredeyse her zaman doğru seçimdir: 219 çağrı ödemek yerine ' +
+      '0.26 lık bir dağılım sapmasını kabul edersin. Ama iki durumda dikkatli olmak gerekir:</p>' +
+      '<p><b>Modelin olasılıklarına güveniyorsan.</b> Kısıtlı çözümlemeden çıkan skorları ' +
+      '"modelin güveni" diye kullanmak yanlış olur; o skorlar maskelemenin ürünüdür.</p>' +
+      '<p><b>Kalıp düşünmeyi kesiyorsa.</b> Modeli doğrudan JSON üretmeye zorlamak, önce serbest ' +
+      'düşünüp sonra biçimlendirmesine göre doğruluğu düşürebilir. Tam da bu yüzden yaygın ' +
+      'çözüm ikisini ayırmaktır: önce serbest akıl yürütme, sonra ayrı bir kısıtlı çağrıyla ' +
+      'biçimlendirme.</p>',
+    quiz:{ q:'Bir sınıflandırma işinde modele şema kısıtı koydun. Çıktılar artık %100 geçerli JSON ama doğruluk düştü. Ayrıca modelin verdiği olasılıkları eşik olarak kullanıyordun ve eşik artık tutmuyor. En doğru okuma hangisi?',
+      opts:[
+        {t:'Kısıt hem çıktı dağılımını hem skorları değiştirdi; akıl yürütmeyi ayrı bir çağrıya al ve eşiği yeniden kalibre et', why:'Doğru. Derste iki şeyi birden ölçtün: maskeleme dağılımı kaydırıyor (TV 0.1554, sıralamada ters dönmeler) ve skorlar artık p(x | geçerli) değil maskelemenin ürünü. Eşiğin bozulması bunun doğrudan sonucudur. Doğruluk düşüşü için de bilinen çözüm biçimi akıl yürütmeden ayırmaktır: önce serbest çağrı, sonra kısıtlı biçimlendirme çağrısı.'},
+        {t:'Şemayı gevşetmelisin, kısıt her zaman zararlıdır', why:'Aşırı genelleme. Kısıt geçerliliği tek çağrıda garanti ediyor ve alternatifi w = 2 de 219 denemeye kadar çıkabiliyordu. Sorun kısıtın varlığı değil, nereye konduğu ve skorların nasıl yorumlandığı.'},
+        {t:'Model bu iş için yetersiz, daha büyüğüne geçmelisin', why:'Gözlemle uyuşmuyor: model değişmedi, sadece kısıt eklendi ve iki etki birden ortaya çıktı. Ayrıca derste ölçtün, sapma tamamen düzgün bir modelde bile var (TV = 0.1667), yani model büyütmek bu sapmayı kaldırmaz.'},
+        {t:'Reddet-tekrarlaya geçmelisin, sapma sıfır olur', why:'Sapmayı gerçekten sıfırlar ve bazı durumlarda doğru seçimdir. Ama maliyeti 1/P(geçerli) çağrıdır ve dar şemalarda bu yüzlerce çağrıya çıkar. Ayrıca doğruluk düşüşünün asıl sebebi olan "biçim ile akıl yürütmenin aynı çağrıda olması" sorununu çözmez.'},
+      ], correct:0 },
+    learned:'<b>Reddet-tekrarla sapmasızdır ama 1/P(geçerli) çağrı tutar; maskeleme tek ' +
+      'çağrıdır ama saptırır.</b><br><br>' +
+      'w = 0 da 15.2 deneme, w = 2 de 219.3. Sapma ise her w de var ve düzgün modelde ' +
+      'bile TV = 0.1667.<br><br>' +
+      'İki pratik sonuç: kısıtlı çözümlemeden çıkan olasılıkları güven skoru olarak kullanma, ' +
+      've akıl yürütmeyi biçimlendirmeden ayrı bir çağrıya koy.',
     xp:75,
   },
 ]};

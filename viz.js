@@ -7728,6 +7728,235 @@ VIZ.zincirPrompt = s => {
   }
 };
 
+
+/* ═══════════ DİLBİLGİSİ KISITI ═══════════
+   Çıktıyı bir kalıba zorlamak geçerliliği garantiliyor ama modelin
+   dağılımını da değiştiriyor. İkisi de tam hesapla gösteriliyor. */
+const GR = {};
+GR.S = ['A', 'B', 'C']; GR.L = 5;
+GR.wler = [0, 0.5, 1, 1.5, 2];
+/* model: A ya eğilimi w ile ayarlanan bir Markov zinciri */
+GR.model = w => ({
+  P0: [1/3 + w*0.22, 1/3 - w*0.03, 1/3 - w*0.19],
+  T: [[1/3 + w*0.17, 1/3 - w*0.03, 1/3 - w*0.14],
+      [1/3 + w*0.12, 1/3 + w*0.02, 1/3 - w*0.14],
+      [1/3 + w*0.07, 1/3 + w*0.02, 1/3 - w*0.09]] });
+/* DİLBİLGİSİ: ard arda aynı sembol yok VE son sembol C */
+GR.gecerli = x => { for (let i = 1; i < GR.L; i++) if (x[i] === x[i-1]) return false;
+  return x[GR.L-1] === 2; };
+GR.tamamlanabilir = pre => { if (pre.length === GR.L) return GR.gecerli(pre);
+  for (let s = 0; s < 3; s++){ if (pre.length && s === pre[pre.length-1]) continue;
+    pre.push(s); const ok = GR.tamamlanabilir(pre); pre.pop();
+    if (ok) return true; }
+  return false; };
+GR.tumDiziler = (() => { const o = [];
+  (function gez(p){ if (p.length === GR.L){ o.push(p.slice()); return; }
+    for (let s = 0; s < 3; s++){ p.push(s); gez(p); p.pop(); } })([]);
+  return o; })();
+GR.V = GR.tumDiziler.filter(GR.gecerli);
+const _grC = {};
+GR.analiz = w => {
+  const key = 'g' + w;
+  if (_grC[key]) return _grC[key];
+  const M = GR.model(w);
+  const ol = x => { let p = M.P0[x[0]];
+    for (let i = 1; i < x.length; i++) p *= M.T[x[i-1]][x[i]];
+    return p; };
+  let Pg = 0; GR.V.forEach(x => Pg += ol(x));
+  /* küresel: p(x | geçerli) */
+  const G = new Map(); GR.V.forEach(x => G.set(x.join(''), ol(x)/Pg));
+  /* yerel maskeleme: her adımda geçerli tamamlanabilecek semboller, yeniden normalize */
+  const Y = new Map(), Zc = new Map();
+  (function gez(p, q, zc){
+    if (p.length === GR.L){ Y.set(p.join(''), q); Zc.set(p.join(''), zc); return; }
+    const izin = [], ham = [];
+    for (let s = 0; s < 3; s++){ if (p.length && s === p[p.length-1]) continue;
+      p.push(s); const ok = GR.tamamlanabilir(p); p.pop();
+      if (ok){ izin.push(s); ham.push(p.length ? M.T[p[p.length-1]][s] : M.P0[s]); } }
+    const Z = ham.reduce((a, b) => a + b, 0);
+    izin.forEach((s, i) => { p.push(s); gez(p, q*ham[i]/Z, zc*Z); p.pop(); });
+  })([], 1, 1);
+  let tv = 0, enSisme = 0, enSonme = 9;
+  GR.V.forEach(x => { const k = x.join('');
+    tv += Math.abs(Y.get(k) - G.get(k));
+    const o = Y.get(k)/G.get(k);
+    enSisme = Math.max(enSisme, o); enSonme = Math.min(enSonme, o); });
+  /* sıralamalar ve ters dönen çiftler */
+  const gs = [...G.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]);
+  const ys = [...Y.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]);
+  let ters = 0;
+  for (let i = 0; i < gs.length; i++) for (let j = i + 1; j < gs.length; j++)
+    if (ys.indexOf(gs[i]) > ys.indexOf(gs[j])) ters++;
+  /* açgözlü çözümlemeler */
+  const acgozlu = maskeli => { const x = [];
+    for (let t = 0; t < GR.L; t++){ let en = -1, sec = -1;
+      for (let s = 0; s < 3; s++){
+        if (maskeli){ if (t && s === x[t-1]) continue;
+          x.push(s); const ok = GR.tamamlanabilir(x); x.pop();
+          if (!ok) continue; }
+        const p = t ? M.T[x[t-1]][s] : M.P0[s];
+        if (p > en){ en = p; sec = s; } }
+      x.push(sec); }
+    return x; };
+  return (_grC[key] = { Pg, G, Y, Zc, tv: tv/2, ters, enSisme, enSonme, gs, ys,
+    serbest: acgozlu(false), maskeli: acgozlu(true) });
+};
+GR.yaz = k => k.split('').map(c => GR.S[+c]).join('');
+
+VIZ.gramerKisiti = s => {
+  clear();
+  const sahne = s.sahne || 'serbest';
+  const wi = Math.max(0, Math.min(4, s.wi === undefined ? 2 : Math.round(s.wi)));
+  const w = GR.wler[wi];
+  const A = GR.analiz(w);
+  const kart = (x, y, wd, ad, deger, rnk, alt) => {
+    box(x, y, wd, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + wd/2, y + 28, K.mut, 15);
+    txt(deger, x + wd/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + wd/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'iki'){
+    baslikSerit('DİLBİLGİSİ KISITI · KISITLI ÇÖZÜMLEME, KOŞULLAMA DEĞİLDİR',
+      '16 geçerli dizinin iki dağılımı. Solda p(x | geçerli), sağda adım adım maskeleme.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.7, 15.7, 0, 0.26);
+    frame(P, '16 geçerli dizi (küresel olasılığa göre sıralı)', 'olasılık', [], [0, 0.1, 0.2]);
+    const gen = (P.R.w/16)*0.40;
+    A.gs.forEach((k, i) => {
+      const x = P.sx(i), y0 = P.sy(0);
+      const g = A.G.get(k), y1 = P.sy(Math.min(g, 0.26));
+      box(x - gen, y1, gen, y0 - y1, 'rgba(59,130,246,.30)', K.blue, 1.5);
+      const yv = A.Y.get(k), y2 = P.sy(Math.min(yv, 0.26));
+      box(x, y2, gen, y0 - y2, 'rgba(249,115,22,.30)', K.orange, 1.5); });
+    /* sadece 1. ve 3. siranin etiketi · 16 etiket yan yana okunmaz */
+    [0, 2].forEach(i =>
+      txt((i + 1) + '. ' + GR.yaz(A.gs[i]), P.sx(i), P.R.y + P.R.h + 26, K.mut, 14));
+    txt('mavi: p(x | geçerli)', P.R.x + P.R.w - 14, P.R.y + 28, K.blue, 17, 'right');
+    txt('turuncu: maskeli çözümleme', P.R.x + P.R.w - 14, P.R.y + 54, K.orange, 17, 'right');
+    const bx = 830;
+    kart(bx, 200, 260, 'TOPLAM DEĞİŞİM', A.tv.toFixed(4), K.red, 'iki dağılım arası');
+    kart(bx + 280, 200, 260, 'TERS DÖNEN ÇİFT', A.ters + ' / 120', K.orange, 'sıralama değişimi');
+    kart(bx, 330, 260, 'KÜRESEL 3.', GR.yaz(A.gs[2]), K.blue);
+    kart(bx + 280, 330, 260, 'YEREL 3.', GR.yaz(A.ys[2]),
+         A.gs[2] === A.ys[2] ? K.mut : K.orange);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('İKİ FARKLI ŞEY', bx + 270, 494, K.mut, 18);
+    txt('"Geçerli olanlar arasından modelin dağılımı"', bx + 18, 534, K.blue, 18, 'left');
+    txt('ile "her adımda geçersizleri eleyip yeniden', bx + 18, 564, K.orange, 18, 'left');
+    txt('normalize etmek" aynı şey değil.', bx + 18, 594, K.orange, 18, 'left');
+    txt('Toplam değişim uzaklığı ' + A.tv.toFixed(3) + ' ve 120 çiftin',
+        bx + 18, 634, K.txt, 18, 'left');
+    txt(A.ters + ' inde sıralama ters dönüyor. Model aynı model,',
+        bx + 18, 664, K.txt, 18, 'left');
+    txt('dilbilgisi aynı dilbilgisi.', bx + 18, 694, K.txt, 18, 'left');
+  }
+
+  else if (sahne === 'sisme'){
+    baslikSerit('DİLBİLGİSİ KISITI · ŞİŞME NEREDEN GELİYOR',
+      'Maskeleme dar geçitlerden geçen dizileri şişiriyor. Kırmızı eğri tam formül.', []);
+    const P = plot(rect(140, 200, 640, 400), 0.010, 0.085, 0.3, 1.85);
+    frame(P, 'yol boyunca korunan kütle · ΠZ', 'şişme oranı',
+          [0.02, 0.04, 0.06, 0.08], [0.5, 1, 1.5]);
+    /* tam formul: sisme = P(gecerli) / ΠZ */
+    cx.strokeStyle = K.red; cx.lineWidth = 2.5; cx.beginPath();
+    for (let i = 0; i <= 200; i++){ const z = 0.010 + (0.085 - 0.010)*i/200;
+      const y = A.Pg/z;
+      if (y > 1.85 || y < 0.3) { cx.stroke(); cx.beginPath(); continue; }
+      cx.lineTo(P.sx(z), P.sy(y)); }
+    cx.stroke();
+    cx.strokeStyle = K.mut; cx.lineWidth = 1.5; cx.setLineDash([5, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(1)); cx.lineTo(P.R.x + P.R.w, P.sy(1)); cx.stroke();
+    cx.setLineDash([]);
+    GR.V.forEach(x => { const k = x.join('');
+      const z = A.Zc.get(k), o = A.Y.get(k)/A.G.get(k);
+      if (z >= 0.010 && z <= 0.085 && o >= 0.3 && o <= 1.85)
+        dot(P.sx(z), P.sy(o), 6, o > 1 ? K.orange : K.blue); });
+    txt('kırmızı: şişme = P(geçerli) / ΠZ', P.R.x + P.R.w - 14, P.R.y + 28, K.red, 16, 'right');
+    txt('şişme = 1 çizgisi', P.R.x + P.R.w - 14, P.sy(1) - 12, K.mut, 15, 'right');
+    const bx = 830;
+    kart(bx, 200, 260, 'EN ÇOK ŞİŞEN', A.enSisme.toFixed(3) + '×', K.orange);
+    kart(bx + 280, 200, 260, 'EN ÇOK SÖNEN', A.enSonme.toFixed(3) + '×', K.blue);
+    kart(bx, 330, 260, 'P(GEÇERLİ)', '%' + (100*A.Pg).toFixed(2), K.purple);
+    kart(bx + 280, 330, 260, 'MASKELİ AÇGÖZLÜ', GR.yaz(A.maskeli.join('')), K.green);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('DAR GEÇİT KURALI', bx + 270, 494, K.mut, 18);
+    txt('Her adımda maskeleme bir miktar olasılık kütlesi', bx + 18, 534, K.txt, 18, 'left');
+    txt('atıyor ve kalanı 1 e çıkarıyor. Az kütle kaldıysa', bx + 18, 564, K.txt, 18, 'left');
+    txt('bölen küçük olur ve o yol şişer.', bx + 18, 594, K.txt, 18, 'left');
+    txt('Tüm noktalar tam olarak kırmızı eğrinin üstünde:', bx + 18, 634, K.red, 18, 'left');
+    txt('şişme = P(geçerli) / ΠZ, makine hassasiyetinde.', bx + 18, 664, K.red, 18, 'left');
+    txt('Yani sapma modelin değil, dilbilgisinin şeklinden.', bx + 18, 700, K.mut, 17, 'left');
+  }
+
+  else if (sahne === 'maliyet'){
+    baslikSerit('DİLBİLGİSİ KISITI · İKİ YOL, İKİ FATURA',
+      'Reddet-tekrarla doğru dağılımı verir ama pahalıdır. Maskeleme tek çağrıdır ama saptırır.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 4.35, 0, 1.05);
+    frame(P, 'modelin A ya eğilimi', 'oran', [], [0, 0.25, 0.5, 0.75, 1]);
+    GR.wler.forEach((wv, i) => txt(wv.toFixed(1), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    /* gecerlilik olasiligi */
+    cx.strokeStyle = K.green; cx.lineWidth = 3.4; cx.beginPath();
+    GR.wler.forEach((wv, i) => { const y = P.sy(GR.analiz(wv).Pg*10);
+      i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+    cx.stroke();
+    GR.wler.forEach((wv, i) => dot(P.sx(i), P.sy(GR.analiz(wv).Pg*10), 5, K.green));
+    /* TV uzakligi */
+    cx.strokeStyle = K.red; cx.lineWidth = 3.4; cx.beginPath();
+    GR.wler.forEach((wv, i) => { const y = P.sy(GR.analiz(wv).tv*3);
+      i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+    cx.stroke();
+    GR.wler.forEach((wv, i) => dot(P.sx(i), P.sy(GR.analiz(wv).tv*3), 5, K.red));
+    dot(P.sx(wi), P.sy(A.Pg*10), 9, K.yellow);
+    txt('yeşil: geçerlilik olasılığı (×10)', P.R.x + 16, P.sy(0.98), K.green, 17, 'left');
+    txt('kırmızı: sapma · TV uzaklığı (×3)', P.R.x + 16, P.sy(0.90), K.red, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'P(GEÇERLİ)', '%' + (100*A.Pg).toFixed(2), K.green);
+    kart(bx + 280, 200, 260, 'BEKLENEN DENEME', (1/A.Pg).toFixed(1), K.orange,
+         'reddet-tekrarla');
+    kart(bx, 330, 260, 'MASKELEME', '1 çağrı', K.green, 'her zaman geçerli');
+    kart(bx + 280, 330, 260, 'SAPMA · TV', A.tv.toFixed(4), K.red);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('TAKAS', bx + 270, 494, K.mut, 18);
+    txt('Model eğilimi arttıkça geçerlilik düşüyor ve', bx + 18, 534, K.txt, 18, 'left');
+    txt('reddet-tekrarla ' + (1/GR.analiz(0).Pg).toFixed(0) + ' denemeden ' +
+        (1/GR.analiz(2).Pg).toFixed(0) + ' denemeye çıkıyor.', bx + 18, 564, K.txt, 18, 'left');
+    txt('Sapma ise kaybolmuyor. Tamamen düzgün bir modelde', bx + 18, 606, K.red, 18, 'left');
+    txt('bile TV = ' + GR.analiz(0).tv.toFixed(4) + '. Sapmanın kaynağı model değil,',
+        bx + 18, 636, K.red, 18, 'left');
+    txt('dilbilgisinin kendisi.', bx + 18, 666, K.red, 18, 'left');
+  }
+
+  else {
+    baslikSerit('DİLBİLGİSİ KISITI · SERBEST ÜRETİM KALIBI TUTTURAMIYOR',
+      'Kural: ard arda aynı sembol olmayacak ve son sembol C olacak. 243 diziden 16 sı geçerli.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 4.35, 0, 1.05);
+    frame(P, 'modelin A ya eğilimi', 'geçerlilik olasılığı', [], [0, 0.025, 0.05, 0.075]);
+    GR.wler.forEach((wv, i) => txt(wv.toFixed(1), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    const gen = (P.R.w/5)*0.5;
+    GR.wler.forEach((wv, i) => {
+      const pg = GR.analiz(wv).Pg, x = P.sx(i), y0 = P.sy(0), y1 = P.sy(pg/0.075*0.75);
+      box(x - gen/2, y1, gen, y0 - y1, wv === w ? 'rgba(34,197,94,.30)' : 'rgba(239,68,68,.20)',
+          wv === w ? K.green : K.red, 2);
+      txt('%' + (100*pg).toFixed(2), x, y1 - 12, wv === w ? K.green : K.red, 16); });
+    txt('16 geçerli / 243 dizi', P.R.x + P.R.w - 14, P.R.y + 28, K.mut, 16, 'right');
+    const bx = 830;
+    kart(bx, 200, 260, 'A YA EĞİLİM', w.toFixed(1), K.blue);
+    kart(bx + 280, 200, 260, 'P(GEÇERLİ)', '%' + (100*A.Pg).toFixed(2), K.red);
+    kart(bx, 330, 260, 'SERBEST AÇGÖZLÜ', GR.yaz(A.serbest.join('')),
+         GR.gecerli(A.serbest) ? K.green : K.red,
+         GR.gecerli(A.serbest) ? 'geçerli' : 'GEÇERSİZ');
+    kart(bx + 280, 330, 260, 'MASKELİ AÇGÖZLÜ', GR.yaz(A.maskeli.join('')), K.green, 'geçerli');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('KALIBI GARANTİ ETMENİN KOLAY YOLU', bx + 270, 494, K.mut, 18);
+    txt('Serbest çözümlemede model kuralı bilmiyor: en', bx + 18, 534, K.txt, 18, 'left');
+    txt('olası sembolü seçe seçe ' + GR.yaz(A.serbest.join('')) + ' üretiyor ve bu geçersiz.',
+        bx + 18, 564, K.txt, 18, 'left');
+    txt('Her adımda geçersiz devamları maskelersen çıktı', bx + 18, 606, K.green, 18, 'left');
+    txt('%100 geçerli olur, üstelik tek çağrıda.', bx + 18, 636, K.green, 18, 'left');
+    txt('Bedava değil: sonraki adımda bedelini ölçeceğiz.', bx + 18, 676, K.mut, 17, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
