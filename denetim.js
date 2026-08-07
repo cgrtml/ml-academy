@@ -3975,9 +3975,11 @@ Object.entries(DERSLER_EN).forEach(([id,e])=>{
     (a.controls||[]).forEach((c,j)=>{ const d2=b.controls[j];
       if(c.min!==d2.min||c.max!==d2.max||c.step!==d2.step||c.val!==d2.val){
         console.log(p+'kaydırıcı aralığı farklı: '+c.k); yh++; } });
-    const af=a.kind==='phases'?a.phases.length:(a.kind==='play'?a.frames().length:0);
-    const bf=b.kind==='phases'?b.phases.length:(b.kind==='play'?b.frames().length:0);
-    if(af!==bf){ console.log(p+'faz/kare sayısı: '+af+' ≠ '+bf); yh++; }
+    /* frames/live/derive gibi davranış alanları yalnızca Türkçe derste durur;
+       lesson.html EN metnini TR dersin ÜSTÜNE bindirir. Burada sadece faz sayısı denetlenir. */
+    const af=a.kind==='phases'?(a.phases||[]).length:0;
+    const bf=b.kind==='phases'?(b.phases||[]).length:0;
+    if(af!==bf){ console.log(p+'faz sayısı: '+af+' ≠ '+bf); yh++; }
     if(!!a.quiz!==!!b.quiz){ console.log(p+'quiz var/yok farkı'); yh++; }
     else if(a.quiz){
       if(a.quiz.correct!==b.quiz.correct){ console.log(p+'quiz doğru şık indeksi farklı'); yh++; }

@@ -300,9 +300,32 @@ const T = k => L10N[k][EN ? 1 : 0];
 
 const qs = new URLSearchParams(location.search);
 const DERS_ID = qs.get('id') || 'veri';
-const D = (EN && typeof DERSLER_EN !== 'undefined' && DERSLER_EN[DERS_ID])
-          ? DERSLER_EN[DERS_ID] : DERSLER[DERS_ID];
+/* İngilizce ders yalnızca METNİ taşır; frames/live/unlock/derive gibi davranış
+   alanları Türkçe derste durur. Bu yüzden EN, TR'nin ÜSTÜNE bindirilir:
+   böylece iki dilde de simülasyon, kilit ve animasyon birebir aynı çalışır. */
+function bindir(tr, en){
+  if (!tr || !en) return tr || en;
+  const kat = (a, b) => {
+    if (!b) return a;
+    const o = { ...(a || {}) };
+    Object.keys(b).forEach(k => { o[k] = b[k]; });
+    return o;
+  };
+  const dizi = (a, b, f) => (a || []).map((x, i) => f(x, (b || [])[i]));
+  const d = kat(tr, { ad:en.ad, alt:en.alt, kaynaklar:en.kaynaklar || tr.kaynaklar });
+  d.adimlar = dizi(tr.adimlar, en.adimlar, (a, b) => {
+    if (!b) return a;
+    const s = kat(a, b);
+    if (a.phases)   s.phases   = dizi(a.phases,   b.phases,   kat);
+    if (a.controls) s.controls = dizi(a.controls, b.controls, kat);
+    if (a.quiz)     s.quiz     = kat(a.quiz,   b.quiz);
+    if (a.kodlab)   s.kodlab   = kat(a.kodlab, b.kodlab);
+    return s;
+  });
+  return d;
+}
 const CEVRILI = !!(typeof DERSLER_EN !== 'undefined' && DERSLER_EN[DERS_ID]);
+const D = (EN && CEVRILI) ? bindir(DERSLER[DERS_ID], DERSLER_EN[DERS_ID]) : DERSLER[DERS_ID];
 
 if (!D){
   document.querySelector('main').innerHTML =

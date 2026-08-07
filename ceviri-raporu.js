@@ -100,36 +100,34 @@ else console.log('  toplam: ' + yapiHata + ' yapı uyuşmazlığı, ' + alanHata
 
 /* ── 3 · viz.js tuval etiketleri ── */
 console.log('\n── 3 · TUVAL ETİKETLERİ (viz.js) ──');
-const LB_TR = new Set();
-const lbRe = /LB\(\s*(['"`])((?:\\.|(?!\1)[\s\S])*?)\1\s*,/g;
-let mm; while ((mm = lbRe.exec(V))) LB_TR.add(mm[2]);
-
-const litRe = /(['"`])((?:\\.|(?!\1)[\s\S])*?)\1/g;
-const acik = [];
-let m2; while ((m2 = litRe.exec(V))){
-  const s = m2[2];
-  if (!TRCH.test(s)) continue;
-  if (LB_TR.has(s)) continue;
-  if (/^[#.][\w-]+$/.test(s)) continue;           // seçici ya da renk değil
-  acik.push({ s, i:m2.index });
+/* Tuval metinleri artık viz-sozluk.js'teki TUVAL_EN üzerinden çevriliyor.
+   Envanter .tuval-envanter.json'da; üretmek için: node tuval-metin.js  */
+let TUVAL_EN = {}, env = null;
+try { TUVAL_EN = new Function(fs.readFileSync('./viz-sozluk.js','utf8') + ';return TUVAL_EN;')(); } catch(e){}
+try { env = JSON.parse(fs.readFileSync('./.tuval-envanter.json','utf8')); } catch(e){}
+let tuvalEksik = 0;
+if (!env){
+  console.log('  envanter yok · önce: node tuval-metin.js');
+} else {
+  const tumu = [...env.sabit.map(x => x[0]), ...env.sablon];
+  const eksikTuval = tumu.filter(s => TUVAL_EN[s] === undefined);
+  tuvalEksik = eksikTuval.length;
+  console.log('  sözlükteki kayıt          : ' + Object.keys(TUVAL_EN).length);
+  console.log('  çizilen benzersiz metin   : ' + tumu.length + '  (sabit ' + env.sabit.length +
+              ' + sayı şablonu ' + env.sablon.length + ')');
+  console.log('  karşılığı olmayan         : ' + tuvalEksik);
+  eksikTuval.slice(0, 20).forEach(s => console.log('    ' + JSON.stringify(s).slice(0,90)));
+  if (tuvalEksik > 20) console.log('    ... ve ' + (tuvalEksik-20) + ' tane daha');
+  const uyumsuz = Object.entries(TUVAL_EN).filter(([k,v]) =>
+    (k.match(/#/g)||[]).length !== (String(v).match(/#/g)||[]).length);
+  if (uyumsuz.length){
+    console.log('  ⚠ # yer tutucu sayısı uyuşmayan kayıt: ' + uyumsuz.length);
+    uyumsuz.slice(0,10).forEach(([k]) => console.log('    ' + JSON.stringify(k).slice(0,80)));
+  }
 }
-const wRe = /VIZ\.([A-Za-z0-9_]+)\s*=/g;
-const wPos = []; let m3; while ((m3 = wRe.exec(V))) wPos.push({ ad:m3[1], i:m3.index });
-const widgetBul = i => { let ad = '(yardımcı)'; for (const w of wPos){ if (w.i <= i) ad = w.ad; else break; } return ad; };
-
-const grup = {};
-acik.forEach(x => { const w = widgetBul(x.i); (grup[w] = grup[w] || []).push(x.s); });
-const sirali = Object.entries(grup).sort((a,b) => b[1].length - a[1].length);
-console.log('  LB() ile çevrilmiş etiket : ' + LB_TR.size);
-console.log('  LB() dışında kalan Türkçe : ' + acik.length + '   (arayüz EN olsa bile Türkçe görünür)');
-sirali.slice(0, 20).forEach(([w, arr]) => {
-  console.log('    VIZ.' + w.padEnd(16) + String(arr.length).padStart(3) + '  ör: ' +
-              [...new Set(arr)].slice(0,3).map(s => '"' + s.slice(0,30) + '"').join(' '));
-});
-if (sirali.length > 20) console.log('    ... ve ' + (sirali.length-20) + ' widget daha');
 
 console.log('\n── ÖZET ──');
 console.log('  çevrilmemiş ders   : ' + eksik.length + ' / ' + trIds.length);
 console.log('  yapı uyuşmazlığı   : ' + yapiHata);
 console.log('  eksik/çevrilmemiş alan : ' + alanHata);
-console.log('  çevrilmemiş tuval etiketi : ' + acik.length);
+console.log('  çevrilmemiş tuval etiketi : ' + tuvalEksik);
