@@ -5282,3 +5282,111 @@ DERSLER_EN['temel-model'] = {
   },
   ],
 };
+
+DERSLER_EN['knn'] = {
+  ad:'k-NN: ask the nearest neighbour',
+  alt:'A model that does no training at all. And for exactly that reason it is both surprisingly good and easy to break.',
+  kaynaklar:[{"y":"Cover, T. & Hart, P.","t":"1967","b":"Nearest Neighbor Pattern Classification","n":"IEEE Trans. Information Theory, 13(1)"},
+             {"y":"Malkov, Y. & Yashunin, D.","t":"2018","b":"Efficient and Robust Approximate Nearest Neighbor Search Using HNSW Graphs","n":"IEEE TPAMI","u":"https://arxiv.org/abs/1603.09320"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'A model with no training',
+    goal:'You will see how a model can predict without ever "learning".',
+    todo:'Move the query point around. The green rings show the selected neighbours.',
+    kind:'controls', viz:'knn', h:760, xp:10,
+    body:'<p>Every model you have seen so far went through a <b>training</b> stage: weights were tuned, thresholds were found.</p>' +
+         '<p>k-NN does none of that. The only thing it does in the training stage is <b>put the data into memory</b>. This is called <b>lazy learning</b>.</p>' +
+         '<p>At prediction time it does the following:</p>' +
+         '<p>1 · compute the distance from the query point to <b>all</b> the data points<br>' +
+         '2 · pick the nearest k of them<br>' +
+         '3 · say whichever class is in the majority</p>' +
+         '<p>The dashed green circle is the radius out to the kth neighbour. As k grows the circle widens and the decision is influenced by points further away.</p>',
+    learned:'<b>k-NN does no training, it puts the data into memory.</b> At prediction time it finds the k nearest neighbours to the query point and says whichever class is in the majority. That is called lazy learning.<br><br>The price is here: the cost moves from training to prediction time. Every prediction means computing the distance to all the data points.',
+    controls:[{k:'qx', lb:'QUERY x', min:0.5, max:9.5, step:0.1, val:5},
+              {k:'qy', lb:'QUERY y', min:0.5, max:9.5, step:0.1, val:5},
+              {k:'k', lb:'k (neighbours)', min:1, max:11, step:2, val:5}],
+  },
+  {
+    t:'Change k and the answer changes',
+    goal:'You will see that k is not just a setting but a choice that determines the <b>character</b> of the model.',
+    todo:'Leave the query at <b>(5.0, 5.0)</b> and raise k from 1 to 11 one at a time. Watch how the answer jumps.',
+    kind:'controls', viz:'knn', h:760, xp:50,
+    body:'<p>The query sits right in the middle, in the region where the two classes mix. That is deliberate: it is the hardest region of real data.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">k=1  → vote 1–0  → <b>class 0</b><br>k=3  → vote 1–2  → <b>class 1</b><br>k=5  → vote 3–2  → <b>class 0</b><br>k=7  → vote 3–4  → <b>class 1</b><br>k=9  → vote 4–5  → <b>class 1</b></p>' +
+         '<p><b>The same point, the same data, five different answers.</b> That is not a bug; you are standing in an ambiguous region and k determines "how wide a neighbourhood you consult".</p>' +
+         '<p><b>Small k:</b> the decision boundary becomes very wiggly and a single noisy point can flip the decision → overfitting.<br>' +
+         '<b>Large k:</b> the boundary smooths out and becomes robust to noise, but genuine small structures are erased too → underfitting.</p>' +
+         '<p>This is the same U curve as in the "memorisation and generalisation" lesson. <b>k is the complexity dial</b>: small k means a complex model, large k a simple one.</p>',
+    learned:'<b>k is the complexity dial:</b> small k means a wiggly boundary open to noise, large k a flat boundary with lost detail.<br><br>And k-NN moves the cost from training to prediction. This is why <b>approximate nearest neighbour search</b> (HNSW, FAISS) is used at scale; it is the basis of modern vector databases.',
+    controls:[{k:'k', lb:'k (number of neighbours)', min:1, max:11, step:2, val:1},
+              {k:'qx', lb:'QUERY x', min:0.5, max:9.5, step:0.1, val:5},
+              {k:'qy', lb:'QUERY y', min:0.5, max:9.5, step:0.1, val:5}],
+    quiz:{
+      q:'You want to use k-NN as a live recommendation system on a database of 5 million rows. What is the biggest problem?',
+      opts:[
+        {t:'Training takes too long',
+         why:'The opposite; k-NN has no training, it amounts to copying the data. The problem is not in training.'},
+        {t:'Every prediction has to walk the whole dataset: 5 million distance computations, on every request',
+         why:'Correct. k-NN moves the cost from training to <b>prediction</b>. Every query means O(n·d) work. There are fixes: KD-trees and Ball-trees (in low dimensions), approximate neighbour indexes such as HNSW (in high dimensions, used by FAISS and Qdrant). Vector databases are really all scalable k-NN.'},
+        {t:'k-NN only works in 2 dimensions',
+         why:'No, it works in any number of dimensions, but in high dimensions the distances converge towards each other (the "curse of dimensionality") and it loses discriminating power.'},
+        {t:'It cannot produce probabilities',
+         why:'It can; the class proportion among the neighbours is a probability estimate.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['lojistik'] = {
+  ad:'Logistic regression',
+  alt:'It has "regression" in the name but its job is classification. And it is still the default model in every field where a justification is required: credit, health, audit.',
+  kaynaklar:[{"y":"Cox, D. R.","t":"1958","b":"The Regression Analysis of Binary Sequences","n":"J. Royal Statistical Society B, 20(2)"},
+             {"y":"Hastie, Tibshirani, Friedman","t":"2009","b":"The Elements of Statistical Learning, Chapter 4.4","n":"Springer","u":"https://hastie.su.domains/ElemStatLearn/"},
+             {"y":"scikit-learn","t":"-","b":"LogisticRegression documentation","n":"sklearn.linear_model","u":"https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'A straight line, but one that produces probabilities',
+    goal:'You will see how a linear score is turned into a probability and how the model is trained by gradient descent.',
+    todo:'Drag the epoch slider from <b>0 to 2000</b>. Watch the colour transition on the map on the left and the loss falling at the bottom right.',
+    kind:'controls', viz:'lojistik', h:760, xp:45,
+    body:'<p>Logistic regression consists of three steps:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">1 · z = w₁x₁ + w₂x₂ + b        <span style="color:#566674">(a linear score, −∞…+∞)</span><br>2 · p = σ(z) = 1/(1+e⁻ᶻ)       <span style="color:#566674">(a probability, 0…1)</span><br>3 · prediction = p &gt; threshold ? 1 : 0    <span style="color:#566674">(the decision)</span></p>' +
+         '<p>The sigmoid curve at the top right shows step 2: at a score of 0 the probability is exactly 0.5. The yellow line on the map is the <b>p = 0.5</b> line, that is where z = 0.</p>' +
+         '<p><b>Why cross-entropy rather than squared error?</b> The combination of a sigmoid and squared error produces a <i>non convex</i> loss surface and gradient descent can get stuck in a local minimum. With cross-entropy the surface is convex, there is a single global minimum, and gradient descent reaches it.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">L = −[ y·log(p) + (1−y)·log(1−p) ]</p>' +
+         '<p>The numbers you will see as you drag the slider (lr = 0.1):</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">epoch    0 → loss 0.693  ·  50.0%<br>epoch   50 → loss 0.568  ·  improving<br>epoch  400 → loss 0.320<br>epoch 1000 → loss 0.190  ·  100.0%<br>epoch 2000 → loss 0.121</p>' +
+         '<p>Notice: the loss keeps falling <b>after</b> the accuracy reaches 100%. Because the model is not content with being on the right side, it is becoming steadily more <b>confident</b>.</p>',
+    learned:'<b>Logistic regression is a linear score plus a sigmoid plus cross-entropy.</b><br><br>The decision boundary is always straight. That is a constraint but also its strength: every feature\'s coefficient can be interpreted directly ("when this variable rises by 1 unit the log odds rise by w").',
+    controls:[{k:'epoch', lb:'TRAINING EPOCH', min:0, max:2000, step:25, val:0}],
+  },
+  {
+    t:'Why is it still used?',
+    goal:'You will understand why logistic regression is still in production when more powerful models exist.',
+    todo:'Read the text and solve the scenario.',
+    kind:'controls', viz:'lojistik', h:760, xp:50,
+    body:'<p>XGBoost would probably do better on this data. So why is logistic regression still at the centre of banks\' credit scoring systems?</p>' +
+         '<p><b>1 · A coefficient is a justification.</b> On this data the model learned w = [1.23, 0.61], so the first feature is about <b>twice</b> as influential as the second. You can explain that to an auditor, a customer or a judge. In a credit denial notice, the answer to "why was I rejected" comes straight out of the coefficients.</p>' +
+         '<p><b>2 · Calibration.</b> The probabilities logistic regression produces are <b>naturally calibrated</b>: of the cases it calls "30%", about 30% really happen. Tree ensembles are bad at this and have to be corrected afterwards (Platt scaling, isotonic regression).</p>' +
+         '<p><b>3 · Stability and auditability.</b> The model is a handful of numbers in a file. A version difference, a library update or different hardware does not change the result.</p>' +
+         '<p><b>4 · It works with little data.</b> The number of parameters equals the number of features. On 500 rows XGBoost memorises; logistic regression does not.</p>' +
+         '<p>Which is why the right question is not "which model is best" but <b>"what constraints does this problem have"</b>.</p>',
+    learned:'<b>Model selection is not an accuracy race.</b> Interpretability, calibration, auditability, the amount of data and legal constraints are at least as decisive as accuracy.<br><br>Logistic regression has been standing since 1958, because nobody evaluates it on accuracy but on <b>the sum of those constraints</b>.',
+    controls:[{k:'epoch', lb:'TRAINING EPOCH', min:0, max:2000, step:25, val:2000}],
+    quiz:{
+      q:'You are building a credit denial model at a bank. By law you have to give every rejected applicant a <b>justification</b>. XGBoost is 3% more accurate. What do you do?',
+      opts:[
+        {t:'I use XGBoost and produce the justification with SHAP',
+         why:'A defensible approach but risky. SHAP is a <b>local approximation</b>, not the model itself; two different SHAP implementations can give different justifications, and when a regulator asks "is this really the model\'s decision" you have no definite answer.'},
+        {t:'I use logistic regression; a 3% loss of accuracy is an acceptable price for an auditable justification',
+         why:'Correct, and what is widely done in the industry. In credit scoring, model selection is not purely an accuracy problem: frameworks such as SR 11-7 and the EU AI Act require the model to be <b>explainable and verifiable</b>. A 3% loss of accuracy is small next to the cost of a model that cannot pass an audit. There is a third route too: models that are <b>naturally interpretable but more flexible</b>, such as a soft decision tree, which you will see later in this track.'},
+        {t:'I build both and average them',
+         why:'That destroys interpretability entirely; now there are two different justifications and it is unclear how much weight each carries.'},
+        {t:'3% is unimportant, I pick one at random',
+         why:'The difference may be unimportant, but the choice is not made at random; the constraints decide it. And you would also have to test whether that 3% difference is real.'},
+      ], correct:1 },
+  },
+  ],
+};
