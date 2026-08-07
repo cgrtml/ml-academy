@@ -120,7 +120,7 @@ const ROTALAR = [
     {id:'alan-model',     ad:'Alana özel modeller: genelci mi, uzman mı',      sure:16, durum:'hazir'},
     {id:'temel-model',    ad:'Temel modeller: tek modelden her şeye',          sure:16, durum:'hazir'},
     {id:'llm-siniflandirici',  ad:'LLM\'i sınıflandırıcıya çevirmek',                sure:12, durum:'planli'},
-    {id:'konu-kesif',     ad:'Gömmelerden konuya: kümeleme ile konu bulmak',   sure:12, durum:'planli'},
+    {id:'konu-kesif',     ad:'Gömmelerden konuya: kümeleme ile konu bulmak',   sure:16, durum:'hazir'},
   ],
 },
 {
@@ -11442,6 +11442,167 @@ DERSLER['temel-model'] = {
       'eğitmek %78.2.<br><br>' +
       'İzdüşüm görevin bilgisini taşıyan yönü sıfırlar ve bu geri gelmez. Sorun veri değil ' +
       'temsilin körlüğüdür; çözüm veri eklemek değil, temsili çözmek ya da değiştirmektir.',
+    xp:75,
+  },
+]};
+
+/* --------------- KONU KESFI --------------- */
+DERSLER['konu-kesif'] = {
+  ad:'Gömmelerden konuya: kümeleme ile konu bulmak',
+  alt:'Etiketsiz bir yığın metinden konu çıkarmak mümkün. Ama "kaç konu var" sorusunu etiketsiz cevaplamak her zaman mümkün değil.',
+  kaynaklar:[
+    {y:'Rousseeuw, P. J.', t:'1987', b:'Silhouettes: a graphical aid to the interpretation and validation of cluster analysis', n:'J. Comput. Appl. Math. 20', u:'https://doi.org/10.1016/0377-0427(87)90125-7'},
+    {y:'Grootendorst, M.', t:'2022', b:'BERTopic: Neural topic modeling with a class-based TF-IDF procedure', n:'arXiv:2203.05794', u:'https://arxiv.org/abs/2203.05794'},
+    {y:'Chang, J. ve ark.', t:'2009', b:'Reading Tea Leaves: How Humans Interpret Topic Models', n:'NeurIPS 2009', u:'https://papers.nips.cc/paper/3700-reading-tea-leaves-how-humans-interpret-topic-models'},
+    {y:'von Luxburg, U.', t:'2010', b:'Clustering Stability: An Overview', n:'Foundations and Trends in ML 2(3)', u:'https://arxiv.org/abs/1007.1075'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Kümeleme etiket görmüyor',
+    goal:'Konu keşfinin ne yapıp ne yapmadığını göreceksin.',
+    todo:'Ayrımı ve küme sayısını değiştir. Renkler artılarla ne zaman örtüşüyor?',
+    kind:'controls', viz:'konuKesfi', h:760,
+    controls:[
+      {k:'ai', lb:'KONULAR ARASI AYRIM', min:0, max:3, step:1, val:0,
+       fmt:v => KK.ayrimlar[Math.round(v)].toFixed(1)},
+      {k:'ki', lb:'KUME SAYISI k', min:0, max:5, step:1, val:2,
+       fmt:v => 'k = ' + KK.kler[Math.round(v)]}],
+    state:{sahne:'nokta'},
+    derive:s => ({sf: KK.saflik(KK.ayrimlar[Math.round(s.ai)], KK.kler[Math.round(s.ki)])}),
+    live:s => [['AYRIM', KK.ayrimlar[Math.round(s.ai)].toFixed(1)],
+               ['k', String(KK.kler[Math.round(s.ki)])],
+               ['SAFLIK', '%' + (100*s.sf).toFixed(1), K.green],
+               ['HEDEF', 'saflik %100']],
+    unlock:s => s.sf > 0.999,
+    unlockMsg:'Saflığı %100 yapan ayrım ve k birleşimini bul',
+    body:'<p>Elinde binlerce belge var, hiçbiri etiketli değil. Her belgeyi bir gömme ' +
+      'vektörüne çevirip birbirine yakın olanları grupluyorsun. Ortaya çıkan gruplara ' +
+      '"konu" diyorsun. Konu keşfinin tamamı budur.</p>' +
+      '<p>Burada 240 belge ve dört gerçek konu var. Artılar gerçek konu merkezlerini ' +
+      'gösteriyor; renkler ise k-ortalamalar algoritmasının kararı. Algoritma artıları ' +
+      '<b>görmüyor</b>: sadece noktaların yerini biliyor.</p>' +
+      '<p>Ayrım 3.0 ve k = 4 iken saflık <b>%100</b>: her küme tam olarak bir konuyu ' +
+      'içeriyor. Bu, konu keşfinin çalıştığı durumdur.</p>' +
+      '<p>Ama iki şeyi karıştırmamak gerekiyor. Kümeleme <b>yakınlık</b> buluyor, ' +
+      '<b>anlam</b> değil. Kümelerin konulara denk gelmesi, gömmenin o konuları birbirinden ' +
+      'ayırmış olmasına bağlı. Gömme ayırmadıysa kümeleme de ayıramaz.</p>' +
+      '<p>Ayrımı düşür ve aynı k ile ne olduğunu izle: renkler artıların etrafında ' +
+      'toplanmayı bırakıyor. Kümeler hâlâ var, hâlâ düzgün görünüyor, ama artık konulara ' +
+      'karşılık gelmiyorlar.</p>',
+    learned:'<b>Kümeleme yakınlık bulur, anlam bulmaz.</b><br><br>' +
+      'İyi ayrılmış konularda (ayrım 3.0, k = 4) saflık %100. Ayrım düştükçe kümeler ' +
+      'düzgün görünmeye devam eder ama konulara karşılık gelmez.<br><br>' +
+      'Kümelerin konulara denk gelmesi kümeleme algoritmasının değil, <b>gömmenin</b> ' +
+      'başarısıdır. Gömme iki konuyu ayırmadıysa hiçbir kümeleme onları ayıramaz.',
+    xp:50,
+  },
+  {
+    t:'Saflık neden k seçemez',
+    goal:'En doğal görünen ölçütün neden işe yaramadığını göreceksin.',
+    todo:'Ayrımı değiştir. Saflık k büyüdükçe ne yapıyor?',
+    kind:'controls', viz:'konuKesfi', h:760,
+    controls:[{k:'ai', lb:'KONULAR ARASI AYRIM', min:0, max:3, step:1, val:0,
+      fmt:v => KK.ayrimlar[Math.round(v)].toFixed(1)}],
+    state:{sahne:'saflik'},
+    body:'<p>Doğal refleks: "saflığı en yükseğe çıkaran k yi seç". Bu iki ayrı sebeple ' +
+      'çalışmaz.</p>' +
+      '<p><b>Birincisi, saflık k ile birlikte büyür.</b> Ayrım 3.0 da k = 4 te %100, ' +
+      'k = 8 de yine %100. Uç noktada her belgeyi kendi kümesine koyarsan saflık ' +
+      'tanım gereği %100 olur. Yani saflığı en iyilemek k = n demeye götürür.</p>' +
+      '<p><b>İkincisi ve daha önemlisi, saflık etiket ister.</b> Her kümenin baskın ' +
+      'konusunu bulmak için belgelerin gerçek konusunu bilmen gerekir. Konu keşfi ' +
+      'yapıyorsan elinde o etiketler yoktur; olsaydı keşfe gerek kalmazdı.</p>' +
+      '<p>Bu, denetimsiz öğrenmenin temel zorluğudur: doğruluğu ölçmek için tam da ' +
+      'aradığın şeye ihtiyacın var. Saflık burada bir <b>değerlendirme aracı</b> olarak ' +
+      'kullanılıyor, yani gerçekte sahip olmayacağın bir bilgiyle algoritmanın ne ' +
+      'yaptığını denetliyoruz.</p>' +
+      '<p>Ayrım düştükçe k = 4 teki saflık da düşüyor: 3.0 da %100, 2.0 de %95.4, ' +
+      '1.2 de %77.9, 0.6 da <b>%50.8</b>. Son durumda kümeler konularla neredeyse ' +
+      'ilgisiz hale gelmiş.</p>',
+    learned:'<b>Saflık k seçemez, çünkü k ile birlikte büyür ve etiket ister.</b><br><br>' +
+      'k = n de saflık tanım gereği %100 olur. Ayrıca saflığı hesaplamak için belgelerin ' +
+      'gerçek konusunu bilmen gerekir; konu keşfinde bu bilgi yoktur.<br><br>' +
+      'k = 4 teki saflık ayrımla düşüyor: 3.0 da %100, 1.2 de %77.9, 0.6 da %50.8.',
+    xp:50,
+  },
+  {
+    t:'Etiketsiz k seçimi',
+    goal:'Elde etiket yokken k seçmenin nasıl yapıldığını ve nerede çuvalladığını göreceksin.',
+    todo:'Ayrımı düşür. Siluet hangi noktada yanlış k yı seçiyor?',
+    kind:'controls', viz:'konuKesfi', h:760,
+    controls:[{k:'ai', lb:'KONULAR ARASI AYRIM', min:0, max:3, step:1, val:0,
+      fmt:v => KK.ayrimlar[Math.round(v)].toFixed(1)}],
+    state:{sahne:'secim'},
+    derive:s => ({sec: KK.enIyiK(KK.ayrimlar[Math.round(s.ai)])}),
+    live:s => [['AYRIM', KK.ayrimlar[Math.round(s.ai)].toFixed(1)],
+               ['SILUETIN SECTIGI', 'k = ' + s.sec, s.sec === 4 ? K.green : K.red],
+               ['GERCEK', 'k = 4', K.mut],
+               ['HEDEF', 'yanlis secim']],
+    unlock:s => s.sec !== 4,
+    unlockMsg:'Siluetin yanlış k seçtiği ayrımı bul',
+    body:'<p>Etiket yoksa iki ölçüt kalıyor ve ikisi çok farklı davranıyor.</p>' +
+      '<p><b>Küme içi kareler toplamı</b> her noktanın kendi merkezine uzaklığını ölçer. ' +
+      'k büyüdükçe <b>her zaman düşer</b>, çünkü daha çok merkez her zaman daha iyi örter. ' +
+      'En küçük değeri seçmek k = n demektir. Bu yüzden pratikte "dirsek" aranır, yani ' +
+      'düşüşün yavaşladığı nokta. Ama dirsek göz kararıdır ve çoğu zaman tartışmalıdır.</p>' +
+      '<p><b>Siluet</b> her noktanın kendi kümesine olan yakınlığı ile en yakın diğer ' +
+      'kümeye olan yakınlığını karşılaştırır. Bunun bir <b>tepesi</b> vardır, yani ' +
+      'gerçekten bir k seçebilir.</p>' +
+      '<p>Ölçüm: ayrım 3.0 da siluet k = 4 te 0.689 ile tepe yapıyor, doğru. 2.0 de yine 4, ' +
+      '1.2 de yine 4 (0.394, ikinciye çok yakın).</p>' +
+      '<p>Ama ayrım 0.6 da siluet <b>k = 6</b> seçiyor. Gerçek cevap 4. Yapı zayıfladıkça ' +
+      'etiketsiz ölçüt yanılıyor ve yanıldığını sana söyleyecek kimse yok.</p>' +
+      '<p>Buradaki asıl ders şu: k seçimi bir <b>hesap</b> değil, bir <b>karar</b>. ' +
+      'Siluet, dirsek ve kararlılık analizi (von Luxburg, 2010) yardımcı olur ama hiçbiri ' +
+      'garanti vermez. Son adım her zaman kümelere bakıp anlamlı olup olmadığını ' +
+      'değerlendirmektir.</p>',
+    learned:'<b>Etiketsiz k seçimi bir hesap değil, bir karardır.</b><br><br>' +
+      'Küme içi kareler toplamı k ile hep düşer, tek başına k seçemez. Siluetin tepesi ' +
+      'vardır: ayrım 3.0 / 2.0 / 1.2 de doğru k = 4 ü buluyor.<br><br>' +
+      'Ama ayrım 0.6 da k = 6 seçiyor; gerçek cevap 4. Yapı zayıfladıkça etiketsiz ölçüt ' +
+      'yanılır ve yanıldığını size söyleyecek bir mekanizma yoktur.',
+    xp:50,
+  },
+  {
+    t:'Zayıf yapıda ne oluyor',
+    goal:'Konu keşfinin sessizce başarısız olduğu durumu tanıyacaksın.',
+    todo:'Ayrım 0.6 daki dağılıma bak, sonra soruyu cevapla.',
+    kind:'controls', viz:'konuKesfi', h:760,
+    controls:[
+      {k:'ai', lb:'KONULAR ARASI AYRIM', min:0, max:3, step:1, val:3,
+       fmt:v => KK.ayrimlar[Math.round(v)].toFixed(1)},
+      {k:'ki', lb:'KUME SAYISI k', min:0, max:5, step:1, val:2,
+       fmt:v => 'k = ' + KK.kler[Math.round(v)]}],
+    state:{sahne:'nokta'},
+    body:'<p>Ayrım 0.6 da konular birbirinin içine girmiş. Kümeleme yine dört düzgün ' +
+      'küme buluyor; ekranda hiçbir şey yanlış görünmüyor. Ama saflık <b>%50.8</b>, ' +
+      'yani kümelerin yarısı yanlış konudan belge içeriyor.</p>' +
+      '<p>Bu, konu keşfinin en tehlikeli tarafıdır: <b>sessizce başarısız olur</b>. ' +
+      'Algoritma her zaman k tane küme döndürür. Kümeler her zaman bir isim verilebilecek ' +
+      'kadar tutarlı görünür. Yapının gerçekten orada olup olmadığını size söyleyen ' +
+      'bir sinyal yoktur.</p>' +
+      '<p>Chang ve arkadaşlarının (2009) klasik çalışması bunun insan tarafını gösterdi: ' +
+      'konu modellerinin istatistiksel olarak en iyi görünen çıktıları, insanlar ' +
+      'tarafından en yorumlanabilir bulunanlar değildi. Yani sayısal ölçüt ile ' +
+      '"bu konu bir şey ifade ediyor mu" sorusu ayrı şeyler.</p>' +
+      '<p>Pratik korunma yolları: farklı tohumlarla çalıştırıp kümelerin kararlı kalıp ' +
+      'kalmadığına bakmak, birkaç kümeden rastgele belge okuyup gerçekten aynı konuda ' +
+      'olup olmadıklarını kontrol etmek, ve gömmeyi değiştirip sonucun değişip ' +
+      'değişmediğini görmek.</p>',
+    quiz:{ q:'Müşteri geri bildirimlerinden konu çıkarmak için gömme + kümeleme kullandın. Siluet k = 7 de tepe yapıyor ve yedi kümeye baktığında hepsine makul birer isim verebiliyorsun. Bu sonuca ne kadar güvenmelisin?',
+      opts:[
+        {t:'Sınırlı: kümelere isim verilebilmesi yapının gerçek olduğunu göstermez; kararlılık ve okuma testleri gerekir', why:'Doğru. Derste ölçtüğün gibi kümeleme yapı olmasa bile her zaman düzgün görünen kümeler döndürür: ayrım 0.6 da saflık %50.8 iken ekranda hiçbir şey yanlış görünmüyordu. İnsanın her kümeye isim verebilmesi de güçlü bir kanıt değil; Chang ve arkadaşlarının (2009) gösterdiği gibi istatistiksel uyum ile yorumlanabilirlik ayrı şeyler. Yapılacak şey farklı tohumlarla kararlılığı ölçmek ve kümelerden rastgele belge okumak.'},
+        {t:'Yüksek: siluet tepe yaptıysa ve kümeler yorumlanabiliyorsa yapı gerçektir', why:'Derste siluetin yanıldığı durumu ölçtün: ayrım 0.6 da siluet k = 6 seçiyordu, gerçek cevap 4 tü. Siluetin tepe yapması bir kanıt değil, bir tahmindir. Yorumlanabilirlik de bağımsız bir kanıt değildir, çünkü insanlar rastgele gruplara bile isim bulabilir.'},
+        {t:'Hiç: kümeleme sonuçları kullanılamaz', why:'Fazla katı. Ayrım 3.0 da saflık %100 dü; yapı gerçekten varsa kümeleme onu bulur ve bu çok değerlidir. Sorun yöntemin kendisi değil, doğrulama olmadan güvenmek.'},
+        {t:'k yı 4 e düşürüp tekrar bakmalısın', why:'Buradaki 4 sayısının bir anlamı yok; o dersteki kurgunun gerçek konu sayısıydı. Müşteri geri bildirimlerinde kaç konu olduğunu bilmiyorsun ve zaten sorun k nın değeri değil, sonucun doğrulanmamış olması.'},
+      ], correct:0 },
+    learned:'<b>Konu keşfi sessizce başarısız olur.</b><br><br>' +
+      'Ayrım 0.6 da saflık %50.8 olmasına rağmen kümeler ekranda düzgün görünüyor. ' +
+      'Algoritma her zaman k küme döndürür ve kümeler her zaman isim verilebilecek ' +
+      'kadar tutarlı görünür.<br><br>' +
+      'Korunma: farklı tohumlarla kararlılık kontrolü, kümelerden rastgele belge okumak, ' +
+      've gömmeyi değiştirip sonucun değişip değişmediğine bakmak.',
     xp:75,
   },
 ]};

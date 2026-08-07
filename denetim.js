@@ -3181,6 +3181,68 @@ console.log('═══ TEMEL MODEL ═══');
     iddia('TM - disarida hicbir ornek sayisi yazi turayi asmiyor', 1,
           enBuyuk < 0.05 ? 1 : 0, 0); }
 }
+console.log('═══ KONU KEŞFİ ═══');
+{
+  iddia('KK - gercek konu sayisi', 4, KK.GERCEK_K, 0);
+  iddia('KK - toplam belge', 240, KK.veri(3.0).X.length, 0);
+  /* her konuda esit sayida belge */
+  { const say = new Array(4).fill(0);
+    KK.veri(3.0).etiket.forEach(e => say[e]++);
+    iddia('KK - konu basina belge', 0, say.filter(z => z !== KK.N).length, 0); }
+  /* atama gecerli mi: her belge tam bir kumede */
+  { let hata = 0;
+    KK.ayrimlar.forEach(a => KK.kler.forEach(k => { const A = KK.kume(a, k);
+      if (A.atama.length !== 240) hata++;
+      A.atama.forEach(z => { if (z < 0 || z >= k) hata++; }); }));
+    iddia('KK - atamalar gecerli', 0, hata, 0); }
+
+  /* 1. adim - saflik */
+  iddia('KK - ayrim 3.0 - k=4 saflik', 100.0, 100*KK.saflik(3.0, 4), 1);
+  iddia('KK - ayrim 2.0 - k=4 saflik', 95.4, 100*KK.saflik(2.0, 4), 1);
+  iddia('KK - ayrim 1.2 - k=4 saflik', 77.9, 100*KK.saflik(1.2, 4), 1);
+  iddia('KK - ayrim 0.6 - k=4 saflik', 50.8, 100*KK.saflik(0.6, 4), 1);
+  /* ayrim dustukce k=4 saflik dusuyor */
+  { let ihlal = 0;
+    for (let i = 1; i < KK.ayrimlar.length; i++)
+      if (KK.saflik(KK.ayrimlar[i], 4) > KK.saflik(KK.ayrimlar[i-1], 4)) ihlal++;
+    iddia('KK - ayrim dustukce saflik dusuyor', 0, ihlal, 0); }
+  iddia('KK - ayrim 3.0 - k=2 saflik', 50.0, 100*KK.saflik(3.0, 2), 1);
+  iddia('KK - ayrim 3.0 - k=8 saflik', 100.0, 100*KK.saflik(3.0, 8), 1);
+  /* saflik hicbir zaman 1/K nin altina inmiyor (baskin konu payi) */
+  { let ihlal = 0;
+    KK.ayrimlar.forEach(a => KK.kler.forEach(k => {
+      if (KK.saflik(a, k) < 1/KK.GERCEK_K - 1e-9) ihlal++; }));
+    iddia('KK - saflik taban degerin altina inmiyor', 0, ihlal, 0); }
+
+  /* 2. adim - kume ici kareler toplami k ile HEP dusuyor */
+  { let ihlal = 0;
+    KK.ayrimlar.forEach(a => { for (let i = 1; i < KK.kler.length; i++)
+      if (KK.kit(a, KK.kler[i]) > KK.kit(a, KK.kler[i-1]) + 1e-9) ihlal++; });
+    iddia('KK - kume ici kareler k ile hep dusuyor', 0, ihlal, 0); }
+  iddia('KK - ayrim 3.0 - KIT k=2', 10.911, KK.kit(3.0, 2), 3);
+  iddia('KK - ayrim 3.0 - KIT k=4', 1.825, KK.kit(3.0, 4), 3);
+  iddia('KK - ayrim 3.0 - KIT k=8', 1.270, KK.kit(3.0, 8), 3);
+
+  /* 3. adim - siluet */
+  iddia('KK - ayrim 3.0 - siluet k=4', 0.689, KK.siluet(3.0, 4), 3);
+  iddia('KK - ayrim 3.0 - siluet k=2', 0.468, KK.siluet(3.0, 2), 3);
+  iddia('KK - ayrim 1.2 - siluet k=4', 0.394, KK.siluet(1.2, 4), 3);
+  iddia('KK - ayrim 0.6 - siluet k=4', 0.325, KK.siluet(0.6, 4), 3);
+  iddia('KK - ayrim 0.6 - siluet k=6', 0.372, KK.siluet(0.6, 6), 3);
+  iddia('KK - siluet secimi - ayrim 3.0', 4, KK.enIyiK(3.0), 0);
+  iddia('KK - siluet secimi - ayrim 2.0', 4, KK.enIyiK(2.0), 0);
+  iddia('KK - siluet secimi - ayrim 1.2', 4, KK.enIyiK(1.2), 0);
+  iddia('KK - siluet secimi - ayrim 0.6 (YANLIS)', 6, KK.enIyiK(0.6), 0);
+  iddia('KK - zayif yapida siluet yaniliyor', 1, KK.enIyiK(0.6) !== 4 ? 1 : 0, 0);
+  /* siluet -1 ile 1 arasinda */
+  { let ihlal = 0;
+    KK.ayrimlar.forEach(a => KK.kler.forEach(k => { const s2 = KK.siluet(a, k);
+      if (s2 < -1 - 1e-9 || s2 > 1 + 1e-9) ihlal++; }));
+    iddia('KK - siluet -1 ile 1 arasinda', 0, ihlal, 0); }
+  /* iyi ayrilmis veride siluet daha yuksek */
+  iddia('KK - iyi ayrimda siluet daha yuksek', 1,
+        KK.siluet(3.0, 4) > KK.siluet(0.6, 4) ? 1 : 0, 0);
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

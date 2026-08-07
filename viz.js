@@ -8905,6 +8905,259 @@ VIZ.temelModel = s => {
   }
 };
 
+
+/* ═══════════ KONU KEŞFİ ═══════════
+   Gömmelerden kümeleme ile konu bulmak. k-ortalamalar sıfırdan
+   yazıldı; saflık, siluet ve küme içi kareler toplamı gerçekten ölçülüyor. */
+const KK = {};
+KK.D = 2;              /* gömme boyutu · görselleştirilebilsin diye */
+KK.GERCEK_K = 4;       /* gerçekte kaç konu var */
+KK.N = 60;             /* konu başına belge */
+KK.kler = [2, 3, 4, 5, 6, 8];
+KK.ayrimlar = [3.0, 2.0, 1.2, 0.6];   /* konu merkezleri arası uzaklık */
+const _kkC = {};
+KK.merkezler = [[1, 1], [-1, 1], [-1, -1], [1, -1]];
+/* belgeler: dört konu, ayrım parametresi merkezleri ölçekliyor */
+KK.veri = ayrim => {
+  const key = 'v' + ayrim;
+  if (_kkC[key]) return _kkC[key];
+  const r = rng(17), X = [], etiket = [];
+  for (let t = 0; t < KK.GERCEK_K; t++)
+    for (let i = 0; i < KK.N; i++){
+      X.push([KK.merkezler[t][0]*ayrim + omNormal(r), KK.merkezler[t][1]*ayrim + omNormal(r)]);
+      etiket.push(t); }
+  return (_kkC[key] = { X, etiket });
+};
+KK.uzaklik2 = (a, b) => { let s = 0;
+  for (let i = 0; i < a.length; i++) s += (a[i] - b[i])*(a[i] - b[i]);
+  return s; };
+/* k-ortalamalar · k-means++ başlangıç, sabit tohum */
+KK.kume = (ayrim, k) => {
+  const key = 'k' + ayrim + ':' + k;
+  if (_kkC[key]) return _kkC[key];
+  const { X } = KK.veri(ayrim), n = X.length, r = rng(41);
+  const M = [X[Math.floor(n*r())].slice()];
+  while (M.length < k){
+    const d = X.map(x => Math.min(...M.map(m => KK.uzaklik2(x, m))));
+    const t = d.reduce((a, z) => a + z, 0);
+    let u = t*r(), i = 0;
+    while (i < n - 1 && u > d[i]){ u -= d[i]; i++; }
+    M.push(X[i].slice()); }
+  let atama = new Array(n).fill(0);
+  for (let it = 0; it < 60; it++){
+    let degisti = false;
+    for (let i = 0; i < n; i++){
+      let en = Infinity, arg = 0;
+      for (let j = 0; j < k; j++){ const d = KK.uzaklik2(X[i], M[j]);
+        if (d < en){ en = d; arg = j; } }
+      if (atama[i] !== arg){ atama[i] = arg; degisti = true; } }
+    for (let j = 0; j < k; j++){
+      const s = new Array(KK.D).fill(0); let c = 0;
+      for (let i = 0; i < n; i++) if (atama[i] === j){ c++;
+        for (let q = 0; q < KK.D; q++) s[q] += X[i][q]; }
+      if (c > 0) for (let q = 0; q < KK.D; q++) M[j][q] = s[q]/c; }
+    if (!degisti && it > 0) break; }
+  return (_kkC[key] = { M, atama });
+};
+/* saflik: her kumenin baskin konusunun payi · etiketlerle olculur */
+KK.saflik = (ayrim, k) => {
+  const key = 's' + ayrim + ':' + k;
+  if (_kkC[key] !== undefined) return _kkC[key];
+  const { etiket } = KK.veri(ayrim), { atama } = KK.kume(ayrim, k);
+  let dogru = 0;
+  for (let j = 0; j < k; j++){
+    const say = new Array(KK.GERCEK_K).fill(0);
+    for (let i = 0; i < atama.length; i++) if (atama[i] === j) say[etiket[i]]++;
+    dogru += Math.max(...say); }
+  return (_kkC[key] = dogru/atama.length);
+};
+/* kume ici kareler toplami · ETIKETSIZ olcut */
+KK.kit = (ayrim, k) => {
+  const key = 'w' + ayrim + ':' + k;
+  if (_kkC[key] !== undefined) return _kkC[key];
+  const { X } = KK.veri(ayrim), { M, atama } = KK.kume(ayrim, k);
+  let s = 0;
+  for (let i = 0; i < X.length; i++) s += KK.uzaklik2(X[i], M[atama[i]]);
+  return (_kkC[key] = s/X.length);
+};
+/* siluet · ETIKETSIZ olcut */
+KK.siluet = (ayrim, k) => {
+  const key = 'l' + ayrim + ':' + k;
+  if (_kkC[key] !== undefined) return _kkC[key];
+  const { X } = KK.veri(ayrim), { atama } = KK.kume(ayrim, k), n = X.length;
+  const uyeler = [];
+  for (let j = 0; j < k; j++) uyeler.push([]);
+  for (let i = 0; i < n; i++) uyeler[atama[i]].push(i);
+  let top = 0;
+  for (let i = 0; i < n; i++){
+    const kendi = uyeler[atama[i]];
+    let a = 0;
+    if (kendi.length > 1){
+      kendi.forEach(q => { if (q !== i) a += Math.sqrt(KK.uzaklik2(X[i], X[q])); });
+      a /= (kendi.length - 1); }
+    let b = Infinity;
+    for (let j = 0; j < k; j++){ if (j === atama[i] || !uyeler[j].length) continue;
+      let s = 0; uyeler[j].forEach(q => s += Math.sqrt(KK.uzaklik2(X[i], X[q])));
+      b = Math.min(b, s/uyeler[j].length); }
+    if (b === Infinity) continue;
+    top += (b - a)/Math.max(a, b); }
+  return (_kkC[key] = top/n);
+};
+/* siluetin en yuksek oldugu k · etiketsiz secim */
+KK.enIyiK = ayrim => {
+  const key = 'e' + ayrim;
+  if (_kkC[key] !== undefined) return _kkC[key];
+  let en = -2, arg = KK.kler[0];
+  KK.kler.forEach(kv => { const s = KK.siluet(ayrim, kv);
+    if (s > en){ en = s; arg = kv; } });
+  return (_kkC[key] = arg);
+};
+
+
+VIZ.konuKesfi = s => {
+  clear();
+  const sahne = s.sahne || 'nokta';
+  const ai = Math.max(0, Math.min(3, s.ai === undefined ? 0 : Math.round(s.ai)));
+  const ayrim = KK.ayrimlar[ai];
+  const ki = Math.max(0, Math.min(5, s.ki === undefined ? 2 : Math.round(s.ki)));
+  const kv = KK.kler[ki];
+  const RENK = ['#3b82f6', '#22c55e', '#f97316', '#a855f7', '#ef4444', '#eab308',
+                '#14b8a6', '#ec4899'];
+  const kart = (x, y, wd, ad, deger, rnk, alt) => {
+    box(x, y, wd, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + wd/2, y + 28, K.mut, 15);
+    txt(deger, x + wd/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + wd/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'saflik'){
+    baslikSerit('KONU KEŞFİ · KÜMELER KONULARI BULUYOR MU',
+      'Saflık, her kümenin baskın konusunun payı. Ölçmek için etiket gerekiyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 5.35, 0.25, 1.08);
+    frame(P, 'küme sayısı k', 'saflık', [], [0.25, 0.5, 0.75, 1]);
+    KK.kler.forEach((k2, i) => txt(String(k2), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    KK.ayrimlar.forEach((av, i) => {
+      const renk = [K.green, K.blue, K.orange, K.red][i];
+      cx.strokeStyle = renk; cx.lineWidth = av === ayrim ? 3.8 : 1.8;
+      cx.globalAlpha = av === ayrim ? 1 : 0.4; cx.beginPath();
+      KK.kler.forEach((k2, j) => { const y = P.sy(KK.saflik(av, k2));
+        j ? cx.lineTo(P.sx(j), y) : cx.moveTo(P.sx(j), y); });
+      cx.stroke();
+      if (av === ayrim) KK.kler.forEach((k2, j) => dot(P.sx(j), P.sy(KK.saflik(av, k2)), 5, renk));
+      cx.globalAlpha = 1; });
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.sx(2), P.R.y); cx.lineTo(P.sx(2), P.R.y + P.R.h); cx.stroke();
+    cx.setLineDash([]);
+    txt('gerçek konu sayısı', P.sx(2) + 12, P.R.y + 28, K.mut, 15, 'left');
+    KK.ayrimlar.forEach((av, i) => {
+      const yy = P.sy(0.44 - i*0.045);
+      cx.strokeStyle = [K.green, K.blue, K.orange, K.red][i];
+      cx.lineWidth = av === ayrim ? 3.8 : 1.8;
+      cx.beginPath(); cx.moveTo(P.R.x + P.R.w - 176, yy - 5);
+      cx.lineTo(P.R.x + P.R.w - 140, yy - 5); cx.stroke();
+      txt('ayrım ' + av.toFixed(1), P.R.x + P.R.w - 130, yy,
+          [K.green, K.blue, K.orange, K.red][i], 15, 'left', av === ayrim ? 700 : 400); });
+    const bx = 830;
+    kart(bx, 200, 260, 'AYRIM', ayrim.toFixed(1), K.blue, 'konu merkezleri arası');
+    kart(bx + 280, 200, 260, 'k = 4 TE', '%' + (100*KK.saflik(ayrim, 4)).toFixed(1), K.green);
+    kart(bx, 330, 260, 'k = 2 DE', '%' + (100*KK.saflik(ayrim, 2)).toFixed(1), K.orange);
+    kart(bx + 280, 330, 260, 'k = 8 DE', '%' + (100*KK.saflik(ayrim, 8)).toFixed(1), K.mut);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('SAFLIK YANILTICI BİR ÖLÇÜT', bx + 270, 494, K.mut, 18);
+    txt('İyi ayrılmış konularda k = 4 te saflık %100.', bx + 18, 534, K.txt, 18, 'left');
+    txt('Ama k büyüdükçe saflık da büyür: her belgeyi', bx + 18, 572, K.orange, 18, 'left');
+    txt('kendi kümesine koyarsan saflık %100 olur.', bx + 18, 600, K.orange, 18, 'left');
+    txt('Yani saflığı tek başına en iyileyerek k seçilemez.', bx + 18, 638, K.orange, 18, 'left');
+    txt('Üstelik saflık etiket ister. Konu keşfi yapıyorsan', bx + 18, 676, K.red, 18, 'left');
+    txt('elinde etiket yoktur, yoksa keşfe gerek kalmazdı.', bx + 18, 704, K.red, 18, 'left');
+  }
+
+  else if (sahne === 'secim'){
+    baslikSerit('KONU KEŞFİ · ETİKETSİZ k SEÇİMİ',
+      'Küme içi kareler toplamı hep düşer. Siluetin tepesi vardır ve o tepe bir tahmindir.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 5.35, 0, 1.08);
+    frame(P, 'küme sayısı k', 'ölçekli değer', [], [0, 0.25, 0.5, 0.75, 1]);
+    KK.kler.forEach((k2, i) => txt(String(k2), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    const enKit = KK.kit(ayrim, 2);
+    cx.strokeStyle = K.orange; cx.lineWidth = 3.6; cx.beginPath();
+    KK.kler.forEach((k2, j) => { const y = P.sy(KK.kit(ayrim, k2)/enKit);
+      j ? cx.lineTo(P.sx(j), y) : cx.moveTo(P.sx(j), y); });
+    cx.stroke();
+    KK.kler.forEach((k2, j) => dot(P.sx(j), P.sy(KK.kit(ayrim, k2)/enKit), 5, K.orange));
+    cx.strokeStyle = K.green; cx.lineWidth = 3.6; cx.beginPath();
+    KK.kler.forEach((k2, j) => { const y = P.sy(KK.siluet(ayrim, k2));
+      j ? cx.lineTo(P.sx(j), y) : cx.moveTo(P.sx(j), y); });
+    cx.stroke();
+    KK.kler.forEach((k2, j) => dot(P.sx(j), P.sy(KK.siluet(ayrim, k2)), 5, K.green));
+    const sec = KK.enIyiK(ayrim);
+    const si = KK.kler.indexOf(sec);
+    dot(P.sx(si), P.sy(KK.siluet(ayrim, sec)), 10, sec === 4 ? K.green : K.red);
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.sx(2), P.R.y); cx.lineTo(P.sx(2), P.R.y + P.R.h); cx.stroke();
+    cx.setLineDash([]);
+    txt('gerçek k = 4', P.sx(2) + 12, P.R.y + 28, K.mut, 15, 'left');
+    txt('turuncu: küme içi kareler (ölçekli)', P.R.x + 16, P.sy(1.02), K.orange, 16, 'left');
+    txt('yeşil: siluet', P.R.x + 16, P.sy(0.95), K.green, 16, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'AYRIM', ayrim.toFixed(1), K.blue);
+    kart(bx + 280, 200, 260, 'SİLUETİN SEÇTİĞİ', 'k = ' + sec,
+         sec === 4 ? K.green : K.red, sec === 4 ? 'doğru' : 'yanlış');
+    kart(bx, 330, 260, 'k = 4 SİLUET', KK.siluet(ayrim, 4).toFixed(3), K.green);
+    kart(bx + 280, 330, 260, 'EN İYİ SİLUET', KK.siluet(ayrim, sec).toFixed(3),
+         sec === 4 ? K.green : K.red);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', sec === 4 ? K.axis : K.red, 2);
+    txt('İKİ ÖLÇÜT, İKİ DAVRANIŞ', bx + 270, 494, K.mut, 18);
+    txt('Küme içi kareler toplamı k büyüdükçe hep düşer.', bx + 18, 534, K.txt, 18, 'left');
+    txt('En küçük değeri seçmek k = n demek olur, yani', bx + 18, 562, K.txt, 18, 'left');
+    txt('bu ölçüt tek başına k seçemez. Dirsek göz kararıdır.', bx + 18, 590, K.txt, 18, 'left');
+    txt(sec === 4
+        ? 'Siluetin tepesi var ve burada doğru yeri buluyor.'
+        : 'Siluetin tepesi var ama burada yanlış yerde:',
+        bx + 18, 630, sec === 4 ? K.green : K.red, 18, 'left');
+    txt(sec === 4
+        ? 'Ama bu bir garanti değil, bir tahmindir.'
+        : 'k = ' + sec + ' seçiyor, gerçek k = 4.',
+        bx + 18, 660, sec === 4 ? K.green : K.red, 18, 'left');
+    txt('Etiketsiz ölçütler yapı zayıfladıkça yanılır.', bx + 18, 700, K.mut, 17, 'left');
+  }
+
+  else {
+    const { X, etiket } = KK.veri(ayrim), { M, atama } = KK.kume(ayrim, kv);
+    baslikSerit('KONU KEŞFİ · GÖMMELER VE KÜMELER',
+      'Dört gerçek konu var. Kümeleme etiketleri görmüyor, sadece gömmeleri görüyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -5.2, 5.2, -5.2, 5.2);
+    frame(P, 'gömme boyutu 1', 'boyut 2', [-4, -2, 0, 2, 4], [-4, -2, 0, 2, 4]);
+    X.forEach((x, i) => {
+      if (x[0] < -5.2 || x[0] > 5.2 || x[1] < -5.2 || x[1] > 5.2) return;
+      dot(P.sx(x[0]), P.sy(x[1]), 3.4, RENK[atama[i] % RENK.length]); });
+    M.forEach((m, j) => {
+      if (m[0] < -5.2 || m[0] > 5.2) return;
+      dot(P.sx(m[0]), P.sy(m[1]), 9, RENK[j % RENK.length], K.txt, 2.5); });
+    KK.merkezler.forEach(m => {
+      const x = P.sx(m[0]*ayrim), y = P.sy(m[1]*ayrim);
+      cx.strokeStyle = K.txt; cx.lineWidth = 2;
+      cx.beginPath(); cx.moveTo(x - 9, y); cx.lineTo(x + 9, y);
+      cx.moveTo(x, y - 9); cx.lineTo(x, y + 9); cx.stroke(); });
+    txt('artı: gerçek konu merkezleri', P.R.x + 16, P.R.y + 28, K.txt, 16, 'left');
+    txt('renk: kümeleme kararı', P.R.x + 16, P.R.y + 54, K.mut, 16, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'AYRIM', ayrim.toFixed(1), K.blue, 'merkezler arası');
+    kart(bx + 280, 200, 260, 'KÜME SAYISI', String(kv), K.purple);
+    kart(bx, 330, 260, 'SAFLIK', '%' + (100*KK.saflik(ayrim, kv)).toFixed(1),
+         KK.saflik(ayrim, kv) > 0.9 ? K.green : KK.saflik(ayrim, kv) > 0.7 ? K.orange : K.red);
+    kart(bx + 280, 330, 260, 'SİLUET', KK.siluet(ayrim, kv).toFixed(3), K.green);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('KÜMELEME ETİKET GÖRMÜYOR', bx + 270, 494, K.mut, 18);
+    txt('Algoritma sadece noktaların yerini biliyor.', bx + 18, 534, K.txt, 18, 'left');
+    txt('Konu diye bir kavramı yok; sadece birbirine', bx + 18, 564, K.txt, 18, 'left');
+    txt('yakın noktaları bir araya topluyor.', bx + 18, 594, K.txt, 18, 'left');
+    txt('Ayrım ' + ayrim.toFixed(1) + ' de saflık %' + (100*KK.saflik(ayrim, kv)).toFixed(1) + '.',
+        bx + 18, 634, KK.saflik(ayrim, kv) > 0.9 ? K.green : K.orange, 18, 'left');
+    txt('Konular üst üste bindikçe kümeler ile konular', bx + 18, 672, K.mut, 17, 'left');
+    txt('arasındaki bağ kopuyor ve bunu fark etmek zor.', bx + 18, 698, K.mut, 17, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
