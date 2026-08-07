@@ -5708,3 +5708,156 @@ DERSLER_EN['boosting'] = {
   },
   ],
 };
+
+DERSLER_EN['svm'] = {
+  ad:'SVM and the idea of a margin',
+  alt:'Separating is not enough: separate with the widest possible gap. That single idea dominated machine learning from the 1990s to the 2010s.',
+  kaynaklar:[{"y":"Cortes, C. & Vapnik, V.","t":"1995","b":"Support-Vector Networks","n":"Machine Learning, 20(3), 273–297"},
+             {"y":"Boser, Guyon, Vapnik","t":"1992","b":"A Training Algorithm for Optimal Margin Classifiers","n":"COLT '92"},
+             {"y":"Hastie, Tibshirani, Friedman","t":"2009","b":"The Elements of Statistical Learning, Chapter 12","n":"Springer","u":"https://hastie.su.domains/ElemStatLearn/"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'Which line is better?',
+    goal:'You will see which of the infinitely many separating lines an SVM picks, and why.',
+    todo:'Drag the C slider <b>from 0.2 to 100</b>. Watch the yellow band narrow and the number of support vectors fall.',
+    kind:'controls', viz:'svm', h:780, xp:55,
+    body:'<p>In the "classification and the decision boundary" lesson you found a line. But <b>infinitely many</b> lines can separate this data. Which one is best?</p>' +
+         '<p>The SVM\'s answer: <b>the one that stays furthest from both classes.</b> The yellow band shows that gap, the <b>margin</b>. An SVM maximises the margin.</p>' +
+         '<p>The intuition: if the margin is wide, a new point can drift a little left or right without changing class. So a wide margin means <b>safer generalisation</b>.</p>' +
+         '<p><b>Support vectors</b> (the points with yellow rings): the points sitting on or inside the margin. <b>Only these</b> determine the boundary. Delete the other points and the model does not change at all, which is the most elegant property of an SVM.</p>' +
+         '<p><b>What does C do?</b> It is the penalty given to error:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">C=  0.2 → margin 6.27  ·  111 support vectors<br>C=  1   → margin 3.51  ·   57 support vectors<br>C=  2   → margin 2.97  ·   39 support vectors<br>C=  5   → margin 2.35  ·   27 support vectors<br>C= 20   → margin 1.67  ·   12 support vectors<br>C=100   → margin 0.73  ·    4 support vectors</p>' +
+         '<p><b>Small C:</b> "I can live with misclassifying a few points as long as the margin is wide" → a simpler model that generalises better.<br>' +
+         '<b>Large C:</b> "I want no errors at all" → the margin narrows and the model is shaped by individual points → a risk of overfitting.</p>' +
+         '<p>C is the same regularisation dial as the others you have seen on this track: <code>max_depth</code> in a tree, <code>k</code> in k-NN, <code>alpha</code> in Ridge. <b>They all tune the same trade-off.</b></p>',
+    learned:'<b>An SVM maximises the margin, and only the support vectors determine the solution.</b><br><br>C is the dial between the width of the margin and the training error: a small C means a wide margin and error tolerance, a large C means a narrow margin and a risk of overfitting.',
+    controls:[{k:'C', lb:'C (error penalty)', min:0.2, max:100, step:0.2, val:2}],
+    quiz:{
+      q:'After an SVM has been trained, what happens if you delete every point that is <b>not</b> a support vector and retrain the model?',
+      opts:[
+        {t:'The model changes completely',
+         why:'No, and this is the defining property of an SVM.'},
+        {t:'The model stays <b>exactly the same</b>; only the support vectors determine the solution',
+         why:'Correct. The SVM\'s optimisation problem makes the solution depend only on the points on or inside the margin. The coefficient (the dual variable) of every other point is zero. The practical consequence: the model is extremely <b>compact</b>; a million rows of data can produce a model with 200 support vectors, and only those 200 points are stored for prediction.'},
+        {t:'The accuracy falls but the boundary stays the same',
+         why:'Since the boundary stays the same, the accuracy (on the remaining points) also stays the same.'},
+        {t:'The margin widens',
+         why:'You kept exactly the points that determine the margin; there is no reason for it to widen.'},
+      ], correct:1 },
+  },
+  {
+    t:'The kernel trick',
+    goal:'You will understand how data that is not linearly separable can be separated without ever going up to a higher dimension.',
+    todo:'Read the text and answer the question.',
+    kind:'controls', viz:'svm', h:780, xp:55,
+    body:'<p>The boundary an SVM draws is <b>straight</b>. So what if the data cannot be separated by a straight line?</p>' +
+         '<p>The classic example: in 1 dimension, one class in the middle and the other class at both ends.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">x:  −3  −2  −1   0   1   2   3<br>y:   A   A   B   B   B   A   A     ← no single point can separate this</p>' +
+         '<p>But if we invent a <b>second dimension</b>, say x², the situation changes:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">x² :  9   4   1   0   1   4   9<br>y  :  A   A   B   B   B   A   A     ← now the line x² = 2.5 separates them</p>' +
+         '<p>So if you carry the data into a higher dimension it can become linearly separable. The problem: in real problems that dimension can be <b>very</b> high (even infinite) and carrying the data there is impossible.</p>' +
+         '<p><b>This is where the kernel trick comes in.</b> The SVM\'s optimisation needs the data points only through their <b>inner products</b>. And some functions can compute the inner product in the high dimension <b>without ever going there</b>:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">linear     : K(a,b) = a·b<br>polynomial : K(a,b) = (a·b + 1)ᵈ<br>RBF        : K(a,b) = exp(−γ‖a−b‖²)    ← corresponds to infinite dimensions</p>' +
+         '<p>With an RBF kernel an SVM draws a flat plane in an infinite dimensional space, while all it actually does is compute distances between pairs of points.</p>' +
+         '<p><b>What does γ (gamma) do?</b> It sets how far each point\'s influence spreads. A large γ means every point builds its own little island → overfitting. A small γ means the boundary is almost straight.</p>',
+    learned:'<b>The kernel trick = computing the inner product in a high dimension without going up to that dimension.</b><br><br>The price: the cost grows with the number of examples (n²–n³). This is why an SVM stops being practical above roughly a hundred thousand rows, and tree ensembles and deep learning take over there.',
+    controls:[{k:'C', lb:'C (error penalty)', min:0.2, max:100, step:0.2, val:2}],
+    quiz:{
+      q:'The RBF kernel is described as "carrying the data into an infinite dimensional space". What does that mean in practice?',
+      opts:[
+        {t:'The model learns infinitely many parameters',
+         why:'No. The number of parameters equals the number of support vectors, which is finite and usually small.'},
+        {t:'We really do carry the data into that space and work there',
+         why:'No, and it would be impossible anyway. The entire point of the kernel trick is <b>not</b> to do that mapping.'},
+        {t:'We never go into that space; we just compute the value of the inner products there directly',
+         why:'Correct. The kernel function gives you the value of φ(a)·φ(b) without ever computing φ. Because the optimisation only needs those inner products, the high dimension is never actually built. The cost depends on the <b>number of examples</b> rather than the dimension, which is why an SVM slows down on big data (the kernel matrix is n×n).'},
+        {t:'Infinite dimension is only a metaphor with no mathematical counterpart',
+         why:'It does have a counterpart; the RBF kernel corresponds to a Hilbert space (Mercer\'s theorem).'},
+      ], correct:2 },
+  },
+  ],
+};
+
+DERSLER_EN['soft-tree'] = {
+  ad:'Training a soft tree with neural-trees',
+  alt:'You saw the theory. Now we actually train it, and put it side by side with a classical tree and measure.',
+  kaynaklar:[{"y":"İrsoy, Yıldız, Alpaydın","t":"2012","b":"Soft Decision Trees","n":"ICPR 2012, 1819–1822"},
+             {"y":"Frosst, N. & Hinton, G.","t":"2017","b":"Distilling a Neural Network Into a Soft Decision Tree","n":"arXiv:1711.09784","u":"https://arxiv.org/abs/1711.09784"},
+             {"y":"Breiman, Friedman, Olshen, Stone","t":"1984","b":"Classification and Regression Trees (CART)","n":"Wadsworth"},
+             {"y":"Alpaydın, E.","t":"1999","b":"Combined 5×2cv F Test for Comparing Supervised Classification Learning Algorithms","n":"Neural Computation, 11(8), 1885–1892"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'A staircase or a diagonal?',
+    goal:'You will see the concrete gain of the soft gate over a classical tree, side by side on the same data.',
+    todo:'Drag the temperature T <b>from 0.3 to 3.0</b>. Compare the boundary shapes and the accuracies of the two panels.',
+    kind:'controls', viz:'softTree', h:820, xp:50,
+    body:'<p>The same data: a diagonal boundary (x + y = 10) plus 6% label noise. Because of the noise <b>no model can go above 94%</b>; that is the Bayes ceiling.</p>' +
+         '<p><b style="color:#fb923c">CART on the left, depth 4.</b> Because it has to cut axis aligned it approximates the diagonal boundary with a staircase. 9 leaves, <b>17 parameters</b>, accuracy <b>92.5%</b>.</p>' +
+         '<p><b style="color:#22d3a0">A soft tree on the right, depth 1.</b> Because its gate is linear (σ((w₁x + w₂y + b)/T)) it <b>can cut diagonally</b>. 2 leaves, <b>5 parameters</b>, accuracy <b>94.2%</b>.</p>' +
+         '<p><b>Better with a third of the parameters.</b> The reason is simple: the soft tree\'s gate matches the true geometry of the data, while CART tries to dress it in an axis aligned grid.</p>' +
+         '<p>The gate it learned: <code>3.15x + 3.36y − 32.97 = 0</code>. The axis intercepts are <b>10.47</b> and <b>9.81</b>; those of the true boundary are 10.00 and 10.00. The slope is <b>−0.94</b> against a true −1.00.</p>' +
+         '<p><b>Nobody told it, and the model found the diagonal boundary almost exactly</b>, using only 5 numbers.</p>',
+    learned:'<b>Because the soft gate is linear it can cut diagonally; CART\'s staircase constraint disappears.</b><br><br>That is the measurable gain of the "soft decision tree" idea: solving the same problem <b>with fewer parameters and higher accuracy</b>.',
+    controls:[{k:'T', lb:'TEMPERATURE T', min:0.3, max:3, step:0.1, val:0.3}],
+  },
+  {
+    t:'But it is not free: if T is too small it cannot be trained',
+    goal:'You will see the price at the other end of the temperature dial and why it is unavoidable.',
+    todo:'Lower T to <b>0.3</b> and look at the accuracy. Then 1.0, then 2.0.',
+    kind:'controls', viz:'softTree', h:820, xp:60,
+    body:'<p>This result was found by <b>measurement</b> while preparing this lesson, not invented afterwards:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">T = 0.3  →  54.2%   (3,000 epochs)<br>T = 0.6  →  54.6%<br>T = 1.0  →  83.3%<br>T = 2.0  →  <b>93.8%</b><br>T = 3.0  →  93.8%</p>' +
+         '<p>At a small T the model <b>learns nothing at all</b>. Even when we raised the epochs to 30,000 and the learning rate fivefold, T = 0.3 still stayed at 54.2%, so this is not an "undertrained" problem.</p>' +
+         '<p><b>The reason is mathematical.</b> The derivative of the gate with respect to the threshold:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">∂σ/∂w = σ(1−σ) · x / T</p>' +
+         '<p>As T shrinks, σ(z) saturates at 0 or 1. When it saturates σ(1−σ) → 0 and <b>the gradient vanishes</b>. The 1/T factor tries to compensate but the saturation grows faster.</p>' +
+         '<p style="color:#facc15"><b>And this is the experimental proof of the claim from the "hard threshold vs soft threshold" lesson.</b> There we said that T → 0 brings the classical tree back. Now we see that it also brings back the classical tree\'s <i>untrainability</i>. The dial is continuous and there is a real price at each end.</p>',
+    learned:'<b>Both ends of the temperature dial carry a price:</b> a large T is trainable but blurry, a small T is sharp but untrainable.<br><br>The practical fix is <b>annealing</b>: start with a high T and lower it as training proceeds. That way the gradient flows and the final model is still sharp.',
+    controls:[{k:'T', lb:'TEMPERATURE T', min:0.3, max:3, step:0.1, val:2}],
+    quiz:{
+      q:'You are going to use a soft decision tree at a bank. The auditor wants <b>rules as crisp as possible</b>, which means a low T. But a low T cannot be trained. What do you do?',
+      opts:[
+        {t:'I train with a high T and explain the situation to the auditor',
+         why:'Partly right but incomplete; that is an acceptance rather than a solution. There is something better.'},
+        {t:'I train with a high T, then retrain while lowering T gradually (annealing)',
+         why:'Correct. This is called <b>temperature annealing</b> and it is used for exactly this problem: a high T lets the gradients flow so you find roughly the right gate, then you sharpen the gate by lowering T step by step. The same idea is used in knowledge distillation (Hinton) and in discrete sampling methods such as Gumbel-Softmax.'},
+        {t:'I go back to classical CART',
+         why:'A legitimate option, but it brings back the staircase constraint and costs 12 extra parameters on this problem.'},
+        {t:'I raise the learning rate a lot',
+         why:'It was tried and did not work: raising the lr fivefold did not change the 54.2% at T=0.3. The problem is not the step size but that the gradient itself is near zero.'},
+      ], correct:1 },
+  },
+  {
+    t:'So is that difference real?',
+    goal:'You will apply the statistical discipline you learned on Track 0 to your own model. The circle closes here.',
+    todo:'Read the text and solve the scenario.',
+    kind:'controls', viz:'softTree', h:820, xp:60,
+    body:'<p>We have two numbers: <b>CART 92.5%</b> and <b>soft tree 94.2%</b>. A difference of 1.7 points.</p>' +
+         '<p>Now recall the lesson from Track 0: <b>those numbers came from a single training run and were measured on all the data.</b> So this is a <i>training accuracy</i>. It is not enough for a claim of superiority.</p>' +
+         '<p>The protocol needed for an honest comparison:</p>' +
+         '<p>1 · Split the data with <b>5×2cv</b>: 5 repeats, 2 folds each, roles swapped<br>' +
+         '2 · Train <b>both models</b> on every fold with the same split<br>' +
+         '3 · Collect the 10 paired differences<br>' +
+         '4 · Apply the <b>Alpaydın 5×2cv F-test</b><br>' +
+         '5 · If p &lt; 0.05 the difference is significant; if not, say "could not be shown"</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px;font-size:12.5px">from neural_trees import SoftDecisionTree<br>from sklearn.tree import DecisionTreeClassifier<br><br>a = SoftDecisionTree(depth=1, temperature=2.0)<br>b = DecisionTreeClassifier(max_depth=4, min_samples_leaf=5)<br><br><span style="color:#566674"># the 5×2cv F-test, what you did step by step in the last lesson of Track 0</span><br>f, p = cv52_f_test(a, b, X, y)</p>' +
+         '<p style="color:#facc15"><b>And this is the point the whole platform hangs on:</b> finding a pretty visual, a model that runs and a high number is easy. What is hard is being able to show that the number is <b>real</b>.</p>',
+    learned:'<b>Track 1 is complete and the circle has closed.</b><br><br>You built a model (a soft tree), compared it with a classical model (CART), and learned to ask whether the difference is real (the 5×2cv F-test).<br><br>That trio, <b>build, compare, prove</b>, will repeat with every model from here on. The next track is deep learning; the models there are far larger but <b>the discipline is the same</b>.',
+    controls:[{k:'T', lb:'TEMPERATURE T', min:0.3, max:3, step:0.1, val:2}],
+    quiz:{
+      q:'The 5×2cv F-test came out at <b>p = 0.21</b>. What do you write?',
+      opts:[
+        {t:'"The soft decision tree is better than CART."',
+         why:'No. p = 0.21 says the observed 1.7 point difference is comfortably explained by the "the two models are equal" scenario. You cannot write that sentence.'},
+        {t:'"No significant difference between the two models could be shown (F-test, p = 0.21). The soft tree reached this result with a third of the parameters, which may be a reason to prefer it on criteria other than accuracy."',
+         why:'Correct, and this is exactly what honest scientific writing looks like. You separate two distinct claims: (1) superiority in accuracy <b>could not be shown</b>, (2) parameter efficiency is a measurable and real advantage. The second needs no statistical test because it is a countable fact. When defending a model it is critical to separate which claim needs evidence and which is an observation.'},
+        {t:'"There is no difference, the two models are the same."',
+         why:'That is wrong too; absence of evidence is not evidence of absence. The test does not say "there is no difference", it says "I could not show a difference with this data".'},
+        {t:'I try again with more data and keep going until p gets small',
+         why:'That is <b>p-hacking</b>. Collecting more data is legitimate, but "trying until p gets small" is contrary to scientific honesty; the significance you find will be fake.'},
+      ], correct:1 },
+  },
+  ],
+};
