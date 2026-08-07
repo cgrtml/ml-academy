@@ -4745,3 +4745,169 @@ DERSLER_EN['zincir-prompt'] = {
   },
   ],
 };
+
+DERSLER_EN['gramer'] = {
+  ad:'Forcing the output into shape: grammars and schemas',
+  alt:'Forcing a model to produce valid JSON is easy. Noticing that the forcing also changes the model\'s distribution is hard.',
+  kaynaklar:[{"y":"Willard, B. T. & Louf, R.","t":"2023","b":"Efficient Guided Generation for Large Language Models","n":"arXiv:2307.09702","u":"https://arxiv.org/abs/2307.09702"},
+             {"y":"Geng, S. et al.","t":"2023","b":"Grammar-Constrained Decoding for Structured NLP Tasks without Finetuning","n":"EMNLP 2023","u":"https://arxiv.org/abs/2305.13971"},
+             {"y":"Park, K. et al.","t":"2024","b":"Grammar-Aligned Decoding","n":"NeurIPS 2024","u":"https://arxiv.org/abs/2405.21047"},
+             {"y":"Tam, Z. R. et al.","t":"2024","b":"Let Me Speak Freely? A Study on the Impact of Format Restrictions on Performance of Large Language Models","n":"EMNLP 2024 Industry","u":"https://arxiv.org/abs/2408.02442"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'Free generation cannot hit the pattern',
+    goal:'You will see why a pattern has to be enforced at all.',
+    todo:'Change the model\'s bias. Where does the probability of validity fall to?',
+    kind:'controls', viz:'gramerKisiti', h:760, xp:50, state:{sahne:'serbest'},
+    body:'<p>A small, closed pattern: sequences of five symbols over the alphabet {A, B, C}. The grammar imposes two rules: <b>no two identical symbols in a row</b> and <b>the last symbol must be C</b>. Only <b>16</b> of the 243 sequences are valid.</p>' +
+         '<p>The model is a Markov chain biased towards A. Left free, it picks the most likely symbol every time and produces <b>AAAAA</b>: breaking both rules of the pattern. The model does not know the rule, and cannot be expected to, because the rule is about the form of the output.</p>' +
+         '<p>Random sampling is no better: at w = 1 the probability of validity is only <b>3.18%</b>. Getting a valid output takes <b>31.5</b> attempts on average. As the bias grows this climbs to 219 attempts.</p>' +
+         '<p>The fix looks simple: at every step <b>mask out the symbols that allow no valid continuation</b> and choose among the rest. That way the output is 100% valid and one call is enough. Masked greedy decoding gives <b>ABABC</b> here.</p>' +
+         '<p>In real systems this is exactly what is done: a JSON schema, a regular expression or an automaton derived from a grammar says which tokens stay open at every step.</p>',
+    learned:'<b>Masking guarantees the output fits the pattern in a single call.</b><br><br>16 of 243 sequences are valid. Free greedy decoding gives AAAAA (invalid); under random sampling validity is 3.18%, that is 31.5 attempts on average.<br><br>Masked decoding gives ABABC in one call and is always valid. A guarantee this cheap must have a price; in the next step we see what it is.',
+    controls:[{k:'wi', lb:'MODEL BIAS TOWARDS A', min:0, max:4, step:1, val:2}],
+  },
+  {
+    t:'Masking is not conditioning',
+    goal:'You will see how constrained decoding changes the model\'s distribution.',
+    todo:'Compare the blue and orange bars. Where does the ordering break?',
+    kind:'controls', viz:'gramerKisiti', h:760, xp:50, state:{sahne:'iki'},
+    body:'<p>The same model, the same grammar, two different questions:</p>' +
+         '<p><b>Global conditioning.</b> "Take the model\'s distribution, throw away the invalid ones, renormalise the rest." That is p(x | x is valid). It is exactly the distribution the reject-and-retry method gives.</p>' +
+         '<p><b>Local masking.</b> "At every step throw away the invalid continuations, renormalise the remaining tokens, choose, continue." That is what constrained decoding does.</p>' +
+         '<p>These are not the same thing. At w = 1 the total variation distance between the two distributions is <b>0.1554</b>. In <b>15</b> of the 120 pairs among the 16 sequences, the ordering flips.</p>' +
+         '<p>A concrete example: in the global distribution <b>ACBAC</b> is third (0.1043) with ACABC behind at 0.0797. Under masked decoding the order reverses: <b>ACABC</b> (0.1148) is third and ACBAC (0.1006) fourth.</p>' +
+         '<p>The most likely sequence is ABABC in both, but its share is very different: 0.1405 globally against <b>0.2369</b> locally. Masking nearly doubled it.</p>' +
+         '<p>This is not a reason to avoid constrained decoding; it is a reason to know what it does. The samples you produce are not the model\'s "belief over valid outputs", they are a different distribution produced by the masking process.</p>',
+    learned:'<b>Constrained decoding does not sample p(x | valid).</b><br><br>The total variation distance between the two distributions is 0.1554; the ordering flips in 15 of 120 pairs. The most likely sequence\'s share goes from 0.1405 to 0.2369.<br><br>The model\'s "most likely valid answer" and the answer masked decoding finds are not necessarily the same. There is work aimed at closing that gap (grammar-aligned decoding), but plain masking carries it.',
+    controls:[{k:'wi', lb:'MODEL BIAS TOWARDS A', min:0, max:4, step:1, val:2}],
+  },
+  {
+    t:'Where the distortion comes from',
+    goal:'You will see the exact formula for the inflation.',
+    todo:'Look at where the points sit relative to the red curve.',
+    kind:'controls', viz:'gramerKisiti', h:760, xp:50, state:{sahne:'sisme'},
+    body:'<p>The reason can be written in one line. In masked decoding the total probability of the allowed tokens at every step is Z<sub>t</sub>, and the choice is renormalised by dividing by that number. The local probability of a sequence is:</p>' +
+         '<p style="font-family:monospace">p<sub>local</sub>(x) = p(x) · Π 1/Z<sub>t</sub><br>p<sub>global</sub>(x) = p(x) / P(valid)</p>' +
+         '<p>Their ratio simplifies:</p>' +
+         '<p style="font-family:monospace">inflation = P(valid) / ΠZ<sub>t</sub></p>' +
+         '<p>All 16 points on the plot lie on the red curve to machine precision (the largest deviation is 2×10⁻¹⁶). So this is not a tendency, it is an <b>identity</b>.</p>' +
+         '<p>How to read it: sequences that have <b>a lot of mass thrown away</b> along their path get inflated, and those that lose little get deflated. Masking rewards sequences that pass through "narrow gates", because there it divides by a small number. At w = 1 the most inflated sequence gains <b>1.686 times</b> and the most deflated <b>0.444 times</b>.</p>' +
+         '<p>The critical point: the source of this distortion is not the model being bad. Even with a perfectly uniform model (w = 0) the TV distance is <b>0.1667</b>, and the number of order flips is highest there: <b>24</b>. The distortion comes from <b>the shape of the grammar</b>.</p>',
+    learned:'<b>inflation = P(valid) / ΠZ<sub>t</sub></b><br><br>Sequences that have a lot of probability mass masked along the way get inflated. At w = 1 the most inflated gains 1.686 times and the most deflated 0.444 times.<br><br>This is not an approximation but an algebraic identity: all 16 points sit on the curve (deviation 2×10⁻¹⁶). And the distortion exists even with a perfectly uniform model (TV = 0.1667), so what is responsible is the grammar rather than the model.',
+    controls:[{k:'wi', lb:'MODEL BIAS TOWARDS A', min:0, max:4, step:1, val:2}],
+  },
+  {
+    t:'Which route to take',
+    goal:'You will compare the bill for the two methods.',
+    todo:'Change the bias and follow the two curves, then answer the question.',
+    kind:'controls', viz:'gramerKisiti', h:760, xp:75, state:{sahne:'maliyet'},
+    body:'<p>Two methods, two bills:</p>' +
+         '<p><b>Reject and retry.</b> Sample until a valid output arrives. The distribution is exactly p(x | valid), so the distortion is zero. The price is an expected 1/P(valid) calls: 15.2 at w = 0, 31.5 at w = 1, <b>219.3</b> at w = 2. As the pattern narrows or the model moves away from it, that cost explodes.</p>' +
+         '<p><b>Masking.</b> Always one call, always valid. The price is distortion, and the distortion does not disappear as the model improves.</p>' +
+         '<p>In practice masking is almost always the right choice: instead of paying 219 calls you accept a distributional distortion of 0.26. But there are two situations that call for care:</p>' +
+         '<p><b>If you rely on the model\'s probabilities.</b> Using the scores that come out of constrained decoding as "the model\'s confidence" would be wrong; those scores are a product of the masking.</p>' +
+         '<p><b>If the pattern cuts off the thinking.</b> Forcing a model to produce JSON directly can lower its accuracy compared with letting it think freely and then format. This is exactly why the common solution is to separate the two: free reasoning first, then formatting in a separate constrained call.</p>',
+    learned:'<b>Reject and retry is unbiased but costs 1/P(valid) calls; masking is one call but distorts.</b><br><br>15.2 attempts at w = 0 and 219.3 at w = 2. The distortion, meanwhile, exists at every w and is TV = 0.1667 even with a uniform model.<br><br>Two practical consequences: do not use probabilities from constrained decoding as confidence scores, and put the reasoning in a separate call from the formatting.',
+    controls:[{k:'wi', lb:'MODEL BIAS TOWARDS A', min:0, max:4, step:1, val:2}],
+    quiz:{
+      q:'You added a schema constraint to a classification job. The outputs are now 100% valid JSON but the accuracy fell. You were also using the model\'s probabilities as a threshold and the threshold no longer holds. What is the right reading?',
+      opts:[
+        {t:'The constraint changed both the output distribution and the scores; move the reasoning into a separate call and recalibrate the threshold',
+         why:'Correct. You measured two things at once in the lesson: masking shifts the distribution (TV 0.1554, with order flips) and the scores are no longer p(x | valid) but a product of the masking. The threshold breaking is a direct consequence. For the accuracy drop the known fix is to separate the format from the reasoning: a free call first, then a constrained formatting call.'},
+        {t:'You should loosen the schema, a constraint is always harmful',
+         why:'An overgeneralisation. The constraint guarantees validity in one call, while the alternative could climb to 219 attempts at w = 2. The problem is not the existence of the constraint but where it is placed and how the scores are interpreted.'},
+        {t:'The model is not good enough for this job, you should move to a larger one',
+         why:'Inconsistent with the observation: the model did not change, only a constraint was added, and two effects appeared at once. And as you measured in the lesson, the distortion exists even with a perfectly uniform model (TV = 0.1667), so growing the model does not remove it.'},
+        {t:'You should switch to reject and retry, the distortion becomes zero',
+         why:'It really does zero the distortion and is the right choice in some situations. But its cost is 1/P(valid) calls, which climbs to hundreds on narrow schemas. And it does not fix the actual cause of the accuracy drop, which is having the format and the reasoning in the same call.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['hafiza'] = {
+  ad:'Conversation memory: what does the model remember',
+  alt:'The model remembers nothing; it knows whatever you carry to it on each call. Three strategies for carrying have three different shapes of forgetting.',
+  kaynaklar:[{"y":"Liu, N. F. et al.","t":"2024","b":"Lost in the Middle: How Language Models Use Long Contexts","n":"TACL 2024","u":"https://arxiv.org/abs/2307.03172"},
+             {"y":"Lewis, P. et al.","t":"2020","b":"Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks","n":"NeurIPS 2020","u":"https://arxiv.org/abs/2005.11401"},
+             {"y":"Packer, C. et al.","t":"2023","b":"MemGPT: Towards LLMs as Operating Systems","n":"arXiv:2310.08560","u":"https://arxiv.org/abs/2310.08560"},
+             {"y":"Xu, P. et al.","t":"2024","b":"Retrieval Meets Long Context Large Language Models","n":"ICLR 2024","u":"https://arxiv.org/abs/2310.03025"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'The sliding window: a sharp wall',
+    goal:'You will see exactly what the most common memory strategy gives.',
+    todo:'Change the window size. Why is the curve a step?',
+    kind:'controls', viz:'konusmaHafizasi', h:760, xp:50, state:{sahne:'pencere'},
+    body:'<p>First let us correct a widely misunderstood point: the model does <b>not remember</b> the conversation. It knows whatever you send it on each call. What we call "memory" is your decision about which part of the past to carry.</p>' +
+         '<p>The setup: a 40 turn conversation where every turn brings a fact. At the end a randomly chosen fact is asked about.</p>' +
+         '<p>The most common strategy is a <b>sliding window</b>: carry the last W turns verbatim and drop the rest. The recall curve is a step, because the fact is either in the context or it is not. There is no region in between.</p>' +
+         '<p>The overall recall is exactly <b>W / T</b>. With a 10 turn window it is 25.0%, with 20 turns 50.0%, with 40 turns 100.0%.</p>' +
+         '<p>The problem is scale. The same 10 turn window gives 12.5% in an 80 turn conversation. With a fixed window, recall falls <b>inversely</b> with the length of the conversation. Growing the window works, but its price is the context carried on every call.</p>' +
+         '<p>A caveat: here we treat recall within the window as 100%. In reality it is not; in long contexts, information in the middle is used noticeably less than information at the beginning and the end (Liu et al., 2024). So the step curve here is an <b>optimistic</b> upper bound for a sliding window.</p>',
+    learned:'<b>The overall recall of a sliding window is exactly W / T.</b><br><br>In a 40 turn conversation a 10 turn window gives 25.0% and a 20 turn window 50.0%.<br><br>The curve is a step: complete inside the window, zero outside. As the conversation lengthens the same window remembers less and less. And that is an optimistic calculation, because information in the middle of a long context is used less in practice.',
+    controls:[{k:'Wi', lb:'WINDOW SIZE', min:0, max:3, step:1, val:1}],
+  },
+  {
+    t:'Summarisation: no wall, a fade',
+    goal:'You will see the shape of forgetting for the summarisation strategy, and its exact formula.',
+    todo:'Change the survival rate. How does the half life behave?',
+    kind:'controls', viz:'konusmaHafizasi', h:760, xp:50, state:{sahne:'ozet'},
+    body:'<p>The second strategy: after every turn, compress the past into a <b>summary</b> and carry only that. The context carried stays fixed however long the conversation gets.</p>' +
+         '<p>But compression is lossy. Call the probability that a fact survives one round of summarisation ρ. A fact of age y has been summarised y times, so its recall probability is <b>ρ^y</b>.</p>' +
+         '<p>The overall recall is in closed form:</p>' +
+         '<p style="font-family:monospace">(1 − ρ<sup>T</sup>) / [T (1 − ρ)]</p>' +
+         '<p>At ρ = 0.90 that is <b>24.6%</b>. The interesting part: a 9.9 turn sliding window gives the same number. So "a summary that loses 10% per turn" remembers <b>about as much as a 10 turn window</b> in a 40 turn conversation.</p>' +
+         '<p>The shape differs but there is still a limit. At ρ = 0.90 the half life is <b>6.6 turns</b>: something said six or seven turns ago has half the chance of being remembered. At ρ = 0.95 it is 13.5 turns, at ρ = 0.99 it is 69.0.</p>' +
+         '<p>The real lesson: a summary is not "unlimited memory", it is <b>a differently shaped limit</b>. Instead of a sharp wall you get an exponential fade. An old fact never disappears for certain, but in practice it never arrives either.</p>',
+    learned:'<b>A summary\'s recall is ρ^age and its overall recall is (1 − ρᵀ) / T(1 − ρ).</b><br><br>ρ = 0.90 → 24.6% (a half life of 6.6 turns), ρ = 0.95 → 43.6% (13.5 turns), ρ = 0.99 → 82.8% (69.0 turns).<br><br>Every value of ρ corresponds to a particular window size: ρ = 0.90 is about a 10 turn window. <b>A summary is not unlimited memory, it is an exponentially shaped limit.</b>',
+    controls:[{k:'rhoi', lb:'SURVIVAL PER TURN', min:0, max:3, step:1, val:1}],
+  },
+  {
+    t:'Retrieval: independent of age',
+    goal:'You will see the shapes of recall of the three strategies side by side.',
+    todo:'Change the three settings and find which one wins when.',
+    kind:'controls', viz:'konusmaHafizasi', h:760, xp:50, state:{sahne:'ucu'},
+    body:'<p>The third strategy: keep the past as it is, but on every question retrieve only the few <b>relevant</b> turns. Retrieval augmented generation applied to a conversation.</p>' +
+         '<p>This strategy\'s recall curve is <b>flat</b>. A fact from 39 turns ago arrives with the same probability as yesterday\'s, because the retriever looks at relevance rather than distance. What matters is the quality of the retriever, r.</p>' +
+         '<p>Putting the three shapes side by side makes the decision easy:</p>' +
+         '<p><b>The window</b> is flawless for recent events and zero for old ones. The best and simplest choice for short, flowing conversations.<br>' +
+         '<b>The summary</b> gives every age a chance, but the chance falls exponentially. Good at preserving the general frame of the conversation, weak at recalling a single old detail.<br>' +
+         '<b>Retrieval</b> is independent of age. In long conversations it is <b>the only strategy that scales</b>.</p>' +
+         '<p>In practice all three are used together, and that is no accident: the window carries the near context, the summary the general frame, and retrieval the old detail. Because their weaknesses are in different places, they cover for each other.</p>',
+    learned:'<b>The three strategies have different shapes of forgetting: a step, an exponential, a flat line.</b><br><br>The window knows the recent perfectly and the old not at all; the summary gives every age an exponentially decaying chance; retrieval is independent of age.<br><br>As the conversation lengthens the overall recall of the window and the summary falls while retrieval\'s does not. Retrieval is the only structure that scales in long conversations; but used together, their weaknesses being in different places, the three complete each other.',
+    controls:[{k:'Wi', lb:'WINDOW', min:0, max:3, step:1, val:1},
+              {k:'rhoi', lb:'SUMMARY ρ', min:0, max:3, step:1, val:1},
+              {k:'ri', lb:'RETRIEVAL r', min:0, max:3, step:1, val:1}],
+  },
+  {
+    t:'The context bill',
+    goal:'You will see the price of recall in terms of context carried.',
+    todo:'Compare the three points, then answer the question.',
+    kind:'controls', viz:'konusmaHafizasi', h:760, xp:75, state:{sahne:'maliyet', ri:1},
+    body:'<p>Now let us compare the same three strategies on the axis of "how many turns do I carry per call".</p>' +
+         '<p><b>The window</b> is a straight line: recall is exactly proportional to the turns carried. Twice the recall, twice the context, twice the cost.</p>' +
+         '<p><b>The summary</b> carries one turn. With ρ = 0.90 it gives 24.6%; getting the same number with a window would take carrying about <b>10 turns</b>. With ρ = 0.99 you carry 1 turn and get <b>82.8%</b>, whose window equivalent is 33 turns.</p>' +
+         '<p><b>Retrieval</b> carries 3 turns and gives as much as the retriever\'s quality. If r = 0.85 you get 85% with 3 turns of context, whose window equivalent is 34 turns.</p>' +
+         '<p>The numbers make the summary and retrieval look very attractive, and that really is true: per unit of context, both are far more efficient than a window. But there are two hidden costs. The summary needs an extra model call every turn. Retrieval needs an index, embedding computation and maintenance; and r is never 1, and <b>what cannot be retrieved is what the model simply does not know</b>.</p>' +
+         '<p>One last caveat: all the arithmetic here rests on the assumption "if it is in the context it is remembered". Growing the window weakens that assumption, because information in the middle of a long context is used less in practice. So growing the window does not work as well as the straight line on the plot promises.</p>',
+    learned:'<b>Per unit of context, summarisation and retrieval are far more efficient than a window.</b><br><br>Window: recall is directly proportional to the turns carried. Summary: 1 turn carried gives 82.8% at ρ = 0.99. Retrieval: 3 turns carried gives as much as the retriever\'s quality.<br><br>The hidden costs: a summary needs an extra call every turn, retrieval needs an index and maintenance. And all this arithmetic rests on "if it is in the context it is remembered"; as the window grows, that assumption weakens.',
+    controls:[{k:'Wi', lb:'WINDOW', min:0, max:3, step:1, val:2},
+              {k:'rhoi', lb:'SUMMARY ρ', min:0, max:3, step:1, val:1}],
+    quiz:{
+      q:'You are writing a support assistant. Conversations can pass 100 turns and users often ask things like "what was the order number I gave in my first message". Your context budget is limited. Which design fits this need?',
+      opts:[
+        {t:'A window of the last few turns plus retrieval over the whole history',
+         why:'Correct. What is being asked for is a single old detail, so access independent of age is required. As you measured in the lesson, retrieval\'s recall curve is flat while the window\'s and the summary\'s fall with age. The window is needed too, because the flow in recent turns is not captured well by retrieval. Because their weaknesses are in different places, the two complete each other.'},
+        {t:'Just growing the window',
+         why:'In a 100 turn conversation, growing the window raises recall linearly but raises the context cost by the same factor, and your budget is limited. And for a number from the first message the window would have to span all 100 turns, meaning no compression at all.'},
+        {t:'Summarisation alone',
+         why:'A summary preserves the general frame but is weak for a single old detail: recall falls exponentially as ρ^age. Even at ρ = 0.95 the half life is 13.5 turns, so an order number from 100 turns ago does not arrive in practice.'},
+        {t:'Sending the whole history on every turn',
+         why:'That gives the highest recall but the budget constraint rules it out. And because information in the middle of a long context is used less in practice, carrying is not the same as being used.'},
+      ], correct:0 },
+  },
+  ],
+};
