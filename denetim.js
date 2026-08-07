@@ -2602,6 +2602,121 @@ console.log('═══ TALİMAT İNCE AYARI ═══');
   iddia('TA · yeni görev n=200 den n=1000 e artış (puan)', 30.0,
         100*(TA.ayar(1000, true).yeni - TA.ayar(200, true).yeni), 1);
 }
+console.log('═══ ZİNCİRLEME PROMPT ═══');
+{
+  /* kapali form, dogrudan simulasyonla dogrulaniyor */
+  { const r0 = rng(5); let dg = 0, cagri = 0, D = 200000;
+    const eps = ZP.EPS, rc = 0.95, fc = 0.20, R = 3;
+    for (let d2 = 0; d2 < D; d2++){ let hepsi = true;
+      for (let s = 0; s < ZP.N; s++){ let kalan = R, ok;
+        for (;;){ cagri++; ok = r0() >= eps;
+          const bayrak = ok ? (r0() < fc) : (r0() < rc);
+          if (!bayrak || kalan === 0) break;
+          kalan--; }
+        if (!ok) hepsi = false; }
+      if (hepsi) dg++; }
+    iddia('ZP · formül ile simülasyon farkı (yüzde puan)', 0,
+          100*Math.abs(dg/D - ZP.zincir(eps, rc, fc, R)), 1);
+    iddia('ZP · çağrı sayısı · formül ile simülasyon farkı', 0,
+          Math.abs(cagri/D - ZP.toplamCagri(eps, rc, fc, R)), 1); }
+
+  /* 1. adım · bölmek etkisiz */
+  iddia('ZP · kontrolsüz zincir (0.9⁸)', 43.0, 100*Math.pow(1 - ZP.EPS, ZP.N), 1);
+  iddia('ZP · R=0 kontrolcü yokken zincir aynı', 0,
+        100*Math.abs(ZP.zincir(ZP.EPS, 0, 0, 0) - Math.pow(1 - ZP.EPS, ZP.N)), 6);
+  /* kontrolcu kapaliyken (r=f=0) tekrar hakki hicbir sey degistirmiyor */
+  { let fark = 0;
+    for (const Rv of ZP.Rler) fark = Math.max(fark, Math.abs(ZP.zincir(ZP.EPS, 0, 0, Rv) - Math.pow(0.9, 8)));
+    iddia('ZP · kontrolcü yokken tekrar hakkı etkisiz', 0, 100*fark, 6); }
+  { const IH = ZP.ilkHata(ZP.EPS);
+    iddia('ZP · ilk hata dağılımı toplamı', 1, IH.pay.reduce((a, z) => a + z, 0), 6);
+    iddia('ZP · ilk hata · 1. adım payı', 17.6, 100*IH.pay[0], 1);
+    iddia('ZP · ilk hata · 8. adım payı', 8.4, 100*IH.pay[7], 1);
+    iddia('ZP · koşullu beklenen ilk hata adımı', 3.953, IH.bek, 3);
+    iddia('ZP · kurtarılabilen iş oranı', 36.9, 100*(IH.bek - 1)/ZP.N, 1);
+    /* ilk hata dagilimi azalan (geometrik) */
+    let ihlal = 0;
+    for (let i = 1; i < ZP.N; i++) if (IH.pay[i] > IH.pay[i-1]) ihlal++;
+    iddia('ZP · ilk hata dağılımı monoton azalıyor', 0, ihlal, 0); }
+
+  /* 2. adım · kontrol noktası */
+  iddia('ZP · r=0.95 f=0.05 · R=1', 85.8, 100*ZP.zincir(ZP.EPS, 0.95, 0.05, 1), 1);
+  iddia('ZP · r=0.95 f=0.05 · R=3', 95.2, 100*ZP.zincir(ZP.EPS, 0.95, 0.05, 3), 1);
+  iddia('ZP · r=0.95 f=0.05 · sonsuz', 95.4,
+        100*Math.pow(ZP.sinir(ZP.EPS, 0.95, 0.05), ZP.N), 1);
+  iddia('ZP · r=0.95 f=0 · R=1', 89.0, 100*ZP.zincir(ZP.EPS, 0.95, 0, 1), 1);
+  iddia('ZP · r=0.95 f=0 · R=3', 95.6, 100*ZP.zincir(ZP.EPS, 0.95, 0, 3), 1);
+  iddia('ZP · r=0.95 f=0 · sonsuz', 95.7, 100*Math.pow(ZP.sinir(ZP.EPS, 0.95, 0), ZP.N), 1);
+  iddia('ZP · r=0.50 f=0.05 · R=3', 63.4, 100*ZP.zincir(ZP.EPS, 0.50, 0.05, 3), 1);
+  iddia('ZP · r=0 f=0.05 · R=3', 41.3, 100*ZP.zincir(ZP.EPS, 0, 0.05, 3), 1);
+  iddia('ZP · r=0 f=0.05 kontrolsüzden kötü', 1,
+        ZP.zincir(ZP.EPS, 0, 0.05, 3) < Math.pow(0.9, 8) ? 1 : 0, 0);
+  /* R buyudukce tavana yaklasiyor ve asmiyor */
+  /* c_R sabit noktaya monoton yaklasiyor: r > f iken alttan, r < f iken ustten */
+  { let ihlal = 0, yon = 0;
+    for (const rv of ZP.rler) for (const fv of ZP.fler){
+      const L = ZP.sinir(ZP.EPS, rv, fv);
+      for (let i = 1; i < ZP.Rler.length; i++)
+        if (Math.abs(ZP.adim(ZP.EPS, rv, fv, ZP.Rler[i]) - L) >
+            Math.abs(ZP.adim(ZP.EPS, rv, fv, ZP.Rler[i-1]) - L) + 1e-15) ihlal++;
+      /* R=0 hangi taraftaysa hep o tarafta kaliyor */
+      const ustte = ZP.adim(ZP.EPS, rv, fv, 0) > L;
+      for (const Rv of ZP.Rler)
+        if ((ZP.adim(ZP.EPS, rv, fv, Rv) > L + 1e-15) !== ustte &&
+            Math.abs(ZP.adim(ZP.EPS, rv, fv, Rv) - L) > 1e-15) yon++; }
+    iddia('ZP · c_R sınıra monoton yaklaşıyor', 0, ihlal, 0);
+    iddia('ZP · yaklaşma yönü hiç değişmiyor', 0, yon, 0);
+    /* r < f iken sinir kontrolsuz tabanin altinda */
+    iddia('ZP · r=0 f=0.20 · sınır kontrolsüzün altında', 1,
+          Math.pow(ZP.sinir(ZP.EPS, 0, 0.20), ZP.N) < Math.pow(0.9, 8) ? 1 : 0, 0);
+    iddia('ZP · r=0.95 f=0.05 · sınır kontrolsüzün üstünde', 1,
+          Math.pow(ZP.sinir(ZP.EPS, 0.95, 0.05), ZP.N) > Math.pow(0.9, 8) ? 1 : 0, 0); }
+  /* 3. haktan sonraki kazanc ihmal edilebilir */
+  iddia('ZP · r=0.95 f=0 · R=3 ten R=5 e kazanç (puan)', 0.1,
+        100*(ZP.zincir(ZP.EPS, 0.95, 0, 5) - ZP.zincir(ZP.EPS, 0.95, 0, 3)), 1);
+
+  /* 3. adım · r = f teoremi */
+  { let enBuyukFark = 0;
+    for (const v of [0.05, 0.1, 0.2, 0.35, 0.5, 0.8, 0.95])
+      for (const Rv of [0, 1, 3, 5, 20])
+        enBuyukFark = Math.max(enBuyukFark, Math.abs(ZP.zincir(ZP.EPS, v, v, Rv) - Math.pow(0.9, 8)));
+    iddia('ZP · r = f de kontrol TAM olarak etkisiz (en büyük sapma)', 0, 100*enBuyukFark, 6); }
+  /* farkli eps degerlerinde de gecerli */
+  { let enBuyukFark = 0;
+    for (const ev of [0.05, 0.2, 0.4]) for (const v of [0.1, 0.5, 0.9])
+      enBuyukFark = Math.max(enBuyukFark,
+        Math.abs(ZP.zincir(ev, v, v, 5) - Math.pow(1 - ev, ZP.N)));
+    iddia('ZP · r = f teoremi her ε de geçerli', 0, 100*enBuyukFark, 6); }
+  /* r > f kazandiriyor, r < f zarar veriyor */
+  { let ihlal = 0;
+    for (const fv of ZP.fler) for (const rv of [0, 0.1, 0.2, 0.3, 0.5, 0.8, 0.95]){
+      const d3 = ZP.zincir(ZP.EPS, rv, fv, 3), taban = Math.pow(0.9, 8);
+      if (rv > fv + 1e-9 && d3 <= taban) ihlal++;
+      if (rv < fv - 1e-9 && d3 >= taban) ihlal++; }
+    iddia('ZP · r > f kazandırır, r < f zarar verir', 0, ihlal, 0); }
+  iddia('ZP · r=0 f=0.20 · R=3', 35.4, 100*ZP.zincir(ZP.EPS, 0, 0.20, 3), 1);
+  iddia('ZP · r=0 f=0.50 · R=3', 21.6, 100*ZP.zincir(ZP.EPS, 0, 0.50, 3), 1);
+  iddia('ZP · r=0.95 f=0.20 · R=3', 93.1, 100*ZP.zincir(ZP.EPS, 0.95, 0.20, 3), 1);
+  iddia('ZP · r=0.95 f=0.50 · R=3', 81.4, 100*ZP.zincir(ZP.EPS, 0.95, 0.50, 3), 1);
+
+  /* 4. adım · maliyet */
+  iddia('ZP · çağrı · kontrolsüz', 8.00, ZP.toplamCagri(ZP.EPS, 0, 0, 0), 2);
+  iddia('ZP · çağrı · r=0.95 f=0 · R=3', 8.84, ZP.toplamCagri(ZP.EPS, 0.95, 0, 3), 2);
+  iddia('ZP · çağrı · r=0.95 f=0.20 · R=3', 10.97, ZP.toplamCagri(ZP.EPS, 0.95, 0.20, 3), 2);
+  iddia('ZP · çağrı · r=0.95 f=0.50 · R=3', 16.03, ZP.toplamCagri(ZP.EPS, 0.95, 0.50, 3), 2);
+  iddia('ZP · çağrı · r=0 f=0.20 · R=3', 9.75, ZP.toplamCagri(ZP.EPS, 0, 0.20, 3), 2);
+  /* f=0.50 hem daha pahali hem daha az dogru */
+  iddia('ZP · f=0.50 hem pahalı hem kötü', 1,
+        (ZP.toplamCagri(ZP.EPS, 0.95, 0.50, 3) > ZP.toplamCagri(ZP.EPS, 0.95, 0, 3) &&
+         ZP.zincir(ZP.EPS, 0.95, 0.50, 3) < ZP.zincir(ZP.EPS, 0.95, 0, 3)) ? 1 : 0, 0);
+  /* cagri sayisi R de monoton artiyor */
+  { let ihlal = 0;
+    for (const rv of ZP.rler) for (const fv of ZP.fler)
+      for (let i = 1; i < ZP.Rler.length; i++)
+        if (ZP.toplamCagri(ZP.EPS, rv, fv, ZP.Rler[i]) <
+            ZP.toplamCagri(ZP.EPS, rv, fv, ZP.Rler[i-1]) - 1e-12) ihlal++;
+    iddia('ZP · çağrı sayısı tekrar hakkında monoton artıyor', 0, ihlal, 0); }
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

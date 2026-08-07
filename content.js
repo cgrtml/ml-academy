@@ -112,7 +112,7 @@ const ROTALAR = [
     {id:'perplexity',     ad:'Perplexity: bir modelin şaşkınlığını ölçmek',    sure:16, durum:'hazir'},
     {id:'talimat-ayar',   ad:'İtaat öğretmek: talimat ince ayarı',             sure:16, durum:'hazir'},
     {id:'icl',            ad:'Örnekle öğretmek: in-context learning',          sure:17, durum:'hazir'},
-    {id:'zincir-prompt',  ad:'Problemi bölmek: zincirleme promptlar',          sure:12, durum:'planli'},
+    {id:'zincir-prompt',  ad:'Problemi bölmek: zincirleme promptlar',          sure:16, durum:'hazir'},
     {id:'gramer',         ad:'Çıktıyı kalıba sıkıştırmak: gramer ve şema',     sure:12, durum:'planli'},
     {id:'hafiza',         ad:'Konuşma hafızası: model neyi hatırlar',          sure:12, durum:'planli'},
     {id:'tokenizer-fark',  ad:'Tokenizer\'lar neden farklı davranır',            sure:12, durum:'planli'},
@@ -10492,6 +10492,171 @@ DERSLER['talimat-ayar'] = {
       '%24.1 den %29.7 ye getiriyor. 1000 örnekte bile %64.9, çünkü orada tek yol ezber.<br><br>' +
       'Karar kuralı: model doğru biçimde ama yanlış içerikle cevap veriyorsa sorun talimat ' +
       'ayarında değildir. Biçim sorunları ayarla, içerik sorunları veriyle ya da erişimle çözülür.',
+    xp:75,
+  },
+]};
+
+/* ─────────────── ZİNCİRLEME PROMPT ─────────────── */
+DERSLER['zincir-prompt'] = {
+  ad:'Problemi bölmek: zincirleme promptlar',
+  alt:'Büyük bir işi ayrı çağrılara bölmek yaygın bir tavsiye. Bölmenin kendisi hiçbir şey kazandırmıyor; kazandıran şey dikişlere koyduğun kontrol noktası.',
+  kaynaklar:[
+    {y:'Wu, T. ve ark.', t:'2022', b:'AI Chains: Transparent and Controllable Human-AI Interaction by Chaining LLM Prompts', n:'CHI 2022', u:'https://arxiv.org/abs/2110.01691'},
+    {y:'Khot, T. ve ark.', t:'2023', b:'Decomposed Prompting: A Modular Approach for Solving Complex Tasks', n:'ICLR 2023', u:'https://arxiv.org/abs/2210.02406'},
+    {y:'Madaan, A. ve ark.', t:'2023', b:'Self-Refine: Iterative Refinement with Self-Feedback', n:'NeurIPS 2023', u:'https://arxiv.org/abs/2303.17651'},
+    {y:'Huang, J. ve ark.', t:'2024', b:'Large Language Models Cannot Self-Correct Reasoning Yet', n:'ICLR 2024', u:'https://arxiv.org/abs/2310.01798'},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'Bölmek tek başına hiçbir şey kazandırmıyor',
+    goal:'Yaygın bir tavsiyenin neden kendi başına boş olduğunu göreceksin.',
+    todo:'İki eğriye bak. Kesikli turuncu, kalın mavinin neresinden geçiyor?',
+    kind:'static', viz:'zincirPrompt', h:760,
+    state:{sahne:'bolme'},
+    body:'<p>Sekiz adımlık bir iş var ve adım başına hata olasılığı %10. İki tasarım:</p>' +
+      '<p><b>Tek prompt.</b> Modele işin tamamını anlatıp tek seferde cevabı istiyorsun.<br>' +
+      '<b>Zincir.</b> Sekiz ayrı çağrı; her çağrının çıktısı bir sonrakinin girdisi.</p>' +
+      '<p>Adım başına hata iki tasarımda da aynıysa sonuç da aynı: <b>0.9⁸ = %43.0</b>. ' +
+      'Grafikte kesikli turuncu eğri kalın mavinin tam üstünden geçiyor, çünkü ikisi ' +
+      'aynı çarpımı hesaplıyor.</p>' +
+      '<p>Bu, düşünme zinciri dersindeki hata birikiminin aynısı. Bölmek o çarpımı ' +
+      'ortadan kaldırmıyor, sadece parantezleri değiştiriyor.</p>' +
+      '<p>Peki bölmek gerçekten faydasız mı? Hayır, ama faydası doğrulukta değil ' +
+      '<b>görünürlükte</b>. Zincir başarısız olduğunda ilk hatanın nerede olduğunu ' +
+      'görebilirsin. Başarısız denemelerde ilk hata ortalama <b>3.95. adımda</b>: ' +
+      'yani işin yaklaşık <b>%36.9</b> u sağlam ve nereden devam edileceği belli.</p>' +
+      '<p>Tek prompt sana bunu vermez; elinde sadece yanlış bir cevap olur. ' +
+      'Sonraki adımda bu görünürlüğü doğruluğa çevireceğiz.</p>',
+    learned:'<b>Aynı adım hatasıyla, bölmek doğruluğu değiştirmez.</b><br><br>' +
+      'Tek prompt %43.0, sekiz ayrı çağrı %43.0. Fark sıfır.<br><br>' +
+      'Bölmenin gerçek getirisi ara sonuçların <b>görünür</b> olmasıdır: başarısız ' +
+      'denemelerde ilk hata ortalama 3.95. adımda, yani işin %36.9 u kurtarılabilir ' +
+      'durumda. Bu görünürlük tek başına bir kazanç değil, bir <b>imkân</b>.',
+    xp:50,
+  },
+  {
+    t:'Dikişe kontrol noktası koymak',
+    goal:'Ara sonucu denetlemenin doğruluğa ne kattığını ölçeceksin.',
+    todo:'Yakalama oranını değiştir. Tekrar hakkı eklemenin getirisi nerede bitiyor?',
+    kind:'controls', viz:'zincirPrompt', h:760,
+    controls:[{k:'ri', lb:'KONTROLCÜNÜN YAKALAMA ORANI', min:0, max:3, step:1, val:3,
+      fmt:v => 'r = ' + ZP.rler[Math.round(v)].toFixed(2)}],
+    state:{sahne:'kontrol'},
+    derive:s => ({d3: ZP.zincir(ZP.EPS, ZP.rler[Math.round(s.ri)], 0.05, 3)}),
+    live:s => [['r', ZP.rler[Math.round(s.ri)].toFixed(2)],
+               ['KONTROLSÜZ', '%43.0', K.mut],
+               ['3 TEKRAR', '%' + (100*s.d3).toFixed(1), K.green],
+               ['HEDEF', '3 tekrar > %90']],
+    unlock:s => s.d3 > 0.90,
+    unlockMsg:'Üç tekrar hakkıyla %90 ı geçen yakalama oranını bul',
+    body:'<p>Aynı bölünmüş zincir, tek bir eklemeyle: her adımdan sonra ara sonuca bakan ' +
+      'bir <b>kontrolcü</b> var. Yanlış bulursa o adım tekrarlanıyor.</p>' +
+      '<p>Kontrolcünün iki sayısı var: <b>yakalama oranı r</b> (yanlış bir ara sonucu ' +
+      'yakalama olasılığı) ve <b>yanlış alarm oranı f</b> (doğru bir ara sonucu yanlış ' +
+      'sanma olasılığı). Bu adımda f = 0.05 sabit.</p>' +
+      '<p>Bir adımın R tekrar hakkıyla doğru bitme olasılığı kapalı formda çözülüyor, ' +
+      'yani buradaki sayılar örneklem değil <b>tam değer</b>:</p>' +
+      '<p style="font-family:monospace">c₀ = 1 − ε<br>' +
+      'c<sub>R</sub> = (1−ε)(1−f) + [(1−ε)f + εr] · c<sub>R−1</sub></p>' +
+      '<p>r = 0.95 te tek tekrar hakkı zinciri %43.0 dan <b>%85.8</b> e, üç hak ' +
+      '<b>%95.2</b> ye çıkarıyor. Dördüncü ve beşinci hak neredeyse hiçbir şey eklemiyor: ' +
+      'kesikli çizgi sonsuz tekrarın sınırı olan %95.4 ü gösteriyor.</p>' +
+      '<p>Yanlış alarm sıfır olsaydı aynı kontrolcü biraz daha iyisini verirdi: ' +
+      'tek hak %89.0, üç hak %95.6. Aradaki fark küçük görünüyor ama bir sonraki adımda ' +
+      'yanlış alarmın asıl faturasını göreceğiz.</p>' +
+      '<p>Zayıf kontrolcü zayıf kazanç veriyor: r = 0.50 de üç hak ancak %63.4. ' +
+      'r = 0 da, yani hiçbir şey yakalamayan bir kontrolcüde, doğruluk %43.0 ın ' +
+      '<b>altına</b> düşüyor (%41.3), çünkü yanlış alarmlar hâlâ çalışıyor.</p>',
+    learned:'<b>Kazancı getiren bölmek değil, dikişe konan kontrol noktasıdır.</b><br><br>' +
+      'r = 0.95, f = 0.05 ile: tek tekrar hakkı %43.0 → %85.8, üç hak %95.2, ' +
+      'sonsuz hak %95.4.<br><br>' +
+      'Tekrar hakkının getirisi çok hızlı doyuyor. Üçüncü haktan sonrasını ödemek ' +
+      'neredeyse hiçbir şey satın almıyor.',
+    xp:50,
+  },
+  {
+    t:'Kontrolcü ne zaman zarar verir',
+    goal:'Bir kontrol noktasının işe yaramasının kesin koşulunu öğreneceksin.',
+    todo:'Yanlış alarm oranını değiştir. Her eğri kontrolsüz tabanı tam olarak nerede kesiyor?',
+    kind:'controls', viz:'zincirPrompt', h:760,
+    controls:[{k:'fi', lb:'YANLIŞ ALARM ORANI', min:0, max:3, step:1, val:1,
+      fmt:v => 'f = ' + ZP.fler[Math.round(v)].toFixed(2)}],
+    state:{sahne:'kalite'},
+    derive:s => { const fv = ZP.fler[Math.round(s.fi)];
+      return {rf: ZP.zincir(ZP.EPS, fv, fv, 3), r0: ZP.zincir(ZP.EPS, 0, fv, 3)}; },
+    live:s => [['f', ZP.fler[Math.round(s.fi)].toFixed(2)],
+               ['r = f DE', '%' + (100*s.rf).toFixed(1), K.mut],
+               ['KONTROLSÜZ', '%43.0', K.mut],
+               ['r = 0 DA', '%' + (100*s.r0).toFixed(1), K.red]],
+    body:'<p>Şimdi kontrolcünün kalitesini iki eksende birden görelim. Yatay eksen yakalama ' +
+      'oranı r, her eğri farklı bir yanlış alarm oranı f. Tekrar hakkı üç.</p>' +
+      '<p>Kesikli yatay çizgi kontrolsüz zincirin doğruluğu (%43.0). Her eğri bu çizgiyi ' +
+      '<b>tam olarak r = f noktasında</b> kesiyor. f = 0.20 eğrisi r = 0.20 de, ' +
+      'f = 0.50 eğrisi r = 0.50 de.</p>' +
+      '<p>Bu bir tesadüf değil, formülden çıkan bir eşitlik. c = 1 − ε olması için ' +
+      'gereken koşul sadeleşince geriye <b>f = r</b> kalıyor. Yani:</p>' +
+      '<p><b>r > f ise kontrolcü kazandırır. r = f ise tam olarak hiçbir şey yapmaz. ' +
+      'r < f ise zarar verir.</b> Ve üç durumda da fazladan çağrı ödersin.</p>' +
+      '<p>Buradaki ders pratikte sık atlanıyor. "Modele cevabını kontrol ettir" tavsiyesi, ' +
+      'kontrolün <b>yakaladığından daha az yanlış alarm ürettiği</b> varsayımına dayanır. ' +
+      'Kendi cevabını kontrol eden bir model bu koşulu sağlamayabilir: aynı yanlış inanç ' +
+      'hem cevabı hem kontrolü yönlendirir. Huang ve arkadaşlarının (2024) bulduğu ' +
+      'sonuç tam olarak budur: dış bir sinyal olmadan yapılan öz-düzeltme, akıl yürütme ' +
+      'görevlerinde çoğu zaman doğruluğu <b>düşürüyor</b>.</p>',
+    learned:'<b>Kontrolcü, yakalama oranı yanlış alarm oranını geçtiği sürece kazandırır.</b><br><br>' +
+      'Her eğri kontrolsüz tabanı tam olarak r = f de kesiyor; bu cebirsel bir eşitlik, ' +
+      'ölçüm gürültüsü değil.<br><br>' +
+      'r = 0, f = 0.20 iken doğruluk %43.0 dan %35.4 e düşüyor ve üstüne 9.75 çağrı ' +
+      'ödüyorsun. <b>Kötü bir kontrolcü, kontrolsüzlükten kötüdür.</b>',
+    xp:50,
+  },
+  {
+    t:'Faturayı görmek',
+    goal:'Doğruluğun çağrı cinsinden fiyatını okuyacaksın.',
+    todo:'Yakalama ve yanlış alarm oranlarını değiştir, sonra soruyu cevapla.',
+    kind:'controls', viz:'zincirPrompt', h:760,
+    controls:[
+      {k:'ri', lb:'YAKALAMA ORANI', min:0, max:3, step:1, val:3,
+        fmt:v => 'r = ' + ZP.rler[Math.round(v)].toFixed(2)},
+      {k:'fi', lb:'YANLIŞ ALARM ORANI', min:0, max:3, step:1, val:1,
+        fmt:v => 'f = ' + ZP.fler[Math.round(v)].toFixed(2)}],
+    state:{sahne:'maliyet'},
+    live:s => { const rv = ZP.rler[Math.round(s.ri)], fv = ZP.fler[Math.round(s.fi)];
+      return [['R=3 DOĞRULUK', '%' + (100*ZP.zincir(ZP.EPS, rv, fv, 3)).toFixed(1), K.green],
+              ['R=3 ÇAĞRI', ZP.toplamCagri(ZP.EPS, rv, fv, 3).toFixed(2), K.orange],
+              ['R=5 DOĞRULUK', '%' + (100*ZP.zincir(ZP.EPS, rv, fv, 5)).toFixed(1)],
+              ['R=5 ÇAĞRI', ZP.toplamCagri(ZP.EPS, rv, fv, 5).toFixed(2)]]; },
+    body:'<p>Her eğri sabit bir kontrolcüyle tekrar hakkını 0 dan 5 e çıkarıyor. Sağa ' +
+      'gitmek daha çok çağrı, yukarı gitmek daha çok doğruluk demek.</p>' +
+      '<p>Beklenen çağrı sayısı da kapalı formda: k₀ = 1, k<sub>R</sub> = 1 + ' +
+      '[(1−ε)f + εr] · k<sub>R−1</sub>, toplam 8 · k<sub>R</sub>.</p>' +
+      '<p>İyi kontrolcü ucuz. r = 0.95, f = 0 ile üç tekrar hakkı doğruluğu %95.6 ya ' +
+      'çıkarıyor ve toplam <b>8.84</b> çağrı tutuyor: kontrolsüz zincirin %10 fazlası.</p>' +
+      '<p>Yanlış alarm iki kere ödetiyor. Aynı r = 0.95 te f = 0.50 olunca üç tekrar ' +
+      'hakkı doğruluğu ancak %81.4 e getiriyor ve <b>16.03</b> çağrı tutuyor: ' +
+      'iki katı hesap, daha az doğruluk.</p>' +
+      '<p>Genel tasarım kuralı: kontrolcünün kalitesi, tekrar hakkının sayısından çok daha ' +
+      'önemli. Zayıf bir kontrolcüye daha çok tekrar hakkı vermek, çoğu zaman parayı ' +
+      'yanlış yere koymaktır.</p>' +
+      '<p>Bir not: buradaki modelde kontrolcü ile üretici <b>bağımsız</b> varsayılıyor. ' +
+      'Gerçekte aynı modele kendi çıktısını kontrol ettirirsen bu bağımsızlık kısmen ' +
+      'kaybolur ve r düşer, f yükselir. Ayrı bir model, kural tabanlı bir doğrulayıcı ya da ' +
+      'kodu çalıştırmak gibi <b>dış</b> sinyaller bu yüzden değerlidir.</p>',
+    quiz:{ q:'Sekiz adımlı bir belge işleme zincirin var ve ara sonuçları modele kontrol ettiriyorsun. Kontrolü açtıktan sonra doğruluk %43 ten %38 e düştü, çağrı sayısı ise iki katına çıktı. En doğru teşhis hangisi?',
+      opts:[
+        {t:'Kontrolcünün yanlış alarm oranı yakalama oranını geçiyor', why:'Doğru. Derste gördüğün kesin koşul bu: doğruluk kontrolsüz tabanın altına ancak r < f iken düşer. Kontrol doğru ara sonuçları yanlış sanıp gereksiz tekrar tetikliyor, hem doğruluğu bozuyor hem faturayı büyütüyor. Çözüm daha çok tekrar hakkı değil, daha iyi bir kontrol sinyali: ayrı bir doğrulayıcı, şema kontrolü ya da kodu çalıştırmak.'},
+        {t:'Tekrar hakkı yetersiz, artırmalısın', why:'Ters yönde. r < f iken tekrar hakkı artırmak doğruluğu daha da düşürür ve maliyeti büyütür; derste r = 0, f = 0.20 eğrisi tam olarak bunu yapıyordu. Kötü kontrolcüye daha çok hak vermek zararı büyütür.'},
+        {t:'Zinciri daha az adıma bölmelisin', why:'Adım sayısını azaltmak hata çarpımını kısaltır ama gözlemi açıklamıyor: sorun kontrolü açtıktan sonra ortaya çıktı, yani bölmede değil kontrolde. Ayrıca ilk adımda ölçtün, bölmenin kendisi doğruluğu değiştirmiyordu.'},
+        {t:'Model bu görev için fazla küçük', why:'Mümkün ama gözlemle uyuşmuyor. Model aynı modelken kontrolü açmak doğruluğu düşürdü; değişen tek şey kontrol mekanizmasıydı. Önce onu düzeltmek gerekir.'},
+      ], correct:0 },
+    learned:'<b>Kontrolcünün kalitesi, tekrar hakkının sayısından daha önemlidir.</b><br><br>' +
+      'r = 0.95, f = 0: üç tekrar %95.6 doğruluk, 8.84 çağrı.<br>' +
+      'r = 0.95, f = 0.50: üç tekrar %81.4 doğruluk, 16.03 çağrı.<br><br>' +
+      'Aynı yakalama oranı, iki kat hesap ve daha düşük doğruluk. Yanlış alarm hem ' +
+      'faturayı hem hata oranını büyütür.<br><br>' +
+      'Kontrolcü ile üretici bağımsız değilse (aynı modele kendi çıktısını kontrol ettirmek) ' +
+      'r düşer ve f yükselir; dış doğrulayıcılar bu yüzden değerlidir.',
     xp:75,
   },
 ]};

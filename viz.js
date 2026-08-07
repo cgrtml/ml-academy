@@ -7509,6 +7509,225 @@ VIZ.talimatAyari = s => {
   }
 };
 
+
+/* ═══════════ ZİNCİRLEME PROMPT ═══════════
+   Problemi ayrı çağrılara bölmek tek başına hiçbir şey kazandırmıyor.
+   Kazandıran şey, dikişlerin arasına konabilen kontrol noktası.
+   Buradaki her sayı TAM: özyineleme kapalı formda çözülüyor. */
+const ZP = {};
+ZP.EPS = 0.10; ZP.N = 8;
+ZP.rler = [0, 0.5, 0.8, 0.95];      /* kontrolcünün yakalama oranı */
+ZP.fler = [0, 0.05, 0.20, 0.50];    /* yanlış alarm oranı */
+ZP.Rler = [0, 1, 2, 3, 4, 5];       /* tekrar hakkı */
+/* bir adımın R tekrar hakkıyla doğru bitme olasılığı
+   deneme: doğru (1−ε) · yanlış (ε)
+   doğru + yanlış alarm (f) → tekrar · yanlış + yakalandı (r) → tekrar */
+ZP.adim = (eps, r, f, R) => { let v = 1 - eps;
+  const gec = (1 - eps)*f + eps*r;
+  for (let i = 1; i <= R; i++) v = (1 - eps)*(1 - f) + gec*v;
+  return v; };
+/* sonsuz tekrar SINIRI · sabit nokta · r > f iken üstten, r < f iken alttan yaklaşılır */
+ZP.sinir = (eps, r, f) => (1 - eps)*(1 - f)/(1 - ((1 - eps)*f + eps*r));
+/* bir adım için beklenen çağrı sayısı */
+ZP.cagri = (eps, r, f, R) => { let v = 1;
+  const gec = (1 - eps)*f + eps*r;
+  for (let i = 1; i <= R; i++) v = 1 + gec*v;
+  return v; };
+ZP.zincir = (eps, r, f, R, n) => Math.pow(ZP.adim(eps, r, f, R), n === undefined ? ZP.N : n);
+ZP.toplamCagri = (eps, r, f, R) => ZP.N*ZP.cagri(eps, r, f, R);
+/* başarısızlık koşullu ilk hata adımı */
+ZP.ilkHata = eps => { const p = []; let top = 0;
+  for (let i = 1; i <= ZP.N; i++){ const q = Math.pow(1 - eps, i - 1)*eps; p.push(q); top += q; }
+  return { pay: p.map(q => q/top), bek: p.reduce((a, q, j) => a + (j + 1)*q/top, 0) };
+};
+
+VIZ.zincirPrompt = s => {
+  clear();
+  const sahne = s.sahne || 'bolme';
+  const ri = Math.max(0, Math.min(3, s.ri === undefined ? 3 : Math.round(s.ri)));
+  const r = ZP.rler[ri];
+  const fi = Math.max(0, Math.min(3, s.fi === undefined ? 1 : Math.round(s.fi)));
+  const f = ZP.fler[fi];
+  const Ri = Math.max(0, Math.min(5, s.Ri === undefined ? 0 : Math.round(s.Ri)));
+  const R = ZP.Rler[Ri];
+  const RENK = [K.red, K.orange, K.blue, K.green];
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'kontrol'){
+    baslikSerit('ZİNCİRLEME PROMPT · DİKİŞE KONTROL NOKTASI KOY',
+      'Her adımdan sonra ara sonucu denetleyip gerekirse o adımı tekrarlıyoruz. Yanlış alarm f = 0.05.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.3, 5.3, 0, 1.08);
+    frame(P, 'adım başına tekrar hakkı', 'doğruluk', [], [0, 0.25, 0.5, 0.75, 1]);
+    ZP.Rler.forEach((Rv, i) => txt(String(Rv), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    ZP.rler.forEach((rv, i) => {
+      cx.strokeStyle = RENK[i]; cx.lineWidth = rv === r ? 3.8 : 1.8;
+      cx.globalAlpha = rv === r ? 1 : 0.4; cx.beginPath();
+      ZP.Rler.forEach((Rv, j) => { const y = P.sy(ZP.zincir(ZP.EPS, rv, 0.05, Rv));
+        j ? cx.lineTo(P.sx(j), y) : cx.moveTo(P.sx(j), y); });
+      cx.stroke();
+      if (rv === r){ ZP.Rler.forEach((Rv, j) =>
+        dot(P.sx(j), P.sy(ZP.zincir(ZP.EPS, rv, 0.05, Rv)), 5, RENK[i]));
+        cx.strokeStyle = RENK[i]; cx.lineWidth = 2; cx.setLineDash([7, 6]);
+        const ty = P.sy(Math.pow(ZP.sinir(ZP.EPS, rv, 0.05), ZP.N));
+        cx.beginPath(); cx.moveTo(P.R.x, ty); cx.lineTo(P.R.x + P.R.w, ty); cx.stroke();
+        cx.setLineDash([]); }
+      cx.globalAlpha = 1; });
+    /* efsane sol altta: en dusuk egri (r=0) 0.41 in ustunde, alt bant bos */
+    ZP.rler.forEach((rv, i) => {
+      const yy = P.sy(0.30 - i*0.075);
+      cx.strokeStyle = RENK[i]; cx.lineWidth = rv === r ? 3.8 : 1.8;
+      cx.beginPath(); cx.moveTo(P.R.x + 16, yy - 5); cx.lineTo(P.R.x + 52, yy - 5); cx.stroke();
+      txt('yakalama r = ' + rv.toFixed(2), P.R.x + 62, yy, RENK[i], 15, 'left',
+          rv === r ? 700 : 400); });
+    const bx = 830;
+    kart(bx, 200, 260, 'YAKALAMA r', r.toFixed(2), K.blue, 'yanlış alarm 0.05');
+    kart(bx + 280, 200, 260, 'KONTROLSÜZ', '%' + (100*ZP.zincir(ZP.EPS, 0, 0, 0)).toFixed(1), K.mut);
+    kart(bx, 330, 260, '3 TEKRAR HAKKI', '%' + (100*ZP.zincir(ZP.EPS, r, 0.05, 3)).toFixed(1),
+         ZP.zincir(ZP.EPS, r, 0.05, 3) > 0.8 ? K.green : K.orange);
+    kart(bx + 280, 330, 260, 'SONSUZ TEKRARDA',
+         '%' + (100*Math.pow(ZP.sinir(ZP.EPS, r, 0.05), ZP.N)).toFixed(1), K.purple, 'kesikli çizgi');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('KAZANCI GETİREN ŞEY BÖLMEK DEĞİL', bx + 270, 494, K.mut, 18);
+    txt('Aynı bölünmüş zincir, tek farkla: her dikişte', bx + 18, 534, K.txt, 18, 'left');
+    txt('ara sonuca bakılıyor ve gerekirse tekrarlanıyor.', bx + 18, 564, K.txt, 18, 'left');
+    txt('r = 0.95 te tek tekrar hakkı %43.0 ı %85.8 e,', bx + 18, 606, K.green, 18, 'left');
+    txt('üç hak %95.2 ye çıkarıyor.', bx + 18, 636, K.green, 18, 'left');
+    txt('Kesikli çizgi sonsuz tekrarın sınırı: tekrar hakkı', bx + 18, 676, K.mut, 17, 'left');
+    txt('eklemenin getirisi çok çabuk bitiyor.', bx + 18, 702, K.mut, 17, 'left');
+  }
+
+  else if (sahne === 'kalite'){
+    baslikSerit('ZİNCİRLEME PROMPT · KONTROLCÜ NE KADAR İYİ',
+      'Yakalama oranı r, yanlış alarm oranı f. Üç tekrar hakkı. Kesişim noktasına dikkat.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.02, 1.02, 0, 1.08);
+    frame(P, 'yakalama oranı r', 'doğruluk', [0, 0.25, 0.5, 0.75, 1], [0, 0.25, 0.5, 0.75, 1]);
+    /* kontrolsuz taban */
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    const taban = P.sy(ZP.zincir(ZP.EPS, 0, 0, 0));
+    cx.beginPath(); cx.moveTo(P.R.x, taban); cx.lineTo(P.R.x + P.R.w, taban); cx.stroke();
+    cx.setLineDash([]);
+    txt('kontrolsüz %43.0', P.R.x + P.R.w - 14, taban - 12, K.mut, 15, 'right');
+    ZP.fler.forEach((fv, i) => {
+      cx.strokeStyle = RENK[3 - i]; cx.lineWidth = fv === f ? 3.8 : 1.8;
+      cx.globalAlpha = fv === f ? 1 : 0.4; cx.beginPath();
+      for (let j = 0; j <= 100; j++){ const rv = j/100;
+        const y = P.sy(ZP.zincir(ZP.EPS, rv, fv, 3));
+        j ? cx.lineTo(P.sx(rv), y) : cx.moveTo(P.sx(rv), y); }
+      cx.stroke();
+      /* r = f noktasi: tam olarak kontrolsuz taban */
+      if (fv > 0) dot(P.sx(fv), P.sy(ZP.zincir(ZP.EPS, fv, fv, 3)), 6, RENK[3 - i]);
+      cx.globalAlpha = 1; });
+    ZP.fler.forEach((fv, i) => {
+      const yy = P.sy(1.02 - i*0.075);
+      cx.strokeStyle = RENK[3 - i]; cx.lineWidth = fv === f ? 3.8 : 1.8;
+      cx.beginPath(); cx.moveTo(P.R.x + 16, yy - 5); cx.lineTo(P.R.x + 52, yy - 5); cx.stroke();
+      txt('yanlış alarm f = ' + fv.toFixed(2), P.R.x + 62, yy, RENK[3 - i], 15, 'left',
+          fv === f ? 700 : 400); });
+    const bx = 830;
+    kart(bx, 200, 260, 'YANLIŞ ALARM f', f.toFixed(2), K.blue);
+    kart(bx + 280, 200, 260, 'r = f DE', '%' + (100*ZP.zincir(ZP.EPS, f, f, 3)).toFixed(1), K.mut,
+         'kontrolsüzle aynı');
+    kart(bx, 330, 260, 'r = 0.95 TE', '%' + (100*ZP.zincir(ZP.EPS, 0.95, f, 3)).toFixed(1), K.green);
+    kart(bx + 280, 330, 260, 'r = 0 DA', '%' + (100*ZP.zincir(ZP.EPS, 0, f, 3)).toFixed(1),
+         ZP.zincir(ZP.EPS, 0, f, 3) < ZP.zincir(ZP.EPS, 0, 0, 0) ? K.red : K.mut,
+         'kontrolsüzden kötü');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('KURAL: r > f OLMALI', bx + 270, 494, K.mut, 18);
+    txt('Her eğri kontrolsüz tabanı tam olarak r = f de', bx + 18, 534, K.txt, 18, 'left');
+    txt('kesiyor. Bu bir yaklaşıklık değil, cebirsel eşitlik.', bx + 18, 564, K.txt, 18, 'left');
+    txt('r < f iken kontrolcü zarar veriyor: hem doğruluk', bx + 18, 606, K.red, 18, 'left');
+    txt('düşüyor hem fazladan çağrı ödüyorsun.', bx + 18, 636, K.red, 18, 'left');
+    txt('Kontrolcünün "iyi" olması yetmez, yanlış alarmından', bx + 18, 676, K.green, 17, 'left');
+    txt('daha çok yakalaması gerekir.', bx + 18, 702, K.green, 17, 'left');
+  }
+
+  else if (sahne === 'maliyet'){
+    baslikSerit('ZİNCİRLEME PROMPT · DOĞRULUK KAÇ ÇAĞRIYA MAL OLUYOR',
+      'Yatay eksen toplam çağrı sayısı (8 adımlık zincir), dikey eksen doğruluk.', []);
+    const P = plot(rect(140, 200, 640, 400), 7.6, 17.4, 0.15, 1.05);
+    frame(P, 'toplam model çağrısı', 'doğruluk', [8, 10, 12, 14, 16],
+          [0.25, 0.5, 0.75, 1]);
+    ZP.fler.forEach((fv, i) => {
+      cx.strokeStyle = RENK[3 - i]; cx.lineWidth = fv === f ? 3.6 : 1.8;
+      cx.globalAlpha = fv === f ? 1 : 0.4; cx.beginPath();
+      ZP.Rler.forEach((Rv, j) => { const x = P.sx(ZP.toplamCagri(ZP.EPS, r, fv, Rv)),
+        y = P.sy(ZP.zincir(ZP.EPS, r, fv, Rv));
+        j ? cx.lineTo(x, y) : cx.moveTo(x, y); });
+      cx.stroke();
+      ZP.Rler.forEach((Rv, j) => dot(P.sx(ZP.toplamCagri(ZP.EPS, r, fv, Rv)),
+        P.sy(ZP.zincir(ZP.EPS, r, fv, Rv)), fv === f ? 5 : 3, RENK[3 - i]));
+      cx.globalAlpha = 1; });
+    dot(P.sx(8), P.sy(ZP.zincir(ZP.EPS, 0, 0, 0)), 8, K.yellow);
+    txt('kontrolsüz: 8 çağrı, %43.0', P.sx(8) + 14, P.sy(ZP.zincir(ZP.EPS, 0, 0, 0)) + 32,
+        K.yellow, 16, 'left');
+    ZP.fler.forEach((fv, i) => {
+      const yy = P.sy(0.42 - i*0.075);
+      cx.strokeStyle = RENK[3 - i]; cx.lineWidth = fv === f ? 3.6 : 1.8;
+      cx.beginPath(); cx.moveTo(P.R.x + P.R.w - 186, yy - 5);
+      cx.lineTo(P.R.x + P.R.w - 150, yy - 5); cx.stroke();
+      txt('f = ' + fv.toFixed(2), P.R.x + P.R.w - 140, yy, RENK[3 - i], 15, 'left',
+          fv === f ? 700 : 400); });
+    txt('her eğri boyunca tekrar hakkı 0 → 5', P.R.x + 16, P.R.y + 28, K.mut, 16, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'YAKALAMA r', r.toFixed(2), K.blue);
+    kart(bx + 280, 200, 260, 'YANLIŞ ALARM f', f.toFixed(2), K.blue);
+    kart(bx, 330, 260, 'R=3 · DOĞRULUK', '%' + (100*ZP.zincir(ZP.EPS, r, f, 3)).toFixed(1),
+         K.green, ZP.toplamCagri(ZP.EPS, r, f, 3).toFixed(2) + ' çağrı');
+    kart(bx + 280, 330, 260, 'R=5 · DOĞRULUK', '%' + (100*ZP.zincir(ZP.EPS, r, f, 5)).toFixed(1),
+         K.orange, ZP.toplamCagri(ZP.EPS, r, f, 5).toFixed(2) + ' çağrı');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('YANLIŞ ALARM İKİ KERE ÖDETİYOR', bx + 270, 494, K.mut, 18);
+    txt('f büyüdükçe eğri hem sağa kayıyor (daha çok', bx + 18, 534, K.txt, 18, 'left');
+    txt('çağrı) hem aşağı iniyor (daha az doğruluk).', bx + 18, 564, K.txt, 18, 'left');
+    txt('r = 0.95 te f = 0 ile 3 tekrar %' +
+        (100*ZP.zincir(ZP.EPS, 0.95, 0, 3)).toFixed(1) + ' ü ' +
+        ZP.toplamCagri(ZP.EPS, 0.95, 0, 3).toFixed(1), bx + 18, 606, K.green, 18, 'left');
+    txt('çağrıya alıyor. f = 0.50 de aynı 3 tekrar %' +
+        (100*ZP.zincir(ZP.EPS, 0.95, 0.5, 3)).toFixed(1), bx + 18, 636, K.orange, 18, 'left');
+    txt('ve ' + ZP.toplamCagri(ZP.EPS, 0.95, 0.5, 3).toFixed(1) + ' çağrı.',
+        bx + 18, 666, K.orange, 18, 'left');
+  }
+
+  else {
+    const IH = ZP.ilkHata(ZP.EPS);
+    baslikSerit('ZİNCİRLEME PROMPT · BÖLMEK TEK BAŞINA HİÇBİR ŞEY KAZANDIRMIYOR',
+      'Tek büyük prompt ile 8 ayrı çağrı. Adım başına hata aynıysa iki eğri üst üste.', []);
+    const P = plot(rect(140, 200, 640, 400), 0.7, 8.3, 0, 1.05);
+    frame(P, 'adım sayısı', 'doğruluk', [1, 2, 4, 6, 8], [0, 0.25, 0.5, 0.75, 1]);
+    cx.strokeStyle = K.blue; cx.lineWidth = 7; cx.globalAlpha = 0.45; cx.beginPath();
+    for (let i = 1; i <= 8; i++){ const y = P.sy(Math.pow(1 - ZP.EPS, i));
+      i === 1 ? cx.moveTo(P.sx(i), y) : cx.lineTo(P.sx(i), y); }
+    cx.stroke(); cx.globalAlpha = 1;
+    cx.strokeStyle = K.orange; cx.lineWidth = 2.5; cx.setLineDash([8, 6]); cx.beginPath();
+    for (let i = 1; i <= 8; i++){ const y = P.sy(Math.pow(1 - ZP.EPS, i));
+      i === 1 ? cx.moveTo(P.sx(i), y) : cx.lineTo(P.sx(i), y); }
+    cx.stroke(); cx.setLineDash([]);
+    for (let i = 1; i <= 8; i++) dot(P.sx(i), P.sy(Math.pow(1 - ZP.EPS, i)), 5, K.orange);
+    txt('kalın mavi: tek prompt', P.R.x + 16, P.sy(0.22), K.blue, 17, 'left');
+    txt('kesikli turuncu: 8 ayrı çağrı', P.R.x + 16, P.sy(0.14), K.orange, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'TEK PROMPT', '%' + (100*Math.pow(1 - ZP.EPS, ZP.N)).toFixed(1), K.blue);
+    kart(bx + 280, 200, 260, 'ZİNCİR', '%' + (100*Math.pow(1 - ZP.EPS, ZP.N)).toFixed(1), K.orange);
+    kart(bx, 330, 260, 'FARK', '0.0 puan', K.mut);
+    kart(bx + 280, 330, 260, 'İLK HATA · ORTALAMA', IH.bek.toFixed(2) + '. adım', K.purple,
+         'başarısız denemelerde');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('PEKİ BÖLMENİN FAYDASI NE', bx + 270, 494, K.mut, 18);
+    txt('Adım başına hata değişmediği sürece bölmek', bx + 18, 534, K.txt, 18, 'left');
+    txt('doğruluğu değiştirmiyor: iki eğri aynı.', bx + 18, 564, K.txt, 18, 'left');
+    txt('Değişen şey görünürlük. Zincir başarısız olduğunda', bx + 18, 606, K.green, 18, 'left');
+    txt('ilk hata ortalama ' + IH.bek.toFixed(2) + '. adımda, yani işin', bx + 18, 636, K.green, 18, 'left');
+    txt('%' + (100*(IH.bek - 1)/ZP.N).toFixed(1) + ' u sağlam ve nerede bozulduğu belli.',
+        bx + 18, 666, K.green, 18, 'left');
+    txt('Tek prompt sana sadece yanlış bir cevap verir.', bx + 18, 702, K.mut, 17, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();
