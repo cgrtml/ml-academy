@@ -39,6 +39,26 @@ const VDIL = (() => { try { return localStorage.getItem('mlacad_dil') === 'en' ?
                       catch(e){ return 'tr'; } })();
 const LB = (tr, en) => VDIL === 'en' ? en : tr;
 
+/* ── tuval etiketleri · viz-sozluk.js'teki TUVAL_EN üzerinden ──
+   Önce birebir arama; bulunamazsa ve metinde sayı varsa sayılar # ile
+   değiştirilip şablon aranır, karşılık bulunursa sayılar sırayla geri konur.
+   Sözlük yoksa ya da karşılık yoksa metin olduğu gibi kalır. */
+const SAYI_RE = /-?\d+(?:[.,]\d+)?/g;
+function CEV(s){
+  if (VDIL !== 'en' || s == null) return s;
+  s = String(s);
+  const D = (typeof TUVAL_EN !== 'undefined') ? TUVAL_EN : null;
+  if (!D) return s;
+  if (D[s] !== undefined) return D[s];
+  if (/\d/.test(s)){
+    const sayilar = [];
+    const anahtar = s.replace(SAYI_RE, m => { sayilar.push(m); return '#'; });
+    const karsilik = D[anahtar];
+    if (karsilik !== undefined){ let i = 0; return karsilik.replace(/#/g, () => sayilar[i++]); }
+  }
+  return s;
+}
+
 const S_ = DATA.study;
 const predY = (w,b,x) => w*x + b;
 const mse = (w,b) => S_.X.reduce((s,x,i) => s + (w*x+b-S_.Y[i])**2, 0) / S_.X.length;
@@ -87,12 +107,12 @@ function frame(P,xl,yl,xt,yt){
   cx.textAlign = 'right';
   (yt||[]).forEach(t => cx.fillText(String(t), P.R.x-10, P.sy(t)+7));
   cx.textAlign = 'center';
-  if (xl) cx.fillText(xl, P.R.x+P.R.w/2, P.R.y+P.R.h+58);
-  if (yl){ cx.save(); cx.translate(P.R.x-60, P.R.y+P.R.h/2); cx.rotate(-Math.PI/2); cx.fillText(yl,0,0); cx.restore(); }
+  if (xl) cx.fillText(CEV(xl), P.R.x+P.R.w/2, P.R.y+P.R.h+58);
+  if (yl){ cx.save(); cx.translate(P.R.x-60, P.R.y+P.R.h/2); cx.rotate(-Math.PI/2); cx.fillText(CEV(yl),0,0); cx.restore(); }
 }
 function txt(s,x,y,c,sz,al,wt){
   cx.fillStyle = c; cx.font = (wt||'700')+' '+(sz||22)+'px ui-monospace,monospace';
-  cx.textAlign = al||'center'; cx.fillText(s,x,y);
+  cx.textAlign = al||'center'; cx.fillText(CEV(s),x,y);
 }
 function dot(x,y,r,f,s,lw){
   cx.beginPath(); cx.arc(x,y,r,0,7);
