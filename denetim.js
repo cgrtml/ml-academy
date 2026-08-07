@@ -2287,6 +2287,103 @@ console.log('═══ BAĞLAM İÇİ ÖĞRENME ═══');
         IC.olc(false, 64).entropi < 0.05 && IC.olc(false, 64).fazla > 0.3);
 }
 
+console.log('═══ CHAIN-OF-THOUGHT ═══');
+{
+  /* gorevin kurulusu */
+  iddia('CoT · durum sayısı', 12, CT.M, 0);
+  iddia('CoT · en uzun zincir', 8, CT.NMAX, 0);
+  iddia('CoT · toplam (durum, adım) çifti', 96, CT.tum.length, 0);
+  iddia('CoT · f permütasyon mu (ayrık görüntü sayısı)', 12, new Set(CT.F).size, 0);
+  /* permutasyon oldugu icin f^k(s) her k da bir dongude ilerler, hicbir durum yutulmaz */
+  { let cakisma = 0;
+    for (let s = 0; s < CT.M; s++) for (let t = s+1; t < CT.M; t++)
+      if (CT.uygula(s, 5) === CT.uygula(t, 5)) cakisma++;
+    iddia('CoT · f⁵ de iki durum aynı yere düşmüyor', 0, cakisma, 0); }
+
+  /* 1. adim: kac olgu */
+  iddia('CoT · doğrudan · 4 örnek', 12.5, 100*CT.dogrudan(4), 1);
+  iddia('CoT · doğrudan · 8 örnek', 16.7, 100*CT.dogrudan(8), 1);
+  iddia('CoT · doğrudan · 12 örnek', 20.8, 100*CT.dogrudan(12), 1);
+  iddia('CoT · doğrudan · 24 örnek', 32.3, 100*CT.dogrudan(24), 1);
+  iddia('CoT · doğrudan · 48 örnek', 56.3, 100*CT.dogrudan(48), 1);
+  iddia('CoT · doğrudan · 96 örnek', 100.0, 100*CT.dogrudan(96), 1);
+  iddia('CoT · zincir · 4 örnek', 13.5, 100*CT.cot(4), 1);
+  iddia('CoT · zincir · 8 örnek', 38.5, 100*CT.cot(8), 1);
+  iddia('CoT · zincir · 12 örnek', 100.0, 100*CT.cot(12), 1);
+  iddia('CoT · zincir · 96 örnek', 100.0, 100*CT.cot(96), 1);
+  /* mekanizma: CoT tam M ornekte doyuyor, bir onceki adimda henuz doymuyor */
+  iddia('CoT · 11 örnekte henüz %100 değil', 1, CT.cot(11) < 0.999 ? 1 : 0, 0);
+  iddia('CoT · doğrudan 95 örnekte henüz %100 değil', 1, CT.dogrudan(95) < 0.999 ? 1 : 0, 0);
+  iddia('CoT · olgu oranı 96/12', 8, CT.tum.length/CT.M, 0);
+  /* dogrudan model monoton artmali: daha cok ornek asla zarar vermez */
+  { let ihlal = 0;
+    for (let i = 1; i < CT.egitimler.length; i++)
+      if (CT.dogrudan(CT.egitimler[i]) < CT.dogrudan(CT.egitimler[i-1]) - 1e-12) ihlal++;
+    iddia('CoT · doğrudan model örnek sayısında monoton', 0, ihlal, 0); }
+
+  /* 2. adim: sabit butce, degisen uzunluk */
+  { const Z = CT.uzunlukBazinda(24);
+    iddia('CoT · 24 örnek · doğrudan n=1', 33.3, 100*Z[1].dogrudan, 1);
+    iddia('CoT · 24 örnek · doğrudan n=2', 50.0, 100*Z[2].dogrudan, 1);
+    iddia('CoT · 24 örnek · doğrudan n=5', 16.7, 100*Z[5].dogrudan, 1);
+    iddia('CoT · 24 örnek · doğrudan n=8', 25.0, 100*Z[8].dogrudan, 1);
+    let toplam = 0, kotu = 0;
+    for (let n = 1; n <= CT.NMAX; n++){ toplam += Z[n].dogrudan;
+      if (Z[n].cot < 0.999) kotu++; }
+    iddia('CoT · 24 örnek · zincir her n de %100', 0, kotu, 0);
+    iddia('CoT · 24 örnek · doğrudan ortalaması', 32.3, 100*toplam/CT.NMAX, 1);
+    /* dersteki iddia: turuncu egride egilim yok, dalgalanma var */
+    let inis = 0, cikis = 0;
+    for (let n = 2; n <= CT.NMAX; n++){
+      if (Z[n].dogrudan < Z[n-1].dogrudan - 1e-12) inis++;
+      if (Z[n].dogrudan > Z[n-1].dogrudan + 1e-12) cikis++; }
+    iddia('CoT · doğrudan eğrisi hem iniyor hem çıkıyor (iniş)', 1, inis > 0 ? 1 : 0, 0);
+    iddia('CoT · doğrudan eğrisi hem iniyor hem çıkıyor (çıkış)', 1, cikis > 0 ? 1 : 0, 0); }
+
+  /* 3. adim: hata birikimi */
+  iddia('CoT · ε=0.02 · n=1', 98.0, 100*CT.gurultulu(0.02, 1), 1);
+  iddia('CoT · ε=0.02 · n=8', 85.1, 100*CT.gurultulu(0.02, 8), 1);
+  iddia('CoT · ε=0.05 · n=8', 66.8, 100*CT.gurultulu(0.05, 8), 1);
+  iddia('CoT · ε=0.10 · n=1', 90.2, 100*CT.gurultulu(0.10, 1), 1);
+  iddia('CoT · ε=0.10 · n=8', 44.7, 100*CT.gurultulu(0.10, 8), 1);
+  iddia('CoT · ε=0.20 · n=1', 80.1, 100*CT.gurultulu(0.20, 1), 1);
+  iddia('CoT · ε=0.20 · n=8', 21.4, 100*CT.gurultulu(0.20, 8), 1);
+  iddia('CoT · teori (1−ε)⁸ · ε=0.02', 85.1, 100*CT.teorik(0.02, 8), 1);
+  iddia('CoT · teori (1−ε)⁸ · ε=0.10', 43.0, 100*CT.teorik(0.10, 8), 1);
+  iddia('CoT · teori (1−ε)⁸ · ε=0.20', 16.8, 100*CT.teorik(0.20, 8), 1);
+  /* (1-eps)^n bir ALT sinir: olcum her yerde teorinin ustunde ya da esitinde */
+  { let ihlal = 0, buyukSapma = 0;
+    for (const ep of CT.epsler) for (const n of [1, 2, 4, 8]){
+      const o = CT.gurultulu(ep, n), t = CT.teorik(ep, n);
+      if (o < t - 0.006) ihlal++;
+      if (o - t > 0.01) buyukSapma++; }
+    iddia('CoT · ölçüm hiçbir yerde teorinin altında değil', 0, ihlal, 0);
+    /* kucuk eps te ortusme, buyuk eps te ustte kalma */
+    iddia('CoT · ε=0.02 · ölçüm−teori (n=8)', 0.1,
+          100*(CT.gurultulu(0.02, 8) - CT.teorik(0.02, 8)), 1);
+    iddia('CoT · ε=0.20 · ölçüm−teori (n=8)', 4.6,
+          100*(CT.gurultulu(0.20, 8) - CT.teorik(0.20, 8)), 1);
+    iddia('CoT · fazlalık sadece yüksek ε de belirgin', 1, buyukSapma > 0 ? 1 : 0, 0); }
+  /* zincir uzadikca dogruluk her eps te dusuyor */
+  { let ihlal = 0;
+    for (const ep of CT.epsler){ const dizi = [1, 2, 4, 8].map(n => CT.gurultulu(ep, n));
+      for (let i = 1; i < dizi.length; i++) if (dizi[i] > dizi[i-1]) ihlal++; }
+    iddia('CoT · doğruluk zincir uzunluğunda monoton azalıyor', 0, ihlal, 0); }
+
+  /* 4. adim: ayrismayan gorev */
+  iddia('CoT · ayrışmayan · doğrudan 96 örnek', 100.0, 100*CT.dogrudan(96, true), 1);
+  iddia('CoT · ayrışmayan · doğrudan 48 örnek', 54.2, 100*CT.dogrudan(48, true), 1);
+  iddia('CoT · ayrışmayan · zincir 12 örnek', 10.4, 100*CT.cot(12, true), 1);
+  iddia('CoT · ayrışmayan · zincir 96 örnek', 10.4, 100*CT.cot(96, true), 1);
+  iddia('CoT · rastgele taban', 8.3, 100/CT.M, 1);
+  /* zincir 12 den sonra hic kipirdamiyor */
+  { let degisim = 0;
+    for (const e of [12, 24, 48, 96])
+      if (Math.abs(CT.cot(e, true) - CT.cot(12, true)) > 1e-12) degisim++;
+    iddia('CoT · ayrışmayan · zincir 12 den sonra sabit', 0, degisim, 0); }
+  iddia('CoT · ayrışmayan · zincir rastgelenin üstünde ama yakın', 1,
+        (CT.cot(96, true) > 1/CT.M && CT.cot(96, true) < 0.15) ? 1 : 0, 0);
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

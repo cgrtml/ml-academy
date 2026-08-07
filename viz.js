@@ -6768,6 +6768,232 @@ VIZ.baglamIciOgrenme = s => {
   }
 };
 
+
+/* ═══════════ CHAIN-OF-THOUGHT ═══════════
+   Ara adım yazmak, öğrenilmesi gereken olgu sayısını düşürüyor.
+   Bedeli hata birikimi, sınırı ise görevin ayrışabilir olması. */
+const CT = {};
+CT.M = 12; CT.NMAX = 8;
+/* f bir PERMUTASYON: bir kez sapan zincir kendiliğinden düzelemez */
+CT.F = (() => { const r = rng(4), f = [...Array(CT.M).keys()];
+  for (let i = CT.M - 1; i > 0; i--){ const j = Math.floor((i+1)*r());
+    const t = f[i]; f[i] = f[j]; f[j] = t; }
+  return f; })();
+CT.uygula = (s, n) => { let x = s; for (let t = 0; t < n; t++) x = CT.F[x]; return x; };
+CT.tum = (() => { const o = [];
+  for (let s = 0; s < CT.M; s++) for (let n = 1; n <= CT.NMAX; n++) o.push([s, n]);
+  return o; })();
+/* ayrismayan gorev: g(s,n) tamamen rastgele */
+CT.G = (() => { const r = rng(21), t = {};
+  for (let s = 0; s < CT.M; s++) for (let n = 1; n <= CT.NMAX; n++) t[s+','+n] = Math.floor(CT.M*r());
+  return t; })();
+CT.egitimler = [4, 8, 12, 24, 48, 96];
+CT.epsler = [0.02, 0.05, 0.10, 0.20];
+const _ctCache = {};
+CT.karistir = (dizi, seed) => { const r = rng(seed), a = [...dizi];
+  for (let i = a.length - 1; i > 0; i--){ const j = Math.floor((i+1)*r());
+    const t = a[i]; a[i] = a[j]; a[j] = t; }
+  return a; };
+/* dogrudan model: (s,n) → cevap tablosu · gorulmeyen cifti bilemez */
+CT.dogrudan = (e, ayrismaz) => {
+  const key = 'd' + e + (ayrismaz ? 'a' : 'n');
+  if (_ctCache[key] !== undefined) return _ctCache[key];
+  const karisik = CT.karistir(CT.tum, 7), tablo = {};
+  const hedef = ([s, n]) => ayrismaz ? CT.G[s+','+n] : CT.uygula(s, n);
+  for (let i = 0; i < Math.min(e, karisik.length); i++)
+    tablo[karisik[i][0] + ',' + karisik[i][1]] = hedef(karisik[i]);
+  let dg = 0;
+  for (const p of CT.tum){ const k = p[0] + ',' + p[1];
+    if (((k in tablo) ? tablo[k] : 0) === hedef(p)) dg++; }
+  return (_ctCache[key] = dg/CT.tum.length);
+};
+/* CoT modeli: sadece f tablosunu ogrenip n kez uyguluyor */
+CT.cot = (e, ayrismaz) => {
+  const key = 'c' + e + (ayrismaz ? 'a' : 'n');
+  if (_ctCache[key] !== undefined) return _ctCache[key];
+  const idx = CT.karistir([...Array(CT.M).keys()], 7), bilinen = {};
+  for (let i = 0; i < Math.min(e, CT.M); i++) bilinen[idx[i]] = CT.F[idx[i]];
+  const adim = x => (x in bilinen) ? bilinen[x] : 0;
+  let dg = 0;
+  for (const [s, n] of CT.tum){ let x = s;
+    for (let t = 0; t < n; t++) x = adim(x);
+    const hedef = ayrismaz ? CT.G[s+','+n] : CT.uygula(s, n);
+    if (x === hedef) dg++; }
+  return (_ctCache[key] = dg/CT.tum.length);
+};
+/* zincir uzunluguna gore · sabit egitim butcesi */
+CT.uzunlukBazinda = e => {
+  const key = 'u' + e;
+  if (_ctCache[key]) return _ctCache[key];
+  const karisik = CT.karistir(CT.tum, 7), tablo = {};
+  for (let i = 0; i < Math.min(e, karisik.length); i++)
+    tablo[karisik[i][0] + ',' + karisik[i][1]] = CT.uygula(karisik[i][0], karisik[i][1]);
+  const idx = CT.karistir([...Array(CT.M).keys()], 7), bilinen = {};
+  for (let i = 0; i < Math.min(e, CT.M); i++) bilinen[idx[i]] = CT.F[idx[i]];
+  const adim = x => (x in bilinen) ? bilinen[x] : 0;
+  const out = {};
+  for (let n = 1; n <= CT.NMAX; n++){ let dD = 0, dC = 0;
+    for (let s = 0; s < CT.M; s++){ const k = s + ',' + n;
+      if (((k in tablo) ? tablo[k] : 0) === CT.uygula(s, n)) dD++;
+      let x = s; for (let t = 0; t < n; t++) x = adim(x);
+      if (x === CT.uygula(s, n)) dC++; }
+    out[n] = { dogrudan: dD/CT.M, cot: dC/CT.M }; }
+  return (_ctCache[key] = out);
+};
+/* hata birikimi: her adimda eps olasilikla yanlis duruma sapma */
+CT.gurultulu = (eps, n) => {
+  const key = 'g' + eps + ':' + n;
+  if (_ctCache[key] !== undefined) return _ctCache[key];
+  const r = rng(13);
+  let dg = 0, D = 40000;
+  for (let d = 0; d < D; d++){
+    const s0 = Math.floor(CT.M*r());
+    let x = s0;
+    for (let t = 0; t < n; t++){
+      if (r() < eps){ let y = Math.floor(CT.M*r()); if (y === CT.F[x]) y = (y+1) % CT.M; x = y; }
+      else x = CT.F[x]; }
+    if (x === CT.uygula(s0, n)) dg++; }
+  return (_ctCache[key] = dg/D);
+};
+CT.teorik = (eps, n) => Math.pow(1 - eps, n);
+
+VIZ.dusunmeZinciri = s => {
+  clear();
+  const sahne = s.sahne || 'olgu';
+  const ei = Math.max(0, Math.min(5, s.ei === undefined ? 0 : Math.round(s.ei)));
+  const e = CT.egitimler[ei];
+  const epsi = Math.max(0, Math.min(3, s.epsi === undefined ? 0 : Math.round(s.epsi)));
+  const eps = CT.epsler[epsi];
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'hata'){
+    baslikSerit('DÜŞÜNME ZİNCİRİ · HATA BİRİKİYOR',
+      'Her adımda ε olasılıkla sapma. f permütasyon olduğu için sapan zincir düzelemez.', []);
+    const P = plot(rect(140, 200, 640, 400), 0.7, 8.3, 0, 1.05);
+    frame(P, 'zincir uzunluğu', 'doğru oranı', [1, 2, 4, 6, 8], [0, 0.25, 0.5, 0.75, 1]);
+    CT.epsler.forEach((ep, i) => {
+      const renk = [K.green, K.blue, K.orange, K.red][i];
+      cx.strokeStyle = renk; cx.lineWidth = ep === eps ? 3.6 : 1.8;
+      cx.globalAlpha = ep === eps ? 1 : 0.4;
+      cx.beginPath();
+      [1,2,4,8].forEach((n, q) => { const y = P.sy(CT.gurultulu(ep, n));
+        q ? cx.lineTo(P.sx(n), y) : cx.moveTo(P.sx(n), y); });
+      cx.stroke();
+      [1,2,4,8].forEach(n => dot(P.sx(n), P.sy(CT.gurultulu(ep, n)), 4, renk));
+      cx.globalAlpha = 1; });
+    /* teorik egri */
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath();
+    for (let i = 0; i <= 100; i++){ const n = 0.7 + 7.6*i/100;
+      const y = P.sy(CT.teorik(eps, n));
+      i ? cx.lineTo(P.sx(n), y) : cx.moveTo(P.sx(n), y); }
+    cx.stroke(); cx.setLineDash([]);
+    txt('kesikli: (1 − ε)ⁿ', P.R.x + P.R.w - 14, P.R.y + 28, K.mut, 17, 'right');
+    /* efsane sol altta: o bolgede hicbir egri gecmiyor (x<4 te en dusuk egri 0.43 un ustunde) */
+    CT.epsler.forEach((ep, i) => {
+      const yy = P.sy(0.34 - i*0.08);
+      cx.strokeStyle = [K.green, K.blue, K.orange, K.red][i];
+      cx.lineWidth = ep === eps ? 3.6 : 1.8;
+      cx.beginPath(); cx.moveTo(P.R.x + 16, yy - 5); cx.lineTo(P.R.x + 52, yy - 5); cx.stroke();
+      txt('ε = ' + ep.toFixed(2), P.R.x + 62, yy,
+          [K.green, K.blue, K.orange, K.red][i], 16, 'left', ep === eps ? 700 : 400); });
+    const bx = 830;
+    kart(bx, 200, 260, 'ADIM HATASI ε', eps.toFixed(2), K.blue);
+    kart(bx + 280, 200, 260, '8 ADIM · ÖLÇÜLEN', '%' + (100*CT.gurultulu(eps, 8)).toFixed(1),
+         K.orange);
+    kart(bx, 330, 260, '8 ADIM · TEORİK', '%' + (100*CT.teorik(eps, 8)).toFixed(1), K.mut,
+         '(1 − ε)⁸');
+    kart(bx + 280, 330, 260, '1 ADIM', '%' + (100*CT.gurultulu(eps, 1)).toFixed(1), K.green);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('ZİNCİR NE KADAR UZUNSA', bx + 270, 494, K.mut, 18);
+    txt('Adım başına %' + (100*eps).toFixed(0) + ' hata, 8 adımda', bx + 18, 534, K.txt, 18, 'left');
+    txt('%' + (100*(1 - CT.gurultulu(eps, 8))).toFixed(0) + ' başarısızlığa dönüşüyor.',
+        bx + 18, 564, K.txt, 18, 'left');
+    txt('Düşük ε de ölçüm (1−ε)ⁿ ile birebir örtüşüyor.', bx + 18, 604, K.green, 17, 'left');
+    txt('Yüksek ε de ölçüm biraz yukarıda kalıyor: rastgele', bx + 18, 634, K.mut, 17, 'left');
+    txt('bir sapma tesadüfen doğru zincire denk gelebiliyor.', bx + 18, 662, K.mut, 17, 'left');
+  }
+
+  else if (sahne === 'uzunluk'){
+    const Z = CT.uzunlukBazinda(24);
+    baslikSerit('DÜŞÜNME ZİNCİRİ · ZİNCİR UZUNLUĞUNA GÖRE',
+      'Eğitim bütçesi sabit: 24 örnek. Değişen tek şey kaç adım gerektiği.', []);
+    const P = plot(rect(140, 200, 640, 400), 0.7, 8.3, 0, 1.08);
+    frame(P, 'gereken adım sayısı', 'doğruluk', [1, 2, 4, 6, 8], [0, 0.5, 1]);
+    [['dogrudan', K.orange], ['cot', K.green]].forEach(([alan, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = 3.4; cx.beginPath();
+      for (let n = 1; n <= CT.NMAX; n++){ const y = P.sy(Z[n][alan]);
+        n === 1 ? cx.moveTo(P.sx(n), y) : cx.lineTo(P.sx(n), y); }
+      cx.stroke();
+      for (let n = 1; n <= CT.NMAX; n++) dot(P.sx(n), P.sy(Z[n][alan]), 5, renk); });
+    txt('düşünme zinciri', P.R.x + 16, P.sy(0.93), K.green, 17, 'left');
+    txt('doğrudan cevap', P.R.x + 16, P.sy(0.20), K.orange, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'EĞİTİM ÖRNEĞİ', '24', K.blue, 'toplam ' + CT.tum.length + ' çift var');
+    kart(bx + 280, 200, 260, 'CoT · HER n DE', '%100.0', K.green);
+    kart(bx, 330, 260, 'DOĞRUDAN · n=1', '%' + (100*Z[1].dogrudan).toFixed(1), K.orange);
+    kart(bx + 280, 330, 260, 'DOĞRUDAN · n=8', '%' + (100*Z[8].dogrudan).toFixed(1), K.orange);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('NEDEN', bx + 270, 494, K.mut, 18);
+    txt('Doğrudan model her (durum, adım sayısı) çiftini', bx + 18, 534, K.txt, 18, 'left');
+    txt('ayrı ayrı ezberlemek zorunda: 24 örnekle 96 çiftin', bx + 18, 564, K.txt, 18, 'left');
+    txt('dörtte birini biliyor ve gerisinde rastgele.', bx + 18, 594, K.txt, 18, 'left');
+    txt('CoT modeli tek adımı bildiği için her uzunlukta', bx + 18, 634, K.green, 18, 'left');
+    txt('aynı: adım sayısı onun için bir maliyet, engel değil.', bx + 18, 664, K.green, 18, 'left');
+  }
+
+  else {
+    const ayrismaz = !!s.ayrismaz;
+    baslikSerit(ayrismaz ? 'DÜŞÜNME ZİNCİRİ · AYRIŞMAYAN GÖREV'
+                         : 'DÜŞÜNME ZİNCİRİ · KAÇ OLGU ÖĞRENMEK GEREKİYOR',
+      ayrismaz ? 'Cevap adım adım gidilerek bulunamıyor. Zincir yazmak hiçbir şey kazandırmıyor.'
+               : 'Aynı görev, iki yol: cevabı ezberlemek ya da tek adımı öğrenip tekrarlamak.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.3, 5.3, 0, 1.08);
+    frame(P, 'eğitim örneği', 'doğruluk', [], [0, 0.25, 0.5, 0.75, 1]);
+    CT.egitimler.forEach((v2, i) => txt(String(v2), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    [[q => CT.dogrudan(q, ayrismaz), K.orange], [q => CT.cot(q, ayrismaz), K.green]]
+      .forEach(([f, renk]) => {
+        cx.strokeStyle = renk; cx.lineWidth = 3.4; cx.beginPath();
+        CT.egitimler.forEach((q, i) => { const y = P.sy(f(q));
+          i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+        cx.stroke();
+        CT.egitimler.forEach((q, i) => dot(P.sx(i), P.sy(f(q)), 5, renk)); });
+    dot(P.sx(ei), P.sy(CT.cot(e, ayrismaz)), 9, K.yellow);
+    txt('düşünme zinciri', P.R.x + 16, P.sy(ayrismaz ? 0.20 : 0.90), K.green, 17, 'left');
+    txt('doğrudan cevap', P.R.x + 16, P.sy(ayrismaz ? 0.62 : 0.35), K.orange, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'EĞİTİM ÖRNEĞİ', String(e), K.blue);
+    kart(bx + 280, 200, 260, 'CoT', '%' + (100*CT.cot(e, ayrismaz)).toFixed(1),
+         CT.cot(e, ayrismaz) > 0.9 ? K.green : K.red);
+    kart(bx, 330, 260, 'DOĞRUDAN', '%' + (100*CT.dogrudan(e, ayrismaz)).toFixed(1), K.orange);
+    kart(bx + 280, 330, 260, ayrismaz ? 'RASTGELE' : 'GEREKEN OLGU',
+         ayrismaz ? '%' + (100/CT.M).toFixed(1) : (CT.M + ' / ' + CT.tum.length),
+         ayrismaz ? K.mut : K.purple, ayrismaz ? '' : 'CoT / doğrudan');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', ayrismaz ? K.red : K.axis, 2);
+    if (ayrismaz){
+      txt('ZİNCİR NEDEN İŞE YARAMIYOR', bx + 270, 494, K.mut, 18);
+      txt('Hedef artık f’in tekrarı değil, (durum, sayı)', bx + 18, 534, K.txt, 18, 'left');
+      txt('çiftine atanmış rastgele bir değer.', bx + 18, 564, K.txt, 18, 'left');
+      txt('CoT hiçbir eğitim miktarında ilerlemiyor:', bx + 18, 604, K.red, 18, 'left');
+      txt('%' + (100*CT.cot(96, true)).toFixed(1) + ' de sabit, rastgele %' +
+          (100/CT.M).toFixed(1) + '.', bx + 18, 634, K.red, 18, 'left');
+      txt('Doğrudan model ezberleyerek %100 e çıkıyor.', bx + 18, 674, K.orange, 18, 'left');
+    } else {
+      txt('KAÇ OLGU', bx + 270, 494, K.mut, 18);
+      txt('Doğrudan model ' + CT.tum.length + ' ayrı (durum, adım) çiftini', bx + 18, 534, K.txt, 18, 'left');
+      txt('bilmek zorunda ve ancak ' + CT.tum.length + ' örnekte %100 oluyor.', bx + 18, 564, K.txt, 18, 'left');
+      txt('CoT yalnızca ' + CT.M + ' girdilik f tablosunu öğreniyor', bx + 18, 604, K.green, 18, 'left');
+      txt('ve tam ' + CT.M + ' örnekte %100 e ulaşıyor.', bx + 18, 634, K.green, 18, 'left');
+      txt('Aradaki oran: ' + (CT.tum.length/CT.M).toFixed(0) + ' kat az olgu.', bx + 18, 674, K.purple, 18, 'left');
+    }
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

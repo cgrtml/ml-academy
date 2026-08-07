@@ -105,7 +105,7 @@ const ROTALAR = [
     {id:'halusinasyon',ad:'Halüsinasyon neden olur',              sure:14, durum:'hazir'},
     {id:'rag',       ad:'RAG boru hattı',                         sure:16, durum:'hazir'},
     {id:'kvcache',   ad:'Bağlam penceresi ve KV cache',           sure:14, durum:'hazir'},
-    {id:'cot',            ad:'Chain-of-Thought: cevaptan önce düşünmek',       sure:12, durum:'planli'},
+    {id:'cot',            ad:'Chain-of-Thought: cevaptan önce düşünmek',       sure:16, durum:'hazir'},
     {id:'self-cons',      ad:'Self-consistency: çoğunluğa güvenmek',           sure:10, durum:'planli'},
     {id:'oz-gozetim',     ad:'Kendi kendine gözetim: etiketi veriden üretmek',  sure:17, durum:'hazir'},
     {id:'olcek-yasalari',  ad:'Ölçek yasaları: büyütmenin getirisi ve bedeli',  sure:16, durum:'hazir'},
@@ -10033,5 +10033,159 @@ DERSLER['icl'] = {
       'Model, ön eğitimde en yakın gördüğü göreve kilitleniyor. Az örnekli promptlar ' +
       '<b>ayrı bir değerlendirme kümesiyle</b> ölçülmeden kabul edilmemeli.',
     xp:50,
+  },
+]};
+
+/* ─────────────── CHAIN-OF-THOUGHT ─────────────── */
+DERSLER['cot'] = {
+  ad:'Chain-of-Thought: cevaptan önce düşünmek',
+  alt:'Modele "adım adım düşün" demek bazı görevlerde her şeyi değiştiriyor, bazılarında hiçbir şeyi. Farkın nerede olduğunu ölçeceksin.',
+  kaynaklar:[
+    {y:'Wei, J. ve ark.', t:'2022', b:'Chain-of-Thought Prompting Elicits Reasoning in Large Language Models', n:'NeurIPS 2022', u:'https://arxiv.org/abs/2201.11903'},
+    {y:'Nye, M. ve ark.', t:'2021', b:'Show Your Work: Scratchpads for Intermediate Computation with Language Models', n:'arXiv:2112.00114', u:'https://arxiv.org/abs/2112.00114'},
+    {y:'Kojima, T. ve ark.', t:'2022', b:'Large Language Models are Zero-Shot Reasoners', n:'NeurIPS 2022', u:'https://arxiv.org/abs/2205.11916'},
+    {y:'Feng, G. ve ark.', t:'2023', b:'Towards Revealing the Mystery behind Chain of Thought: A Theoretical Perspective', n:'NeurIPS 2023', u:'https://arxiv.org/abs/2305.15408'},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'Aynı görev, iki yol',
+    goal:'Ara adım yazmanın öğrenilecek olgu sayısını neden düşürdüğünü göreceksin.',
+    todo:'Eğitim örneği sayısını artır. Yeşil eğri hangi noktada tavana vuruyor, turuncu hangi noktada?',
+    kind:'controls', viz:'dusunmeZinciri', h:760,
+    controls:[{k:'ei', lb:'EĞİTİM ÖRNEĞİ', min:0, max:5, step:1, val:0,
+      fmt:v => CT.egitimler[Math.round(v)] + ' örnek'}],
+    state:{sahne:'olgu', ayrismaz:false},
+    derive:s => ({cotDg: CT.cot(CT.egitimler[Math.round(s.ei)]),
+                  dogDg: CT.dogrudan(CT.egitimler[Math.round(s.ei)])}),
+    live:s => [['ÖRNEK', String(CT.egitimler[Math.round(s.ei)])],
+               ['CoT', '%' + (100*s.cotDg).toFixed(1), K.green],
+               ['DOĞRUDAN', '%' + (100*s.dogDg).toFixed(1), K.orange],
+               ['HEDEF', 'CoT %100']],
+    unlock:s => s.cotDg >= 0.999,
+    unlockMsg:'CoT modelini %100 e çıkaracak örnek sayısını bul',
+    body:'<p>Küçük ve tamamen kapalı bir görev: 12 durum var, bir f fonksiyonu her durumu ' +
+      'başka bir duruma gönderiyor. Soru şu biçimde geliyor: <b>s durumundan başla, f\'i n kez ' +
+      'uygula, nereye varırsın?</b> n en fazla 8, yani toplam 12 × 8 = <b>96</b> farklı soru var.</p>' +
+      '<p>İki model aynı örneklerle eğitiliyor:</p>' +
+      '<p><b>Doğrudan cevap.</b> Soruyu cevaba eşleyen bir tablo tutuyor. Eğitimde görmediği ' +
+      'bir (durum, adım sayısı) çiftini bilemez, çünkü onun için o çift yepyeni bir olgudur.</p>' +
+      '<p><b>Düşünme zinciri.</b> Sadece f tablosunu öğreniyor, sonra onu n kez uyguluyor. ' +
+      'Onun için tek bir olgu türü var: "f bu durumu nereye gönderiyor?"</p>' +
+      '<p>Ölçüm: doğrudan model 96 örnekten önce %100 e çıkamıyor (48 örnekte %56.3). ' +
+      'CoT modeli tam <b>12</b> örnekte %100. Aradaki oran <b>8 kat</b> ve bu tesadüf değil: ' +
+      '96 / 12 = 8, yani soruda görünen n\'in alabildiği değer sayısı.</p>',
+    learned:'<b>Ara adım yazmak, öğrenilecek olgu sayısını böler.</b><br><br>' +
+      'Doğrudan model 96 ayrı (durum, adım) çiftini ezberlemek zorunda ve ancak 96 örnekte ' +
+      '%100 oluyor. CoT modeli 12 girdilik f tablosunu öğreniyor ve <b>12 örnekte</b> %100.<br><br>' +
+      'Kazanç modelin daha zeki olmasından değil, <b>görevin parçalanabilir olmasından</b> geliyor. ' +
+      'Zincir, bileşik soruyu tekrar tekrar sorulan tek bir soruya indirgiyor.',
+    xp:50,
+  },
+  {
+    t:'Sabit bütçe, değişen zincir uzunluğu',
+    goal:'İki modelin doğruluğunu neyin belirlediğini ayırt edeceksin.',
+    todo:'İki eğriyi karşılaştır. Turuncu eğri neden inip çıkıyor?',
+    kind:'static', viz:'dusunmeZinciri', h:760,
+    state:{sahne:'uzunluk'},
+    body:'<p>Şimdi eğitim bütçesi sabit: her iki modele de <b>24 örnek</b>. Değişen tek şey ' +
+      'sorunun kaç adım gerektirdiği.</p>' +
+      '<p>CoT modeli n\'in her değerinde <b>%100</b>. Onun için n bir zorluk değil, sadece ' +
+      'daha fazla iş: aynı tabloyu bir kez yerine sekiz kez okuyor.</p>' +
+      '<p>Doğrudan modelin eğrisi ilginç. n = 1 de %33.3, n = 2 de %50.0, n = 5 te %16.7, ' +
+      'n = 8 de %25.0. <b>Düzenli bir düşüş yok</b>, eğri inip çıkıyor.</p>' +
+      '<p>Sebebi şu: 24 örnek 96 çiftin rastgele dörtte biri. Belirli bir n için doğruluk, ' +
+      'o n\'e ait 12 çiftten kaçının o rastgele seçime düştüğüne bağlı. Yani turuncu eğrinin ' +
+      'şekli görevin yapısını değil, <b>örneklemenin şansını</b> gösteriyor. Ortalaması %32.3, ' +
+      'bütçe oranı olan %25 in biraz üstünde, çünkü bilinmeyen çiftlerde bile tesadüfen ' +
+      'doğru tutturmak mümkün.</p>' +
+      '<p>Ayrımı net söylemek gerekirse: CoT modelinin doğruluğunu <b>görevin yapısı</b> ' +
+      'belirliyor, doğrudan modelinkini <b>hangi örnekleri gördüğü</b>.</p>',
+    learned:'<b>İki modelin doğruluğunu farklı şeyler belirliyor.</b><br><br>' +
+      'Sabit 24 örnek bütçesiyle CoT her zincir uzunluğunda %100. Doğrudan model %16.7 ile ' +
+      '%50.0 arasında düzensizce gidip geliyor, ortalaması %32.3.<br><br>' +
+      'Dikkat: turuncudaki dalgalanma bir eğilim değil. Bir ölçüm eğrisinde inip çıkma ' +
+      'gördüğünde ilk soru <b>bu şekil sinyal mi yoksa örnekleme gürültüsü mü</b> olmalı. ' +
+      'Burada gürültü, ve nedenini kesin biliyoruz çünkü görevi biz kurduk.',
+    xp:50,
+  },
+  {
+    t:'Bedeli: hata birikiyor',
+    goal:'Uzun zincirin neden kendi riskini getirdiğini ölçeceksin.',
+    todo:'Adım hatasını büyüt. 8 adımlık zincirde doğru bitirme oranı nereye düşüyor?',
+    kind:'controls', viz:'dusunmeZinciri', h:760,
+    controls:[{k:'epsi', lb:'ADIM BAŞINA HATA', min:0, max:3, step:1, val:0,
+      fmt:v => 'ε = ' + CT.epsler[Math.round(v)].toFixed(2)}],
+    state:{sahne:'hata'},
+    derive:s => ({dg8: CT.gurultulu(CT.epsler[Math.round(s.epsi)], 8),
+                  dg1: CT.gurultulu(CT.epsler[Math.round(s.epsi)], 1)}),
+    live:s => [['ε', CT.epsler[Math.round(s.epsi)].toFixed(2)],
+               ['1 ADIM', '%' + (100*s.dg1).toFixed(1), K.green],
+               ['8 ADIM', '%' + (100*s.dg8).toFixed(1), K.orange],
+               ['HEDEF', '8 adım < %25']],
+    unlock:s => s.dg8 < 0.25,
+    unlockMsg:'8 adımlık zinciri %25 in altına düşür',
+    body:'<p>Zincir yazmanın bedeli var: her ara adım yanlış olabilir ve <b>f bir permütasyon</b> ' +
+      'olduğu için bir kez sapan zincir kendiliğinden doğruya dönemez. Yanlış durumdan devam etmek ' +
+      'yanlış cevaba götürür.</p>' +
+      '<p>Adım başına ε olasılıkla sapma koyalım. n adımın hepsinin doğru gitme olasılığı ' +
+      '<b>(1 − ε)ⁿ</b>. Ölçüm (40.000 deney) bunu doğruluyor:</p>' +
+      '<p><b>ε = 0.02:</b> 1 adım %98.0, 8 adım %85.1 · teori %85.1<br>' +
+      '<b>ε = 0.05:</b> 1 adım %95.0, 8 adım %66.8 · teori %66.3<br>' +
+      '<b>ε = 0.10:</b> 1 adım %90.2, 8 adım %44.7 · teori %43.0<br>' +
+      '<b>ε = 0.20:</b> 1 adım %80.1, 8 adım %21.4 · teori %16.8</p>' +
+      '<p>Ölçüm yüksek ε de teorinin biraz üstünde kalıyor ve bu bir hata değil. ' +
+      'Sapma rastgele bir duruma gittiği için, ara sıra tesadüfen doğru zincirin üstüne düşüyor. ' +
+      '(1 − ε)ⁿ bu ikinci şansı saymadığı için bir <b>alt sınır</b>; ε küçüldükçe tesadüf ' +
+      'seyrekleşiyor ve iki sayı birebir örtüşüyor.</p>' +
+      '<p>Pratikteki karşılığı: uzun akıl yürütme zincirleri, adım başına hata çok küçük ' +
+      'olmadıkça sonuçta çöker. Üretimde zincirleri kısa tutmanın, ara adımları ' +
+      'doğrulatmanın ve birden çok zincirin oyuna sokulmasının sebebi bu.</p>',
+    learned:'<b>Zincir uzadıkça hata çarpımsal birikir: doğru bitirme olasılığı (1 − ε)ⁿ.</b><br><br>' +
+      'Adım başına sadece %10 hata, 8 adımda %44.7 doğruluk demek. Adım bazında iyi görünen ' +
+      'bir model zincir bazında kolayca kullanılamaz hale gelir.<br><br>' +
+      '(1 − ε)ⁿ bir alt sınırdır: yanlış bir adım tesadüfen doğru zincire dönebilir, ' +
+      'bu yüzden ölçüm yüksek ε de teorinin üstünde kalır (ε = 0.20 de %21.4 e karşı %16.8).',
+    xp:50,
+  },
+  {
+    t:'Zincirin hiçbir işe yaramadığı yer',
+    goal:'Adım adım düşünmenin ne zaman boş bir tören olduğunu göreceksin.',
+    todo:'Aynı iki modeli, ayrışmayan bir görevde izle. Sonra soruyu cevapla.',
+    kind:'controls', viz:'dusunmeZinciri', h:760,
+    controls:[{k:'ei', lb:'EĞİTİM ÖRNEĞİ', min:0, max:5, step:1, val:5,
+      fmt:v => CT.egitimler[Math.round(v)] + ' örnek'}],
+    state:{sahne:'olgu', ayrismaz:true},
+    live:s => [['ÖRNEK', String(CT.egitimler[Math.round(s.ei)])],
+               ['CoT', '%' + (100*CT.cot(CT.egitimler[Math.round(s.ei)], true)).toFixed(1), K.red],
+               ['DOĞRUDAN', '%' + (100*CT.dogrudan(CT.egitimler[Math.round(s.ei)], true)).toFixed(1), K.orange],
+               ['RASTGELE', '%8.3', K.mut]],
+    body:'<p>Görevi tek bir yerinden değiştiriyoruz. Cevap artık f\'in n kez uygulanması değil; ' +
+      'her (durum, adım sayısı) çiftine <b>rastgele</b> bir cevap atanmış. Sorunun görünüşü aynı, ' +
+      'içindeki yapı yok.</p>' +
+      '<p>Doğrudan model bundan hiç etkilenmiyor: 96 örnekte yine %100. Onun için görev ' +
+      'zaten baştan beri ezberdi, ezberlenecek şeyin anlamlı olup olmaması fark etmiyor.</p>' +
+      '<p>CoT modeli çöküyor. 12 örnekte %10.4 ve <b>96 örnekte de %10.4</b>. Ne kadar veri ' +
+      'verirsen ver kıpırdamıyor, rastgele tahminin (%8.3) hemen üstünde takılı kalıyor.</p>' +
+      '<p>Sebebi basit: CoT modelinin öğrenebileceği tek şey f tablosu. f\'i mükemmel öğrense ' +
+      'bile hedefle ilgisi yok. <b>Zincir, olmayan bir yapıyı taklit ediyor.</b></p>' +
+      '<p>Buradan çıkan pratik kural: "adım adım düşün" bir sihir değil, bir <b>bahis</b>. ' +
+      'Görev gerçekten ara adımlara ayrışıyorsa büyük kazandırır (birinci adım: 8 kat az olgu). ' +
+      'Ayrışmıyorsa hiçbir şey kazandırmaz, üstelik üçüncü adımdaki hata birikimi masrafını ' +
+      'yine de ödersin.</p>',
+    quiz:{ q:'Bir modele iki iş veriyorsun. (A) Uzun bir faturadaki kalemlerin toplamını hesaplamak. (B) Bir şarkı sözü parçasının hangi sanatçıya ait olduğunu söylemek. Hangisinde "adım adım düşün" demek anlamlı bir kazanç getirir?',
+      opts:[
+        {t:'Sadece A', why:'Doğru. Toplama işlemi tanımı gereği ara adımlara ayrışır: her kısmi toplam bir sonrakinin girdisidir, tıpkı derste f\'in tekrar tekrar uygulanması gibi. Sanatçı tanıma ise tek bir çağrışım; model ya o eşleşmeyi biliyordur ya bilmez. Ara adım yazmak orada ayrışmayan görevin durumudur: %10.4 te sabit kalan yeşil eğri.'},
+        {t:'Sadece B', why:'Tersi. B de ara adım üretmek yalnızca gerekçe gibi görünen metin üretir, cevabı değiştirmez. Derste ayrışmayan görevde CoT 12 örnekte de 96 örnekte de %10.4 te kalıyordu.'},
+        {t:'İkisinde de', why:'B de kazanç yok. "Adım adım düşün" görevin yapısına bir şey eklemiyor, sadece o yapı zaten varsa onu kullanılabilir hale getiriyor. Yapı yoksa zincir boş bir tören.'},
+        {t:'Hiçbirinde, çünkü zincir hatası birikiyor', why:'Hata birikimi gerçek bir maliyet (üçüncü adım: ε = 0.10 da 8 adımda %44.7) ama A da alternatif yok: doğrudan cevap veren model uzun toplamı zaten yapamıyor. Maliyeti kazançla karşılaştırmak gerekir, maliyeti görüp kazancı yok saymak değil.'},
+      ], correct:0 },
+    learned:'<b>Zincir, görevde zaten var olan yapıyı kullanır; yoktan yapı üretmez.</b><br><br>' +
+      'Ayrışmayan görevde CoT modeli 12 örnekte de 96 örnekte de %10.4, rastgele %8.3. ' +
+      'Aynı görevde doğrudan model 96 örnekte %100.<br><br>' +
+      'Karar kuralı: görev ara adımlara gerçekten ayrışıyor mu? Ayrışıyorsa CoT hem az veriyle ' +
+      'öğrenir hem her zincir uzunluğunda çalışır. Ayrışmıyorsa kazanç sıfır, ' +
+      'hata birikimi maliyeti ise yerinde durur.',
+    xp:75,
   },
 ]};
