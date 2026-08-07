@@ -2469,3 +2469,151 @@ DERSLER_EN['embed'] = {
   },
   ],
 };
+
+DERSLER_EN['transfer'] = {
+  ad:'Transfer learning',
+  alt:'The most practical idea in modern deep learning: do not start from scratch. Inherit the features somebody else already learned.',
+  kaynaklar:[{"y":"Yosinski, J. et al.","t":"2014","b":"How Transferable Are Features in Deep Neural Networks?","n":"NeurIPS 2014","u":"https://arxiv.org/abs/1411.1792"},
+             {"y":"Donahue, J. et al.","t":"2014","b":"DeCAF: A Deep Convolutional Activation Feature for Generic Visual Recognition","n":"ICML 2014"},
+             {"y":"Howard, J. & Ruder, S.","t":"2018","b":"Universal Language Model Fine-tuning (ULMFiT)","n":"ACL 2018","u":"https://arxiv.org/abs/1801.06146"},
+             {"y":"Devlin, J. et al.","t":"2019","b":"BERT: Pre-training of Deep Bidirectional Transformers","n":"NAACL 2019","u":"https://arxiv.org/abs/1810.04805"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'Training a model with 15 examples',
+    goal:'You will try three different strategies on the same 15 examples and measure the difference between them.',
+    todo:'Drag the frame from 0 to the end. Compare the accuracies in the three panels.',
+    kind:'controls', viz:'transfer', h:780, xp:55,
+    body:'<p>The experimental setup:</p>' +
+         '<p>· <b>Source task A:</b> 400 examples, ring boundary r = 0.55. The network reached <b>100%</b> accuracy here.<br>' +
+         '· <b>Target task B:</b> the same structure but with boundary r = 0.80, and we have <b>only 15 examples</b>.<br>' +
+         '· Test: 500 examples.</p>' +
+         '<p>Three strategies, all on the same 15 examples:</p>' +
+         '<p><b style="color:#f87171">FROM SCRATCH</b>: start from random weights, train everything<br>' +
+         '<b style="color:#22d3a0">TRANSFER</b>: <b>freeze</b> the hidden layers from A, train only the last layer<br>' +
+         '<b style="color:#fb923c">FULL FINE TUNE</b>: start from A but leave everything free</p>' +
+         '<p>The measured results:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">epoch     scratch    transfer   full tune<br>    0      50.8%      <b>77.2%</b>      77.2%   ← NO training on the target yet<br>   10      73.0%      89.2%      85.0%<br>  500      80.6%      <b style="color:#22d3a0">89.2%</b>      84.4%</p>' +
+         '<p><b>Look at epoch 0:</b> without a single step taken on the target task, transfer already gives 77.2%. The features learned on the source task (the concept of a radius) <b>already work</b>.</p>' +
+         '<p>In the end transfer is <b>8.6 points</b> ahead of training from scratch.</p>',
+    learned:'<b>Pretrained features are the most effective way to learn a new task with little data.</b><br><br>The reason is simple: 15 examples are not enough to train an 8×8 hidden layer. But they are <b>more than enough</b> to tune a few weights in the last layer, because the hard part (learning the representation) was already done by the source task.',
+    controls:[{k:'kare', lb:'TRAINING ON THE TARGET TASK', min:0, max:10, step:1, val:0}],
+  },
+  {
+    t:'Why did full fine tuning come out worse?',
+    goal:'You will learn why letting everything loose hurts when data is scarce, and how the decision is made in practice.',
+    todo:'Move the frame to the end and compare the three numbers, then answer the question.',
+    kind:'controls', viz:'transfer', h:780, xp:60,
+    body:'<p>An unexpected result: <b>full fine tuning (84.4%) is 4.8 points behind frozen transfer (89.2%).</b> Yet full fine tuning has more freedom.</p>' +
+         '<p>That freedom is exactly the reason. Once you start updating all the weights with 15 examples:</p>' +
+         '<p>· The gradients carry the noise of those 15 examples<br>' +
+         '· The <b>well learned features in the hidden layers get damaged</b><br>' +
+         '· The model sacrifices what it learned from 400 examples for the sake of 15</p>' +
+         '<p>This is called <b>catastrophic forgetting</b>. You can see it on the plot: full fine tuning reaches 85% by epoch 10 and sticks there without improving.</p>' +
+         '<p><b>The practical rule, by amount of data:</b></p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">very little data (&lt;100)  →  FREEZE the body, train only the head<br>moderate data   (100–10k) →  gradual unfreezing plus a <b>low learning rate</b><br>plenty of data  (&gt;10k)    →  full fine tuning, or even training from scratch</p>' +
+         '<p>In the middle region the standard method is a <b>discriminative learning rate</b> (discriminative fine-tuning, ULMFiT): a very small lr for the lower layers, a larger one for the upper layers. Lower layers hold general features (edges, textures, grammar), upper layers hold task specific ones.</p>' +
+         '<p><b>LoRA</b> is the modern solution to the same problem: it never changes the weights, it attaches small low rank additions beside them and trains only those. About 0.1% of the parameters.</p>',
+    learned:'<b>With little data, freeze the body.</b> Full fine tuning damages the pretrained features with noisy gradients (catastrophic forgetting).<br><br>As data grows, unfreeze gradually and use a <b>discriminative learning rate</b>.<br><br><b>Track 2 is complete.</b> The next track is where all of these ideas come together: large language models.',
+    controls:[{k:'kare', lb:'TRAINING ON THE TARGET TASK', min:0, max:10, step:1, val:10}],
+    quiz:{
+      q:'You have 300 labelled medical images. You are going to use a ResNet pretrained on ImageNet. How do you start?',
+      opts:[
+        {t:'I train the whole network from scratch, medical images do not look like ImageNet',
+         why:'No. A network with millions of parameters cannot be trained from scratch on 300 images; it will memorise. And ImageNet\'s early layers learn edges, textures and colours, which <b>also apply to medical images</b>. Yosinski et al. (2014) showed that this transfer works despite the domain gap.'},
+        {t:'I freeze the body and train only the last layer; if that works I gradually unfreeze the upper blocks with a low lr',
+         why:'Correct, and the standard recipe. 300 examples are too few for full fine tuning, while a frozen body plus a new head is safe and fast. If the result is not enough you unfreeze the upper blocks gradually, but with a <b>much lower learning rate than the lower layers</b>. And data augmentation (rotation, cropping, brightness) is the second highest return move at this size.'},
+        {t:'I do full fine tuning at the normal learning rate',
+         why:'This is exactly the mistake you measured in this lesson: with little data, full fine tuning damages the pretrained features. Here it cost 4.8 points; in a real project it can cost far more.'},
+        {t:'I pick a bigger model',
+         why:'Raising capacity with little data makes overfitting worse.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['ilkleme'] = {
+  ad:'Weight initialisation: networks lost before training starts',
+  alt:'If the initial scale of the weights is wrong, the signal either fades or explodes with depth. The network in this lesson learns nothing at all because of a single number.',
+  kaynaklar:[{"y":"Glorot, X. & Bengio, Y.","t":"2010","b":"Understanding the Difficulty of Training Deep Feedforward Neural Networks","n":"AISTATS 2010"},
+             {"y":"He, K., Zhang, X., Ren, S. & Sun, J.","t":"2015","b":"Delving Deep into Rectifiers","n":"ICCV 2015"},
+             {"y":"Goodfellow, I., Bengio, Y. & Courville, A.","t":"2016","b":"Deep Learning, Chapter 8.4","n":"MIT Press","u":"https://www.deeplearningbook.org/"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'What happens to the signal over twenty layers',
+    goal:'You will see how the initial scale compounds with depth.',
+    todo:'Sweep the value of c. Can you keep the standard deviation of the last layer in the healthy region?',
+    kind:'controls', viz:'agirlikIlkleme', h:770, xp:25, state:{sahne:'ileri', akt:'relu'},
+    body:'<p>A network with 20 layers. Every layer has 96 units and the activation is ReLU. We initialise the weights randomly with <b>σ = c / √96</b>. Our only knob is <b>c</b>.</p>' +
+         '<p>The input has a standard deviation of 1. Now look at what happens layer by layer:</p>' +
+         '<p><b>c = 0.5:</b> the last layer has a standard deviation of <b>8.9 × 10⁻¹⁰</b>. The signal is gone.<br>' +
+         '<b>c = 1:</b> <b>9.4 × 10⁻⁴</b>. Still far too small.<br>' +
+         '<b>c = √2 ≈ 1.4:</b> <b>0.9593</b>. The same scale as the input.<br>' +
+         '<b>c = 2:</b> <b>982.3</b>. Exploded.</p>' +
+         '<p>Notice: we changed c from 0.5 to 2, that is only <b>4 times</b>. The result changed from 10⁻¹⁰ to 10³, that is <b>10¹² times</b>.</p>' +
+         '<p>The reason is compounding. Every layer scales the signal by a fixed factor, and across 20 layers that factor is raised to the 20th power. The same exponential growth as in the combinatorics lesson, this time inside the network.</p>',
+    learned:'<b>A small error in the initial scale compounds with depth.</b><br><br>Raising c from 0.5 to 2 (a factor of 4) takes the last layer\'s standard deviation from 8.9 × 10⁻¹⁰ to 982.3: <b>10¹² times</b>.<br><br>The only healthy place is around <b>c = √2</b>: a standard deviation of <b>0.9593</b> in the last layer.',
+    controls:[{k:'c', lb:'INITIAL SCALE c', min:0.4, max:2.2, step:0.1, val:0.5}],
+  },
+  {
+    t:'Why exactly √2',
+    goal:'You will see where He initialisation comes from, through measurement.',
+    todo:'Compare the per layer ratio on the cards for Xavier and He.',
+    kind:'controls', viz:'agirlikIlkleme', h:770, xp:50, state:{sahne:'ileri', akt:'relu'},
+    body:'<p>To find the right scale, look at what happens in a single layer.</p>' +
+         '<p>A neuron multiplies 96 inputs by weights and adds them up. In a sum of independent terms the variances add, so the variance of the output is <b>96 · σ² · (input variance)</b>. For that to stay at 1 you need σ² = 1/96, that is <b>σ = 1/√96</b>. This is <b>Xavier</b> initialisation and it corresponds to <b>c = 1</b>.</p>' +
+         '<p>But there is a ReLU. ReLU zeroes out the negative outputs, so it <b>throws away half the signal</b>. The variance halves and the standard deviation drops by a factor of <b>1/√2</b>.</p>' +
+         '<p>This is not a calculation, it is a measurement. At c = 1 the measured per layer ratio is <b>0.7153</b>, against a theoretical 1/√2 = <b>0.7071</b>. After twenty layers: measured <b>9.37 × 10⁻⁴</b>, theoretical (1/√2)²⁰ = <b>9.77 × 10⁻⁴</b>.</p>' +
+         '<p>The fix is to compensate for that loss up front: multiply σ by √2. <b>σ = √2/√96</b>, that is σ² = <b>2/fan_in</b>. This is <b>He initialisation</b>.</p>' +
+         '<p>The measured result: at c = √2 the per layer ratio is <b>1.0116</b>. The signal neither fades nor grows.</p>',
+    learned:'<b>He initialisation compensates up front for the half that ReLU throws away.</b><br><br>Xavier gives σ² = 1/fan_in and with ReLU the measured per layer ratio is <b>0.7153</b> (theoretical 1/√2 = 0.7071).<br><br>He takes σ² = <b>2/fan_in</b> and the measured ratio becomes <b>1.0116</b>. The only difference is a factor of √2, and over 20 layers that factor turns into a thousandfold difference.',
+    controls:[{k:'c', lb:'INITIAL SCALE c', min:0.4, max:2.2, step:0.1, val:1}],
+  },
+  {
+    t:'tanh does not explode, so is it fine',
+    goal:'You will see why an activation preventing explosion is not enough.',
+    todo:'Raise c. Does the standard deviation explode? Look at the product of the derivatives.',
+    kind:'controls', viz:'agirlikIlkleme', h:770, xp:50, state:{sahne:'ileri', akt:'tanh'},
+    body:'<p>Let us switch the activation to tanh. The output of tanh is always between &minus;1 and 1, so however large a scale you give it, it <b>cannot explode</b>.</p>' +
+         '<p>The measurement confirms it: at c = 2 the last layer\'s standard deviation is <b>0.7336</b>. With ReLU the same setting gave 982.3.</p>' +
+         '<p>That looks like good news but it is not. The price is paid somewhere else.</p>' +
+         '<p>When tanh saturates, that is when its output approaches ±1, <b>its derivative goes to zero</b>. Backpropagation carries the gradient by multiplying by those derivatives layer after layer. If the derivatives are small, the gradient arrives faded.</p>' +
+         '<p>The measured values:</p>' +
+         '<p><b>c = 1:</b> saturated units 0.9%, product of the derivatives over 20 layers <b>0.155</b><br>' +
+         '<b>c = √2:</b> saturated 8.0%, product <b>3.48 × 10⁻⁴</b><br>' +
+         '<b>c = 2:</b> saturated 32.3%, product <b>1.96 × 10⁻⁷</b></p>' +
+         '<p>So at c = 2 the forward signal looks perfectly healthy (standard deviation 0.73) while the gradient has fallen to <b>one ten millionth</b>. The network cannot learn.</p>' +
+         '<p>The lesson: the signal surviving the forward pass is <b>not enough</b>. The derivative flowing back has to survive too.</p>',
+    learned:'<b>Not exploding is not the same as being healthy.</b><br><br>With tanh at c = 2 the last layer\'s standard deviation is <b>0.7336</b>, so the forward signal looks fine. But <b>32.3%</b> of the units are saturated and the product of the derivatives over 20 layers is <b>1.96 × 10⁻⁷</b>.<br><br>At the same scale ReLU exploded to 982.3. The two failures look different but the outcome is the same: <b>the gradient never reaches its destination</b>.',
+    controls:[{k:'c', lb:'INITIAL SCALE c', min:0.4, max:2.2, step:0.1, val:1}],
+  },
+  {
+    t:'So what happens during training',
+    goal:'You will see how much difference all of this measurement makes in real training.',
+    todo:'Answer the question.',
+    kind:'controls', viz:'agirlikIlkleme', h:770, xp:50, state:{sahne:'egitim'},
+    body:'<p>Now let us test the same idea with real training. An 8 layer ReLU network, the same data, the same learning rate, 60 steps. The only thing that changes is <b>c</b>.</p>' +
+         '<p><b>c = 0.5:</b> the loss goes from 0.6667 to <b>0.6667</b>. The total change over 60 steps is three in a million, so it does not budge in four decimal places. Because the signal dies on the forward pass, the gradient arrives as zero and the weights never update.</p>' +
+         '<p><b>Xavier c = 1:</b> from 0.6655 to <b>0.5995</b>. Something is happening, but barely.</p>' +
+         '<p><b>He c = √2:</b> from 0.7282 to <b>0.0420</b>. The loss falls <b>17 times</b>. This is the only setting that works.</p>' +
+         '<p><b>c = 2:</b> the initial loss is already <b>22.29</b>, because the outputs have exploded. Training goes to <b>NaN</b>.</p>' +
+         '<p>The lesson here is not about architecture. The network, the data, the optimisation and the number of steps are identical in all four cases. The difference is <b>a single number</b> set before training even began.</p>' +
+         '<p>In modern libraries you usually do not set this by hand, because the default is already He or Xavier. But when you change layer type or write your own layer, that default does not come with you.</p>',
+    learned:'<b>Bad initialisation ends training before it starts.</b><br><br>With the same network and the same data, the loss after 60 steps: <b>0.6667</b> with c = 0.5 (a change of three in a million), <b>0.5995</b> with Xavier, <b>0.0420</b> with He, <b>NaN</b> with c = 2.<br><br>The right scale depends on fan_in: for ReLU, <b>σ² = 2/fan_in</b>. A fixed standard deviation becomes wrong as soon as the layer width changes.',
+    controls:[{k:'c', lb:'HIGHLIGHTED', min:0, max:3, step:1, val:2}],
+    quiz:{
+      q:'In a 30 layer network you wrote yourself, the loss does not fall at all from the first step. You initialised the weights from a normal distribution with a fixed standard deviation of 0.01, and the layer width is 512. What could be wrong?',
+      opts:[
+        {t:'The initialisation scale does not scale with fan_in; 0.01 is far too small for 512 inputs and the signal fades with depth',
+         why:'Correct. The He scale for this width would be √(2/512) ≈ 0.0625, six times the value you chose. With 0.01 the per layer ratio comes out well below one, and over 30 layers that decays exponentially. This is exactly the pattern you measured in this lesson: with c = 0.5 the loss went from 0.6667 to 0.6667, that is it never moved. A fixed standard deviation becomes wrong as soon as the width changes.'},
+        {t:'The learning rate is too low and should be raised',
+         why:'If the gradient is close to zero, raising the learning rate does not make it non zero, it only scales up a multiple of zero. And this is precisely the symptom of a fading signal: the loss stays constant regardless of the step size.'},
+        {t:'The network is too deep and the number of layers should be reduced',
+         why:'Depth makes the problem visible but is not its cause. A 30 layer network initialised at the right scale trains perfectly well: in this lesson a 20 layer network kept a standard deviation of 0.9593 in the last layer with the He scale. Fix the initialisation first.'},
+        {t:'The data is not normalised',
+         why:'Input normalisation genuinely matters and is one of the first things to check, but on its own it does not explain fading across 30 layers. The input scale acts once, while the initialisation scale is multiplied again at every layer.'},
+      ], correct:0 },
+  },
+  ],
+};
