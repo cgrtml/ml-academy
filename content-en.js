@@ -1169,3 +1169,164 @@ DERSLER_EN['neden-simdi'] = {
   },
   ],
 };
+
+DERSLER_EN['arama-uzayi'] = {
+  ad:'Search space: turning a problem into nodes and edges',
+  alt:'The way to explain a puzzle to a computer is to write it as states and transitions. That way of writing it also decides how hard the problem is.',
+  kaynaklar:[{"y":"Russell, S. & Norvig, P.","t":"2020","b":"Artificial Intelligence: A Modern Approach, 4th edition, Chapter 3","n":"Pearson"},
+             {"y":"Cormen, T. H. et al.","t":"2022","b":"Introduction to Algorithms, 4th edition, Chapter 20","n":"MIT Press"},
+             {"y":"Newell, A. & Simon, H. A.","t":"1972","b":"Human Problem Solving","n":"Prentice Hall"}],
+  rota:0,
+  adimlar:[
+  {
+    t:'States and transitions',
+    goal:'You will see how a puzzle turns into a graph.',
+    todo:'Look at the plot. There are 24 dots, but how many are filled in?',
+    kind:'static', viz:'aramaUzayi', h:770, xp:25, state:{A:5, B:3, hedef:4},
+    body:'<p>You have two jugs: one holds <b>5 litres</b>, the other <b>3 litres</b>. Neither has any markings. You need to measure out exactly <b>4 litres</b>.</p>' +
+         '<p>Explaining this to a computer goes through three pieces:</p>' +
+         '<p><b>State:</b> how many litres are in each jug, that is the pair (a, b)<br>' +
+         '<b>Start:</b> (0, 0), both empty<br>' +
+         '<b>Transitions:</b> there are six moves. Fill a jug, empty it, or pour from one into the other.</p>' +
+         '<p>That much turns the problem into a <b>graph</b>. Every state is a node, every move is an edge. The picture on the left is exactly that graph: the horizontal axis is the litres in jug A, the vertical axis the litres in jug B.</p>' +
+         '<p>There are <b>24</b> dots in total (6 × 4). But count the filled ones: only <b>16</b>. Eight states can never be reached from (0, 0).</p>' +
+         '<p>The reason: after any move, at least one of the jugs has to be either completely full or completely empty. A state like (2, 1) therefore never occurs. All eight unreachable states have 1 or 2 litres in the second jug while the first is neither full nor empty.</p>' +
+         '<p>This is an important distinction: a <b>possible state</b> and a <b>reachable state</b> are not the same thing.</p>',
+    learned:'<b>Writing a problem as states and transitions is turning it into a graph.</b><br><br>In the jug problem only <b>16</b> of the <b>24</b> possible states are reachable. The remaining 8 cannot come about under the rules.<br><br>A search space is not every combination inside the box, it is the set of <b>places you can get to from the start</b>.',
+  },
+  {
+    t:'Finding the shortest solution',
+    goal:'You will see why breadth first search guarantees the shortest path.',
+    todo:'Follow the green path. Read the solution steps from the list on the right.',
+    kind:'static', viz:'aramaUzayi', h:770, xp:50, state:{A:5, B:3, hedef:4},
+    body:'<p>Once the graph is built the question simplifies: what is the shortest path from node (0,0) to a node containing a 4?</p>' +
+         '<p><b>Breadth first search</b> solves it like this: first look at every state one move away, then every state two moves away, then three. The moment you see the goal, you stop.</p>' +
+         '<p>Why that guarantees the shortest path: if you found the goal at layer d, you have already scanned the whole of layer d&minus;1 and it was not there. Had a shorter path existed you would have seen it earlier.</p>' +
+         '<p>The answer is <b>6 steps</b>. The green line shows that path and the moves are written in the list on the right.</p>' +
+         '<p>The number of expanded nodes is <b>16</b>. So we end up seeing every reachable state. The space is small, so that is not a problem here.</p>' +
+         '<p>In the A*/Dijkstra lesson you will see how the same idea changes when edges have different costs. Here every move costs the same, so breadth first search is already the best you can do.</p>',
+    learned:'<b>Breadth first search guarantees the shortest path when all moves cost the same.</b><br><br>The reason is that it advances layer by layer: if you found the goal at step d, anything shorter would already have been seen.<br><br>In the jug problem the solution is <b>6 steps</b> and the search expands <b>16 nodes</b>.',
+  },
+  {
+    t:'Never looking at the same state twice',
+    goal:'You will measure how a single small notebook cuts the cost of a search by a factor of a thousand.',
+    todo:'Turn the visited set off. Watch the number of expanded nodes.',
+    kind:'controls', viz:'aramaUzayi', h:770, xp:50, state:{A:5, B:3, hedef:4},
+    body:'<p>During a search you can reach the same state along several different routes. Filling A and then emptying it brings you back to where you started.</p>' +
+         '<p>A visited set is a simple notebook that writes down the states you have already seen. When you meet a state for the second time, you do not expand it again.</p>' +
+         '<p>Use the slider to close that notebook and look at the number:</p>' +
+         '<p><b>with the visited set: 16 nodes</b><br><b>without the visited set: 15,312 nodes</b></p>' +
+         '<p>The same problem, the same 6 step solution, <b>957 times</b> more work.</p>' +
+         '<p>The reason: without the notebook the search walks a <b>tree</b>, with it the search walks a <b>graph</b>. Because there are six moves, a tree down to depth 6 can grow to 6⁰+6¹+...+6⁶ = <b>55,987</b> nodes. Whereas the graph can never exceed <b>24</b> nodes, because that is how many states there are.</p>' +
+         '<p>The gap opens up exponentially with depth: the tree grows exponentially, the graph cannot grow at all. This is the simplest form of the pruning idea in the constraint satisfaction lesson.</p>',
+    learned:'<b>Writing down the states you have seen turns an exponential search into a finite one.</b><br><br><b>16</b> nodes with the notebook, <b>15,312</b> without it. <b>957 times</b> the work for the same solution.<br><br>Without the notebook the search walks a tree, and a tree grows exponentially with depth. With it you walk a graph, and a graph is <b>at most as large as the number of states</b>.',
+    controls:[{k:'ziyaretsiz', lb:'VISITED SET', min:0, max:1, step:1, val:0}],
+  },
+  {
+    t:'What if the answer is not in the space',
+    goal:'You will see how to recognise a problem a search algorithm cannot solve.',
+    todo:'Answer the question.',
+    kind:'static', viz:'aramaUzayi', h:770, xp:50, state:{A:6, B:3, hedef:4},
+    body:'<p>Now we changed the jugs: <b>6 litres</b> and <b>3 litres</b>. The goal is still 4 litres.</p>' +
+         '<p>Look at the graph. The number of reachable states dropped from <b>16</b> to <b>6</b>, and none of them contains 4 litres.</p>' +
+         '<p>This is not a search failure. However clever an algorithm you write, you cannot find a node that does not exist.</p>' +
+         '<p>The reason is arithmetic: after any move the amount of water in the jugs has to be a multiple of the <b>greatest common divisor</b> of 6 and 3, which is <b>3</b>. The number 4 is not divisible by 3. So among the reachable states there is <b>no</b> 4 litres.</p>' +
+         '<p>With 5 and 3 litre jugs the greatest common divisor is <b>1</b>, and 1 divides every number. Which is why there you can measure not only 4 but every amount between 0 and 5.</p>' +
+         '<p>The practical lesson: once you have built the search space, the first question to ask is not "which algorithm should I use" but <b>"does the answer exist in this space"</b>. The second one is usually cheaper to answer.</p>',
+    learned:'<b>No algorithm can find an answer that is not in the search space.</b><br><br>With 6 and 3 litre jugs there are <b>6</b> reachable states and none holds 4 litres, because the greatest common divisor is <b>3</b> and 4 is not divisible by 3.<br><br>With 5 and 3 the divisor is <b>1</b>, so every amount can be measured. The first question is not which algorithm, it is <b>whether the answer is in the space</b>.',
+    quiz:{
+      q:'You are writing path planning for a warehouse robot. It can move in four directions and travels between shelves. Your search code runs, but on some destinations it spins for hours and returns nothing. What do you check first?',
+      opts:[
+        {t:'Whether I am recording the cells I have visited, because a search without a notebook walks the same places again and again',
+         why:'Correct. This is exactly the measurement in this lesson: without a visited set the same 6 step solution expanded 15,312 nodes instead of 16, a factor of 957. On a grid with four directions, a search without a notebook produces 4 to the power of the depth in nodes and may never finish; the number of cells, meanwhile, is fixed. This is the most common cause of an endless loop and the fix is a few lines.'},
+        {t:'Switching to a faster search algorithm',
+         why:'Changing the algorithm does not fix the problem of expanding the same states over and over. An A* without a notebook falls into the same loop. First check whether the search is walking a graph or a tree.'},
+        {t:'Whether the destination is actually reachable',
+         why:'That is a good second question and the last step of this lesson is exactly about it. But the symptom is "spins for hours", not "returns nothing": on an unreachable destination a finite search exhausts itself quickly and reports failure. A run that never ends points at revisiting first.'},
+        {t:'The accuracy of the robot\'s sensor data',
+         why:'If the search code spins for hours while walking the map it was given, the problem is in the algorithm itself. A sensor error produces a wrong path, not an endless search.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['kombinatorik'] = {
+  ad:'Combinatorial explosion: why brute force collapses',
+  alt:'Trying everything is always a flawless plan and almost always impossible. The numbers in this lesson show why.',
+  kaynaklar:[{"y":"Cormen, T. H. et al.","t":"2022","b":"Introduction to Algorithms, 4th edition, Chapter 3","n":"MIT Press"},
+             {"y":"Garey, M. R. & Johnson, D. S.","t":"1979","b":"Computers and Intractability","n":"W. H. Freeman"},
+             {"y":"Held, M. & Karp, R. M.","t":"1962","b":"A Dynamic Programming Approach to Sequencing Problems","n":"SIAM Journal 10(1)"}],
+  rota:0,
+  adimlar:[
+  {
+    t:'Three growths, three separate worlds',
+    goal:'You will see the difference between "slower" and "impossible" in numbers.',
+    todo:'Look at the plot. At what point does the n! curve cross the one year line?',
+    kind:'static', viz:'kombinatorikPatlama', h:770, xp:25, state:{sahne:'buyume'},
+    body:'<p>The most honest way to solve a problem is to try every possibility. It finds the answer for certain. The trouble is that "every possibility" is usually more than can be counted.</p>' +
+         '<p>Let us compare three growth classes on the same axis. Assume a machine that does a billion operations per second, and look at <b>n = 20</b>:</p>' +
+         '<p><b>n²</b> = 400 operations &rarr; <b>400 nanoseconds</b><br>' +
+         '<b>2ⁿ</b> = 1.05 million operations &rarr; <b>1 millisecond</b><br>' +
+         '<b>n!</b> = 2.43 × 10¹⁸ operations &rarr; <b>77 years</b></p>' +
+         '<p>All three for the same n. The difference is not "a bit slower".</p>' +
+         '<p>The dashed line on the plot is the amount of work that fits in a year. n² does not come near it even at the right edge of the plot. n! crosses it at <b>19 cities</b>.</p>' +
+         '<p>For a sense of scale: the time taken by n! passes the age of the universe at <b>n = 27</b>. Going from twenty seven to twenty eight multiplies that time by 28.</p>',
+    learned:'<b>Exponential and factorial growth differ from polynomial growth in kind, not in degree.</b><br><br>For n = 20: n² is <b>400 nanoseconds</b>, 2ⁿ is <b>1 millisecond</b>, n! is <b>77 years</b>.<br><br>The largest travelling salesman problem brute force can solve in a year is <b>19 cities</b>. The n! time passes the age of the universe at <b>n = 27</b>.',
+  },
+  {
+    t:'Let us actually run it',
+    goal:'You will feel the explosion in your own browser rather than in a table.',
+    todo:'Raise the number of cities one at a time. Watch the number of tours tried.',
+    kind:'controls', viz:'kombinatorikPatlama', h:770, xp:50, state:{sahne:'tsp'},
+    body:'<p>The travelling salesman problem: visit n cities once each and return to where you started, making the total distance as short as possible.</p>' +
+         '<p>Brute force tries every tour. Since the starting city is fixed, we look at every ordering of the remaining n&minus;1 cities: <b>(n&minus;1)!</b> tours.</p>' +
+         '<p>This page really runs it. As you move the slider, your browser tries the tours one by one:</p>' +
+         '<p>4 cities &rarr; <b>6</b> tours &nbsp;·&nbsp; 7 cities &rarr; <b>720</b> &nbsp;·&nbsp; 10 cities &rarr; <b>362,880</b></p>' +
+         '<p>Every new city multiplies the number of tours by <b>n</b>. Going from 10 to 11 makes it ten times bigger, from 11 to 12 eleven times.</p>' +
+         '<p>The slider stops at 10, and there is a reason. At 11 cities the computation starts to make this page visibly wait. At 12 the page would freeze. And 12 cities is not a large problem at all.</p>',
+    learned:'<b>Brute force tries (n−1)! tours on the travelling salesman problem.</b><br><br>6 tours at 4 cities, <b>362,880</b> at 10. Every new city multiplies the count by n.<br><br>The reason this page stops at 10 is not theoretical: at 12 cities the browser would freeze. <b>The explosion starts at numbers that look small to you.</b>',
+    controls:[{k:'n', lb:'NUMBER OF CITIES', min:4, max:10, step:1, val:4}],
+  },
+  {
+    t:'Does a faster computer save you',
+    goal:'You will measure why hardware is helpless against exponential growth.',
+    todo:'Compare the four rows. What is different in the gain column?',
+    kind:'static', viz:'kombinatorikPatlama', h:790, xp:50, state:{sahne:'donanim'},
+    body:'<p>The first solution that comes to mind is more powerful hardware. Let us measure it.</p>' +
+         '<p>We make the computer <b>1000 times</b> faster: 10¹² operations instead of 10⁹. In each growth class, how much bigger does the largest solvable n get?</p>' +
+         '<p><b>n²:</b> from 31,622 to 1,000,000. A gain of <b>31.6 times</b>.<br>' +
+         '<b>n³:</b> from 1,000 to 10,000. A gain of <b>10 times</b>.<br>' +
+         '<b>2ⁿ:</b> from 29 to 39. A gain of <b>+10</b>.<br>' +
+         '<b>n!:</b> from 12 to 14. A gain of <b>+2</b>.</p>' +
+         '<p>Did you see the difference: with polynomial growth, speed <b>multiplies</b> the size you can solve. With exponential growth it only <b>adds</b>.</p>' +
+         '<p>The reason is simple. For 2ⁿ, raising the budget by a factor of 1000 raises n by log₂(1000) &asymp; 10 units, because n is the exponent itself. n! is even more brutal: every new unit is more expensive than the last, so a thousandfold speedup buys two units in total.</p>' +
+         '<p>The practical consequence: on a problem that grows as n!, making the computer a thousand times faster lets you add two more cities. <b>Hardware is losing this race.</b></p>',
+    learned:'<b>Hardware speed buys a multiplier under polynomial growth and an addend under exponential growth.</b><br><br>A 1000 times speedup: <b>×31.6</b> for n², <b>×10</b> for n³, <b>+10</b> for 2ⁿ, <b>+2</b> for n!.<br><br>On an exponential problem, buying a faster machine moves the solvable size a few units forward and stops there.',
+  },
+  {
+    t:'What does save you: changing the exponent',
+    goal:'You will see why an algorithm is a different kind of lever from hardware.',
+    todo:'Answer the question.',
+    kind:'static', viz:'kombinatorikPatlama', h:790, xp:50, state:{sahne:'algoritma'},
+    body:'<p>Hardware cannot change the growth class. An algorithm can.</p>' +
+         '<p>For the travelling salesman, the <b>Held-Karp</b> method computes each shared subpath once and stores it instead of recomputing it over and over. A stronger relative of the visited set from the search space lesson. The cost becomes <b>n²·2ⁿ</b> instead of <b>(n&minus;1)!</b>.</p>' +
+         '<p>For 20 cities: brute force takes <b>1.22 × 10¹⁷</b> operations, that is <b>3.9 years</b>. Held-Karp takes <b>4.19 × 10⁸</b> operations, that is <b>419 milliseconds</b>. A ratio of <b>2.90 × 10⁸</b>.</p>' +
+         '<p>The largest problem solvable in a year goes from <b>19 cities to 43</b>. That is something else entirely next to the +2 a thousandfold faster computer gave you.</p>' +
+         '<p>But let us be honest, because people often draw the wrong conclusion here: <b>Held-Karp is exponential too.</b> 16 minutes at 30 cities, 20 days at 40, <b>89 years</b> at 50. The exponent shrank, the exponentiality did not go away.</p>' +
+         '<p>In real life tours with thousands of cities do get solved, but not with the exact optimum. They are solved with approximate methods that come with a guarantee of the form "at most this much worse than the best". The heuristic function in the A* lesson belongs to the same family: giving up a little certainty to buy solvability.</p>',
+    learned:'<b>An algorithm changes the growth class; hardware cannot.</b><br><br>At 20 cities brute force takes <b>3.9 years</b> and Held-Karp <b>419 milliseconds</b>. The size solvable in a year goes from <b>19 cities to 43</b>.<br><br>But Held-Karp is exponential too: <b>89 years</b> at 50 cities. What is used at real scale is not the exact solution but <b>approximations with guarantees</b>.',
+    quiz:{
+      q:'You are writing daily route planning for a courier company. Right now you solve 12 stop routes by brute force and it finishes in seconds. Management wants to raise the number of stops to 20. What do you do?',
+      opts:[
+        {t:'If an exact solution is required I move to dynamic programming; if it is not, I move to an approximate method',
+         why:'Correct. Going from 12 to 20 takes the brute force tour count from 11! to 19!, so from seconds to roughly 4 years. Held-Karp finishes the same problem in 419 milliseconds. If you do not need the exact optimum, approximate methods go much further, because Held-Karp itself climbs to 89 years at 50 stops. The right question is not "which code is faster" but "do I really need the exact answer".'},
+        {t:'I upgrade the server; if 12 stops take seconds then 20 should be reasonable too',
+         why:'The measurement in this lesson shows why that does not work: making the computer a thousand times faster buys exactly +2 stops under n! growth. The speedup needed to add 8 stops, from 12 to 20, is not a thousandfold but roughly fifteen billion fold.'},
+        {t:'I parallelise the code and use all the cores',
+         why:'Parallelism is a constant factor, typically 8 or 64 times. Under n! growth that does not buy even one stop. What hardware gives you is an addend, and what you need is to change the growth class.'},
+        {t:'I split the 20 stops into two groups and solve each separately',
+         why:'This is actually an idea used in practice and it really does cut the cost, but you are no longer finding the exact optimum: there may be a better tour that crosses between the groups. Doing this knowingly is reasonable; mistaking it for an exact solution is not. One of the answer options states that tradeoff explicitly.'},
+      ], correct:0 },
+  },
+  ],
+};
