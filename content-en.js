@@ -7287,3 +7287,234 @@ DERSLER_EN['gauss-surec'] = {
   },
   ],
 };
+
+DERSLER_EN['bayes-reg'] = {
+  ad:'Occam\'s razor: can the data choose its own model?',
+  alt:'Choosing model complexity without a validation set. Bayesian evidence makes simplicity the result of a calculation rather than a preference.',
+  kaynaklar:[{"y":"MacKay, D. J. C.","t":"2003","b":"Information Theory, Inference and Learning Algorithms, Chapter 28","n":"Cambridge University Press","u":"https://www.inference.org.uk/itila/"},
+             {"y":"Bishop, C. M.","t":"2006","b":"Pattern Recognition and Machine Learning, Section 3.4","n":"Springer"},
+             {"y":"Rasmussen, C. E. & Ghahramani, Z.","t":"2001","b":"Occam's Razor","n":"NIPS 2000"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'Why the training error cannot choose a model',
+    goal:'You will see why one measure cannot say a word about complexity.',
+    todo:'Move the degree from 0 to 9. Does the dashed orange line (the training error) ever rise?',
+    kind:'controls', viz:'modelKaniti', h:770, xp:25,
+    body:'<p>We have 16 noisy points. The true function is a 3rd degree polynomial, but we will act as if we did not know that. The question: <b>what degree of polynomial should we fit?</b></p>' +
+         '<p>The most obvious idea is to look at the training error. Watch the orange line as you move the degree: <b>0.19242</b> at degree 0 and <b>0.02155</b> at degree 9. And it falls all the way in between.</p>' +
+         '<p>That is not a coincidence but a mathematical necessity. Every curve that degree d can fit is among the curves that degree d+1 can fit. The best member of a larger set cannot be worse than the best member of a smaller one.</p>' +
+         '<p>So the training error gives you <b>no information at all</b> about complexity. It always says "more complex". That was the source of the trap in the overfitting lesson.</p>',
+    learned:'<b>The training error cannot choose model complexity, because it is bound to fall as complexity rises.</b><br><br>0.19242 at degree 0 and 0.02155 at degree 9. It never rises anywhere.<br><br>For nested model families that is not a flaw but a matter of definition. This is why we need <b>a separate signal</b>.',
+    controls:[{k:'derece', lb:'POLYNOMIAL DEGREE', min:0, max:9, step:1, val:0}],
+  },
+  {
+    t:'Evidence: the model\'s power to predict the data in advance',
+    goal:'You will see what the marginal likelihood measures and why it contains a penalty of its own accord.',
+    todo:'Move the degree from 2 to 3. What does the blue curve do?',
+    kind:'controls', viz:'modelKaniti', h:770, xp:50,
+    body:'<p>The Bayesian question is this: <b>before seeing the data, how much probability would this model family have given to the data we have?</b> That is called the marginal likelihood or the <b>evidence</b>:</p>' +
+         '<p style="text-align:center;font-size:1.15em">p(y) = &#8747; p(y | w) p(w) dw</p>' +
+         '<p>We do not fix the weights at their best value, we <b>average over all of them</b>. That is the critical point.</p>' +
+         '<p>Why it contains a penalty: probability sums to 1. A complex model can produce far more possible datasets, so it has to spread that one unit of probability over a very wide area. The share falling on the data we actually observed shrinks. A simple model spreads it over a narrow area; if the data is in that narrow area it gets a large share.</p>' +
+         '<p>The result is measurable. The log evidence of degree 2 is <b>&minus;34.912</b> and of degree 3 <b>&minus;6.656</b>. A difference of <b>28.26</b> log units, meaning the data makes degree 3 <b>e<sup>28.3</sup> &asymp; 1.9 &times; 10<sup>12</sup></b> times more likely.</p>' +
+         '<p>We used no validation set. We set aside not a single data point.</p>',
+    learned:'<b>Evidence is a model family\'s power to predict the data in advance.</b><br><br>Because probability sums to 1, a complex model has to spread it over a wide area. Occam\'s razor is not a preference but a consequence of that constraint.<br><br>Going from degree 2 to 3 the log evidence rises from &minus;34.912 to &minus;6.656. A factor of <b>10<sup>12</sup></b>, and without spending a single validation point.',
+    controls:[{k:'derece', lb:'POLYNOMIAL DEGREE', min:0, max:9, step:1, val:2}],
+  },
+  {
+    t:'What evidence says decisively and what it does not',
+    goal:'You will measure the real resolution of this method.',
+    todo:'Move the degree from 3 to 9. How much does the blue curve change?',
+    kind:'controls', viz:'modelKaniti', h:770, xp:50,
+    body:'<p>Now let us be honest. Evidence eliminated degree 2 by an overwhelming margin, but what does it do between degree 3 and 9?</p>' +
+         '<p><b>degree 3:</b> &minus;6.656 &nbsp;·&nbsp; <b>4:</b> &minus;6.676 &nbsp;·&nbsp; <b>5:</b> &minus;6.020 &nbsp;·&nbsp; <b>6:</b> &minus;6.132 &nbsp;·&nbsp; <b>9:</b> &minus;6.709</p>' +
+         '<p>The peak is at degree <b>5</b> while the true degree is 3. The difference between the peak and degree 9 is only <b>0.689</b> log units, about a factor of 2. That <b>decides nothing</b>.</p>' +
+         '<p>So evidence has two distinct behaviours:</p>' +
+         '<p><b>Decisive when rejecting an inadequate model.</b> 28 log units, a factor of 10<sup>12</sup>.<br>' +
+         '<b>Undecided among adequate models.</b> 0.69 log units, a factor of 2.</p>' +
+         '<p>That is not a flaw but the right behaviour. With 16 noisy points there <b>really is</b> no information to tell degree 3 from degree 5. Evidence does not invent it. A method that did invent it would be selling you a certainty that does not exist.</p>' +
+         '<p>You saw the same honesty in the Gaussian Process lesson: the band opened up when the data ran out. Here the evidence flattens out when the data is not enough.</p>',
+    learned:'<b>Evidence crushes an inadequate model and stays undecided among adequate ones.</b><br><br>Degree 2 &rarr; 3: a difference of <b>28.26</b> log units, beyond argument.<br>Degree 5 &rarr; 9: <b>0.689</b> log units, about a factor of 2, undecided.<br><br>The peak points at 5 rather than the true degree (3). With 16 points there is no information to separate the two, and the method does not hide that. <b>A method\'s resolution is only as good as the data allows.</b>',
+    controls:[{k:'derece', lb:'POLYNOMIAL DEGREE', min:3, max:9, step:1, val:3}],
+  },
+  {
+    t:'When do you use this',
+    goal:'You will learn to choose between evidence and cross validation.',
+    todo:'Answer the question.',
+    kind:'static', viz:'modelKaniti', h:770, xp:50, state:{derece:3},
+    body:'<p>Cross validation does the same job. When do you use which?</p>' +
+         '<p><b>Evidence wins:</b> when there is little data. Setting aside 8 of 40 examples for validation both weakens the training and makes the measurement from those 8 examples very noisy. Evidence uses all the data.</p>' +
+         '<p><b>Evidence wins:</b> when training is expensive. 5-fold cross validation means training the model 5 times.</p>' +
+         '<p><b>Cross validation wins:</b> when you do not trust the prior. Evidence depends on p(w), and if the prior is wrong the evidence can be wrong too. Cross validation makes no such assumption.</p>' +
+         '<p>We measured this on this data: even if we take a rough α = 1 instead of optimising the width of the prior, the peak stays at degree 5 and the degree 2 &rarr; 3 jump becomes 32.95 log units. So <b>in this example the result is not sensitive to the prior</b>. But that is a measurement, not a guarantee. You have to run the same check on your own problem: change the prior and see whether the choice changes.</p>' +
+         '<p><b>Cross validation wins:</b> when the likelihood cannot be computed. For a random forest or gradient boosting there is no such thing as p(y | w).</p>' +
+         '<p>And a basic warning: evidence compares <b>among the candidates you have</b>. If all of them are bad it picks the least bad one and does not tell you.</p>',
+    learned:'<b>Evidence and cross validation give different things in return for different assumptions.</b><br><br>Evidence uses all the data and needs a single training run, but it <b>depends on the prior</b>. How much that dependence bites in practice has to be measured: we measured it here and reached the same result with α = 1.<br>Cross validation is assumption free but splits the data and trains repeatedly.<br><br>Evidence if there is little data or training is expensive; cross validation if you do not trust the prior or the likelihood cannot be computed. And <b>both choose only among the candidates you supply</b>.',
+    quiz:{
+      q:'You have a dataset of 45 patients from a clinical study. Collecting new patients takes years. You have to decide between a linear, a quadratic and a cubic model. How do you do it?',
+      opts:[
+        {t:'I compute and compare the Bayesian evidence, but report the choice of prior explicitly',
+         why:'Correct. 45 examples is too few for cross validation: a measurement made with folds of 9 is so noisy that it cannot measure the difference between the models. Evidence uses all the data. And because it depends on the prior, reporting that choice is mandatory, since it can change the result.'},
+        {t:'I do 10-fold cross validation, that is the standard method',
+         why:'With 45 examples every fold is 4-5 patients. The error measured on a set that small is so noisy that the difference between the models sits below chance. Being standard does not mean it suits this data size.'},
+        {t:'I pick the most complex model, it has the lowest training error',
+         why:'That is exactly what you measured in the first step: the training error is bound to fall with complexity, so it says nothing. With 45 patients a cubic model memorises the noise.'},
+        {t:'I set 15 patients aside as a test set',
+         why:'Spending a third of 45 both weakens the training seriously and gives a measurement on 15 patients that will not be precise enough to separate three models. With scarce data that is the most expensive option.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['ozellik-muh'] = {
+  ad:'Feature engineering: changing the result without changing the model',
+  alt:'The same data, the same model, different columns. Sometimes one column does more work than a model twenty times bigger.',
+  kaynaklar:[{"y":"Zheng, A. & Casari, A.","t":"2018","b":"Feature Engineering for Machine Learning","n":"O'Reilly"},
+             {"y":"Hastie, T., Tibshirani, R. & Friedman, J.","t":"2009","b":"The Elements of Statistical Learning, Section 5.1","n":"Springer","u":"https://hastie.su.domains/ElemStatLearn/"},
+             {"y":"Kuhn, M. & Johnson, K.","t":"2019","b":"Feature Engineering and Selection","n":"CRC Press","u":"http://www.feat.engineering/"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'The column the model cannot build',
+    goal:'You will see why a linear model cannot find a product on its own.',
+    todo:'Turn the interaction column on and off. What does the test RMSE fall to?',
+    kind:'controls', viz:'ozellikMuh', h:700, xp:25, state:{sahne:'etkilesim'},
+    body:'<p>There are 90 rooms. The width and the length of each was measured and the heating cost recorded. The true rule is simple: cost = <b>2.5 × width × length</b>, that is proportional to the area. A third of the data was set aside for testing.</p>' +
+         '<p>If we give the model only the <b>width</b> and <b>length</b> columns, a linear model can build a·width + b·length + c. A sum. But what is needed is a <b>product</b>.</p>' +
+         '<p>The result: test R² <b>0.8854</b>. That does not sound bad, but the RMSE is <b>5.439</b>. It is off by 5.4 units per room on average.</p>' +
+         '<p>Now let us add a single column: <b>width × length</b>. The model is still the same linear model, it just sees one more column. Test R² <b>0.9886</b>, RMSE <b>1.713</b>. The error fell by a factor of <b>3.2</b> and the model grew by a single parameter.</p>' +
+         '<p>The coefficient the model found is <b>2.588</b> against a true factor of 2.5. It recovered the rule almost exactly.</p>',
+    learned:'<b>A linear model can only build linear combinations of the columns you give it.</b><br><br>A product, a ratio, a square root: it can derive none of them itself. If you do not supply the column, that relationship is somewhere the model cannot reach.<br><br>Test RMSE <b>5.439 → 1.713</b>, with a single column and at the cost of a single parameter.',
+    controls:[{k:'etk', lb:'width × length COLUMN', min:0, max:1, step:1, val:0}],
+  },
+  {
+    t:'Between 23:00 and midnight there is one hour',
+    goal:'You will see why a feature that looks like a number should not be encoded as one.',
+    todo:'Try the three encodings in turn. How do the test R² and the 23 → 0 jump change?',
+    kind:'controls', viz:'ozellikMuh', h:700, xp:50, state:{sahne:'dongusel'},
+    body:'<p>The hourly demand of a system was measured. Demand peaks at midnight and bottoms out at noon. The hour column is an integer between 0 and 23.</p>' +
+         '<p><b>The raw hour.</b> The model takes the hour for a number and fits a straight line. Test R² <b>&minus;0.0650</b>. Negative. That is, this model is worse than saying the mean for everything. The column carries information but in this encoding the model cannot see it.</p>' +
+         '<p><b>hour + hour².</b> A parabola can build one peak or one trough. Test R² <b>0.9328</b>. Quite good. But there is a problem: the two ends of a parabola know nothing of each other. The model says one thing for 23:00 and something entirely different for 00:00, with a jump of <b>16.7</b> units between them. In reality the difference is only <b>1.4</b>.</p>' +
+         '<p><b>sin/cos.</b> We encode the hour on a circle with two numbers: sin(2&pi;·hour/24) and cos(2&pi;·hour/24). Test R² <b>0.9750</b> and a 23 → 0 jump of <b>1.0</b>.</p>' +
+         '<p>The real difference is in the distance. As a raw number the distance between 23 and 0 is <b>23</b>, the largest value on the scale. On the circle it is <b>0.261</b>. Compare: on the circle the distance between 12 and 0 is <b>2.000</b>. So in the right encoding the neighbours of midnight are <b>7.7 times</b> closer to each other.</p>',
+    learned:'<b>Not everything that looks like a number is a number.</b><br><br>The hour, the month, the day of the week, an angle, a wind direction: all of them are cyclic. Encode them raw and you are telling the model "23 and 0 are very far apart", which is false.<br><br>The raw hour gives a test R² of <b>&minus;0.0650</b> and sin/cos <b>0.9750</b>. The same data, the same model, a difference of two columns.',
+    controls:[{k:'kod', lb:'ENCODING', min:0, max:2, step:1, val:0}],
+  },
+  {
+    t:'A model that looks at distance also looks at units',
+    goal:'You will measure which models require scaling.',
+    todo:'Turn scaling on. What does the kNN accuracy rise to?',
+    kind:'controls', viz:'ozellikMuh', h:700, xp:50, state:{sahne:'olcek'},
+    body:'<p>200 households. Two columns: <b>number of children</b> (0-4) and <b>income</b> (20,000-80,000). The class depends on both equally.</p>' +
+         '<p>kNN looks at distance. In a distance computation the contribution of two columns is proportional to their standard deviations:</p>' +
+         '<p>number of children: <b>1.43</b> &nbsp;·&nbsp; income: <b>17,135</b> &nbsp;·&nbsp; a ratio of <b>11,955</b></p>' +
+         '<p>So in its raw form the number of children column makes no contribution at all to the distance. We gave two columns and the model sees one. The accuracy is <b>62.0%</b>, with 76 of 200 examples wrong.</p>' +
+         '<p>Standardisation is nothing but shifting and dividing each column so that its mean is 0 and its standard deviation 1. The accuracy is <b>97.5%</b>. The number of errors falls from 76 to <b>5</b>.</p>' +
+         '<p>Do not see this as an "improvement". Without scaling, kNN was answering the wrong question correctly: "who is the nearest neighbour in income".</p>',
+    learned:'<b>Every model that looks at a distance or a penalty term is sensitive to scale.</b><br><br>kNN, k-means, SVM, PCA, ridge and lasso: they all want scaled inputs. The &lambda;·&Sigma;w² term from the ridge lesson also distributes its penalty according to the units of the columns.<br><br>Here the accuracy goes <b>62.0% → 97.5%</b>, with nothing but two divisions.',
+    controls:[{k:'olcekli', lb:'STANDARDISATION', min:0, max:1, step:1, val:0}],
+  },
+  {
+    t:'Can the model not learn it itself?',
+    goal:'You will see when feature engineering is unnecessary and when it is indispensable.',
+    todo:'Raise the depth of the tree. Can it catch the green line?',
+    kind:'controls', viz:'ozellikMuh', h:700, xp:50, state:{sahne:'agac'},
+    body:'<p>A fair objection: trees and gradient boosting can discover interactions on their own. So why bother? Let us measure. The same room data, the same test set.</p>' +
+         '<p>At depth 2 the tree has a test R² of <b>0.6703</b> with 4 leaves. At depth 4 <b>0.8580</b> with 14 leaves. At depth 6 <b>0.9002</b> with 26 leaves. At depth 8 <b>0.9001</b> with 28 leaves: it no longer progresses.</p>' +
+         '<p>The linear model with a single width×length column: <b>0.9886</b>. Four parameters.</p>' +
+         '<p>Why the tree cannot catch it: its splits are perpendicular to the axes. It approximates a product surface with rectangular steps. 28 steps do not do the job that a single product column does. This is the price of the axis aligned split constraint from the decision boundary lesson.</p>' +
+         '<p>In the other direction the tree wins. We scale the length axis by a factor of <b>1000</b> and rebuild the tree: the test R² stays <b>exactly the same</b>. A split looks for a threshold, it does not compute a distance. So for a tree, scaling is a completely unnecessary step.</p>',
+    learned:'<b>A flexible model is no substitute for the right feature. It builds an expensive approximation of it.</b><br><br>The tree reaches <b>0.9001</b> with 28 leaves; the linear model reaches <b>0.9886</b> with a single product column and <b>4 parameters</b>.<br><br>In return the tree is completely unaffected by scale: when the length axis grows by a factor of 1000 the test R² stays the same. <b>Which preprocessing is needed depends on the model</b>; there is no universal list.',
+    controls:[{k:'derinlik', lb:'TREE DEPTH', min:2, max:8, step:1, val:2}],
+    quiz:{
+      q:'You are predicting returns on an e-commerce site. You have the product price and the customer\'s past spending. A domain expert says: "what really matters is the ratio of this product to the customer\'s normal spending." You are using gradient boosting. What do you do?',
+      opts:[
+        {t:'I add the ratio column, measure its contribution and keep it accordingly',
+         why:'Correct. Tree based models make axis aligned splits, so they can only approximate a ratio with steps: that is exactly why the 28 leaf tree in this lesson could not catch a single product column. Supplying the ratio as a column opens that axis to the model directly. Measuring is essential, because the data has to say the expert is right.'},
+        {t:'No need, gradient boosting learns interactions anyway',
+         why:'Partly right but expensive. It does learn, yes: in this lesson the tree reached 0.9002 at depth 6. But by spending 26 leaves, and never reaching the 0.9886 of a four parameter linear model. "It can learn it" and "it learns it just as efficiently" are different things.'},
+        {t:'I standardise both columns first',
+         why:'Scaling has no effect at all on a tree: in this lesson we scaled the length axis by a factor of 1000 and the test R² stayed the same to four digits. A split looks for a threshold, it does not compute a distance. Harmless, but it does not solve the problem.'},
+        {t:'The expert\'s intuition is not measurable, looking at the data is enough',
+         why:'Domain knowledge is exactly what a model cannot extract cheaply from the data. And the suggestion is measurable anyway: add the column and look at the test error. Testing it is both cheaper and more honest than rejecting it.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['gam'] = {
+  ad:'Additive models: flexibility and readability at the same time',
+  alt:'Every feature has its own curve but the curves do not mix. That constraint buys accuracy and leaves the model readable.',
+  kaynaklar:[{"y":"Hastie, T. & Tibshirani, R.","t":"1990","b":"Generalized Additive Models","n":"Chapman & Hall"},
+             {"y":"Hastie, T., Tibshirani, R. & Friedman, J.","t":"2009","b":"The Elements of Statistical Learning, Section 9.1","n":"Springer","u":"https://hastie.su.domains/ElemStatLearn/"},
+             {"y":"Wood, S. N.","t":"2017","b":"Generalized Additive Models: An Introduction with R, 2nd edition","n":"CRC Press"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'Backfitting: one at a time, looking at the residual',
+    goal:'You will see how solving two curves in turn works instead of solving them at once.',
+    todo:'Raise the number of rounds from 0. At which round do the curves settle?',
+    kind:'controls', viz:'toplamsalModel', h:770, xp:25, state:{sahne:'uydurma'},
+    body:'<p>The model has this form: <b>y = a₀ + f₁(x₁) + f₂(x₂)</b>. Every feature has its own curve. More flexible than a linear model, because the curves do not have to be straight. More constrained than a black box, because x₁ and x₂ cannot mix.</p>' +
+         '<p>Solving two curves at once is hard. <b>Backfitting</b> does this trick: hold f₂ fixed, subtract it from y, and fit f₁ to what remains. Then hold f₁ fixed and do the same for f₂. Repeat.</p>' +
+         '<p>At every step a single curve is fitted, so the problem is reduced to a one dimensional fitting job. The training R²: <b>0.915462</b> at round 1, <b>0.922637</b> at round 2, <b>0.922659</b> at round 3. After the fourth round not a digit changes to six places (the remaining movement is below one in a million).</p>' +
+         '<p>So it <b>finishes in three rounds</b>. That is not a coincidence: because every round has to reduce the remaining error, the process settles into a decreasing sequence.</p>' +
+         '<p>A small note of honesty: while the training R² rises every round, the test R² falls slightly, <b>0.8935 → 0.8874 → 0.8866</b>. The difference is in the third digit and negligible, but the direction is interesting: more rounds does not always mean a better model.</p>',
+    learned:'<b>Backfitting splits a multidimensional fitting problem into one dimensional steps.</b><br><br>At every round one curve is fitted to the residual left by the others. Here it converges in three rounds: <b>0.915462 → 0.922637 → 0.922659</b>, constant after that.<br><br>The average deviation of the recovered f₁ curve from the true shape is <b>0.0980</b> while the amplitude of the curve is 3.20. So it recovered the shape with about <b>3%</b> error.',
+    controls:[{k:'tur', lb:'BACKFITTING ROUND', min:0, max:6, step:1, val:0}],
+  },
+  {
+    t:'Being able to read what the model learned',
+    goal:'You will see why an additive structure means interpretability.',
+    todo:'Look at 6 rounds. Do the two curves sit on top of the true shapes?',
+    kind:'controls', viz:'toplamsalModel', h:770, xp:50, state:{sahne:'uydurma'},
+    body:'<p>The dashed lines are the true shapes the data was generated from. The solid lines are what the model found. The model never saw them; it only saw 120 training points.</p>' +
+         '<p>The f₁ deviation is <b>0.0980</b> (amplitude 3.20) and the f₂ deviation <b>0.0878</b> (amplitude 2.80).</p>' +
+         '<p>The real gain is here: <b>these two pictures are the entire model</b>. The answer to "what does the model think about x₁" is the curve on the left. It has no hidden behaviour anywhere else, because the additive structure guarantees that the effect of x₁ is independent of x₂.</p>' +
+         '<p>Fit a linear model to the same data and the test R² is <b>0.1145</b>. So the right answer is not "a straight line will do". Curves are needed, but interaction is not.</p>' +
+         '<p>The total parameter count is <b>15</b>: seven coefficients for each curve and one intercept. Compare that with the thousands of weights of a neural network: here every coefficient is part of a curve and the curve can be drawn directly.</p>',
+    learned:'<b>An additive structure means the entire model can be shown with two plots.</b><br><br>Because the effect of x₁ is independent of x₂, the question "what happens when x₁ rises" has a single answer and that answer can be drawn.<br><br>On the same data the linear model gets <b>0.1145</b> and the additive model <b>0.8866</b>. The gain comes from the curves, not from interaction.',
+    controls:[{k:'tur', lb:'BACKFITTING ROUND', min:1, max:6, step:1, val:6}],
+  },
+  {
+    t:'The right assumption, free accuracy',
+    goal:'You will measure why a flexible model falls behind when the data really is additive.',
+    todo:'Raise the depth of the tree. Can it approach the green line?',
+    kind:'controls', viz:'toplamsalModel', h:700, xp:50, state:{sahne:'agac'},
+    body:'<p>A tree is more flexible than an additive model. It can build any surface it likes, whereas an additive model cannot build an interaction. So who wins on this data?</p>' +
+         '<p>The tree gets <b>0.3057</b> at depth 3, <b>0.5989</b> at depth 5 and <b>0.5872</b> at depth 8. After five it stops improving and even falls back slightly.</p>' +
+         '<p>The additive model: <b>0.8866</b>. A difference of <b>0.29</b> that the tree cannot close at any depth.</p>' +
+         '<p>The reason: the data really was generated additively. The additive model carries that correct piece of information from the start, so it can spend its data on building a smooth curve. The tree meanwhile tries to build the same smooth curve out of axis aligned steps and spends data on every step.</p>' +
+         '<p>This is another face of the balance from the bias-variance lesson. <b>A correct constraint lowers variance for free</b>, because the bias paid in return is zero.</p>',
+    learned:'<b>The right assumption gives an advantage over flexibility at no cost.</b><br><br>On additive data: the additive model <b>0.8866</b>, the best tree <b>0.5989</b>, linear <b>0.1145</b>.<br><br>Flexibility is not a virtue in itself. If the assumption a model carries fits the data it brings a gain; if it does not it brings a loss. In the next step we measure the reverse.',
+    controls:[{k:'derinlik', lb:'TREE DEPTH', min:3, max:8, step:1, val:3}],
+  },
+  {
+    t:'Where the assumption collapses',
+    goal:'You will see how badly the same model can do when its assumption is broken.',
+    todo:'Answer the question.',
+    kind:'static', viz:'toplamsalModel', h:770, xp:50, state:{sahne:'etkilesim', derinlik:8},
+    body:'<p>Now we change the data: <b>y = 2 · x₁ · x₂</b>. A pure interaction with no additive part at all.</p>' +
+         '<p>Look at the picture on the left: there are four regions and the sign alternates. When x₁ is positive the sign of y depends entirely on x₂.</p>' +
+         '<p>The measurements:</p>' +
+         '<p><b>additive model: &minus;0.3989</b> &nbsp;·&nbsp; linear: &minus;0.0635 &nbsp;·&nbsp; tree (depth 8): <b>0.7342</b> &nbsp;·&nbsp; linear + an x₁·x₂ column: <b>0.9761</b></p>' +
+         '<p>The additive model is <b>below zero</b>. That is, worse than saying the mean for everything. The reason is instructive: look at x₁ alone and the mean of y is zero, and the same for x₂. There is nothing to learn in either marginal distribution. The model still has to fit flexible curves and the only material it has is noise. It memorises.</p>' +
+         '<p>In the previous step the opposite happened. The same two models, the same order, the reverse result. The only thing that changed was the structure of the data.</p>' +
+         '<p>The route used in practice is somewhere in between: adding a few selected interaction terms to the model by hand. That way readability is largely preserved while the known interactions are captured. The <b>0.9761</b> above is exactly the result of that.</p>',
+    learned:'<b>When the additive assumption breaks, the model does not merely fall behind, it drops below the mean.</b><br><br>On y = 2·x₁·x₂ data: the additive model <b>&minus;0.3989</b> and the tree <b>0.7342</b>. Exactly the reverse of the order in the previous step.<br><br>When there is no information in the marginals, flexible curves memorise the noise. The solution is not to abandon the model: <b>adding selected interaction terms</b> takes it to 0.9761 on the same data while preserving readability.',
+    quiz:{
+      q:'You are building a risk model at a credit institution. The regulator requires a justification to be shown for every rejected application. Your gradient boosting model has a test AUC of 0.84 and the additive model 0.82. What do you do?',
+      opts:[
+        {t:'I build the additive model, add a few terms where I suspect an interaction and measure the difference again',
+         why:'Correct. A difference of 0.02 is small compared with the regulatory cost of being unable to show a justification. In an additive model the contribution of every feature is a single curve, and that curve turns directly into the text of a justification. The source of the difference is most probably a few interactions: in this lesson adding a single product column to the linear model took the test R² from -0.0635 to 0.9761. As long as you select the added terms by hand, the model stays readable.'},
+        {t:'I use gradient boosting and present SHAP values for the explanation',
+         why:'SHAP gives a distribution of contributions for a single prediction, but that is an approximation of the decision rather than the decision itself. What a regulator usually wants is for the model to be structurally auditable. And the accuracy given up is only 0.02.'},
+        {t:'0.84 is higher, accuracy comes before everything',
+         why:'This constraint is legal rather than technical. A model that cannot show a justification cannot be used whatever its accuracy. And the difference is 0.02: the gain is small next to the usability lost.'},
+        {t:'I run both models and take their average',
+         why:'An ensemble can help accuracy but it does not solve the explainability problem: the result still contains an unexplainable component. The constraint does not disappear inside an average.'},
+      ], correct:0 },
+  },
+  ],
+};
