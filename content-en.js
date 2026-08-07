@@ -1972,3 +1972,190 @@ DERSLER_EN['proje-karari'] = {
   },
   ],
 };
+
+DERSLER_EN['noron'] = {
+  ad:'What does a single neuron do?',
+  alt:'The building block of language models with billions of parameters. On its own it is surprisingly simple.',
+  kaynaklar:[{"y":"Rosenblatt, F.","t":"1958","b":"The Perceptron: A Probabilistic Model for Information Storage and Organization","n":"Psychological Review, 65(6)"},
+             {"y":"Goodfellow, Bengio, Courville","t":"2016","b":"Deep Learning, Chapter 6","n":"MIT Press","u":"https://www.deeplearningbook.org/"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'Walk through the neuron',
+    goal:'You will see the four stages of an artificial neuron in order: multiply → add → add the bias → squash.',
+    todo:'Use NEXT to walk through the five stages. Pay attention to the thickness and colour of the pipes.',
+    kind:'phases', viz:'noron', h:760, xp:40,
+    learned:'<b>A neuron is a weighted sum plus a bias plus an activation.</b> Three operations, that is all.<br><br>A model like GPT-4 has <b>hundreds of billions</b> of these neurons, arranged in layers. The complexity is not in a single neuron, it is in the <b>number and the wiring</b>.',
+    phases:[
+      {state:{girdi:[6,7,3.5], agirlik:[0.8,0.35,-0.6], bias:-1.2, faz:0},
+       body:'<p>We are going to predict whether a student will pass an exam. We have three pieces of information: <b>hours studied, hours slept, previous grade</b>.</p>' +
+            '<p>The three inputs are on the left, the neuron in the middle, and the output will be on the right.</p>'},
+      {state:{girdi:[6,7,3.5], agirlik:[0.8,0.35,-0.6], bias:-1.2, faz:1},
+       body:'<p>The inputs have arrived. Each pipe\'s <b>thickness is the size of the weight</b> and its <b>colour is the sign</b>.</p>' +
+            '<p><b style="color:#22d3a0">A green pipe (+):</b> as this input grows, the output grows.<br><b style="color:#f87171">A red pipe (−):</b> as this input grows, the output shrinks.</p>' +
+            '<p>The third input has a weight of −0.60. The neuron is saying "if the previous grade is high, the chance of passing this exam goes down", which looks odd, but that is what the neuron learned. <b>Weights are set by data, not by human intuition.</b></p>'},
+      {state:{girdi:[6,7,3.5], agirlik:[0.8,0.35,-0.6], bias:-1.2, faz:2},
+       body:'<p><b>Stage 1, multiply and add.</b> Each input is multiplied by its own weight and the results are added:</p>' +
+            '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:10px 14px;border-radius:8px">(6.0 × 0.80) + (7.0 × 0.35) + (3.5 × −0.60) = 5.15</p>' +
+            '<p>This operation is called the <b>weighted sum</b>. In mathematics it is the <b>dot product</b>, and perhaps 95% of what a language model does is exactly this, just billions of times over.</p>'},
+      {state:{girdi:[6,7,3.5], agirlik:[0.8,0.35,-0.6], bias:-1.2, faz:3},
+       body:'<p><b>Stage 2, add the bias.</b> 5.15 + (−1.20) = 3.95</p>' +
+            '<p>The bias is the neuron\'s "default leaning". It exists so that the neuron has a starting point even when all the inputs are zero. It is exactly the same thing as the <b>b</b> of the line in the earlier lesson.</p>' +
+            '<p>This neuron has <b>4 parameters</b> in total: 3 weights plus 1 bias. All of them are learned by gradient descent.</p>'},
+      {state:{girdi:[6,7,3.5], agirlik:[0.8,0.35,-0.6], bias:-1.2, faz:4},
+       body:'<p><b>Stage 3, activation.</b> The number 3.95 passes through a sigmoid and comes out as <b>0.98</b>.</p>' +
+            '<p>Why is it needed? Two reasons:</p>' +
+            '<p><b>1 · Meaning:</b> the output is now between 0 and 1, so it can be read as "98% likely to pass".<br>' +
+            '<b>2 · Power:</b> without an activation, however many layers you stack they all collapse into a single straight line. The composition of linear operations is linear again. <b>The thing that makes a neural network "deep" is the activation function.</b></p>'},
+    ],
+  },
+  {
+    t:'Turn the weights yourself',
+    goal:'You will feel by hand how the neuron\'s decision changes as the weights and bias change.',
+    todo:'Move the sliders. Push the output <b>below 0.10</b>, that is, convince the neuron to say "fail".',
+    kind:'controls', viz:'noron', h:760, xp:45,
+    body:'<p>Four sliders are the <b>entire knowledge</b> of the neuron. It knows nothing else.</p>' +
+         '<p>Three things worth trying:</p>' +
+         '<p>· <b>Pull the bias to −8.</b> Without touching the weights at all, the neuron starts saying "fail". A bias alone can flip the decision, which is why it is a real parameter and not decoration.<br>' +
+         '· <b>Pull w₁ negative.</b> You get a neuron that says "studying a lot leads to failing". Absurd, but the neuron does not object: <b>weights have no meaning, they are just numbers.</b> The meaning comes from the data.<br>' +
+         '· <b>Set all of them to zero.</b> The output becomes σ(bias): a neuron completely blind to its inputs.</p>' +
+         '<p>What we call training is the process that turns these four sliders <b>on your behalf</b>, by looking at millions of examples.</p>',
+    learned:'<b>Everything a neuron "knows" is a handful of numbers.</b> The intelligence is not in a single neuron; it is in the weights of millions of neurons being tuned together from millions of examples.',
+    controls:[{k:'w0', lb:'w₁ · study', min:-1.5, max:1.5, step:0.05, val:0.8},
+              {k:'w1', lb:'w₂ · sleep', min:-1.5, max:1.5, step:0.05, val:0.35},
+              {k:'w2', lb:'w₃ · previous grade', min:-1.5, max:1.5, step:0.05, val:-0.6},
+              {k:'bias', lb:'bias', min:-8, max:4, step:0.1, val:-1.2}],
+  },
+  {
+    t:'Build the neuron yourself',
+    goal:'You will write the forward pass from beginning to end.',
+    todo:'Fill the four boxes and press RUN.',
+    kind:'phases', viz:'noron', h:760, xp:55,
+    body:'<p>Now prove that you understood it: turn the neuron\'s three stages into code.</p>',
+    learned:'<b>The forward pass</b> is multiply, add, add the bias, push through the activation.<br><br>The next big question: <b>how</b> are these weights learned? The answer is <b>backpropagation</b>, gradient descent extended across layers. The error flows backwards using the chain rule.',
+    phases:[
+      {state:{girdi:[6,7,3.5], agirlik:[0.8,0.35,-0.6], bias:-1.2, faz:4}, body:''},
+    ],
+    kodlab:{
+      q:'Complete the forward pass of a neuron.',
+      satirlar:[
+        '<span class="kw">def</span> <span class="fn">neuron</span>(x, w, b):',
+        '    <span class="cm"># 1) weighted sum</span>',
+        '    z = <span class="fn">sum</span>( xi <b1> wi <span class="kw">for</span> xi, wi <span class="kw">in</span> <span class="fn">zip</span>(x, w) )',
+        '    <span class="cm"># 2) bias</span>',
+        '    z = z <b2> b',
+        '    <span class="cm"># 3) activation</span>',
+        '    <span class="kw">return</span> <b3>(z)',
+        '',
+        '<span class="cm"># a layer is the same operation repeated for <b4> neurons</span>'
+      ],
+      bosluklar:{
+        b1:{ secenekler:['*','+'], dogru:'*' },
+        b2:{ secenekler:['+','*'], dogru:'+' },
+        b3:{ secenekler:['sigmoid','abs','round'], dogru:'sigmoid' },
+        b4:{ secenekler:['many','one'], dogru:'many' },
+      },
+      ipucu:'Input and weight are MULTIPLIED, the bias is ADDED, and the result is squashed between 0 and 1.',
+    },
+  },
+  ],
+};
+
+DERSLER_EN['mlp'] = {
+  ad:'Layers and hidden representations',
+  alt:'A neural network does not separate classes. It bends the space until the classes become separable. This whole lesson is about showing that bending.',
+  kaynaklar:[{"y":"Olah, C.","t":"2014","b":"Neural Networks, Manifolds, and Topology","n":"colah.github.io","u":"https://colah.github.io/posts/2014-03-NN-Manifolds-Topology/"},
+             {"y":"Hornik, Stinchcombe, White","t":"1989","b":"Multilayer Feedforward Networks are Universal Approximators","n":"Neural Networks, 2(5)"},
+             {"y":"Goodfellow, Bengio, Courville","t":"2016","b":"Deep Learning, Chapter 6","n":"MIT Press","u":"https://www.deeplearningbook.org/"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'Bending the space',
+    goal:'You will see what hidden layers do: they do not classify, they <b>change the representation</b>.',
+    todo:'Move the slider from the input space to the second hidden layer. Watch the distance between the class centres.',
+    kind:'controls', viz:'gizli', h:760, xp:55,
+    body:'<p>The data: a ring inside a ring. <b>No straight line</b> can separate this; in the input space the centres of the two classes sit almost on top of each other.</p>' +
+         '<p>How does the network solve it? The common intuition is "it draws a curved boundary". <b>But that is not what happens.</b></p>' +
+         '<p>What you see as you move the slider: every layer <b>changes the positions</b> of the points. The network\'s last layer is still a simple linear classifier, it just has an easy job now.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">input space        →  centres on top of each other, not separable<br>2nd hidden layer   →  centre distance <b>1.674</b>, separable</p>' +
+         '<p>So the job of deep learning is <b>not classification, it is representation learning</b>. The logistic regression in the final layer is always the same; what changes is the space it is handed.</p>' +
+         '<p>Chris Olah describes this topologically: the network stretches and bends the data manifold, and once it is stretched enough the two manifolds become separable by a hyperplane.</p>',
+    learned:'<b>Hidden layers do not classify, they change the representation.</b> The last layer is always the same simple linear classifier; what changes is the space it is given.<br><br>The gain from depth is not expressive power (in theory one layer suffices), it is <b>efficiency and hierarchy</b>: doing the same job with far fewer neurons and building meaning layer by layer.',
+    controls:[{k:'kat', lb:'SPACE SHOWN', min:0, max:2, step:1, val:0}],
+    quiz:{
+      q:'The universal approximation theorem says a network with a single hidden layer (provided it is wide enough) can approximate almost any function. So why do we use deep networks?',
+      opts:[
+        {t:'The theorem is wrong, one layer is not enough',
+         why:'The theorem is correct and proven (Hornik et al., 1989). The problem is not in the theorem, it is in practice.'},
+        {t:'The theorem says "possible" but not "with how many neurons" or "can it be learned"; depth does the same job with exponentially fewer neurons',
+         why:'Correct, and an important distinction. Universal approximation is an <b>existence theorem</b>: it says such a network exists. It does not say how wide it has to be or whether gradient descent can find it. For some families of functions a shallow network needs an exponential number of neurons while a deep one needs a polynomial number. Depth also makes it possible to learn a <b>hierarchical representation</b> layer by layer: edge → texture → part → object.'},
+        {t:'Deep networks train faster',
+         why:'Usually the opposite; deep networks are slower and harder to train (you saw this in the vanishing gradient lesson).'},
+        {t:'Single layer networks overfit',
+         why:'Overfitting is about capacity, not depth; a wide single layer memorises just as happily.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['backprop'] = {
+  ad:'Backpropagation',
+  alt:'How are a neuron\'s weights learned? The answer: the error flows backwards from the output to the input. Every weight learns its own share of the blame.',
+  kaynaklar:[{"y":"Rumelhart, Hinton, Williams","t":"1986","b":"Learning Representations by Back-Propagating Errors","n":"Nature, 323, 533–536"},
+             {"y":"LeCun, Bottou, Orr, Müller","t":"1998","b":"Efficient BackProp","n":"Neural Networks: Tricks of the Trade"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'Forward and backward: two directions',
+    goal:'You will see that training a neural network consists of <b>two separate passes</b>, and how the error flows backwards.',
+    todo:'Use NEXT to walk through the seven stages. Blue is the prediction going forward, red is the error coming back.',
+    kind:'phases', viz:'geriYayilim', h:720, xp:50,
+    learned:'<b>Backpropagation is an efficient application of the chain rule.</b> The error is measured at the output, carried backwards layer by layer, and every weight learns its own share of the responsibility (∂L/∂w).<br><br>Then gradient descent steps in and updates the weights. <b>Forward → error → backward → update.</b> That is one training step; we repeat it millions of times.',
+    quiz:{
+      q:'Why is backpropagation such an important invention?',
+      opts:[
+        {t:'It makes neural networks more accurate',
+         why:'No. Backpropagation is not a method that increases accuracy, it is a method that <b>computes</b> the gradient. Accuracy comes from the architecture and the data.'},
+        {t:'It computes the gradient of every weight in <b>a single pass</b>; otherwise each weight would need its own separate calculation',
+         why:'Correct. The naive approach needs n separate forward passes for n weights. Backpropagation uses the chain rule cleverly to get all of them out of a single backward pass: the cost is about twice a forward pass rather than O(n) passes. In a model with 1.7 trillion parameters, that difference is the difference between "possible" and "impossible".'},
+        {t:'It reduces memory usage',
+         why:'The opposite; backpropagation has to store the activations from the forward pass, so it <b>uses</b> memory. (This is why techniques like gradient checkpointing exist.)'},
+        {t:'It prevents overfitting',
+         why:'No, that is a separate topic: dropout, weight decay, early stopping.'},
+      ], correct:1 },
+    phases:[
+      {state:{faz:0},
+       body:'<p>A small four layer network. Every circle is a neuron, every line is a weight.</p>' +
+            '<p>Each round of training consists of <b>two passes</b>: first forward (predict), then backward (learn).</p>'},
+      {state:{faz:1},
+       body:'<p><b style="color:#4cc4ff">FORWARD PASS, layer 1.</b> The inputs were multiplied by the weights, summed, and pushed through the activation. The single neuron operation from the previous lesson, just done 4 times in parallel.</p>'},
+      {state:{faz:2},
+       body:'<p><b style="color:#4cc4ff">FORWARD PASS complete.</b> Output: <b>0.83</b>.</p>' +
+            '<p>The network made its prediction. But is it right? The only way to know is to look at the true answer.</p>'},
+      {state:{faz:3},
+       body:'<p><b style="color:#f87171">THE ERROR IS MEASURED.</b> The true answer is 1.00, the network said 0.83. The loss is <b>L = 0.186</b>.</p>' +
+            '<p>Now the real question: <b>who is responsible for this error?</b> The network has dozens of weights. Which one should we change and by how much?</p>' +
+            '<p>The naive answer: nudge every weight one at a time and see how the error changes. But GPT-4 has 1.7 trillion weights, each needing its own forward pass. A lifetime would not be enough.</p>'},
+      {state:{faz:4},
+       body:'<p><b style="color:#f87171">BACKPROPAGATION begins.</b> We go backwards from the last layer.</p>' +
+            '<p>The output neuron\'s contribution to the error can be computed directly: ∂L/∂a = 0.43. The connection thicknesses now show the <b>size of the gradient</b>; a thick line means "this weight is guilty".</p>'},
+      {state:{faz:5},
+       body:'<p><b>The chain rule kicks in.</b> We moved back one layer.</p>' +
+            '<p>A hidden neuron\'s contribution to the error is the <b>weighted sum</b> of the contributions of the neurons after it. So while carrying the error backwards we use the same weights from the forward pass, <i>in the opposite direction</i>.</p>' +
+            '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:10px 14px;border-radius:8px">∂L/∂a<sub>hidden</sub> = Σ w · ∂L/∂a<sub>next</sub> · σ′(z)</p>'},
+      {state:{faz:6},
+       body:'<p><b>It reached the input.</b> Now <b>every</b> weight in the network knows its own ∂L/∂w.</p>' +
+            '<p>And the critical part: <b>one forward and one backward pass</b> were enough for that. Even in a network with a billion parameters the cost is roughly twice a forward pass.</p>' +
+            '<p>Without that efficiency there would be no such thing as deep learning. Backpropagation becoming popular in 1986 changed the fate of the field.</p>' +
+            '<p>The gradients are in hand, and the next step is familiar: <b>θ ← θ − η·∇L</b>.</p>'},
+    ],
+  },
+  {
+    t:'Now let us really train it',
+    goal:'You will watch what the loop you just saw does when it is repeated <b>900 times</b>, on a real network trained in your browser.',
+    todo:'The animation plays on its own. Left: the decision boundary · middle: the weights thickening · bottom: the loss falling.',
+    kind:'play', viz:'agEgitim', h:780, hiz:600, xp:35,
+    learned:'<b>This is how a neural network learns:</b> pass forward, measure the error, propagate it back, update, and repeat thousands of times.<br><br>Everything you saw is real: this network was trained in your browser, on your machine. The accuracy went from 51.7% to 100%, and nobody told it to "draw a circle".',
+  },
+  ],
+};
