@@ -9375,6 +9375,181 @@ VIZ.kuantizasyon = s => {
   }
 };
 
+
+/* ═══════════ ADİLLİK ═══════════
+   Uc adillik olcutu ayni anda saglanamaz. Burada bu bir goruş degil,
+   TAM hesapla gosterilen bir imkansizlik. */
+const AD = {};
+AD.BIN = 400;
+AD.tabanlar = [0.30, 0.40, 0.50, 0.60];   /* B grubunun taban orani */
+AD.TABAN_A = 0.30;
+const _adC = {};
+/* skor dagilimlari · IKI GRUPTA DA AYNI · sadece taban oranlari farkli */
+AD.dagilim = (() => {
+  const p1 = [], p0 = [];
+  let s1 = 0, s0 = 0;
+  for (let i = 0; i < AD.BIN; i++){
+    const s = (i + 0.5)/AD.BIN;
+    const a = Math.pow(s, 2.2)*Math.pow(1 - s, 0.8);
+    const b = Math.pow(s, 0.8)*Math.pow(1 - s, 2.2);
+    p1.push(a); p0.push(b); s1 += a; s0 += b; }
+  return { p1: p1.map(z => z/s1), p0: p0.map(z => z/s0) };
+})();
+/* esik indeksi t: skor >= t olanlar pozitif tahmin */
+AD.metrik = (taban, t) => {
+  const D = AD.dagilim;
+  let TPR = 0, FPR = 0;
+  for (let i = t; i < AD.BIN; i++){ TPR += D.p1[i]; FPR += D.p0[i]; }
+  const P = taban*TPR, YP = (1 - taban)*FPR;
+  const PPV = (P + YP) > 0 ? P/(P + YP) : 1;
+  return { TPR, FPR, FNR: 1 - TPR, PPV, secim: P + YP };
+};
+/* B grubunda PPV yi A ile esitleyen esik · tam arama */
+AD.ppvEsitleyen = (tabanB, tA) => {
+  const key = 'p' + tabanB + ':' + tA;
+  if (_adC[key] !== undefined) return _adC[key];
+  const hedef = AD.metrik(AD.TABAN_A, tA).PPV;
+  let en = Infinity, arg = tA;
+  for (let t = 0; t < AD.BIN; t++){
+    const d = Math.abs(AD.metrik(tabanB, t).PPV - hedef);
+    if (d < en){ en = d; arg = t; } }
+  return (_adC[key] = arg);
+};
+/* Chouldechova kimligi: FPR = p(1-FNR)(1-PPV) / ((1-p) PPV) */
+AD.kimlik = (taban, t) => { const m = AD.metrik(taban, t);
+  return taban*(1 - m.FNR)*(1 - m.PPV)/((1 - taban)*m.PPV); };
+AD.VARSAYILAN_T = Math.round(AD.BIN*0.5);
+
+
+VIZ.adillik = s => {
+  clear();
+  const sahne = s.sahne || 'ayniesik';
+  const bi = Math.max(0, Math.min(3, s.bi === undefined ? 3 : Math.round(s.bi)));
+  const tabanB = AD.tabanlar[bi];
+  const tA = AD.VARSAYILAN_T;
+  const mA = AD.metrik(AD.TABAN_A, tA);
+  const kart = (x, y, wd, ad, deger, rnk, alt) => {
+    box(x, y, wd, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + wd/2, y + 28, K.mut, 15);
+    txt(deger, x + wd/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + wd/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'ppvesit'){
+    const tB = AD.ppvEsitleyen(tabanB, tA), mB = AD.metrik(tabanB, tB);
+    baslikSerit('ADİLLİK · PPV Yİ EŞİTLEMEYE ÇALIŞMAK',
+      'B grubunun eşiği, PPV si A ile eşitlensin diye kaydırılıyor. Bedeli hata oranlarında.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 3.35, -0.35, 1.05);
+    frame(P, 'B grubunun taban oranı', 'değer', [], [0, 0.25, 0.5, 0.75, 1]);
+    AD.tabanlar.forEach((pv, i) => txt(pv.toFixed(2), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    [['FPR', K.red], ['FNR', K.blue], ['PPV', K.green]].forEach(([alan, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = 3.4; cx.beginPath();
+      AD.tabanlar.forEach((pv, i) => {
+        const m = AD.metrik(pv, AD.ppvEsitleyen(pv, tA));
+        const y = P.sy(m[alan]);
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      AD.tabanlar.forEach((pv, i) => dot(P.sx(i),
+        P.sy(AD.metrik(pv, AD.ppvEsitleyen(pv, tA))[alan]), 5, renk)); });
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    [['FPR', mA.FPR], ['PPV', mA.PPV]].forEach(([, val]) => {
+      cx.beginPath(); cx.moveTo(P.R.x, P.sy(val)); cx.lineTo(P.R.x + P.R.w, P.sy(val)); cx.stroke(); });
+    cx.setLineDash([]);
+    txt('A grubunun FPR si', P.R.x + 16, P.sy(mA.FPR) - 12, K.mut, 15, 'left');
+    txt('A grubunun PPV si', P.R.x + 16, P.sy(mA.PPV) + 26, K.mut, 15, 'left');
+    txt('kırmızı FPR · mavi FNR · yeşil PPV', P.R.x + P.R.w - 14, P.R.y + 28, K.mut, 16, 'right');
+    const bx = 830;
+    kart(bx, 200, 260, 'B TABAN ORANI', tabanB.toFixed(2), K.blue);
+    kart(bx + 280, 200, 260, 'B NİN YENİ EŞİĞİ', (tB/AD.BIN).toFixed(3), K.purple,
+         'A nınki 0.500');
+    kart(bx, 330, 260, 'FPR FARKI', (mB.FPR - mA.FPR >= 0 ? '+' : '') +
+         (mB.FPR - mA.FPR).toFixed(4), Math.abs(mB.FPR - mA.FPR) > 0.05 ? K.red : K.green);
+    kart(bx + 280, 330, 260, 'PPV FARKI', (mB.PPV - mA.PPV >= 0 ? '+' : '') +
+         (mB.PPV - mA.PPV).toFixed(4), Math.abs(mB.PPV - mA.PPV) > 0.02 ? K.red : K.green);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.red, 2);
+    txt('BİR ÖLÇÜTÜ DÜZELTMEK DİĞERİNİ BOZUYOR', bx + 270, 494, K.mut, 16);
+    txt('PPV yi eşitlemek için B nin eşiğini düşürmek', bx + 18, 534, K.txt, 18, 'left');
+    txt('gerekiyor. Ama eşik düşünce yanlış pozitifler', bx + 18, 562, K.txt, 18, 'left');
+    txt('artıyor: FPR farkı ' + (mB.FPR - mA.FPR).toFixed(4) + '.', bx + 18, 590, K.red, 18, 'left');
+    txt('Taban oranı 0.60 ta ise hiçbir eşik yetmiyor:', bx + 18, 630, K.red, 18, 'left');
+    txt('herkese pozitif desen bile PPV 0.6000 da kalıyor,', bx + 18, 658, K.red, 18, 'left');
+    txt('A nın 0.5679 unun altına inemiyor.', bx + 18, 686, K.red, 18, 'left');
+  }
+
+  else if (sahne === 'kimlik'){
+    baslikSerit('ADİLLİK · İMKANSIZLIK BİR GÖRÜŞ DEĞİL, BİR DENKLEM',
+      'FPR = p(1 − FNR)(1 − PPV) / [(1 − p) · PPV].  Noktalar tam olarak eğrinin üstünde.', []);
+    const P = plot(rect(140, 200, 640, 400), 0, 1.02, 0, 1.02);
+    frame(P, 'denklemden hesaplanan FPR', 'ölçülen FPR',
+          [0, 0.25, 0.5, 0.75, 1], [0, 0.25, 0.5, 0.75, 1]);
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.sx(0), P.sy(0)); cx.lineTo(P.sx(1), P.sy(1)); cx.stroke();
+    cx.setLineDash([]);
+    AD.tabanlar.forEach((pv, gi) => {
+      const renk = [K.green, K.blue, K.orange, K.red][gi];
+      for (let t = 10; t < AD.BIN - 10; t += 13){
+        const m = AD.metrik(pv, t), k = AD.kimlik(pv, t);
+        if (k > 1.02) continue;
+        dot(P.sx(k), P.sy(m.FPR), 3.2, renk); } });
+    txt('dört taban oranı, her biri onlarca eşik', P.R.x + 16, P.R.y + 28, K.mut, 16, 'left');
+    let enBuyuk = 0;
+    AD.tabanlar.forEach(pv => { for (let t = 10; t < AD.BIN - 10; t += 13){
+      enBuyuk = Math.max(enBuyuk, Math.abs(AD.kimlik(pv, t) - AD.metrik(pv, t).FPR)); } });
+    const bx = 830;
+    kart(bx, 200, 260, 'EN BÜYÜK SAPMA', enBuyuk.toExponential(1), K.green, 'makine hassasiyeti');
+    kart(bx + 280, 200, 260, 'TEST EDİLEN NOKTA', String(4*30), K.blue, 'taban × eşik');
+    kart(bx, 330, 260, 'A GRUBU PPV', mA.PPV.toFixed(4), K.purple);
+    kart(bx + 280, 330, 260, 'B GRUBU PPV', AD.metrik(tabanB, tA).PPV.toFixed(4), K.orange,
+         'aynı eşikte');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('DENKLEMİN SÖYLEDİĞİ', bx + 270, 494, K.mut, 18);
+    txt('Denklemde dört büyüklük var: taban oranı p,', bx + 18, 534, K.txt, 18, 'left');
+    txt('FNR, PPV ve FPR. Üçünü sabitlersen dördüncü', bx + 18, 562, K.txt, 18, 'left');
+    txt('kendiliğinden belirlenir.', bx + 18, 590, K.txt, 18, 'left');
+    txt('İki grubun FNR si ve PPV si eşitse ve taban', bx + 18, 630, K.red, 18, 'left');
+    txt('oranları farklıysa, FPR leri eşit OLAMAZ.', bx + 18, 658, K.red, 18, 'left');
+    txt('Bu bir tasarım tercihi değil, cebirsel bir zorunluluk.', bx + 18, 696, K.mut, 17, 'left');
+  }
+
+  else {
+    const mB = AD.metrik(tabanB, tA);
+    baslikSerit('ADİLLİK · AYNI EŞİK, AYNI MODEL',
+      'İki grup için skor dağılımları birebir aynı. Tek fark taban oranları.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.7, 3.7, 0, 1.05);
+    frame(P, '', 'değer', [], [0, 0.25, 0.5, 0.75, 1]);
+    const olcut = [['FPR', 'FPR'], ['FNR', 'FNR'], ['PPV', 'PPV'], ['secim', 'seçilme']];
+    const gen = (P.R.w/4)*0.30;
+    olcut.forEach(([alan, ad], i) => {
+      const x = P.sx(i), y0 = P.sy(0);
+      const yA = P.sy(mA[alan]), yB = P.sy(mB[alan]);
+      box(x - gen - 4, yA, gen, y0 - yA, 'rgba(59,130,246,.30)', K.blue, 2);
+      box(x + 4, yB, gen, y0 - yB, 'rgba(249,115,22,.30)', K.orange, 2);
+      txt(mA[alan].toFixed(3), x - gen/2 - 4, yA - 12, K.blue, 14);
+      txt(mB[alan].toFixed(3), x + gen/2 + 4, yB - 12, K.orange, 14);
+      txt(ad, x, P.R.y + P.R.h + 28, Math.abs(mA[alan] - mB[alan]) > 0.01 ? K.red : K.green,
+          16, 'center', Math.abs(mA[alan] - mB[alan]) > 0.01 ? 700 : 400); });
+    txt('mavi: A grubu (taban ' + AD.TABAN_A.toFixed(2) + ')',
+        P.R.x + 16, P.R.y + 28, K.blue, 16, 'left');
+    txt('turuncu: B grubu (taban ' + tabanB.toFixed(2) + ')',
+        P.R.x + 16, P.R.y + 54, K.orange, 16, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'B TABAN ORANI', tabanB.toFixed(2), K.blue, 'A nınki 0.30');
+    kart(bx + 280, 200, 260, 'FPR FARKI', (mB.FPR - mA.FPR).toFixed(4), K.green, 'eşit');
+    kart(bx, 330, 260, 'FNR FARKI', (mB.FNR - mA.FNR).toFixed(4), K.green, 'eşit');
+    kart(bx + 280, 330, 260, 'PPV FARKI', (mB.PPV - mA.PPV >= 0 ? '+' : '') +
+         (mB.PPV - mA.PPV).toFixed(4), Math.abs(mB.PPV - mA.PPV) > 0.01 ? K.red : K.green);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('AYNI MODEL, FARKLI SONUÇ', bx + 270, 494, K.mut, 18);
+    txt('Model iki grupta birebir aynı: aynı skor dağılımı,', bx + 18, 534, K.txt, 18, 'left');
+    txt('aynı eşik, aynı ayırt etme gücü.', bx + 18, 562, K.txt, 18, 'left');
+    txt('Hata oranları da eşit: FPR ve FNR farkı sıfır.', bx + 18, 600, K.green, 18, 'left');
+    txt('Ama PPV farklı: ' + mA.PPV.toFixed(4) + ' e karşı ' + mB.PPV.toFixed(4) + '.',
+        bx + 18, 638, K.red, 18, 'left');
+    txt('Yani "pozitif" dediğinde haklı çıkma oranın', bx + 18, 676, K.red, 18, 'left');
+    txt('gruba göre değişiyor. Model ayrımcılık yapmıyor.', bx + 18, 702, K.mut, 17, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

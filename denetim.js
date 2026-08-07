@@ -3313,6 +3313,72 @@ console.log('═══ KUANTİZASYON ═══');
   iddia('KZ - 16 bitte iki yontem tam ayni', 0,
         Math.abs(KZ.sonuc(16, true, true) - KZ.sonuc(16, false, true)), 9);
 }
+console.log('═══ ADİLLİK ═══');
+{
+  const tA = AD.VARSAYILAN_T, mA = AD.metrik(AD.TABAN_A, tA);
+  /* dagilimlar gecerli olasilik dagilimi mi */
+  { let s1 = 0, s0 = 0;
+    for (let i = 0; i < AD.BIN; i++){ s1 += AD.dagilim.p1[i]; s0 += AD.dagilim.p0[i]; }
+    iddia('AD - pozitif skor dagilimi toplami 1', 1, s1, 9);
+    iddia('AD - negatif skor dagilimi toplami 1', 1, s0, 9); }
+  /* model gercekten ayirt ediyor mu: TPR > FPR */
+  iddia('AD - model ayirt ediyor (TPR > FPR)', 1, mA.TPR > mA.FPR ? 1 : 0, 0);
+
+  /* 1. adim - ayni esik */
+  iddia('AD - A grubu TPR', 0.7541, mA.TPR, 4);
+  iddia('AD - A grubu FPR', 0.2459, mA.FPR, 4);
+  iddia('AD - A grubu PPV', 0.5679, mA.PPV, 4);
+  iddia('AD - B grubu (taban 0.60) PPV', 0.8214, AD.metrik(0.60, tA).PPV, 4);
+  iddia('AD - B grubu (taban 0.40) PPV', 0.6716, AD.metrik(0.40, tA).PPV, 4);
+  /* FPR ve FNR taban oranindan BAGIMSIZ · sinif kosullu */
+  { let enBuyuk = 0;
+    AD.tabanlar.forEach(p => { const m = AD.metrik(p, tA);
+      enBuyuk = Math.max(enBuyuk, Math.abs(m.FPR - mA.FPR), Math.abs(m.FNR - mA.FNR)); });
+    iddia('AD - FPR ve FNR taban oranindan bagimsiz', 0, enBuyuk, 9); }
+  /* PPV taban oraniyla MONOTON artiyor */
+  { let ihlal = 0;
+    for (let i = 1; i < AD.tabanlar.length; i++)
+      if (AD.metrik(AD.tabanlar[i], tA).PPV <= AD.metrik(AD.tabanlar[i-1], tA).PPV) ihlal++;
+    iddia('AD - PPV taban oraniyla artiyor', 0, ihlal, 0); }
+  iddia('AD - taban 0.30 ile 0.60 arasi PPV farki', 0.2535,
+        AD.metrik(0.60, tA).PPV - AD.metrik(0.30, tA).PPV, 4);
+
+  /* 2. adim - PPV esitlemenin bedeli */
+  { const t40 = AD.ppvEsitleyen(0.40, tA), m40 = AD.metrik(0.40, t40);
+    iddia('AD - taban 0.40 - esitleyen esik', 0.365, t40/AD.BIN, 3);
+    iddia('AD - taban 0.40 - esitlenen PPV', 0.5678, m40.PPV, 4);
+    iddia('AD - taban 0.40 - FPR farki', 0.2099, m40.FPR - mA.FPR, 4);
+    const t50 = AD.ppvEsitleyen(0.50, tA), m50 = AD.metrik(0.50, t50);
+    iddia('AD - taban 0.50 - esitleyen esik', 0.207, t50/AD.BIN, 3);
+    iddia('AD - taban 0.50 - FPR farki', 0.4988, m50.FPR - mA.FPR, 4);
+    /* taban 0.60 ta PPV esitligi IMKANSIZ */
+    const t60 = AD.ppvEsitleyen(0.60, tA), m60 = AD.metrik(0.60, t60);
+    iddia('AD - taban 0.60 - esik sifira dayaniyor', 0, t60, 0);
+    iddia('AD - taban 0.60 - ulasilabilen en dusuk PPV', 0.6000, m60.PPV, 4);
+    iddia('AD - taban 0.60 ta PPV esitligi imkansiz', 1,
+          m60.PPV > mA.PPV + 1e-9 ? 1 : 0, 0);
+    /* esik 0 da PPV tam olarak taban orani */
+    { let enBuyuk = 0;
+      AD.tabanlar.forEach(p => enBuyuk = Math.max(enBuyuk,
+        Math.abs(AD.metrik(p, 0).PPV - p)));
+      iddia('AD - esik 0 da PPV = taban orani', 0, enBuyuk, 9); } }
+
+  /* 3. adim - Chouldechova kimligi */
+  { let enBuyuk = 0, sayi = 0;
+    AD.tabanlar.forEach(p => { for (let t = 10; t < AD.BIN - 10; t += 13){
+      enBuyuk = Math.max(enBuyuk, Math.abs(AD.kimlik(p, t) - AD.metrik(p, t).FPR)); sayi++; } });
+    iddia('AD - kimlik sapmasi (x 1e15)', 0, Math.round(enBuyuk*1e15)/1000, 2);
+    iddia('AD - test edilen nokta sayisi', 120, sayi, 0); }
+  /* imkansizlik: FNR ve PPV esitse ve tabanlar farkliysa FPR farkli olmali */
+  { const p1 = 0.30, p2 = 0.60;
+    const FNR = 0.25, PPV = 0.60;
+    const f = (p) => p*(1 - FNR)*(1 - PPV)/((1 - p)*PPV);
+    iddia('AD - ayni FNR ve PPV ile FPR taban 0.30 da', 0.2143, f(p1), 4);
+    iddia('AD - ayni FNR ve PPV ile FPR taban 0.60 da', 0.7500, f(p2), 4);
+    iddia('AD - iki FPR esit olamaz', 1, Math.abs(f(p1) - f(p2)) > 0.01 ? 1 : 0, 0);
+    /* tabanlar ESIT olsaydi FPR ler de esit olurdu */
+    iddia('AD - tabanlar esitse FPR de esit', 0, Math.abs(f(0.45) - f(0.45)), 9); }
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

@@ -140,7 +140,7 @@ const ROTALAR = [
     {id:'yigin',          ad:'AI uygulama yığını: kim neyi inşa eder',         sure:10, durum:'planli'},
     {id:'ai-vs-ml',       ad:'AI mühendisliği klasik ML\'den nasıl ayrışır',    sure:10, durum:'planli'},
     {id:'proje-karari',   ad:'Bir AI projesine nasıl karar verilir',           sure:12, durum:'planli'},
-    {id:'adillik',        ad:'Modelin aynadaki yüzü: adillik ve şeffaflık',    sure:14, durum:'planli'},
+    {id:'adillik',        ad:'Modelin aynadaki yüzü: adillik ve şeffaflık',    sure:16, durum:'hazir'},
     {id:'automl',         ad:'AutoML: modelini seçen model',                   sure:14, durum:'planli'},
     {id:'aktif-ogrenme',  ad:'Aktif öğrenme: hangi örneği etiketleyelim',      sure:14, durum:'planli'},
     {id:'leaderboard',    ad:'Yarışma yanılsaması: skor tablosuna ne kadar güvenilir',  sure:12, durum:'planli'},
@@ -11766,6 +11766,168 @@ DERSLER['kuantizasyon'] = {
       'ama hata doğrusal değil: 8 bitte binde iki, 4 bitte %20, 2 bitte kat kat.<br><br>' +
       'Kuantizasyon sonrası çöküş çoğu zaman aykırı ağırlıkların imzasıdır ve çözümü ' +
       'daha çok bit değil, ölçeği daha dar tanımlamaktır.',
+    xp:75,
+  },
+]};
+
+/* --------------- ADILLIK --------------- */
+DERSLER['adillik'] = {
+  ad:'Modelin aynadaki yüzü: adillik ve şeffaflık',
+  alt:'Adillik ölçütleri arasında seçim yapmak zorundasın, çünkü hepsini birden sağlamak matematiksel olarak imkânsız. Bunu bir görüş olarak değil, bir denklem olarak göreceksin.',
+  kaynaklar:[
+    {y:'Chouldechova, A.', t:'2017', b:'Fair Prediction with Disparate Impact: A Study of Bias in Recidivism Prediction Instruments', n:'Big Data 5(2)', u:'https://arxiv.org/abs/1703.00056'},
+    {y:'Kleinberg, J. ve ark.', t:'2017', b:'Inherent Trade-Offs in the Fair Determination of Risk Scores', n:'ITCS 2017', u:'https://arxiv.org/abs/1609.05807'},
+    {y:'Hardt, M. ve ark.', t:'2016', b:'Equality of Opportunity in Supervised Learning', n:'NeurIPS 2016', u:'https://arxiv.org/abs/1610.02413'},
+    {y:'Mitchell, M. ve ark.', t:'2019', b:'Model Cards for Model Reporting', n:'FAT* 2019', u:'https://arxiv.org/abs/1810.03993'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Aynı model, farklı sonuç',
+    goal:'Hiçbir ayrımcılık yapmayan bir modelin nasıl farklı sonuçlar üretebildiğini göreceksin.',
+    todo:'B grubunun taban oranını değiştir. Hangi ölçüt ayrışıyor?',
+    kind:'controls', viz:'adillik', h:760,
+    controls:[{k:'bi', lb:'B GRUBUNUN TABAN ORANI', min:0, max:3, step:1, val:3,
+      fmt:v => AD.tabanlar[Math.round(v)].toFixed(2)}],
+    state:{sahne:'ayniesik'},
+    derive:s => { const p = AD.tabanlar[Math.round(s.bi)];
+      return {fark: AD.metrik(p, AD.VARSAYILAN_T).PPV -
+                    AD.metrik(AD.TABAN_A, AD.VARSAYILAN_T).PPV}; },
+    live:s => [['B TABAN', AD.tabanlar[Math.round(s.bi)].toFixed(2)],
+               ['FPR FARKI', '0.0000', K.green],
+               ['PPV FARKI', (s.fark >= 0 ? '+' : '') + s.fark.toFixed(4),
+                Math.abs(s.fark) > 0.01 ? K.red : K.green],
+               ['HEDEF', 'PPV farki > 0.2']],
+    unlock:s => Math.abs(s.fark) > 0.2,
+    unlockMsg:'PPV farkını 0.2 nin üstüne çıkaran taban oranını bul',
+    body:'<p>İki grup var. Model ikisinde de <b>birebir aynı</b>: aynı skor dağılımı, aynı ' +
+      'ayırt etme gücü, aynı eşik. Grup bilgisi modele hiç girmiyor. Tek fark, gruplardaki ' +
+      '<b>taban oranı</b>: A grubunda pozitif sınıfın payı 0.30, B grubunda daha yüksek.</p>' +
+      '<p>Hata oranları beklendiği gibi eşit çıkıyor. FPR ikisinde de 0.2459, FNR ikisinde ' +
+      'de 0.2459. Fark tam olarak sıfır, çünkü bunlar <b>sınıf koşullu</b> büyüklükler ve ' +
+      'skor dağılımları aynı.</p>' +
+      '<p>Ama PPV farklı. A grubunda <b>0.5679</b>, B grubunda taban oranı 0.60 iken ' +
+      '<b>0.8214</b>. Yani model "pozitif" dediğinde haklı çıkma oranı gruba göre değişiyor.</p>' +
+      '<p>Sebep aritmetik: PPV = p·TPR / (p·TPR + (1−p)·FPR). Taban oranı p arttıkça, aynı ' +
+      'TPR ve FPR ile PPV de artar. Model hiçbir şey yapmadı; sayı kendiliğinden değişti.</p>' +
+      '<p>Buradaki ders şu: <b>"model gruba bakmıyor" demek adil olduğu anlamına gelmez.</b> ' +
+      'Hangi ölçütte adil olduğunu söylemek gerekir, çünkü ölçütler birbirinden farklı ' +
+      'şeyler ölçüyor.</p>',
+    learned:'<b>Grup bilgisini hiç kullanmayan bir model bile ölçüte göre farklı sonuç verir.</b><br><br>' +
+      'Aynı skor dağılımı ve aynı eşikle FPR ve FNR gruplar arasında tam olarak eşit ' +
+      '(fark 0.0000), ama PPV 0.5679 e karşı 0.8214.<br><br>' +
+      'Sebep aritmetik: PPV taban oranına bağlıdır. "Model gruba bakmıyor" demek adil olduğu ' +
+      'anlamına gelmez; hangi ölçütte adil olduğunu söylemek gerekir.',
+    xp:50,
+  },
+  {
+    t:'Bir ölçütü düzeltmek diğerini bozuyor',
+    goal:'Ölçütler arasındaki takası doğrudan ölçeceksin.',
+    todo:'Taban oranını değiştir. PPV yi eşitlemenin FPR ye bedeli ne?',
+    kind:'controls', viz:'adillik', h:760,
+    controls:[{k:'bi', lb:'B GRUBUNUN TABAN ORANI', min:0, max:3, step:1, val:2,
+      fmt:v => AD.tabanlar[Math.round(v)].toFixed(2)}],
+    state:{sahne:'ppvesit'},
+    derive:s => { const p = AD.tabanlar[Math.round(s.bi)];
+      const m = AD.metrik(p, AD.ppvEsitleyen(p, AD.VARSAYILAN_T));
+      return {fpr: m.FPR - AD.metrik(AD.TABAN_A, AD.VARSAYILAN_T).FPR}; },
+    live:s => [['B TABAN', AD.tabanlar[Math.round(s.bi)].toFixed(2)],
+               ['FPR FARKI', (s.fpr >= 0 ? '+' : '') + s.fpr.toFixed(4), K.red],
+               ['HEDEF', 'FPR farki > 0.4']],
+    unlock:s => Math.abs(s.fpr) > 0.4,
+    unlockMsg:'PPV eşitliğinin bedelini 0.4 FPR farkının üstüne çıkar',
+    body:'<p>Diyelim ki PPV eşitliğini seçtik. Bunu sağlamanın yolu B grubuna farklı bir ' +
+      'eşik uygulamak. Peki bedeli ne?</p>' +
+      '<p>B nin taban oranı 0.40 iken: eşik 0.500 den 0.365 e iniyor, PPV eşitleniyor ' +
+      '(0.5678 e karşı 0.5679), ama FPR farkı <b>+0.2099</b> oluyor. Yani B grubundaki ' +
+      'negatif örneklerin çok daha büyük bir kısmı yanlışlıkla pozitif işaretleniyor.</p>' +
+      '<p>Taban oranı 0.50 iken: eşik 0.207 ye iniyor, FPR farkı <b>+0.4988</b>. B grubunun ' +
+      'yanlış pozitif oranı A nınkinin üç katından fazla.</p>' +
+      '<p>Taban oranı 0.60 ta ise daha da sert bir şey oluyor: <b>hiçbir eşik yetmiyor.</b> ' +
+      'Eşiği sıfıra indirip herkese pozitif desen bile PPV 0.6000 da kalıyor, çünkü ' +
+      'PPV nin alabileceği en küçük değer taban oranıdır. A grubunun PPV si 0.5679 olduğuna ' +
+      'göre bu grupta PPV eşitliği <b>imkânsız</b>.</p>' +
+      '<p>Bu, tartışmanın kalbidir. COMPAS tartışmasında bir taraf "PPV eşit, model adil" ' +
+      'derken diğer taraf "FPR farklı, model adil değil" diyordu. İkisi de doğruydu ' +
+      've aynı anda ikisini birden sağlamak mümkün değildi.</p>',
+    learned:'<b>Bir adillik ölçütünü eşitlemek diğerini bozar.</b><br><br>' +
+      'PPV yi eşitlemek için eşiği kaydırmak gerekiyor: taban 0.40 ta FPR farkı +0.2099, ' +
+      '0.50 de +0.4988.<br><br>' +
+      'Taban 0.60 ta hiçbir eşik yetmiyor, çünkü PPV nin alabileceği en küçük değer ' +
+      'taban oranıdır (0.6000) ve bu zaten A nın PPV sinin (0.5679) üstünde.',
+    xp:50,
+  },
+  {
+    t:'İmkânsızlık bir görüş değil, bir denklem',
+    goal:'Takasın neden kaçınılmaz olduğunu cebirsel olarak göreceksin.',
+    todo:'Noktaların köşegene göre yerine bak.',
+    kind:'controls', viz:'adillik', h:760,
+    controls:[{k:'bi', lb:'B GRUBUNUN TABAN ORANI', min:0, max:3, step:1, val:3,
+      fmt:v => AD.tabanlar[Math.round(v)].toFixed(2)}],
+    state:{sahne:'kimlik'},
+    body:'<p>Bütün bunlar tek bir denklemden çıkıyor (Chouldechova, 2017):</p>' +
+      '<p style="font-family:monospace;font-size:1.05em">' +
+      'FPR = p · (1 − FNR) · (1 − PPV) / [ (1 − p) · PPV ]</p>' +
+      '<p>Grafikteki her nokta bir (taban oranı, eşik) çifti. Yatay eksende denklemin ' +
+      'verdiği FPR, dikey eksende doğrudan ölçülen FPR. Bütün noktalar köşegenin üstünde ' +
+      've en büyük sapma <b>2.2 × 10⁻¹⁶</b>, yani makine hassasiyeti. Bu bir yaklaşıklık ' +
+      'değil, bir <b>kimlik</b>.</p>' +
+      '<p>Denklemde dört büyüklük var: p, FNR, PPV ve FPR. Üçünü sabitlersen dördüncü ' +
+      'kendiliğinden belirlenir. Buradan doğrudan şu çıkar:</p>' +
+      '<p><b>İki grubun FNR si ve PPV si eşitse ve taban oranları farklıysa, FPR leri ' +
+      'eşit olamaz.</b></p>' +
+      '<p>Bu bir tasarım tercihi, bir veri kalitesi sorunu ya da bir mühendislik eksikliği ' +
+      'değil. Cebirsel bir zorunluluk. Kleinberg ve arkadaşları (2017) aynı sonucu daha ' +
+      'genel bir biçimde kanıtladı: kalibrasyon ve hata oranı dengesi, taban oranları ' +
+      'farklıyken ancak mükemmel bir sınıflandırıcıyla birlikte sağlanabilir.</p>' +
+      '<p>Yani "adil model" diye tek bir şey yok. Hangi adillik tanımını seçtiğini ' +
+      'söylemek ve <b>neden onu seçtiğini savunmak</b> zorundasın.</p>',
+    learned:'<b>FPR = p(1 − FNR)(1 − PPV) / [(1 − p)PPV]</b><br><br>' +
+      'Bu bir kimliktir: 120 farklı (taban, eşik) noktasında en büyük sapma 2.2×10⁻¹⁶.<br><br>' +
+      'Sonucu doğrudan: iki grubun FNR ve PPV si eşitse ve taban oranları farklıysa, ' +
+      'FPR leri eşit olamaz. Adillik ölçütleri arasındaki takas bir tercih değil, ' +
+      'cebirsel bir zorunluluktur.',
+    xp:50,
+  },
+  {
+    t:'O halde ne yapılır',
+    goal:'İmkânsızlık sonucunu bir çalışma yöntemine çevireceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'controls', viz:'adillik', h:760,
+    controls:[{k:'bi', lb:'B GRUBUNUN TABAN ORANI', min:0, max:3, step:1, val:3,
+      fmt:v => AD.tabanlar[Math.round(v)].toFixed(2)}],
+    state:{sahne:'ayniesik'},
+    body:'<p>İmkânsızlık sonucu "adillik peşinde koşmayın" demek değil. Şunu söylüyor: ' +
+      '<b>seçim yapmak zorundasınız ve seçiminizi açıkça yazmak zorundasınız.</b></p>' +
+      '<p><b>1. Hangi hatanın kime pahalıya patladığını sorun.</b> Yanlış pozitif, ' +
+      'suçsuz birini şüpheli ilan etmekse ağırdır. Yanlış negatif, hasta birini eve ' +
+      'göndermekse ağırdır. Ölçütü bu soru seçer, matematik değil.</p>' +
+      '<p><b>2. Taban oranı farkının nereden geldiğini sorun.</b> Bu ders boyunca taban ' +
+      'oranı farkını veri olarak aldık. Gerçekte o fark çoğu zaman geçmişteki eşitsizliğin ' +
+      'kendisidir. Modeli düzeltmek o eşitsizliği düzeltmez, sadece nasıl aktarılacağını ' +
+      'seçer.</p>' +
+      '<p><b>3. Etiketin kendisini sorgulayın.</b> "Yeniden suç işledi" etiketi aslında ' +
+      '"yeniden yakalandı" demektir ve yakalanma oranı gruplara göre değişir. Ölçtüğünüz ' +
+      'şey ölçmek istediğiniz şey değilse, adillik ölçütlerinin hiçbiri sizi kurtarmaz.</p>' +
+      '<p><b>4. Yazın.</b> Model kartları (Mitchell ve ark., 2019) tam bunun için var: ' +
+      'hangi gruplarda nasıl ölçüldüğü, hangi adillik tanımının seçildiği ve neyin ' +
+      'ölçülmediği. Şeffaflık burada adilliğin alternatifi değil, ön koşuludur.</p>' +
+      '<p>Bir şey daha: gruplar arası eşitlik ile bireysel adalet aynı şey değildir. ' +
+      'Bütün grup ortalamaları eşitlense bile tek tek kararların gerekçelendirilebilir ' +
+      'olması ayrı bir gerekliliktir.</p>',
+    quiz:{ q:'Bir kredi modeli için "iki grupta da onaylananların geri ödeme oranı aynı olsun" diye bir hedef koydunuz ve bunu sağladınız. Denetçi "ama reddedilenler arasında haksız yere reddedilenlerin oranı gruplara göre çok farklı" diyor. Kim haklı?',
+      opts:[
+        {t:'İkisi de: iki farklı adillik ölçütü sağlanıyor ve taban oranları farklıyken ikisi aynı anda sağlanamaz', why:'Doğru. İlk hedef PPV eşitliği (öngörüsel eşitlik), denetçinin işaret ettiği ise hata oranı dengesi. Derste ölçtün: taban oranları farklıyken PPV yi eşitlemek FPR farkını büyütüyordu (0.50 tabanında +0.4988) ve bazı durumlarda PPV eşitliği hiçbir eşikle sağlanamıyordu. Denklem bunu zorunlu kılıyor. Yapılacak şey hangi ölçütün bu bağlamda daha önemli olduğunu gerekçelendirmek ve yazmaktır.'},
+        {t:'Siz haklısınız, PPV eşitliği doğru ölçüttür', why:'PPV eşitliği savunulabilir bir seçim ama tek doğru seçim değil. Kredi reddi haksız yere yapıldığında bunun bedeli bireye ağırdır ve denetçinin ölçütü tam bunu yakalıyor. Hangisinin doğru olduğu matematikten değil, hatanın kime neye mal olduğundan çıkar.'},
+        {t:'Denetçi haklı, hata oranı dengesi tek gerçek adillik ölçütüdür', why:'Aynı hatanın tersi. Hata oranı dengesi de savunulabilir bir seçimdir ama tek doğru değildir; ayrıca onu sağlamak PPV farkını büyütür. Tek bir ölçütü mutlaklaştırmak, imkânsızlık sonucunu yok saymaktır.'},
+        {t:'Modeli yeniden eğitirseniz ikisini birden sağlayabilirsiniz', why:'Sağlayamazsınız. Derste ölçtüğün kimlik modelden bağımsızdır: FPR, p, FNR ve PPV arasındaki ilişki hangi modeli eğitirseniz eğitin geçerlidir. Taban oranları farklı ve sınıflandırıcı mükemmel değilse, ikisi birden sağlanamaz.'},
+      ], correct:0 },
+    learned:'<b>İmkânsızlık, adillikten vazgeçmek değil, seçimi açıkça yapmak demektir.</b><br><br>' +
+      'Dört pratik adım: hangi hatanın kime pahalıya patladığını sor; taban oranı farkının ' +
+      'nereden geldiğini sor; etiketin gerçekten ölçmek istediğin şey olup olmadığını ' +
+      'sorgula; ve seçimini model kartında yaz.<br><br>' +
+      'Grup ortalamalarının eşitlenmesi bireysel adaleti garanti etmez; ikisi ayrı ' +
+      'gerekliliklerdir.',
     xp:75,
   },
 ]};
