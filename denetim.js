@@ -3379,6 +3379,76 @@ console.log('═══ ADİLLİK ═══');
     /* tabanlar ESIT olsaydi FPR ler de esit olurdu */
     iddia('AD - tabanlar esitse FPR de esit', 0, Math.abs(f(0.45) - f(0.45)), 9); }
 }
+console.log('═══ SKOR TABLOSU YANILSAMASI ═══');
+{
+  /* binom dagilimi gecerli mi */
+  { let s = 0;
+    for (let k = 0; k <= 200; k++) s += SK.binomPmf(200, 0.8, k);
+    iddia('SK - binom pmf toplami 1', 1, s, 9);
+    const F = SK.binomCdf(200, 0.8);
+    iddia('SK - binom cdf son deger 1', 1, F[200], 9);
+    /* ortalama = n*p */
+    let ort = 0;
+    for (let k = 0; k <= 200; k++) ort += k*SK.binomPmf(200, 0.8, k);
+    iddia('SK - binom ortalamasi n*p', 160, ort, 6); }
+
+  /* 1. adim - sisme */
+  iddia('SK - N=1 de sisme yok', 0, 100*SK.sisme(1000, 1), 6);
+  iddia('SK - N=100, n=1000 birincinin skoru', 83.11, 100*SK.enYuksek(1000, 100), 2);
+  iddia('SK - N=100, n=1000 sisme', 3.11, 100*SK.sisme(1000, 100), 2);
+  iddia('SK - N=100, n=200 birincinin skoru', 86.79, 100*SK.enYuksek(200, 100), 2);
+  iddia('SK - N=100, n=200 sisme', 6.79, 100*SK.sisme(200, 100), 2);
+  iddia('SK - N=500, n=200 sisme', 8.12, 100*SK.sisme(200, 500), 2);
+  iddia('SK - N=20, n=1000 sisme', 2.33, 100*SK.sisme(1000, 20), 2);
+  /* model sayisi arttikca sisme MONOTON artiyor */
+  { let ihlal = 0;
+    SK.nler.forEach(n => { for (let i = 1; i < SK.Nler.length; i++)
+      if (SK.sisme(n, SK.Nler[i]) < SK.sisme(n, SK.Nler[i-1]) - 1e-12) ihlal++; });
+    iddia('SK - sisme model sayisiyla artiyor', 0, ihlal, 0); }
+  /* test kumesi buyudukce sisme MONOTON dusuyor */
+  { let ihlal = 0;
+    SK.Nler.forEach(N => { for (let i = 1; i < SK.nler.length; i++)
+      if (SK.sisme(SK.nler[i], N) > SK.sisme(SK.nler[i-1], N) + 1e-12) ihlal++; });
+    iddia('SK - sisme test kumesiyle dusuyor', 0, ihlal, 0); }
+  /* sisme hicbir zaman negatif degil */
+  { let ihlal = 0;
+    SK.nler.forEach(n => SK.Nler.forEach(N => {
+      if (SK.sisme(n, N) < -1e-9) ihlal++; }));
+    iddia('SK - sisme negatif olmuyor', 0, ihlal, 0); }
+
+  /* 2. adim - kazanan gercekten en iyi mi */
+  /* gercek fark yoksa TAM olarak 1/N · beraberlik hesabinin kontrolu */
+  { let enBuyuk = 0;
+    [2, 5, 20, 100].forEach(N =>
+      enBuyuk = Math.max(enBuyuk, Math.abs(SK.kazananDogru(1000, N, 0) - 1/N)));
+    iddia('SK - gercek fark yokken olasilik tam 1/N', 0, enBuyuk, 6); }
+  iddia('SK - N=20, 0.5 puan fark', 43.4, 100*SK.kazananDogru(1000, 20, 0.005), 1);
+  iddia('SK - N=20, 1.0 puan fark', 64.3, 100*SK.kazananDogru(1000, 20, 0.010), 1);
+  iddia('SK - N=20, 2.0 puan fark', 85.7, 100*SK.kazananDogru(1000, 20, 0.020), 1);
+  iddia('SK - N=20, 4.0 puan fark', 98.5, 100*SK.kazananDogru(1000, 20, 0.040), 1);
+  iddia('SK - N=5, 0.5 puan fark', 44.6, 100*SK.kazananDogru(1000, 5, 0.005), 1);
+  /* fark arttikca olasilik MONOTON artiyor */
+  { let ihlal = 0;
+    [5, 20, 100].forEach(N => { for (let i = 1; i < SK.deltalar.length; i++)
+      if (SK.kazananDogru(1000, N, SK.deltalar[i]) <
+          SK.kazananDogru(1000, N, SK.deltalar[i-1]) - 1e-12) ihlal++; });
+    iddia('SK - gercek fark arttikca kazanan dogrulasiyor', 0, ihlal, 0); }
+  /* standart hata kontrolu */
+  iddia('SK - n=1000, p=0.80 standart hata (puan)', 1.26,
+        100*Math.sqrt(0.8*0.2/1000), 2);
+  iddia('SK - n=2000, p=0.91 standart hata (puan)', 0.64,
+        100*Math.sqrt(0.91*0.09/2000), 2);
+
+  /* 3. adim - test kumesi buyutmenin karekoklu kazanci */
+  iddia('SK - N=100, n=500 sisme', 4.37, 100*SK.sisme(500, 100), 2);
+  iddia('SK - N=100, n=5000 sisme', 1.41, 100*SK.sisme(5000, 100), 2);
+  iddia('SK - 25 kat buyutme kac kat iyilestiriyor', 4.8,
+        SK.sisme(200, 100)/SK.sisme(5000, 100), 1);
+  /* karekok yasasi: sisme oranı ~ sqrt(n orani) */
+  iddia('SK - karekok beklentisi (25 kat -> 5 kat)', 5.0, Math.sqrt(25), 1);
+  iddia('SK - 5000 ornekte bile sisme sifirlanmiyor', 1,
+        SK.sisme(5000, 100) > 0.01 ? 1 : 0, 0);
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

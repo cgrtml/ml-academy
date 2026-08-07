@@ -9550,6 +9550,228 @@ VIZ.adillik = s => {
   }
 };
 
+
+/* ═══════════ SKOR TABLOSU YANILSAMASI ═══════════
+   Kazananin skoru neden sisirilmis olur. Binom dagilimi ve sira
+   istatistikleri TAM hesaplaniyor; hicbir yerde ornekleme yok. */
+const SK = {};
+SK.P = 0.80;                       /* gercek dogruluk */
+SK.Nler = [1, 2, 5, 20, 100, 500]; /* skor tablosundaki model sayisi */
+SK.nler = [200, 500, 1000, 5000];  /* test kumesi buyuklugu */
+const _skC = {};
+const _lg = [0];
+SK.logFak = k => { while (_lg.length <= k) _lg.push(_lg[_lg.length - 1] + Math.log(_lg.length));
+  return _lg[k]; };
+SK.binomPmf = (n, p, k) => {
+  if (k < 0 || k > n) return 0;
+  if (p <= 0) return k === 0 ? 1 : 0;
+  if (p >= 1) return k === n ? 1 : 0;
+  return Math.exp(SK.logFak(n) - SK.logFak(k) - SK.logFak(n - k)
+    + k*Math.log(p) + (n - k)*Math.log(1 - p));
+};
+SK.binomCdf = (n, p) => {
+  const key = 'c' + n + ':' + p;
+  if (_skC[key]) return _skC[key];
+  const F = new Array(n + 1); let s = 0;
+  for (let k = 0; k <= n; k++){ s += SK.binomPmf(n, p, k); F[k] = Math.min(1, s); }
+  return (_skC[key] = F);
+};
+/* N ozdes modelin en yuksek gozlenen dogrulugu · TAM beklenen deger
+   P(max <= k) = F(k)^N  →  P(max = k) = F(k)^N - F(k-1)^N */
+SK.enYuksek = (n, N, p) => {
+  const key = 'e' + n + ':' + N + ':' + p;
+  if (_skC[key] !== undefined) return _skC[key];
+  const F = SK.binomCdf(n, p === undefined ? SK.P : p);
+  let bek = 0, onceki = 0;
+  for (let k = 0; k <= n; k++){ const su = Math.pow(F[k], N);
+    bek += (k/n)*(su - onceki); onceki = su; }
+  return (_skC[key] = bek);
+};
+SK.sisme = (n, N) => SK.enYuksek(n, N) - SK.P;
+/* farkli gercek dogruluklu N model · gozlenen kazanan gercekten en iyi mi
+   p_i = P - i*delta (i = 0..N-1) · TAM hesap, beraberlikte esit pay */
+/* farkli gercek dogruluklu N model · gozlenen kazanan gercekten en iyi mi
+   p_i = P - i*delta (i = 0..N-1)
+   Beraberlik TAM hesaplaniyor: digerlerinden kac tanesinin tam olarak k
+   dogru yaptigini dinamik programlama ile buluyoruz; m beraberlik varsa
+   kazanma payi 1/(m+1). Kontrol: delta = 0 iken sonuc tam olarak 1/N. */
+SK.kazananDogru = (n, N, delta) => {
+  const key = 'k' + n + ':' + N + ':' + delta;
+  if (_skC[key] !== undefined) return _skC[key];
+  const ps = []; for (let i = 0; i < N; i++) ps.push(SK.P - i*delta);
+  const Fs = ps.map(p => SK.binomCdf(n, p));
+  /* onemli k araligi · ortalamanin etrafinda +-8 standart sapma */
+  const mu = n*ps[0], sd = Math.sqrt(n*ps[0]*(1 - ps[0]));
+  const k0 = Math.max(0, Math.floor(mu - 8*sd - 2));
+  const k1 = Math.min(n, Math.ceil(mu + 8*sd + 2));
+  let toplam = 0;
+  for (let k = k0; k <= k1; k++){
+    const pk = SK.binomPmf(n, ps[0], k);
+    if (pk < 1e-300) continue;
+    /* dagilim: digerlerinden tam olarak m tanesi k ya esit, kalani k dan kucuk */
+    let dp = [1];
+    for (let i = 1; i < N; i++){
+      const esit = SK.binomPmf(n, ps[i], k);
+      const kucuk = (k > 0 ? Fs[i][k - 1] : 0);
+      const yeni = new Array(dp.length + 1).fill(0);
+      for (let m = 0; m < dp.length; m++){
+        if (dp[m] === 0) continue;
+        yeni[m] += dp[m]*kucuk;
+        yeni[m + 1] += dp[m]*esit; }
+      dp = yeni; }
+    let pay = 0;
+    for (let m = 0; m < dp.length; m++) pay += dp[m]/(m + 1);
+    toplam += pk*pay; }
+  return (_skC[key] = toplam);
+};
+SK.deltalar = [0.000, 0.005, 0.010, 0.020, 0.040];
+
+
+VIZ.skorTablosu = s => {
+  clear();
+  const sahne = s.sahne || 'sisme';
+  const Ni = Math.max(0, Math.min(5, s.Ni === undefined ? 4 : Math.round(s.Ni)));
+  const N = SK.Nler[Ni];
+  const ni = Math.max(0, Math.min(3, s.ni === undefined ? 2 : Math.round(s.ni)));
+  const n = SK.nler[ni];
+  const di = Math.max(0, Math.min(4, s.di === undefined ? 1 : Math.round(s.di)));
+  const delta = SK.deltalar[di];
+  const kart = (x, y, wd, ad, deger, rnk, alt) => {
+    box(x, y, wd, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + wd/2, y + 28, K.mut, 15);
+    txt(deger, x + wd/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + wd/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'kazanan'){
+    baslikSerit('SKOR TABLOSU · KAZANAN GERÇEKTEN EN İYİ Mİ',
+      N + ' model, aralarında ' + (100*delta).toFixed(1) + ' puanlık gerçek fark. Test kümesi ' + n + ' örnek.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 4.35, 0, 1.05);
+    frame(P, 'komşu modeller arası gerçek fark', 'kazanan doğru mu',
+          [], [0, 0.25, 0.5, 0.75, 1]);
+    SK.deltalar.forEach((dv, i) =>
+      txt((100*dv).toFixed(1) + ' pu', P.sx(i), P.R.y + P.R.h + 28, K.mut, 15));
+    [[5, K.green], [20, K.blue], [100, K.orange]].forEach(([Nv, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = Nv === N ? 3.8 : 1.8;
+      cx.globalAlpha = Nv === N ? 1 : 0.45; cx.beginPath();
+      SK.deltalar.forEach((dv, i) => { const y = P.sy(SK.kazananDogru(n, Nv, dv));
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      if (Nv === N) SK.deltalar.forEach((dv, i) =>
+        dot(P.sx(i), P.sy(SK.kazananDogru(n, Nv, dv)), 5, renk));
+      cx.globalAlpha = 1; });
+    [[5, K.green], [20, K.blue], [100, K.orange]].forEach(([Nv, renk], i) => {
+      const yy = P.sy(1.0 - i*0.075);
+      cx.strokeStyle = renk; cx.lineWidth = Nv === N ? 3.8 : 1.8;
+      cx.beginPath(); cx.moveTo(P.R.x + P.R.w - 130, yy - 5);
+      cx.lineTo(P.R.x + P.R.w - 94, yy - 5); cx.stroke();
+      txt(Nv + ' model', P.R.x + P.R.w - 84, yy, renk, 15, 'left', Nv === N ? 700 : 400); });
+    const bx = 830;
+    kart(bx, 200, 260, 'MODEL SAYISI', String(N), K.blue);
+    kart(bx + 280, 200, 260, 'GERÇEK FARK', (100*delta).toFixed(1) + ' puan', K.purple);
+    kart(bx, 330, 260, 'KAZANAN DOĞRU MU', '%' + (100*SK.kazananDogru(n, N, delta)).toFixed(1),
+         SK.kazananDogru(n, N, delta) > 0.8 ? K.green : K.red);
+    kart(bx + 280, 330, 260, 'RASTGELE SEÇSEN', '%' + (100/N).toFixed(1), K.mut);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('BİRİNCİLİK BİR ÖLÇÜM DEĞİL', bx + 270, 494, K.mut, 18);
+    txt('Modeller arasında gerçek fark yoksa (0 puan)', bx + 18, 534, K.txt, 18, 'left');
+    txt('kazananın en iyi olma olasılığı tam olarak 1/N:', bx + 18, 562, K.txt, 18, 'left');
+    txt('%' + (100/N).toFixed(1) + '. Yani sıralama tamamen gürültü.', bx + 18, 590, K.txt, 18, 'left');
+    txt('0.5 puanlık gerçek farkla bile ' + N + ' model arasında', bx + 18, 630, K.orange, 18, 'left');
+    txt('kazananın haklı çıkma oranı %' +
+        (100*SK.kazananDogru(n, N, 0.005)).toFixed(1) + '.', bx + 18, 658, K.orange, 18, 'left');
+    txt('Birinci ile ikinci arasındaki fark ölçüm hatasından', bx + 18, 696, K.mut, 17, 'left');
+    txt('küçükse, sıralamanın bir anlamı yoktur.', bx + 18, 722, K.mut, 17, 'left');
+  }
+
+  else if (sahne === 'test'){
+    baslikSerit('SKOR TABLOSU · TEST KÜMESİNİ BÜYÜTMEK',
+      'Tüm modeller gerçekte %80.0. Şişme test kümesi büyüdükçe düşüyor ama kaybolmuyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 3.35, 0, 9);
+    frame(P, 'test kümesi büyüklüğü', 'şişme (yüzde puan)', [], [0, 2, 4, 6, 8]);
+    SK.nler.forEach((nv, i) => txt(String(nv), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    [[2, K.green], [20, K.blue], [100, K.orange], [500, K.red]].forEach(([Nv, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = Nv === N ? 3.8 : 1.8;
+      cx.globalAlpha = Nv === N ? 1 : 0.45; cx.beginPath();
+      SK.nler.forEach((nv, i) => { const y = P.sy(100*SK.sisme(nv, Nv));
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      if (Nv === N) SK.nler.forEach((nv, i) =>
+        dot(P.sx(i), P.sy(100*SK.sisme(nv, Nv)), 5, renk));
+      cx.globalAlpha = 1; });
+    [[2, K.green], [20, K.blue], [100, K.orange], [500, K.red]].forEach(([Nv, renk], i) => {
+      const yy = P.sy(8.6 - i*0.62);
+      cx.strokeStyle = renk; cx.lineWidth = Nv === N ? 3.8 : 1.8;
+      cx.beginPath(); cx.moveTo(P.R.x + P.R.w - 130, yy - 5);
+      cx.lineTo(P.R.x + P.R.w - 94, yy - 5); cx.stroke();
+      txt(Nv + ' model', P.R.x + P.R.w - 84, yy, renk, 15, 'left', Nv === N ? 700 : 400); });
+    const bx = 830;
+    kart(bx, 200, 260, 'MODEL SAYISI', String(N), K.blue);
+    kart(bx + 280, 200, 260, 'TEST KÜMESİ', String(n), K.purple);
+    kart(bx, 330, 260, 'ŞİŞME', (100*SK.sisme(n, N)).toFixed(2) + ' puan',
+         SK.sisme(n, N) > 0.02 ? K.red : K.green);
+    kart(bx + 280, 330, 260, '25 KAT BÜYÜTÜNCE',
+         (100*SK.sisme(5000, N)).toFixed(2) + ' puan', K.orange, '200 → 5000');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('BÜYÜK TEST KÜMESİ ÇÖZÜM AMA UCUZ DEĞİL', bx + 270, 494, K.mut, 16);
+    txt('Şişme kabaca 1/√n ile düşer. Test kümesini', bx + 18, 534, K.txt, 18, 'left');
+    txt('25 kat büyütmek şişmeyi ancak 5 kat düşürür.', bx + 18, 562, K.txt, 18, 'left');
+    txt(N + ' modelde: 200 örnekte ' + (100*SK.sisme(200, N)).toFixed(2) + ' puan,',
+        bx + 18, 602, K.orange, 18, 'left');
+    txt('5000 örnekte ' + (100*SK.sisme(5000, N)).toFixed(2) + ' puan. Sıfırlanmıyor.',
+        bx + 18, 630, K.orange, 18, 'left');
+    txt('Model sayısı ise şişmeyi büyütür ve skor tablosunda', bx + 18, 670, K.red, 18, 'left');
+    txt('model sayısını sen kontrol etmiyorsun.', bx + 18, 698, K.red, 18, 'left');
+  }
+
+  else {
+    baslikSerit('SKOR TABLOSU · KAZANANIN SKORU ŞİŞMİŞTİR',
+      'Bütün modeller gerçekte %80.0 doğru. Test kümesi ' + n + ' örnek. Hiçbiri diğerinden iyi değil.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 5.35, 79.5, 89);
+    frame(P, 'skor tablosundaki model sayısı', 'gözlenen skor', [], [80, 82, 84, 86, 88]);
+    SK.Nler.forEach((Nv, i) => txt(String(Nv), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    SK.nler.forEach((nv, gi) => {
+      const renk = [K.red, K.orange, K.blue, K.green][gi];
+      cx.strokeStyle = renk; cx.lineWidth = nv === n ? 3.8 : 1.8;
+      cx.globalAlpha = nv === n ? 1 : 0.45; cx.beginPath();
+      SK.Nler.forEach((Nv, i) => { const y = P.sy(100*SK.enYuksek(nv, Nv));
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      if (nv === n) SK.Nler.forEach((Nv, i) =>
+        dot(P.sx(i), P.sy(100*SK.enYuksek(nv, Nv)), 5, renk));
+      cx.globalAlpha = 1; });
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(100*SK.P));
+    cx.lineTo(P.R.x + P.R.w, P.sy(100*SK.P)); cx.stroke();
+    cx.setLineDash([]);
+    txt('gerçek doğruluk %80.0', P.R.x + 16, P.sy(100*SK.P) + 26, K.mut, 16, 'left');
+    SK.nler.forEach((nv, gi) => {
+      const yy = P.sy(88.6 - gi*0.62);
+      cx.strokeStyle = [K.red, K.orange, K.blue, K.green][gi];
+      cx.lineWidth = nv === n ? 3.8 : 1.8;
+      cx.beginPath(); cx.moveTo(P.R.x + 16, yy - 5); cx.lineTo(P.R.x + 52, yy - 5); cx.stroke();
+      txt(nv + ' örnek', P.R.x + 62, yy, [K.red, K.orange, K.blue, K.green][gi], 15,
+          'left', nv === n ? 700 : 400); });
+    const bx = 830;
+    kart(bx, 200, 260, 'MODEL SAYISI', String(N), K.blue);
+    kart(bx + 280, 200, 260, 'BİRİNCİNİN SKORU', '%' + (100*SK.enYuksek(n, N)).toFixed(2),
+         K.orange);
+    kart(bx, 330, 260, 'GERÇEK', '%' + (100*SK.P).toFixed(2), K.mut, 'hepsinde aynı');
+    kart(bx + 280, 330, 260, 'ŞİŞME', '+' + (100*SK.sisme(n, N)).toFixed(2) + ' puan',
+         SK.sisme(n, N) > 0.02 ? K.red : K.green);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('BİRİNCİ OLMAK BİR SEÇİM İŞLEMİDİR', bx + 270, 494, K.mut, 17);
+    txt('Bütün modeller aynı. Aralarından en yüksek skoru', bx + 18, 534, K.txt, 18, 'left');
+    txt('alanı seçmek, en şanslı ölçüm hatasını seçmektir.', bx + 18, 562, K.txt, 18, 'left');
+    txt(N + ' model ve ' + n + ' test örneğiyle birinci %' +
+        (100*SK.enYuksek(n, N)).toFixed(2) + ' görünüyor,', bx + 18, 602, K.red, 18, 'left');
+    txt('gerçek değer %80.00. Şişme ' + (100*SK.sisme(n, N)).toFixed(2) + ' puan.',
+        bx + 18, 630, K.red, 18, 'left');
+    txt('Bu bir hile değil; hiç kimse yanlış bir şey yapmadı.', bx + 18, 670, K.mut, 17, 'left');
+    txt('Sadece en yüksek sayı seçildi ve o sayı sapmalı.', bx + 18, 696, K.mut, 17, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

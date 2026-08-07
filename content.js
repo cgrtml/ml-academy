@@ -143,7 +143,7 @@ const ROTALAR = [
     {id:'adillik',        ad:'Modelin aynadaki yüzü: adillik ve şeffaflık',    sure:16, durum:'hazir'},
     {id:'automl',         ad:'AutoML: modelini seçen model',                   sure:14, durum:'planli'},
     {id:'aktif-ogrenme',  ad:'Aktif öğrenme: hangi örneği etiketleyelim',      sure:14, durum:'planli'},
-    {id:'leaderboard',    ad:'Yarışma yanılsaması: skor tablosuna ne kadar güvenilir',  sure:12, durum:'planli'},
+    {id:'leaderboard',    ad:'Yarışma yanılsaması: skor tablosuna ne kadar güvenilir',  sure:16, durum:'hazir'},
   ],
 },
 ];
@@ -11928,6 +11928,170 @@ DERSLER['adillik'] = {
       'sorgula; ve seçimini model kartında yaz.<br><br>' +
       'Grup ortalamalarının eşitlenmesi bireysel adaleti garanti etmez; ikisi ayrı ' +
       'gerekliliklerdir.',
+    xp:75,
+  },
+]};
+
+/* --------------- SKOR TABLOSU --------------- */
+DERSLER['leaderboard'] = {
+  ad:'Yarışma yanılsaması: skor tablosuna ne kadar güvenilir',
+  alt:'Skor tablosunun birincisi neredeyse her zaman göründüğünden kötüdür. Bu bir hile değil, seçme işleminin kendisinin yan etkisi.',
+  kaynaklar:[
+    {y:'Dwork, C. ve ark.', t:'2015', b:'The Reusable Holdout: Preserving Validity in Adaptive Data Analysis', n:'Science 349(6248)', u:'https://www.science.org/doi/10.1126/science.aaa9375'},
+    {y:'Recht, B. ve ark.', t:'2019', b:'Do ImageNet Classifiers Generalize to ImageNet?', n:'ICML 2019', u:'https://arxiv.org/abs/1902.10811'},
+    {y:'Blum, A. & Hardt, M.', t:'2015', b:'The Ladder: A Reliable Leaderboard for Machine Learning Competitions', n:'ICML 2015', u:'https://arxiv.org/abs/1502.04585'},
+    {y:'Demšar, J.', t:'2006', b:'Statistical Comparisons of Classifiers over Multiple Data Sets', n:'JMLR 7', u:'https://jmlr.org/papers/v7/demsar06a.html'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Kazananın skoru şişmiştir',
+    goal:'Hiç kimse hile yapmadan skorun neden yükseldiğini göreceksin.',
+    todo:'Model sayısını artır. Birincinin skoru nereye gidiyor?',
+    kind:'controls', viz:'skorTablosu', h:760,
+    controls:[
+      {k:'Ni', lb:'SKOR TABLOSUNDAKI MODEL SAYISI', min:0, max:5, step:1, val:4,
+       fmt:v => SK.Nler[Math.round(v)] + ' model'},
+      {k:'ni', lb:'TEST KUMESI', min:0, max:3, step:1, val:2,
+       fmt:v => SK.nler[Math.round(v)] + ' ornek'}],
+    state:{sahne:'sisme'},
+    derive:s => ({sis: SK.sisme(SK.nler[Math.round(s.ni)], SK.Nler[Math.round(s.Ni)])}),
+    live:s => [['MODEL', String(SK.Nler[Math.round(s.Ni)])],
+               ['TEST', String(SK.nler[Math.round(s.ni)])],
+               ['SISME', '+' + (100*s.sis).toFixed(2) + ' puan', K.red],
+               ['HEDEF', 'sisme > 5 puan']],
+    unlock:s => s.sis > 0.05,
+    unlockMsg:'Şişmeyi 5 puanın üstüne çıkaran birleşimi bul',
+    body:'<p>Düşünce deneyi: skor tablosundaki <b>bütün modeller gerçekte aynı</b>, hepsi ' +
+      '%80.0 doğrulukta. Hiçbiri diğerinden iyi değil. Test kümesi 1000 örnek.</p>' +
+      '<p>Her modelin gözlenen skoru binom dağılımından gelir ve tesadüfen bir miktar ' +
+      'yukarı ya da aşağı sapar. Sonra biz ne yapıyoruz? <b>En yüksek skoru seçiyoruz.</b></p>' +
+      '<p>En yüksek skoru seçmek, en şanslı ölçüm hatasını seçmektir. Sonuç (tam hesap, ' +
+      'sıra istatistiği): 100 modelle birinci <b>%83.11</b> görünüyor. Gerçek değer %80.00. ' +
+      '<b>3.11 puan</b> şişme.</p>' +
+      '<p>200 örneklik bir test kümesinde aynı durumda birinci <b>%86.79</b> görünüyor: ' +
+      '6.79 puan şişme.</p>' +
+      '<p>Burada kimse hile yapmadı, hiçbir model aşırı uydurulmadı, veri sızıntısı yok. ' +
+      'Şişmenin tek kaynağı <b>seçme işleminin kendisi</b>. Buna kazananın laneti denir ' +
+      've istatistikte çoktan seçmeli karşılaştırmaların bilinen yan etkisidir.</p>' +
+      '<p>Pratik sonuç: bir skor tablosunun tepesindeki sayı, o modelin gerçek başarımının ' +
+      '<b>yansız bir tahmini değildir</b>. Yukarı sapmalıdır ve sapma model sayısıyla büyür.</p>',
+    learned:'<b>Skor tablosunun birincisi yukarı sapmalıdır.</b><br><br>' +
+      'Hepsi gerçekte %80.0 olan modellerden 100 tanesi ve 1000 örneklik test kümesiyle ' +
+      'birinci %83.11 görünüyor. 200 örneklik test kümesinde %86.79.<br><br>' +
+      'Kaynak hile ya da aşırı uyum değil, <b>en yüksek skoru seçme işleminin kendisi</b>. ' +
+      'Kazananın laneti, çok sayıda karşılaştırmanın kaçınılmaz yan etkisidir.',
+    xp:50,
+  },
+  {
+    t:'Kazanan gerçekten en iyi mi',
+    goal:'Sıralamanın ne zaman bilgi taşıdığını ölçeceksin.',
+    todo:'Gerçek farkı sıfıra indir. Kazananın haklı çıkma olasılığı ne oluyor?',
+    kind:'controls', viz:'skorTablosu', h:760,
+    controls:[
+      {k:'Ni', lb:'MODEL SAYISI', min:2, max:4, step:1, val:3,
+       fmt:v => SK.Nler[Math.round(v)] + ' model'},
+      {k:'di', lb:'KOMSULAR ARASI GERCEK FARK', min:0, max:4, step:1, val:1,
+       fmt:v => (100*SK.deltalar[Math.round(v)]).toFixed(1) + ' puan'}],
+    state:{sahne:'kazanan', ni:2},
+    derive:s => ({d: SK.kazananDogru(1000, SK.Nler[Math.round(s.Ni)],
+                                     SK.deltalar[Math.round(s.di)])}),
+    live:s => [['MODEL', String(SK.Nler[Math.round(s.Ni)])],
+               ['GERCEK FARK', (100*SK.deltalar[Math.round(s.di)]).toFixed(1) + ' puan'],
+               ['KAZANAN DOGRU', '%' + (100*s.d).toFixed(1), s.d > 0.8 ? K.green : K.red],
+               ['HEDEF', 'dogru < %25']],
+    unlock:s => s.d < 0.25,
+    unlockMsg:'Sıralamanın bilgi taşımadığı durumu bul',
+    body:'<p>Şimdi modeller gerçekten farklı olsun: en iyisi %80.0, ikincisi bir miktar ' +
+      'düşük, üçüncüsü daha düşük diye gidiyor. Soru şu: gözlenen birinci, gerçekten ' +
+      'en iyi model mi?</p>' +
+      '<p>Gerçek fark sıfırsa cevap tam olarak <b>1/N</b>. 20 modelle %5.0, yani rastgele ' +
+      'seçmekten farksız. Bu bir kontrol: hesap doğru çalışıyor.</p>' +
+      '<p>0.5 puanlık gerçek farkla, 20 model ve 1000 test örneğiyle kazananın haklı ' +
+      'çıkma olasılığı <b>%43.4</b>. Yani skor tablosunun birincisi, yarıdan fazla ihtimalle ' +
+      'en iyi model değil.</p>' +
+      '<p>1 puanlık farkla %64.3, 2 puanlık farkla %85.7, 4 puanlık farkla %98.5.</p>' +
+      '<p>Kural açık: <b>gerçek fark ölçüm gürültüsünden küçükse sıralama bilgi taşımaz.</b> ' +
+      '1000 örneklik bir test kümesinde %80 civarındaki bir doğruluğun standart hatası ' +
+      'yaklaşık 1.3 puandır. Birinci ile ikinci arasındaki fark bunun altındaysa, ' +
+      'sıralama esasen yazı turadır.</p>' +
+      '<p>Bu yüzden ciddi karşılaştırmalarda tek bir skor değil, güven aralığı ya da ' +
+      'istatistiksel test raporlanır (Demšar, 2006).</p>',
+    learned:'<b>Gerçek fark ölçüm gürültüsünden küçükse sıralama bilgi taşımaz.</b><br><br>' +
+      'Gerçek fark yokken kazananın en iyi olma olasılığı tam olarak 1/N. 20 modelde ' +
+      '0.5 puanlık farkla %43.4, 1 puanla %64.3, 2 puanla %85.7.<br><br>' +
+      '1000 örneklik test kümesinde %80 doğruluğun standart hatası yaklaşık 1.3 puandır. ' +
+      'Birinci ile ikinci arasındaki fark bunun altındaysa sıralama yazı turadır.',
+    xp:50,
+  },
+  {
+    t:'Test kümesini büyütmek',
+    goal:'En bilinen çözümün ne kadar işe yaradığını ölçeceksin.',
+    todo:'Test kümesini büyüt. Şişme sıfırlanıyor mu?',
+    kind:'controls', viz:'skorTablosu', h:760,
+    controls:[{k:'Ni', lb:'MODEL SAYISI', min:1, max:5, step:1, val:4,
+      fmt:v => SK.Nler[Math.round(v)] + ' model'}],
+    state:{sahne:'test', ni:2},
+    body:'<p>Şişmenin kaynağı ölçüm gürültüsü olduğuna göre, test kümesini büyütmek ' +
+      'gürültüyü azaltmalı. Azaltıyor da, ama beklediğinizden yavaş.</p>' +
+      '<p>100 modelde: 200 örnekte şişme <b>6.79</b> puan, 500 örnekte 4.37, ' +
+      '1000 örnekte 3.11, 5000 örnekte <b>1.41</b>.</p>' +
+      '<p>Test kümesini <b>25 kat</b> büyütmek şişmeyi ancak <b>4.8 kat</b> düşürdü. ' +
+      'Sebep basit: binom standart hatası 1/√n ile azalır, yani şişme de kabaca öyle. ' +
+      'Kareköklü bir iyileşme pahalıdır.</p>' +
+      '<p>Ve sıfırlanmıyor. 5000 örneklik bir test kümesinde bile 100 model arasından ' +
+      'seçilen birincinin skoru 1.41 puan şişik.</p>' +
+      '<p>İkinci değişken daha da can sıkıcı: <b>model sayısını sen kontrol etmiyorsun.</b> ' +
+      'Herkese açık bir skor tablosunda kaç kişinin kaç deneme yaptığını bilemezsin ve ' +
+      'şişme onunla birlikte büyür.</p>' +
+      '<p>Asıl tehlike bir adım ötede. Skor tablosuna tekrar tekrar gönderim yapıp her ' +
+      'seferinde sonuca göre model değiştirmek, test kümesini yavaş yavaş bir eğitim ' +
+      'kümesine dönüştürür. Dwork ve arkadaşlarının (2015) uyarlanabilir veri analizi ' +
+      'üzerine çalışması tam bu sorunu ele alıyor ve çözüm olarak gürültü eklenmiş, ' +
+      'sınırlı erişimli bir doğrulama mekanizması öneriyor.</p>',
+    learned:'<b>Test kümesini büyütmek şişmeyi 1/√n ile düşürür: kareköklü ve pahalı.</b><br><br>' +
+      '100 modelde şişme 200 örnekte 6.79 puan, 5000 örnekte 1.41. Yani 25 kat büyütme ' +
+      '4.8 kat iyileşme.<br><br>' +
+      'Üstelik sıfırlanmıyor ve model sayısını kontrol edemezsin. Aynı test kümesine ' +
+      'tekrar tekrar gönderim yapmak ise onu yavaşça bir eğitim kümesine dönüştürür.',
+    xp:50,
+  },
+  {
+    t:'Skor tablosu nasıl okunur',
+    goal:'Ölçümleri bir okuma alışkanlığına çevireceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'controls', viz:'skorTablosu', h:760,
+    controls:[{k:'Ni', lb:'MODEL SAYISI', min:0, max:5, step:1, val:4,
+      fmt:v => SK.Nler[Math.round(v)] + ' model'}],
+    state:{sahne:'sisme', ni:1},
+    body:'<p>Üç ölçümden çıkan okuma kuralları:</p>' +
+      '<p><b>1. Birinciyi değil, aralığı okuyun.</b> Tek bir skor yansız değildir. ' +
+      'Güven aralığı verilmemişse kabaca hesaplayın: n örnekte p doğruluğun standart ' +
+      'hatası √(p(1−p)/n) dir. 1000 örnekte %80 için bu 1.3 puandır.</p>' +
+      '<p><b>2. Kaç modelin yarıştığını sorun.</b> Şişme model sayısıyla büyür. ' +
+      'Yüzlerce gönderimin olduğu bir tabloda ilk sıralar birbirinden ayırt edilemez.</p>' +
+      '<p><b>3. Kaç kez gönderim yapıldığını sorun.</b> Aynı test kümesine tekrarlı ' +
+      'gönderim, tabloyu yavaşça bir eğitim eğrisine çevirir.</p>' +
+      '<p><b>4. Yeni bir test kümesi en güçlü kanıttır.</b> Recht ve arkadaşları (2019) ' +
+      'ImageNet için sıfırdan yeni bir test kümesi topladı ve bütün modellerin doğruluğu ' +
+      'belirgin şekilde düştü. Ama sıralamanın büyük ölçüde korunduğunu da buldular: ' +
+      'yani mutlak sayılar şişikti, göreli sıralama daha dayanıklıydı.</p>' +
+      '<p>Bu son bulgu önemli bir denge kuruyor. Skor tabloları değersiz değil; ' +
+      '<b>mutlak sayıları abartıyor ama uzak sıralamalar hakkında hâlâ bilgi taşıyor.</b> ' +
+      'Güvenilmez olan, birbirine yakın ilk sıraların birbiriyle karşılaştırılmasıdır.</p>',
+    quiz:{ q:'Bir kıyaslama tablosunda birinci model %91.4, ikinci %91.1, üçüncü %90.9 alıyor. Test kümesi 2000 örnek ve tabloda 60 gönderim var. Birinci modeli seçmeli misiniz?',
+      opts:[
+        {t:'Bu üç modeli ayırt edilemez saymalı, seçimi başka ölçütlere (maliyet, gecikme, lisans) bırakmalısınız', why:'Doğru. 2000 örnekte %91 doğruluğun standart hatası yaklaşık 0.64 puan; aradaki 0.3 ve 0.5 puanlık farklar bunun içinde kalıyor. Üstelik 60 gönderim var, yani derste ölçtüğün şişme de işliyor: birinciliğin kendisi bir seçim yan etkisi taşıyor. Bu durumda sıralama karar için yeterli bilgi vermiyor ve seçimi ölçülebilir başka kriterlere bırakmak doğru olan.'},
+        {t:'Evet, en yüksek skor en iyi modeldir', why:'Derste ölçtüğün tam olarak bunun neden yanlış olduğuydu. Gerçek fark ölçüm gürültüsünden küçükken kazananın en iyi olma olasılığı hızla düşüyordu; gerçek fark hiç yoksa tam olarak 1/N oluyordu.'},
+        {t:'Hayır, ikinciyi seçmelisiniz çünkü birincinin skoru şişiktir', why:'Şişme gerçek ama ikinciye kaymak onu düzeltmez: ikincinin skoru da aynı seçim sürecinden geçti ve o da şişiktir. Doğru hamle sıralamayı düzeltmek değil, bu üçünü ayırt edilemez saymaktır.'},
+        {t:'Test kümesini 10 kat büyütüp tekrar bakmalısınız', why:'Yardımcı olur ama derste ölçtüğün gibi iyileşme kareköklüdür: 10 kat büyütme gürültüyü ancak 3.2 kat düşürür ve 0.3 puanlık farkı ayırt etmeye çoğu zaman yetmez. Ayrıca genelde test kümesi sizin kontrolünüzde değildir.'},
+      ], correct:0 },
+    learned:'<b>Skor tablosu okuma kuralları.</b><br><br>' +
+      'Birinciyi değil aralığı okuyun (n örnekte p için standart hata √(p(1−p)/n)); kaç ' +
+      'modelin yarıştığını ve kaç kez gönderim yapıldığını sorun.<br><br>' +
+      'Tablolar değersiz değil: Recht ve arkadaşları (2019) yeni bir ImageNet test kümesiyle ' +
+      'mutlak doğrulukların düştüğünü ama sıralamanın büyük ölçüde korunduğunu buldu. ' +
+      'Güvenilmez olan birbirine yakın ilk sıraların karşılaştırılmasıdır.',
     xp:75,
   },
 ]};
