@@ -2617,3 +2617,170 @@ DERSLER_EN['ilkleme'] = {
   },
   ],
 };
+
+DERSLER_EN['patlayan'] = {
+  ad:'Exploding gradients: the problem is the tail, not the average',
+  alt:'The gradient norm is not a number, it is a distribution. Most batches are fine; a handful of them wreck training in a single step.',
+  kaynaklar:[{"y":"Pascanu, R., Mikolov, T. & Bengio, Y.","t":"2013","b":"On the Difficulty of Training Recurrent Neural Networks","n":"ICML 2013"},
+             {"y":"Bengio, Y., Simard, P. & Frasconi, P.","t":"1994","b":"Learning Long-Term Dependencies with Gradient Descent is Difficult","n":"IEEE Trans. Neural Networks 5(2)"},
+             {"y":"Zhang, J. et al.","t":"2020","b":"Why Gradient Clipping Accelerates Training","n":"ICLR 2020"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'The gradient norm is not a single number',
+    goal:'You will see how much the gradient can vary from batch to batch in the same network.',
+    todo:'Raise the recurrent scale. How high does the tail ratio go?',
+    kind:'controls', viz:'patlayanGradyan', h:770, xp:25, state:{sahne:'dagilim', akt:'relu'},
+    body:'<p>In the initialisation lesson we looked at what happens to the signal inside a single network. Now we give the same network <b>300 different random sequences</b> and measure the gradient norm for each one.</p>' +
+         '<p>The network is a recurrent structure 40 steps long: the same matrix is applied 40 times. Exactly the structure you will meet in the RNN lessons.</p>' +
+         '<p>You would expect to see a single number. What we see is a <b>distribution</b>, and an extremely skewed one. With ReLU at c = 1.5:</p>' +
+         '<p>median <b>15.4</b> &nbsp;·&nbsp; 99th percentile <b>5.46 × 10⁷</b> &nbsp;·&nbsp; maximum <b>3.42 × 10⁸</b></p>' +
+         '<p>The largest batch produces a gradient <b>22 million times</b> the median. Look at the histogram: almost all the mass is piled up on the left with a long thin tail on the right.</p>' +
+         '<p>Why this happens: the gradient is the product of 40 matrix multiplications. The distribution of products does not look like the distribution of sums, it spreads out on a log scale. A few high gain steps landing on top of each other compound the result.</p>' +
+         '<p>The activation matters too. With tanh at the same setting the tail ratio stays at <b>22.9</b>, because tanh limits itself by saturating. ReLU has no limit.</p>',
+    learned:'<b>The gradient norm is not a number, it is a heavy tailed distribution.</b><br><br>With ReLU at c = 1.5: median <b>15.4</b>, 99th percentile <b>5.46 × 10⁷</b>, maximum <b>3.42 × 10⁸</b>. Tail ratio <b>2.22 × 10⁷</b>.<br><br>The cause is the compounding of products. tanh cuts the tail by itself because it saturates (ratio 22.9); ReLU does not.',
+    controls:[{k:'c', lb:'RECURRENT SCALE c', min:0.8, max:2, step:0.1, val:0.8}],
+  },
+  {
+    t:'Why lowering the learning rate does not fix it',
+    goal:'You will see the price of tolerating spiky batches.',
+    todo:'Change the learning rate. When does the unclipped run stay reproducible?',
+    kind:'controls', viz:'patlayanGradyan', h:770, xp:50, state:{sahne:'egitim', c:1.6, klip:0},
+    body:'<p>If spiky gradients wreck training, the first fix that comes to mind is to shrink the step.</p>' +
+         '<p>We train a small 20 step RNN: it has to remember the sum of the first two elements of the sequence by the end. Recurrent scale c = 1.6, 100 steps.</p>' +
+         '<p><b>lr = 0.01:</b> final loss <b>0.0459</b>. The largest gradient norm is 18.9. Training proceeds calmly.</p>' +
+         '<p><b>lr = 0.02:</b> this is where things change and the most interesting measurement in the lesson appears.</p>' +
+         '<p>Look at the last box on the cards. We nudge <b>a single weight of the network by 10⁻¹²</b> and run training again from the start. That is a change in the twelfth decimal place of a number.</p>' +
+         '<p><b>At lr = 0.01 the result changes by 0.00%.</b> The same number, to the same decimal place.<br>' +
+         '<b>At lr = 0.02 the result changes by hundreds of percent.</b></p>' +
+         '<p>The exact percentage you see on this page varies even with the browser you use. That is not a bug, it is the measured phenomenon itself.</p>' +
+         '<p>So at lr = 0.02 the run is <b>chaotic</b>: one gradient spike throws the trajectory so far that the outcome depends on rounding in the last decimal place. Writing down the final loss of that run as a number is meaningless, because running the same code on another machine gives you a different one.</p>' +
+         '<p>Lowering the learning rate fixes this, but at a price: you have shrunk the step for <b>every batch</b>. You are slowing all the rest down because of the one percent that misbehaves.</p>',
+    learned:'<b>Unstable training does not just give bad results, it gives irreproducible ones.</b><br><br>Nudging a single weight by 10⁻¹² changes the final loss by <b>0.00%</b> at lr = 0.01 and by <b>hundreds of times more</b> at lr = 0.02.<br><br>Lowering the learning rate restores stability but makes every batch pay for it. The right tool has to target the <b>tail</b>, not the step.',
+    controls:[{k:'lr', lb:'LEARNING RATE', min:0, max:1, step:1, val:1}],
+  },
+  {
+    t:'Clipping: cutting only the tail',
+    goal:'You will measure how gradient clipping improves both the loss and the reproducibility.',
+    todo:'Turn clipping on. What happens to the loss and to the sensitivity?',
+    kind:'controls', viz:'patlayanGradyan', h:770, xp:50, state:{sahne:'egitim', c:1.6, lr:0.02},
+    body:'<p>Gradient clipping is one rule: if the norm of the whole gradient exceeds a threshold, <b>rescale</b> the gradient so the norm lands exactly on the threshold. The direction does not change, only the length.</p>' +
+         '<p style="text-align:center;font-size:1.1em">if ‖g‖ > τ then &nbsp; g &larr; g · τ / ‖g‖</p>' +
+         '<p>Steps below the threshold pass through <b>untouched</b>. Typical batches keep taking full steps.</p>' +
+         '<p>The same setup, lr = 0.02, τ = 3. Two things improve at once:</p>' +
+         '<p><b>The loss:</b> the clipped final loss is <b>0.0172</b>. That is <b>2.7 times</b> better than the <b>0.0459</b> obtained with lr = 0.01. So clipping gives you more than lowering the learning rate did.</p>' +
+         '<p><b>Reproducibility:</b> the 10⁻¹² sensitivity falls from hundreds of percent to <b>0.08%</b>, at least a <b>thousandfold</b> reduction. A chaotic run turns into a stable one.</p>' +
+         '<p><b>40</b> of the 100 steps were clipped, so 60 passed untouched. Clipping works like a speed limit here: it does not interfere with normal driving, it only prevents skidding.</p>' +
+         '<p>The second result is usually discussed less but is very valuable in practice: a clipped training run <b>gives the same result when you run it again</b>. You can debug it, compare against it, and measure whether a change actually helped.</p>',
+    learned:'<b>Clipping preserves the direction of the gradient and only cuts its length.</b><br><br>At lr = 0.02 the clipped final loss is <b>0.0172</b>: <b>2.7 times</b> better than the 0.0459 obtained at lr = 0.01.<br><br>And the 10⁻¹² sensitivity falls from hundreds of percent to <b>0.08%</b>. Clipping does not just lower the loss, it makes the run <b>reproducible</b>.',
+    controls:[{k:'klip', lb:'GRADIENT CLIPPING', min:0, max:1, step:1, val:0}],
+  },
+  {
+    t:'Clipping is not free',
+    goal:'You will measure a case where clipping does harm.',
+    todo:'Answer the question.',
+    kind:'static', viz:'patlayanGradyan', h:770, xp:50, state:{sahne:'egitim', c:1.2, lr:0.05, klip:1},
+    body:'<p>Now let us lower the recurrent scale to <b>c = 1.2</b> and set the learning rate to 0.05. The same clipping, the same threshold.</p>' +
+         '<p><b>unclipped: 0.0300</b> &nbsp;·&nbsp; <b>clipped: 0.0766</b></p>' +
+         '<p>This time clipping <b>did harm</b>, by a factor of <b>2.6</b>.</p>' +
+         '<p>The reason is on the cards: at this setting the unclipped run\'s 10⁻¹² sensitivity is <b>0.00%</b>. There is no chaos here and no spike to trim. Clipping still touches <b>16</b> of the 100 steps, and on every step it touches it throws away the magnitude information in the gradient.</p>' +
+         '<p>The norm of a gradient is information: it says "the slope here is steep". In stable training, throwing that information away is pure loss.</p>' +
+         '<p>This is why choosing the threshold has to rest on measurement. The practical rule: record the gradient norms over a few hundred steps and put the threshold clearly above the typical norm. If no step is ever clipped, clipping is not active anyway; if most steps are clipped, the method has turned into a fixed size step.</p>' +
+         '<p>And there is something clipping <b>does not</b> solve: the tail itself. What produces the tail is the repeated multiplication. Skip connections, LSTM gates and normalisation layers shrink the tail <b>at its source</b>. Clipping treats the symptom, not the cause.</p>',
+    learned:'<b>Badly tuned clipping does not help, it hurts.</b><br><br>At c = 1.2 and lr = 0.05 the unclipped loss is <b>0.0300</b> and the clipped one is <b>0.0766</b>: <b>2.6 times</b> worse. At this setting the unclipped run\'s sensitivity is already <b>0.00%</b>, so there is no chaos to trim.<br><br>The threshold has to be chosen by measurement. And clipping treats the <b>symptom</b>: what shrinks the repeated multiplication behind the tail is skip connections and gates.',
+    quiz:{
+      q:'You are training a language model. You logged the gradient norms: median 0.8, 95th percentile 1.4, but every 200 steps or so a value around 60 arrives and the loss jumps after those steps. Where do you set the threshold?',
+      opts:[
+        {t:'Around 1.5: almost all typical steps pass untouched and only the spikes are cut',
+         why:'Correct. With the 95th percentile at 1.4, a threshold of 1.5 affects roughly one step in twenty, so typical training does not change at all, while a value like 60 is scaled down by a factor of 40 and made harmless. That is the pattern you measured in this lesson: with a clipping rate of 40/100 both the loss fell and the run became reproducible.'},
+        {t:'At 0.5: the lower the safer',
+         why:'With a median of 0.8, a threshold of 0.5 would clip more than half the steps. As you measured in this lesson, clipping when there is nothing to trim does harm: at the c = 1.2 setting the loss went from 0.0300 to 0.0766 with only 16 steps clipped.'},
+        {t:'At 50: cut only the truly extreme values',
+         why:'Bringing values around 60 down to 50 still leaves them at 60 times the median, so the jump continues. The threshold has to be chosen relative to the typical scale, not the extreme.'},
+        {t:'Instead of clipping I would lower the learning rate by a factor of 40',
+         why:'That makes every step pay for the tail. As you measured in this lesson, clipping gave a better result than lowering the learning rate: 0.0172 against 0.0459.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['havuzlama'] = {
+  ad:'Pooling: resistance to shifts and the price of position',
+  alt:'Pooling shrinks the size and buys resistance to small shifts. The resistance only extends as far as the window, and what you pay for it is positional information.',
+  kaynaklar:[{"y":"LeCun, Y. et al.","t":"1998","b":"Gradient-Based Learning Applied to Document Recognition","n":"Proceedings of the IEEE 86(11)"},
+             {"y":"Springenberg, J. T. et al.","t":"2015","b":"Striving for Simplicity: The All Convolutional Net","n":"ICLR 2015 Workshop"},
+             {"y":"Zhang, R.","t":"2019","b":"Making Convolutional Networks Shift-Invariant Again","n":"ICML 2019"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'Reducing a window to a single number',
+    goal:'You will see what pooling does and what it makes cheaper.',
+    todo:'Grow the window. How far does the value count fall?',
+    kind:'controls', viz:'havuzlama', h:770, xp:25, state:{sahne:'boyut', tur:'maks'},
+    body:'<p>In the convolution lesson you saw the kernel travelling over the image. The output is still 32 × 32, that is <b>1024</b> values. If every layer of the network has to carry that many values it is both slow and unnecessary.</p>' +
+         '<p>Pooling is a simple summarisation rule: cut the output into k × k windows and take <b>a single number</b> from each. The largest one for max pooling, the mean for average pooling.</p>' +
+         '<p>With a 2×2 window, 1024 values fall to <b>256</b>, a factor of <b>4</b>. With a 4×4 window, to <b>64</b> values, a factor of <b>16</b>. The reduction is always the area of the window.</p>' +
+         '<p>A critical detail: pooling has <b>no parameters at all</b>. It contains no weight to learn, it is just a fixed summarisation rule. Which is why it shrinks the computation without growing the model.</p>' +
+         '<p>But saving compute is not the real reason. What we measure in the next step is a property pooling adds to the representation.</p>',
+    learned:'<b>Pooling is a parameter free summarisation rule that reduces a k×k window to a single number.</b><br><br>32×32 = 1024 values falls to <b>256</b> with 2×2 pooling and to <b>64</b> with 4×4. The reduction is always <b>the area of the window</b>.<br><br>Because it contains no weight to learn, it shrinks the computation without growing the model.',
+    controls:[{k:'pi', lb:'POOLING WINDOW', min:0, max:5, step:1, val:0},
+              {k:'tur', lb:'TYPE', min:0, max:1, step:1, val:0}],
+  },
+  {
+    t:'Resistance to small shifts',
+    goal:'You will measure, as a number, the property pooling really adds.',
+    todo:'Grow the window. At what point does the change under a 1 pixel shift go to zero?',
+    kind:'controls', viz:'havuzlama', h:770, xp:50, state:{sahne:'kayma', tur:'maks', kaydir:1},
+    body:'<p>We shift the same image <b>1 pixel to the right</b> and recompute the representation. Then we measure the relative difference between the two representations. 0 means "nothing changed".</p>' +
+         '<p><b>No pooling (1×1):</b> <b>1.0000</b>. The representation changed completely. Because the edge map is sparse, a one pixel shift dislodges every activation.</p>' +
+         '<p><b>2×2 pooling:</b> <b>0.7774</b><br>' +
+         '<b>4×4 pooling:</b> <b>0.5684</b><br>' +
+         '<b>8×8 pooling:</b> <b>0.0000</b></p>' +
+         '<p>With 8×8 pooling the representation <b>does not change at all</b>. The reason is in the definition: max pooling asks "what was the strongest response in this window". As long as the feature moves within the window, the answer stays the same.</p>' +
+         '<p>This is exactly what you want in classification. A cat is still a cat if its position in the photograph shifts by a few pixels.</p>' +
+         '<p>Let us also test a common belief: "max pooling is more invariant than average pooling". The measurement <b>does not support it</b>. At 2×2 max is 0.7774 and average is 0.8647 (max ahead), but at 4×4 max is 0.5684 and average is <b>0.5097</b> (average ahead). Neither always wins.</p>',
+    learned:'<b>Pooling buys resistance to small shifts, and that is measurable.</b><br><br>Relative change under a 1 pixel shift: no pooling <b>1.0000</b>, 2×2 <b>0.7774</b>, 4×4 <b>0.5684</b>, 8×8 <b>0.0000</b>.<br><br>It is not true that max pooling is always more invariant than average: max is ahead at 2×2 and average is ahead at 4×4.',
+    controls:[{k:'pi', lb:'POOLING WINDOW', min:0, max:5, step:1, val:0},
+              {k:'tur', lb:'TYPE', min:0, max:1, step:1, val:0}],
+  },
+  {
+    t:'The resistance only extends as far as the window',
+    goal:'You will measure where the invariance ends.',
+    todo:'Increase the shift. At which pixel does the 8×8 window\'s resistance break?',
+    kind:'controls', viz:'havuzlama', h:770, xp:50, state:{sahne:'kayma', tur:'maks', pi:3},
+    body:'<p>8×8 pooling was completely unaffected by a 1 pixel shift. What about 2 pixels? 4 pixels?</p>' +
+         '<p>The measurement:</p>' +
+         '<p>0 px <b>0.0000</b> &nbsp;·&nbsp; 1 px <b>0.0000</b> &nbsp;·&nbsp; 2 px <b>0.0000</b> &nbsp;·&nbsp; 3 px <b>0.2875</b> &nbsp;·&nbsp; 4 px <b>0.7846</b> &nbsp;·&nbsp; 8 px <b>0.9976</b></p>' +
+         '<p>The resistance is <b>complete</b> up to 2 pixels and then degrades quickly. At 8 pixels the representation is almost entirely different.</p>' +
+         '<p>Why up to 2 rather than the full 8: the pooling windows sit on a fixed grid. When a feature shifts it may stay inside its window, but it may also <b>cross into the neighbouring one</b>. The moment it crosses, the invariance ends. So the guarantee is not the window size, it depends on where the feature sits inside the window.</p>' +
+         '<p>This point went unnoticed in the field for a long time. The textbook claim that networks with pooling are "shift invariant" is not exactly true in practice: the invariance is <b>partial</b> and <b>grid dependent</b>.</p>',
+    learned:'<b>Pooling\'s invariance is partial and depends on the grid.</b><br><br>Change under 8×8 max pooling: <b>0.0000</b> at 0, 1 and 2 pixels, <b>0.2875</b> at 3, <b>0.7846</b> at 4, <b>0.9976</b> at 8.<br><br>The guarantee is not the window size, because the invariance ends the moment the feature crosses into the neighbouring window.',
+    controls:[{k:'kaydir', lb:'SHIFT', min:0, max:8, step:1, val:1}],
+  },
+  {
+    t:'The price: forgetting where it was',
+    goal:'You will see why invariance and positional information are two sides of the same coin.',
+    todo:'Answer the question.',
+    kind:'static', viz:'havuzlama', h:770, xp:50, state:{sahne:'konum', tur:'maks'},
+    body:'<p>Growing the window increased the resistance. So let us take the biggest one: 16×16.</p>' +
+         '<p>With 16×16 pooling the change under a 1 pixel shift is <b>0.0000</b>. Perfect. What about 4 pixels? <b>0.0000</b>. 8 pixels? <b>0.0000</b>.</p>' +
+         '<p>This is no longer robustness. The representation says nothing about <b>where</b> the image content is. The same object in two different positions turns into two indistinguishable representations.</p>' +
+         '<p>The tradeoff here is unavoidable: <b>shift invariance and positional sensitivity are two sides of the same coin.</b> Gaining one is losing the other.</p>' +
+         '<p>Which is why the task decides. In <b>classification</b> the answer to "is there a cat" does not depend on position, so aggressive pooling helps. In <b>detection and segmentation</b> the question is where it is, so the same pooling makes the model useless.</p>' +
+         '<p>In modern architectures pooling has largely given way to <b>strided convolution</b>. Strided convolution also shrinks the size, but it <b>learns</b> how to summarise: instead of pooling\'s fixed rule it uses a weighted combination. In detection networks the shrunk maps are later upsampled and merged, so both wide context and position are preserved.</p>',
+    learned:'<b>Shift invariance and positional sensitivity are two sides of the same coin.</b><br><br>With 16×16 pooling, shifts of 1, 4 and 8 pixels all give <b>0.0000</b>: the representation no longer carries position at all.<br><br>In classification that is a gain, in detection and segmentation it is a loss. Modern architectures hand the shrinking over to <b>strided convolution</b>, because that learns how to summarise.',
+    quiz:{
+      q:'You are detecting ships in satellite imagery. Your architecture contains four 2×2 max pooling layers, and the model answers "is there a ship" well but gives rough coordinates. What do you do?',
+      opts:[
+        {t:'I reduce the number of pooling layers, hand the shrinking to strided convolution, and upsample and merge the reduced maps',
+         why:'Correct. Four 2×2 pooling layers mean a 16 fold reduction in total, and as you measured in this lesson, with large windows the positional information disappears completely: with 16×16 pooling, a 1 pixel and a 4 pixel shift gave the same representation, both 0.0000. Strided convolution still shrinks the size but learns how to summarise, and upsampling brings back the lost resolution. The symptom is exactly the tradeoff this lesson measured.'},
+        {t:'I use larger pooling windows, the model will be more robust',
+         why:'That grows the problem in exactly the wrong direction. As you measured, the larger the window the less the model can distinguish position, and at 16×16 it goes to zero entirely. Coordinates that are already rough get rougher.'},
+        {t:'I train the model for longer',
+         why:'The positional information is destroyed in the architecture, not in the training. Pooling is a fixed summarisation rule and no amount of training time brings back what it threw away.'},
+        {t:'I switch to average pooling, it keeps more information',
+         why:'Average pooling keeps the total energy inside the window but it also throws away the position within the window. As you measured in this lesson, at 8×8 and above both methods give 0.0000 under a 1 pixel shift: the difference is in the window size, not the type.'},
+      ], correct:0 },
+  },
+  ],
+};
