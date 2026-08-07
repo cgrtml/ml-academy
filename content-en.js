@@ -591,3 +591,206 @@ DERSLER_EN['nasil-ogrenir'] = {
   },
   ],
 };
+
+DERSLER_EN['ezberleme'] = {
+  ad:'Memorisation and generalisation',
+  alt:'The more complex you make the model, the lower the training error always goes. But the real error? Fail to measure it and you will be fooled.',
+  kaynaklar:[{"y":"Geman, Bienenstock, Doursat","t":"1992","b":"Neural Networks and the Bias/Variance Dilemma","n":"Neural Computation, 4(1)"},
+             {"y":"Hastie, Tibshirani, Friedman","t":"2009","b":"The Elements of Statistical Learning, Chapter 7","n":"Springer","u":"https://hastie.su.domains/ElemStatLearn/"}],
+  rota:0,
+  adimlar:[
+  {
+    t:'New data, a hidden truth',
+    goal:'In this lesson we <b>split the data in two</b> from the start. You will see with your own eyes why that is necessary.',
+    todo:'Look at the plot, then continue.',
+    kind:'phases', viz:'polinom', xp:20,
+    learned:'<b>Splitting the data in two is not a formality, it is the only honest way to measure.</b> We hid 4 of the 14 points; the model will never see them, and the exam happens exactly there.<br><br>That was the question at the end of the previous lesson: how do we catch a model that memorises? The answer: by asking it about data it has not seen.',
+    phases:[
+      {state:{derece:1, solo:true},
+       body:'<p>There are 14 points. Some <b>real</b> relationship produced them, but we do not know it, we only see noisy measurements.</p>' +
+            '<p>Right now we have fitted a <b>straight line</b> (degree 1). It catches the general trend of the points but misses the bends.</p>'},
+      {state:{derece:1, solo:true, gercek:true},
+       body:'<p>The dashed grey line is the <b>true relationship</b>. In real life you never get to see this; I am only showing it here so the lesson works.</p>' +
+            '<p>You can see the straight line roughly follows the truth but cannot catch the S bend. This is <b>underfitting</b>.</p>' +
+            '<p>The fix looks simple: make the model more flexible. But how flexible?</p>'},
+      {state:{derece:1, solo:true, test:true, gercek:true},
+       body:'<p>Now the critical move: we <b>hide 4 of the 14 points</b> (the orange rings). The model will <b>never see them</b>.</p>' +
+            '<p>The model learns from the 10 blue points, then sits an exam on the 4 orange ones. This is the answer to "how do we catch a model that memorises?" from the previous lesson: <b>the train/test split</b>.</p>'},
+    ],
+  },
+  {
+    t:'Let us make the model flexible',
+    goal:'Polynomial degree is the model\'s flexibility. You will watch what happens as you raise it.',
+    todo:'Raise the degree slowly from 1 to 9. Watch the shape of the curve and the <b>training error</b>.',
+    kind:'controls', viz:'polinom', xp:25, state:{solo:true, gercek:true},
+    body:'<p><b>Degree 1</b> is a straight line, 2 parameters. <b>Degree 9</b> is a curve full of bends, 10 parameters.</p>' +
+         '<p>As the degree goes up the curve <b>sticks closer</b> to the blue points. The training error keeps dropping: 0.2557 → 0.0389 → … → <b>0.0000</b>.</p>' +
+         '<p>At degree 9 there are 10 parameters and 10 training points, so the curve can pass <b>exactly</b> through every one of them. Error zero.</p>' +
+         '<p style="color:#facc15"><b>Training error is zero. We found the perfect model, did we not?</b></p>',
+    learned:'Training error <b>always</b> falls as model complexity rises. That is why training error is <b>not</b> a measure of quality; it only measures how well the model can stick to the data.',
+    controls:[{k:'derece', lb:'POLYNOMIAL DEGREE', min:1, max:9, step:1, val:1}],
+  },
+  {
+    t:'Now look at the 4 hidden points',
+    goal:'You will test the same models on data they have <b>never seen</b>. The result will surprise you.',
+    todo:'Raise the degree from 1 to 9 again, but this time watch the <b>orange</b> curve (the test error).',
+    kind:'controls', viz:'polinom', xp:30, state:{test:true},
+    body:'<p>The plot on the right has two curves. <b style="color:#4cc4ff">Blue is the training error</b> (falling, always falling). <b style="color:#fb923c">Orange is the test error</b>.</p>' +
+         '<p>The orange curve <b>bottoms out at degree 3</b> (0.2046), then <b>starts climbing</b>. At degree 9 the test error is <b>2.11</b>, more than ten times the bottom.</p>' +
+         '<p>So: the model whose training error is 0.0000 is the <b>worst</b> model in the real world.</p>' +
+         '<p>Look at the plot. The degree 9 curve swings wildly between the points. It has learned the <b>noise</b>, not the true relationship (the dashed grey line).</p>',
+    learned:'<b>Overfitting:</b> the model mistakes the noise for the rule. Flawless in training, a disaster in reality. The only way to catch it is to measure on data the model has not seen.',
+    controls:[{k:'derece', lb:'POLYNOMIAL DEGREE', min:1, max:9, step:1, val:1}],
+  },
+  {
+    t:'The sweet spot and the U curve',
+    goal:'You will learn to read the most recognisable plot in machine learning: the <b>bias-variance tradeoff</b>.',
+    todo:'Set the degree to 3 and compare the two errors. Then answer the question.',
+    kind:'controls', viz:'polinom', xp:40, state:{test:true, gercek:true},
+    body:'<p>The orange curve is shaped like a <b>U</b>. That U shows the most basic tradeoff in machine learning:</p>' +
+         '<p><b>The left side, high bias:</b> the model is too simple and cannot capture even the real structure. Both training and test error are high.</p>' +
+         '<p><b>The right side, high variance:</b> the model is too flexible and latches onto the noise. Training error is zero, test error hits the ceiling.</p>' +
+         '<p><b>The bottom (degree 3):</b> the balance between the two. For this data the best model is here.</p>' +
+         '<p><b>An important warning:</b> we picked the bottom by looking at the test set. Do that often enough and you will <i>overfit the test set too</i>. This is why real work uses <b>three</b> parts: training (learn), validation (choose), test (only at the very end, once).</p>',
+    learned:'<b>As model complexity rises, training error always falls while test error falls and then climbs.</b> The bottom of that U is the place you are looking for.<br><br>And never forget this sentence: <b>"100% on the training set" is not a boast, it is a warning.</b>',
+    controls:[{k:'derece', lb:'POLYNOMIAL DEGREE', min:1, max:9, step:1, val:3}],
+    quiz:{
+      q:'A friend tells you "my model is 100% accurate on the training set". What should your first question be?',
+      opts:[
+        {t:'"Great! Which architecture did you use?"',
+         why:'No. 100% training accuracy is <b>not</b> a sign of success, it is a warning sign. That is exactly what you saw in this lesson.'},
+        {t:'"What is it on the test set?"',
+         why:'Correct, and the only right first question. Training accuracy is free; any sufficiently flexible model can push it to 100%. The only meaningful number is the one on data the model has never seen.'},
+        {t:'"How many epochs did you train for?"',
+         why:'A useful detail, but it skips the real question.'},
+        {t:'"How many parameters does it have?"',
+         why:'Related but indirect. The parameter count is a hint; the test error is proof.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['siniflandirma'] = {
+  ad:'Classification and the decision boundary',
+  alt:'So far we predicted numbers. Now we predict categories, and the geometry of that is completely different.',
+  kaynaklar:[{"y":"Bishop, C. M.","t":"2006","b":"Pattern Recognition and Machine Learning, Chapter 4","n":"Springer"}],
+  rota:0,
+  adimlar:[
+  {
+    t:'A category, not a number',
+    goal:'You will see that the difference between regression and classification is not just the "type of output".',
+    todo:'Rotate and shift the boundary with the sliders. Get the error <b>below 5</b>.',
+    kind:'controls', viz:'sinir', h:760, xp:35,
+    body:'<p><b>Regression:</b> "what score will this student get?" The output is a number, with infinitely many possibilities.<br><b>Classification:</b> "is this transaction fraudulent?" The output is a label, with countably many possibilities.</p>' +
+         '<p>But the real difference is in the geometry. In regression we looked for a line that <b>fits</b> the data, passing through the middle of the points. In classification we look for a line that <b>separates</b> the data, passing between the points.</p>' +
+         '<p>The yellow line is the <b>decision boundary</b>. One side is "class A", the other is "class B". The points with red rings are the ones the model gets wrong.</p>' +
+         '<p>Notice that even with the perfect angle a few errors remain. That is because the classes <b>overlap</b>, and in the real world they almost always do. Expecting a flawless separation is the wrong expectation.</p>',
+    learned:'<b>Classification means cutting up the space.</b> The model gives a label based on which side of the decision boundary a point falls. Logistic regression draws a straight boundary; trees draw a staircase of vertical and horizontal cuts; neural networks draw whatever curve they like.',
+    controls:[{k:'aci', lb:'ANGLE OF THE BOUNDARY', min:0, max:180, step:1, val:20},
+              {k:'kaydir', lb:'SHIFT', min:-4, max:4, step:0.1, val:-2.4}],
+  },
+  {
+    t:'Distance from the boundary is confidence',
+    goal:'You will understand why models produce a <b>probability</b> and not just a label, and why that matters so much.',
+    todo:'Move the boundary so that some points sit right on top of it. What should the model say about those?',
+    kind:'controls', viz:'sinir', h:760, xp:45,
+    body:'<p>A point sitting <b>right on</b> the boundary and a point sitting <b>far away</b> from it are not the same thing. Both get the label "class B", but one is by a hair and the other is obvious.</p>' +
+         '<p>This is why real models produce two things:</p>' +
+         '<p>· a <b>score</b>, how far from the boundary and on which side (from −∞ to +∞)<br>' +
+         '· a <b>probability</b>, that score pushed through a sigmoid (between 0 and 1)</p>' +
+         '<p>And then somebody picks a <b>threshold</b>: "if the probability is above 0.5, call it class B".</p>' +
+         '<p style="color:#facc15"><b>Here is the critical part:</b> 0.5 is not a sacred number. <i>You</i> pick it, and your choice changes the outcome completely. The next lesson is about that.</p>',
+    learned:'<b>The model produces a probability, the threshold makes the decision, and you pick the threshold.</b><br><br>Choosing a threshold is not a technical decision, it is a <b>cost</b> decision: which hurts more, a false alarm or a miss?',
+    controls:[{k:'aci', lb:'ANGLE OF THE BOUNDARY', min:0, max:180, step:1, val:45},
+              {k:'kaydir', lb:'SHIFT', min:-4, max:4, step:0.1, val:0}],
+    quiz:{
+      q:'A cancer screening model says "sick" with probability 0.5%. Keep the threshold at 0.5 and you declare the patient healthy. What should you do?',
+      opts:[
+        {t:'0.5 is the standard, I leave it as it is',
+         why:'No. 0.5 is only a default. A missed cancer and an unnecessary follow up test do not carry the same weight.'},
+        {t:'I lower the threshold a lot; the cost of a miss is far heavier than the cost of a false alarm',
+         why:'Correct. A threshold is a <b>business decision</b>, not a statistical one. In cancer screening the threshold can go down to 0.05: you get a lot of false alarms but you miss nobody. A false alarm means one more test; a miss means a life.'},
+        {t:'I train a better model',
+         why:'Useful of course, but the threshold problem is separate and exists for every model. Even with the best model you still have to pick the threshold yourself.'},
+        {t:'I ignore the probability and look only at the label',
+         why:'That throws away the most valuable piece of information. The probability tells you whether the model is sure.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['metrikler'] = {
+  ad:'Why accuracy lies to you',
+  alt:'A model that reports 97% accuracy may not have caught a single fraud. After this lesson you will never look at accuracy on its own again.',
+  kaynaklar:[{"y":"Fawcett, T.","t":"2006","b":"An Introduction to ROC Analysis","n":"Pattern Recognition Letters, 27(8)"},
+             {"y":"Saito, T. & Rehmsmeier, M.","t":"2015","b":"The Precision-Recall Plot Is More Informative than the ROC Plot on Imbalanced Datasets","n":"PLOS ONE, 10(3)","u":"https://doi.org/10.1371/journal.pone.0118432"}],
+  rota:0,
+  adimlar:[
+  {
+    t:'The model that does nothing and scores 97%',
+    goal:'You will see, in numbers, why accuracy is meaningless on imbalanced data.',
+    todo:'Drag the threshold all the way right, to <b>0.99</b>. Watch the accuracy and the number of missed frauds at the same time.',
+    kind:'controls', viz:'metrik', h:800, xp:40,
+    body:'<p>1000 bank transactions. 30 of them are fraud, that is <b>3%</b>. In real life the rate is usually even lower.</p>' +
+         '<p>Pull the threshold to 0.99 and the model is effectively saying "none of these is fraud". And:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(248,113,113,.1);padding:12px 16px;border-radius:9px;border:1px solid rgba(248,113,113,.35)">accuracy = 97.0%<br>frauds caught = <b>0</b><br>bank\'s loss = <b>all of it</b></p>' +
+         '<p>You could show this model in a presentation as "97% accuracy" and nobody would object. <b>Even though it is completely useless.</b></p>' +
+         '<p>The reason is simple: the data is imbalanced. When 97% of the classes are "normal", calling everything normal gives you 97% accuracy. In this situation accuracy is measuring the <b>distribution of the data</b>, not the model.</p>',
+    learned:'<b>On imbalanced data, accuracy measures the base rate, not the model.</b> If 97% of the classes sit in one category, 97% accuracy carries zero information. When you see an accuracy number, the first question is: <i>what is the class distribution?</i>',
+    controls:[{k:'esik', lb:'DECISION THRESHOLD', min:0.02, max:0.99, step:0.01, val:0.5}],
+  },
+  {
+    t:'Two questions, two metrics',
+    goal:'You will see precision and recall, and the unavoidable trade between them, with your own hand.',
+    todo:'Lower the threshold slowly from <b>0.70 to 0.30</b>. Notice that the two bars move in opposite directions.',
+    kind:'controls', viz:'metrik', h:800, xp:55,
+    body:'<p>Accuracy asked a single question. Instead we need to ask <b>two</b>:</p>' +
+         '<p><b style="color:#22d3a0">PRECISION:</b> "of the alarms I raised, how many were really fraud?"<br>If it is low, you are blocking your customers for nothing.</p>' +
+         '<p><b style="color:#fb923c">RECALL:</b> "of the real frauds, how many did I catch?"<br>If it is low, money is walking out the door.</p>' +
+         '<p>What you will see as you move the slider: <b>they do not rise together.</b> That is not a design flaw, it is a mathematical necessity.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">threshold 0.70 → precision 100%, recall 40%  ·  <b>18 frauds got through</b><br>threshold 0.50 → precision  52%, recall 73%  ·  8 got through, 20 false alarms<br>threshold 0.30 → precision  15%, recall 100% ·  none got through, <b>173 innocent people blocked</b></p>' +
+         '<p>And notice: <b>accuracy peaks at 0.70</b> (98.2%), which is exactly where 18 frauds get through. Accuracy is steering you towards precisely the wrong decision.</p>' +
+         '<p><b>F1</b> is the harmonic mean of the two. It collapses as soon as either one approaches zero, which is why it is used when you have to reduce everything to a single number.</p>',
+    learned:'<b>Precision and recall work against each other; raising one lowers the other.</b><br><br>Which one you prioritise depends on <b>which mistake is more expensive</b>:<br>· Spam filter → precision (losing a legitimate email)<br>· Cancer screening → recall (missing a patient)<br>· Fraud → the monetary balance between the two',
+    controls:[{k:'esik', lb:'DECISION THRESHOLD', min:0.02, max:0.99, step:0.01, val:0.7}],
+    quiz:{
+      q:'You are building an email spam filter. Which metric do you prioritise?',
+      opts:[
+        {t:'Recall, so that no spam gets through',
+         why:'Dangerous. Push recall and the threshold drops, and <b>legitimate emails land in the spam folder</b>. For a user, seeing one spam message costs far less than missing a job offer.'},
+        {t:'Precision, so that what I call spam really is spam',
+         why:'Correct. In a spam filter the cost of a false positive is very high: the user loses an important email and stops trusting the system. A few spam messages slipping into the inbox is acceptable. In cancer screening the opposite holds, and there recall comes first.'},
+        {t:'Accuracy, overall hit rate is what matters',
+         why:'No, and you just saw why. If the spam rate is 5%, a filter that says "none of it is spam" scores 95% accuracy.'},
+        {t:'They are all equally important',
+         why:'No. The choice of metric comes out of the <b>asymmetry of cost</b>: which mistake is more expensive.'},
+      ], correct:1 },
+  },
+  {
+    t:'ROC and AUC: looking past the threshold',
+    goal:'You will learn to measure a model\'s real discriminating power without being tied to a single threshold.',
+    todo:'Sweep the threshold across its whole range and watch the orange dot walk along the ROC curve at the bottom right.',
+    kind:'controls', viz:'metrik', h:800, xp:50,
+    body:'<p>Every metric so far depended on <b>one threshold</b>. Change the threshold and they all change. So how good is the model itself, independently of the threshold?</p>' +
+         '<p>The <b>ROC curve</b> answers that: it sweeps the threshold from 1 down to 0 and plots the pair (false alarm rate, catch rate) at every point. The orange dot is your current threshold.</p>' +
+         '<p><b>AUC</b> is the area under that curve.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">AUC = 0.5  → a coin flip (the dashed line)<br>AUC = 0.974 → our model<br>AUC = 1.0  → perfect separation</p>' +
+         '<p>AUC has a neat interpretation: <b>pick a random fraud and a random normal transaction, and it is the probability that the model gives the fraud the higher score.</b> Ours is 97.4%.</p>' +
+         '<p><b>But be careful:</b> AUC can be too optimistic on imbalanced data. With 30 positives against 970 negatives the false alarm rate grows slowly and the curve inflates. This is why on imbalanced problems the <b>PR curve</b> (precision against recall) gives a more honest picture.</p>',
+    learned:'<b>ROC and AUC are a threshold free measure of discrimination</b>, but because they reduce everything to one number they hide the region you will actually operate in. On imbalanced data the PR curve is more honest.<br><br>And a small difference between two AUC values is not proof of superiority <b>until it has been tested statistically</b>.',
+    controls:[{k:'esik', lb:'DECISION THRESHOLD', min:0.02, max:0.99, step:0.01, val:0.5}],
+    quiz:{
+      q:'You are comparing two models: A has an AUC of 0.91, B has 0.89. Which one do you pick?',
+      opts:[
+        {t:'A, the higher AUC is better',
+         why:'Too fast. AUC is an average over all thresholds. In the threshold region you will <b>actually work in</b>, B may well be better, for instance in the very low false alarm region.'},
+        {t:'I look at how they perform in the threshold region I will work in, and I also test whether the difference is significant',
+         why:'Correct, for two separate reasons. <b>One:</b> AUC squashes the whole curve into a single number; if your business constraint is "keep the false alarm rate under 1%", only that region matters. <b>Two:</b> the gap between 0.91 and 0.89 may be noise, and the 5×2cv F-test you will meet in the last lesson of Track 0 exists for exactly this.'},
+        {t:'I build an ensemble that averages the two',
+         why:'That sometimes works, but it skips the question; you still do not know which one is actually better.'},
+        {t:'B, it is more likely to be the simpler one',
+         why:'There is no such relationship between AUC and complexity.'},
+      ], correct:1 },
+  },
+  ],
+};
