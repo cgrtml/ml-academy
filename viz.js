@@ -702,7 +702,9 @@ VIZ.boyutLaneti = s => {
   txt('boyut = ' + d, P.R.x + P.R.w - 14, P.R.y + 28, K.yellow, 26, 'right');
 
   /* sol alt: kontrast oranı eğrisi */
-  const Q = plot(rect(100, 545, 620, 125), 0, 100, 0, 20);
+  /* 545 + 125 = 670'ten sonra frame() eksen etiketlerini +28 ve +58'e çiziyordu,
+     yani 728'e: 700px tuvalin dışına. Alt grafik yukarı alındı. */
+  const Q = plot(rect(100, 518, 620, 104), 0, 100, 0, 20);
   frame(Q, 'boyut', '(uzak−yakın)/yakın', [0, 25, 50, 75, 100], [0, 10, 20]);
   cx.strokeStyle = K.pink; cx.lineWidth = 3;
   cx.beginPath();
@@ -4201,8 +4203,15 @@ VIZ.patlayanGradyan = s => {
       RR.iz.forEach((k2, i) => { const y = P.sy(Math.max(-1.6, Math.min(1.2, Math.log10(Math.max(1e-3, k2)))));
         i ? cx.lineTo(P.sx(i * 10), y) : cx.moveTo(P.sx(i * 10), y); });
       cx.stroke(); cx.globalAlpha = 1; });
-    txt('klipsiz', P.R.x + P.R.w - 14, P.sy(Math.log10(R0.son)) - 14, K.red, 18, 'right');
-    txt('klipli τ = 3', P.R.x + P.R.w - 14, P.sy(Math.max(-1.55, Math.log10(R1.son))) - 16, K.green, 18, 'right');
+    /* Klipsiz koşu patladığında log10(son) grafiğin çok üstüne çıkıyor ve etiket
+       tuvalin dışında kalıyordu. Eğri zaten [-1.6, 1.2] aralığına kırpılıyor,
+       etiket de aynı aralıkta durmalı. */
+    const etY = v => P.sy(Math.min(1.12, Math.max(-1.52, Math.log10(Math.max(1e-3, v)))));
+    /* İki koşu aynı yerde bittiğinde etiketler üst üste biniyordu, ayrılıyorlar. */
+    let y0e = etY(R0.son) - 14, y1e = etY(R1.son) - 16;
+    if (Math.abs(y0e - y1e) < 26){ const o = (y0e + y1e) / 2; y0e = o - 14; y1e = o + 14; }
+    txt('klipsiz', P.R.x + P.R.w - 14, y0e, K.red, 18, 'right');
+    txt('klipli τ = 3', P.R.x + P.R.w - 14, y1e, K.green, 18, 'right');
     const bx = 830;
     const H0 = PG.hassasiyet(c, lr, 0, A), H1 = PG.hassasiyet(c, lr, 3, A);
     kart(bx, 200, 260, 'ÖĞRENME ORANI', lr.toString(), K.blue, 'tekrarlı ölçek c = ' + c.toFixed(1));
@@ -11244,10 +11253,13 @@ VIZ.kayipHarita = s => {
     if (s.gradyan){
       const [gw,gb] = grad(s.w,s.b), n = Math.hypot(gw,gb)||1, L = 115;
       const x0 = P.sx(s.w), y0 = P.sy(s.b);
+      /* Ok ucu kenara yaklaşınca ortalanmış etiket tuvalin dışına taşıyordu. */
+      const etX = (x, s2) => Math.max(s2.length*18*0.31 + 8,
+                             Math.min(cvs.width - s2.length*18*0.31 - 8, x));
       if (s.gradyan !== 'ters'){ arw(x0,y0,x0+gw/n*L,y0-gb/n*L,K.red,5);
-        txt('∇L yokuş YUKARI', x0+gw/n*L, y0-gb/n*L-18, K.red, 18); }
+        txt('∇L yokuş YUKARI', etX(x0+gw/n*L,'∇L yokuş YUKARI'), y0-gb/n*L-18, K.red, 18); }
       arw(x0,y0,x0-gw/n*L,y0+gb/n*L,K.green,5);
-      txt('−∇L gideceğimiz yön', x0-gw/n*L, y0+gb/n*L+30, K.green, 18);
+      txt('−∇L gideceğimiz yön', etX(x0-gw/n*L,'−∇L gideceğimiz yön'), y0+gb/n*L+30, K.green, 18);
     }
     dot(P.sx(s.w),P.sy(s.b),14,K.yellow); dot(P.sx(s.w),P.sy(s.b),14,'#0b1119',null,3);
   }
@@ -11547,7 +11559,15 @@ function baslikSerit(ust, alt, cipler){
   }
 }
 /* alt durum yazısı */
-function durum(s, renk){ txt(s, 750, cvs.height-28, renk || K.orange, 28); }
+/* Alt durum yazısı sabit 28 punto çiziliyordu, uzun cümlelerde tuvalin iki
+   yanından birden taşıyordu. Monospace olduğu için genişlik karakter sayısından
+   güvenilir hesaplanıyor; sığmıyorsa punto kademeli düşüyor. */
+function durum(s, renk){
+  const enGenis = cvs.width - 80;
+  let sz = 28;
+  while (sz > 16 && String(s).length * sz * 0.6 > enGenis) sz -= 1;
+  txt(s, cvs.width/2, cvs.height-28, renk || K.orange, sz);
+}
 
 /* ═══════════════ SIRALAMA, 3B kutular ═══════════════ */
 VIZ.sirala = s => {
@@ -11942,7 +11962,9 @@ VIZ.agEgitim = s => {
     const c = NN_VERI.Y[i] === 0 ? K.pink : K.blue;
     dot(P.sx(p[0]),P.sy(p[1]),6.5,c); dot(P.sx(p[0]),P.sy(p[1]),6.5,'#0b1119',null,1.6);
   });
-  txt('KARAR SINIRI', P.R.x+P.R.w/2, P.R.y+P.R.h+62, K.mut, 19);
+  /* Eskiden x ekseni etiketiyle aynı bantta, 4px arayla çiziliyordu ve üst üste
+     biniyordu. Grafiğin üstüne, ağ şemasının katman etiketleriyle aynı hizaya alındı. */
+  txt('KARAR SINIRI', P.R.x+P.R.w/2, 176, K.mut, 19);
 
   /* ── ağ şeması, bağlantı kalınlığı = |ağırlık| ── */
   const nx = [700, 900, 1100, 1300], ny0 = 200, dy = 74;
@@ -11960,11 +11982,14 @@ VIZ.agEgitim = s => {
     disk(x, y, 16, l===0 ? '#4cc4ff' : (l===3 ? '#22d3a0' : '#a78bfa'), {parla:l===3});
   }));
   ['girdi','gizli 1','gizli 2','çıktı'].forEach((t,l) => txt(t, nx[l], 176, K.mut, 17));
-  txt('AĞIRLIKLAR  ·  yeşil + · kırmızı −  ·  kalınlık = büyüklük', 1000, P.R.y+P.R.h+62, K.mut, 18);
+  txt('AĞIRLIKLAR  ·  yeşil + · kırmızı −  ·  kalınlık = büyüklük', 1000, 700, K.mut, 18);
 
   /* ── kayıp eğrisi ── */
   if (s.tarih){
-    const R2 = plot(rect(700,560,600,90), 0, s.tarih.length-1, 0, Math.max(...s.tarih)*1.05);
+    /* İlk karede tarih tek elemanlı, o zaman x aralığı 0-0 ve y tavanı 0 oluyordu;
+       plot() sıfıra bölüp bütün koordinatları NaN yapıyordu. */
+    const R2 = plot(rect(700,560,600,90), 0, Math.max(1, s.tarih.length-1),
+                    0, Math.max(1e-6, Math.max(...s.tarih)*1.05));
     cx.strokeStyle = K.orange; cx.lineWidth = 3; cx.beginPath();
     s.tarih.forEach((v,i) => i ? cx.lineTo(R2.sx(i),R2.sy(v)) : cx.moveTo(R2.sx(i),R2.sy(v)));
     cx.stroke();
@@ -12366,9 +12391,11 @@ VIZ.sizinti = s => {
     box(x0, y+14, bw*kor, 34, renk+'cc', null);
     txt(kor.toFixed(2), x0+bw+16, y+38, renk, 19, 'left');
     if (faz >= 1 && kor > 0.9 && !ifsa) txt('◄ şüpheli', x0+bw+80, y+38, K.yellow, 18, 'left');
+    /* Uzun hali tuvalin sağından 151px taşıyordu ve kesiliyordu. Kilit kelime
+       "SONRA", ayrıntı zaten alttaki açıklama satırında. */
     if (ifsa) txt('◄ SIZINTI, ' + (ad === 'manuel_inceleme'
-        ? 'sadece dolandırıcılık ŞÜPHESİ sonrası doluyor'
-        : 'olay gerçekleştikten SONRA yazılıyor'), x0+bw+80, y+38, K.red, 17, 'left');
+        ? 'ŞÜPHEDEN SONRA doluyor'
+        : 'OLAYDAN SONRA yazılıyor'), x0+bw+80, y+38, K.red, 17, 'left');
     txt(ac, x0+bw+16, y+58, '#4a5a6d', 15, 'left');
   });
   if (faz >= 3){
@@ -13877,7 +13904,9 @@ VIZ.gomme = s => {
      ['KATEGORİ İSABETİ','%'+(o.isabet*100).toFixed(0), K.green]]);
   const xs = nokta.map(p=>p.x), ys = nokta.map(p=>p.y);
   const pad = 0.12;
-  const P = plot(rect(110,200,760,480),
+  /* 480 yükseklikte eksen etiketi 738'e düşüyor ve 760px tuvalde alt yazının
+     üstüne biniyordu. */
+  const P = plot(rect(110,200,760,440),
     Math.min(...xs)-pad, Math.max(...xs)+pad, Math.min(...ys)-pad, Math.max(...ys)+pad);
   frame(P,'PC1','PC2',[],[]);
   const secP = nokta.find(p => p.w === sec);
@@ -13888,14 +13917,47 @@ VIZ.gomme = s => {
       cx.beginPath(); cx.moveTo(P.sx(secP.x),P.sy(secP.y)); cx.lineTo(P.sx(p.x),P.sy(p.y)); cx.stroke();
     }
   });
+  /* Etiketler noktanın 18px üstüne sabit çiziliyordu; yakın duran kelimeler
+     (kedi/at, çocuk/öğretmen, İstanbul/Bursa) üst üste biniyordu. Artık her
+     etiket sırayla boş bir yuvaya yerleştiriliyor. Seçili kelime önce
+     yerleşiyor ki en okunaklı yeri o alsın. */
+  const yerlesim = [];
+  const carpisir = (a,b) => !(a.x1 < b.x0 || b.x1 < a.x0 || a.y1 < b.y0 || b.y1 < a.y0);
+  const etiketY = new Map();
+  const sirali = nokta.slice().sort((a,b) => (b.w === sec) - (a.w === sec));
+  sirali.forEach(p => {
+    const secili = p.w === sec, sz = secili ? 19 : 15;
+    const gen = p.w.length * sz * 0.62, X = P.sx(p.x), Y0 = P.sy(p.y);
+    const dys = secili ? [-28, -46, 34, -64] : [-18, -34, 26, -50, 42, -66];
+    const dxs = [0, gen*0.62, -gen*0.62, gen*1.15, -gen*1.15];
+    let kutu = null;
+    for (const dy of dys){
+      for (const dx of dxs){
+        const Y = Y0 + dy, Xc = X + dx;
+        const k = { x0:Xc-gen/2, x1:Xc+gen/2, y0:Y-sz*0.8, y1:Y+sz*0.25, x:Xc, y:Y };
+        if (k.y0 > P.R.y - 6 && k.y1 < P.R.y + P.R.h + 6 &&
+            k.x0 > P.R.x - 30 && k.x1 < P.R.x + P.R.w + 30 &&
+            !yerlesim.some(v => carpisir(k,v))){ kutu = k; break; }
+      }
+      if (kutu) break;
+    }
+    if (!kutu){ const Y = Y0 - 18;
+      kutu = { x0:X-gen/2, x1:X+gen/2, y0:Y-sz*0.8, y1:Y+sz*0.25, x:X, y:Y }; }
+    yerlesim.push(kutu); etiketY.set(p.w, kutu);
+  });
   nokta.forEach(p => {
     const secili = p.w === sec;
     dot(P.sx(p.x),P.sy(p.y), secili?13:8, KAT_RENK[p.kat]);
     dot(P.sx(p.x),P.sy(p.y), secili?13:8, '#0b1119', null, 1.8);
     if (secili) dot(P.sx(p.x),P.sy(p.y), 21, null, K.yellow, 3);
-    txt(p.w, P.sx(p.x), P.sy(p.y)-18, secili?K.yellow:K.mut, secili?19:15);
+    const e = etiketY.get(p.w);
+    if (Math.abs(e.x - P.sx(p.x)) > 4 || Math.abs(e.y - (P.sy(p.y)-18)) > 22){
+      cx.strokeStyle = KAT_RENK[p.kat]+'66'; cx.lineWidth = 1;
+      cx.beginPath(); cx.moveTo(P.sx(p.x), P.sy(p.y)); cx.lineTo(e.x, e.y+4); cx.stroke();
+    }
+    txt(p.w, e.x, e.y, secili?K.yellow:K.mut, secili?19:15);
   });
-  txt('12 BOYUTTAN 2 BOYUTA (PCA)', P.R.x+P.R.w/2, P.R.y+P.R.h+52, K.mut, 19);
+  txt('12 BOYUTTAN 2 BOYUTA (PCA)', P.R.x+P.R.w/2, 186, K.mut, 19);
   Object.entries(KAT_RENK).forEach(([k,c],i) =>
     txt('● '+k, P.R.x+P.R.w-16, P.R.y+28+i*24, c, 17, 'right'));
   /* benzerlik listesi */

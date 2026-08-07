@@ -1268,7 +1268,7 @@ DERSLER['attention'] = {
     t:'Problem: “o” kim?',
     goal:'Dil modellerinin çözmek zorunda olduğu temel problemi göreceksin ve neden basit bir sıralı okumanın yetmediğini.',
     todo:'Cümleyi oku, sonra soruyu cevapla.',
-    kind:'static', viz:'attention', h:800,
+    kind:'static', viz:'attention', h:880,
     state:{tokenlar:['kedi','masaya','çıktı','çünkü','o','meraklıydı'], q:4, faz:0},
     body:'<p>Cümle: <b>“kedi masaya çıktı çünkü o meraklıydı”</b></p>' +
       '<p><b>“o”</b> kim? Sen anında biliyorsun: kedi. Ama bunu nereden bildin?</p>' +
@@ -1295,7 +1295,7 @@ DERSLER['attention'] = {
     t:'Q, K, V, üç rol',
     goal:'Attention\'ın çalışan mekanizmasını beş aşamada, ışın demetleriyle izleyeceksin.',
     todo:'İLERİ ile beş aşamayı geç. Işınların kalınlığı = dikkat ağırlığı.',
-    kind:'phases', viz:'attention', h:800,
+    kind:'phases', viz:'attention', h:880,
     phases:[
       {state:{tokenlar:['kedi','masaya','çıktı','çünkü','o','meraklıydı'], q:4, faz:0,
               skor:[3.1,0.4,0.9,0.2,2.0,1.6]},
@@ -1342,7 +1342,7 @@ DERSLER['attention'] = {
     t:'Sorguyu değiştir',
     goal:'Farklı kelimelerin cümleye nasıl farklı baktığını göreceksin, dikkat haritasının kelimeye göre tamamen değiştiğini.',
     todo:'Sorgu kelimesini değiştir. Her kelimenin <b>kime baktığına</b> dikkat et.',
-    kind:'controls', viz:'attention', h:800,
+    kind:'controls', viz:'attention', h:880,
     controls:[{k:'q', lb:'SORGU KELİMESİ', min:0, max:5, step:1, val:4,
                fmt:v => ['kedi','masaya','çıktı','çünkü','o','meraklıydı'][v]}],
     state:{tokenlar:['kedi','masaya','çıktı','çünkü','o','meraklıydı'], faz:3},
@@ -1445,7 +1445,7 @@ DERSLER['backprop'] = {
     t:'Şimdi gerçekten eğitelim',
     goal:'Az önceki döngünün <b>900 kez</b> tekrarlandığında ne yaptığını izleyeceksin, gerçek, tarayıcıda eğitilen bir ağ.',
     todo:'Animasyon kendi başına oynuyor. Sol: karar sınırı · orta: ağırlıklar kalınlaşıyor · alt: kayıp düşüyor.',
-    kind:'play', viz:'agEgitim', h:700, hiz:600,
+    kind:'play', viz:'agEgitim', h:780, hiz:600,
     frames:() => {
       const F = agEgitimKareleri(), tarih = [];
       return F.map((f,i) => { tarih.push(f.kayip);
