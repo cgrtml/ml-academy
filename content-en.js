@@ -3779,3 +3779,113 @@ DERSLER_EN['sampling'] = {
   },
   ],
 };
+
+DERSLER_EN['kvcache'] = {
+  ad:'Context window and the KV cache',
+  alt:'Why is the real cost of long context memory rather than computation? And how are million token windows possible at all?',
+  kaynaklar:[{"y":"Pope, R. et al.","t":"2023","b":"Efficiently Scaling Transformer Inference","n":"MLSys 2023","u":"https://arxiv.org/abs/2211.05102"},
+             {"y":"Ainslie, J. et al.","t":"2023","b":"GQA: Training Generalized Multi-Query Transformer Models","n":"EMNLP 2023","u":"https://arxiv.org/abs/2305.13245"},
+             {"y":"Kwon, W. et al.","t":"2023","b":"Efficient Memory Management for LLM Serving with PagedAttention (vLLM)","n":"SOSP 2023","u":"https://arxiv.org/abs/2309.06180"},
+             {"y":"Dao, T. et al.","t":"2022","b":"FlashAttention: Fast and Memory-Efficient Exact Attention","n":"NeurIPS 2022","u":"https://arxiv.org/abs/2205.14135"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'Why is a cache essential?',
+    goal:'You will see why generation without a cache is impossible, in the way the two curves separate.',
+    todo:'Increase the number of tokens. Look at the gap between the red and green curves.',
+    kind:'controls', viz:'kv', h:780, xp:50, state:{gqa:0},
+    body:'<p>A language model produces text <b>token by token</b>. To produce the 1000th token it has to look at all 999 that came before.</p>' +
+         '<p><b>Without a cache</b> the whole sequence is reprocessed for every new token. The cost of producing N tokens becomes 1+2+3+…+N ≈ N²/2.</p>' +
+         '<p><b>With a cache</b> the K and V matrices are stored. A new token computes only its own Q and looks at the stored K and V. The cost is constant per token, so N in total.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">produce  128 tokens →  no cache 8.3k units ·  cached 0.13k  →   <b>65×</b><br>produce  512 tokens →  no cache 131k  ·  cached 0.51k       →  <b>257×</b><br>produce 2048 tokens →  no cache 2.1M   ·  cached 2.05k      → <b>1025×</b></p>' +
+         '<p><b>The gap grows linearly with the number of tokens produced.</b> A thousandfold on a long answer. Which is why the KV cache is not an optimisation but <b>the thing that makes generation possible</b>.</p>' +
+         '<p>But it is not free, and the price is memory.</p>',
+    learned:'<b>The KV cache turns the cost of generation from O(N²) into O(N).</b> On a 2048 token answer that is a difference of more than a thousandfold.<br><br>In return the K and V matrices have to be held in memory, which is the subject of the next step.',
+    controls:[{k:'n', lb:'CONTEXT LENGTH', min:512, max:131072, step:512, val:4096}],
+  },
+  {
+    t:'The memory wall and GQA',
+    goal:'You will see, with real numbers, that the real limit on long context is memory rather than computation.',
+    todo:'Toggle the GQA switch and push the context to 128K. Compare the two memory numbers.',
+    kind:'controls', viz:'kv', h:780, xp:65,
+    body:'<p>The amount of KV that has to be stored per token:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">2 (K and V) × 32 layers × 4096 dimensions × 2 bytes = <b>512 KB / token</b></p>' +
+         '<p>And as the context grows:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">  4K tokens →   2.15 GB<br> 16K tokens →   8.59 GB<br> 32K tokens →  17.18 GB<br>128K tokens →  <b style="color:#f87171">68.72 GB</b></p>' +
+         '<p style="color:#f87171"><b>The model\'s own weights are 13.5 GB.</b> At 128K context the KV cache takes <b>5 times</b> the space of the weights. That is the real wall for long context: memory, not computation.</p>' +
+         '<p><b>The fix: GQA (Grouped-Query Attention).</b> The idea is simple: use 32 heads for Q but only 8 for K and V, so that every 4 query heads share the same KV pair.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">MHA (32 KV heads) : 512 KB/token → 68.72 GB at 128K context<br>GQA ( 8 KV heads) : <b>128 KB</b>/token → <b style="color:#22d3a0">17.18 GB</b> at 128K context<br><br>                   <b>4× saving</b>, with negligible quality loss</p>' +
+         '<p>Which is why Llama-2 70B, Mistral, Gemma and almost every model since use GQA. The extreme is MQA (a single KV head, a 32× saving) at some further cost in quality.</p>' +
+         '<p><b>The other fixes:</b> <b>PagedAttention</b> (vLLM) splits memory into pages to avoid fragmentation; <b>FlashAttention</b> computes attention without ever materialising the matrix; quantisation takes the KV down to int8.</p>',
+    learned:'<b>The wall for long context is not computation, it is KV cache memory.</b> On a 7B model a 128K context is 68.7 GB, five times the weights.<br><br><b>GQA</b> (fewer heads for K and V) gives a 4× saving and is the standard today. PagedAttention, FlashAttention and KV quantisation come on top.<br><br>Capacity planning for LLM serving is done as <b>concurrent users × context × KV per token</b>.',
+    controls:[{k:'n', lb:'CONTEXT LENGTH', min:512, max:131072, step:512, val:131072},
+              {k:'gqa', lb:'GQA (8 KV heads)', min:0, max:1, step:1, val:0}],
+    quiz:{
+      q:'You are running a chat application. 50 concurrent users, each with an average context of 8K tokens. Can you host a 7B model with MHA on an 80 GB GPU?',
+      opts:[
+        {t:'Yes, the model is 13.5 GB, there is plenty of room',
+         why:'The model weights are only one part of the arithmetic. The KV cache is kept <b>per user</b>.'},
+        {t:'No, 50 × 8K tokens × 512 KB ≈ 205 GB of KV cache is needed; GQA or fewer concurrent users is essential',
+         why:'Correct, and this arithmetic is the basis of LLM serving. 50 users × 8192 tokens × 512 KB = about 205 GB, plus 13.5 GB of weights. It does not fit in 80 GB. The fixes: (1) a 4× saving with GQA → about 51 GB, which fits; (2) limit the number of concurrent users; (3) reduce fragmentation with PagedAttention; (4) quantise the KV to int8. Real serving systems do all of these at once.'},
+        {t:'Yes, the KV cache is shared between users',
+         why:'No, every user has a different context and the KV cache cannot be shared. (Prefix caching is possible for a shared system prompt, but that is the exception.)'},
+        {t:'Context length does not use memory, it only slows the computation',
+         why:'The opposite. The main finding of this lesson is that the real cost of context is <b>memory</b>.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['multihead'] = {
+  ad:'Multi-head attention and positional encoding',
+  alt:'A single attention catches one kind of relationship. What if you need grammar, reference and position at the same time?',
+  kaynaklar:[{"y":"Vaswani, A. et al.","t":"2017","b":"Attention Is All You Need","n":"NeurIPS 2017","u":"https://arxiv.org/abs/1706.03762"},
+             {"y":"Clark, K. et al.","t":"2019","b":"What Does BERT Look At? An Analysis of BERT's Attention","n":"BlackboxNLP 2019","u":"https://arxiv.org/abs/1906.04341"},
+             {"y":"Voita, E. et al.","t":"2019","b":"Analyzing Multi-Head Self-Attention: Specialized Heads Do the Heavy Lifting","n":"ACL 2019","u":"https://arxiv.org/abs/1905.09418"},
+             {"y":"Su, J. et al.","t":"2021","b":"RoFormer: Enhanced Transformer with Rotary Position Embedding (RoPE)","n":"arXiv:2104.09864","u":"https://arxiv.org/abs/2104.09864"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'Four heads, four different views',
+    goal:'You will see why parallel heads looking at the same word turn towards different places.',
+    todo:'Select the heads one at a time. Watch where the beams go for the same query word.',
+    kind:'controls', viz:'multihead', h:760, xp:50,
+    body:'<p>In the attention lesson you saw <b>a single</b> attention mechanism. But a real transformer block has <b>dozens of parallel heads</b> running at once (32 in Llama-7B).</p>' +
+         '<p>Why? Because a single attention distribution can only catch one kind of relationship. To resolve the word "it" you need <b>reference</b> (which noun does it point at), <b>syntax</b> (whose subject is it) and <b>position</b> (what is immediately before it) all at the same time.</p>' +
+         '<p>Every head has its own Q, K and V matrices, so it learns <b>its own point of view</b>. The outputs are concatenated and reduced back to a single vector (the Wo projection).</p>' +
+         '<p style="color:#facc15"><b>A note on honesty:</b> the four patterns on this page represent <i>types</i> of head specialisation documented in the literature; they were not extracted from a real model, they are illustrative. Clark et al. (2019) found exactly these kinds of heads in BERT: heads looking at the previous or next token, heads tracking punctuation, heads resolving reference, heads establishing verb–object relations.</p>' +
+         '<p>Voita et al. (2019) showed something even more interesting: <b>most heads can be pruned.</b> A small number of "expert" heads carry the weight of the work; the rest can be removed without appreciable loss.</p>',
+    learned:'<b>Multi-head attention means tracking different kinds of relationship at the same time.</b> Every head has its own Q, K and V, and the outputs are concatenated.<br><br>Documented specialisations: positional heads, syntactic heads, reference heads. And most heads are <b>redundant</b>: a few expert heads carry the work.',
+    controls:[{k:'bas', lb:'HEAD SHOWN', min:-1, max:3, step:1, val:-1},
+              {k:'q', lb:'QUERY WORD', min:0, max:5, step:1, val:4}],
+  },
+  {
+    t:'So where does the order come from?',
+    goal:'You will learn why attention on its own is blind to order and how that is fixed.',
+    todo:'Read the text and answer the question.',
+    kind:'controls', viz:'multihead', h:760, xp:55,
+    body:'<p>Look carefully at the definition of attention: every token is multiplied by every token, a softmax is taken, a weighted sum is made. <b>Order appears nowhere.</b></p>' +
+         '<p>The consequence is startling: for pure attention, <b>"the cat chased the dog" and "the dog chased the cat" are the same.</b> Shuffle the tokens and the output does not change (it is permutation equivariant). For language that is a disaster.</p>' +
+         '<p><b>The fix: embed the position into the vectors.</b> There have been three generations of approach:</p>' +
+         '<p><b>1 · Sinusoidal (2017, the original paper).</b> Fixed sine and cosine patterns are produced for every position and added to the embedding vector. Not learned but computed. It generalises somewhat to lengths not seen in training.</p>' +
+         '<p><b>2 · Learned positional embeddings (BERT, GPT-2).</b> A separate vector is learned for every position. Simple and effective, but the <b>maximum length is fixed</b>: if it saw 512 positions during training it does not know position 513.</p>' +
+         '<p><b>3 · RoPE, rotary position embedding (Llama, Mistral, Qwen…).</b> Instead of <b>adding</b> the position, it <b>rotates</b> the Q and K vectors by an angle that depends on the position. The dot product of two tokens then depends on the <b>relative</b> distance between them.</p>' +
+         '<p>RoPE\'s practical advantage is large: because relative position is encoded naturally, it becomes possible to widen the context window after training (with methods like NTK scaling and YaRN). If a model trained at 4K can be pushed to 32K, this is largely why.</p>',
+    learned:'<b>Self-attention is blind to order</b>, so positional information has to be added separately.<br><br>· sinusoidal (2017) → computed, generalises somewhat<br>· learned (BERT/GPT-2) → simple but with a fixed maximum length<br>· <b>RoPE</b> (Llama, Mistral) → rotates Q and K, encodes <b>relative</b> position, makes context extension possible',
+    controls:[{k:'q', lb:'QUERY WORD', min:0, max:5, step:1, val:0},
+              {k:'bas', lb:'HEAD SHOWN', min:-1, max:3, step:1, val:0}],
+    quiz:{
+      q:'What happens if you give the sentence "Ali called Veli" to a transformer with no positional encoding?',
+      opts:[
+        {t:'It understands the sentence but runs slowly',
+         why:'It is not a matter of speed; the model <b>cannot see the order at all</b>.'},
+        {t:'It produces exactly the same representation as "Veli called Ali" and cannot tell who called whom',
+         why:'Correct. Pure self-attention is permutation equivariant: changing the order of the tokens does not change the output (beyond the same permutation). Because order carries meaning in language, that is unacceptable. Positional encoding fills exactly that gap, and RoPE is the de facto standard today because it encodes RELATIVE position, which is what makes context extension possible.'},
+        {t:'It errors out and does not run',
+         why:'It runs, it just runs wrongly, which is more dangerous.'},
+        {t:'It automatically treats the first word as the subject',
+         why:'There is no such default; the model does not see the order at all.'},
+      ], correct:1 },
+  },
+  ],
+};
