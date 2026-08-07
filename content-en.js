@@ -1084,3 +1084,88 @@ DERSLER_EN['mat-olasilik'] = {
   },
   ],
 };
+
+DERSLER_EN['neden-simdi'] = {
+  ad:'Why it exploded now: data, compute, algorithms',
+  alt:'We answer this question with an experiment rather than a slide. On one problem we pull the three levers separately and together, and measure the difference.',
+  kaynaklar:[{"y":"Hernandez, D. & Brown, T.","t":"2020","b":"Measuring the Algorithmic Efficiency of Neural Networks","n":"OpenAI"},
+             {"y":"Sutton, R.","t":"2019","b":"The Bitter Lesson","n":"incompleteideas.net","u":"http://www.incompleteideas.net/IncIdeas/BitterLesson.html"},
+             {"y":"Kaplan, J. et al.","t":"2020","b":"Scaling Laws for Neural Language Models","n":"arXiv:2001.08361"}],
+  rota:0,
+  adimlar:[
+  {
+    t:'The experiment: one problem, three levers',
+    goal:'You will see what the levers are and what we are measuring.',
+    todo:'Move the three sliders freely. Can you get the test error below 0.05?',
+    kind:'controls', viz:'ucKaldirac', h:770, xp:25,
+    body:'<p>The question "why did AI explode now" usually gets a three word answer: data, compute, algorithms. That is true and empty. How much did each one contribute?</p>' +
+         '<p>Let us measure. We have one problem: predict a number from two inputs. The true rule is curved and contains a product term. The test set is always the same 1500 points.</p>' +
+         '<p>We have three levers:</p>' +
+         '<p><b>Data:</b> from 25 samples to 400<br><b>Compute:</b> from 10 training rounds to 2000<br><b>Algorithm:</b> raw linear &rarr; polynomial features &rarr; polynomial plus scaling</p>' +
+         '<p>Our starting point is the poorest corner: raw linear model, 25 samples, 10 rounds. Test error <b>4.9024</b>. We will call this the <b>baseline</b> and measure every gain against it.</p>' +
+         '<p>Play with the sliders. Try to feel what each lever does. In the next step we measure them one at a time.</p>',
+    learned:'<b>We turned the question into something measurable.</b><br><br>One problem, a fixed test set, three separate levers. The baseline: raw model, 25 samples, 10 rounds, test error <b>4.9024</b>.<br><br>"Which one matters more" is no longer a debate, it is a measurement.',
+    controls:[{k:'ni', lb:'DATA', min:0, max:4, step:1, val:0},
+              {k:'hi', lb:'COMPUTE', min:0, max:5, step:1, val:0},
+              {k:'alg', lb:'ALGORITHM', min:0, max:2, step:1, val:0}],
+  },
+  {
+    t:'Pulling the levers one at a time',
+    goal:'You will measure how much each lever gains on its own.',
+    todo:'Set data alone to 400, then compute alone to 2000. Watch the gain card.',
+    kind:'controls', viz:'ucKaldirac', h:770, xp:50,
+    body:'<p>Now we pull each lever <b>on its own</b>, all the way. The other two stay at their poorest setting.</p>' +
+         '<p><b>Data alone, 16 times more:</b> the error goes from 4.9024 to 4.8990. A gain of <b>1.00 times</b>. That is, none. The algorithm slider is locked in this step, so you can grow the data as much as you like and nothing happens.</p>' +
+         '<p><b>Compute alone, 200 times more:</b> from 4.9024 to 3.2440. A gain of <b>1.51 times</b>. Small.</p>' +
+         '<p><b>Algorithm alone:</b> from 4.9024 to 1.1751. A gain of <b>4.17 times</b>. The best of the three, but still modest.</p>' +
+         '<p>Why data and compute are so ineffective: the raw linear model cannot represent this rule <b>under any circumstances</b>. Even with 400 samples and 2000 rounds the error sticks at <b>2.8735</b>. That is a ceiling, and what places the ceiling is the model itself.</p>' +
+         '<p>The idea from the matrix lesson, that a column you never provide cannot be built, applies here too: if the product term is not in the model\'s vocabulary, it cannot learn it no matter how many examples you show it.</p>',
+    learned:'<b>Every lever on its own is a disappointment.</b><br><br>Data alone ×16: <b>1.00 times</b>. Compute alone ×200: <b>1.51 times</b>. Algorithm alone: <b>4.17 times</b>.<br><br>The raw linear model\'s error hits a ceiling at <b>2.8735</b> even with 400 samples and 2000 rounds. If the model cannot represent the rule, data and compute are wasted.',
+    controls:[{k:'ni', lb:'DATA', min:0, max:4, step:1, val:4},
+              {k:'hi', lb:'COMPUTE', min:0, max:5, step:1, val:0},
+              {k:'alg', lb:'ALGORITHM', min:0, max:0, step:1, val:0}],
+  },
+  {
+    t:'What happens when you pull them together',
+    goal:'You will see why the levers do not add up, and do not even multiply.',
+    todo:'Open all three all the way. What does the gain become?',
+    kind:'controls', viz:'ucKaldirac', h:770, xp:50,
+    body:'<p>Open all three: 400 samples, 2000 rounds, polynomial plus scaling.</p>' +
+         '<p>The error is <b>0.0144</b>. Against the baseline that is a gain of <b>341.2 times</b>.</p>' +
+         '<p>Now compare. Measured one at a time the gains were 1.00, 1.51 and 4.17. Multiply those and you get <b>6.3 times</b>. The real result is <b>341.2 times</b>, which is <b>54 times</b> larger than the product.</p>' +
+         '<p>The levers do not add up. They do not even multiply. <b>They unlock each other.</b></p>' +
+         '<p>The mechanism: the algorithm lever changes what data and compute are able to buy. Without polynomial features the data was useless, because the model could not use that information. Without scaling the compute was useless, because gradient descent crawled.</p>' +
+         '<p>We can measure the same thing from the other direction. Getting the error below 0.05 takes <b>4000</b> rounds without scaling and <b>200</b> rounds with it. So a single algorithmic change is worth <b>20 times the compute</b>.</p>' +
+         '<p>Here is the answer to "why did AI explode now". Not because of one of the three, but because all three arrived at once. Had one of them been missing, the other two would largely have been wasted.</p>',
+    learned:'<b>The levers unlock each other.</b><br><br>Individually the gains are 1.00, 1.51 and 4.17. Their product is <b>6.3 times</b>. Pulled together, the real result is <b>341.2 times</b>.<br><br>And an algorithmic change converts directly into compute: reaching the same error takes <b>4000</b> rounds without scaling and <b>200</b> with it. <b>20 times the compute.</b>',
+    controls:[{k:'ni', lb:'DATA', min:0, max:4, step:1, val:0},
+              {k:'hi', lb:'COMPUTE', min:0, max:5, step:1, val:0},
+              {k:'alg', lb:'ALGORITHM', min:0, max:2, step:1, val:0}],
+  },
+  {
+    t:'What this says, and what it does not',
+    goal:'You will see where to stop when carrying this measurement into the real world.',
+    todo:'Answer the question.',
+    kind:'static', viz:'ucKaldirac', h:770, xp:50, state:{ni:4, hi:5, alg:2},
+    body:'<p>This small experiment does not stand in for real history, but it shows the mechanism correctly. Its counterparts in the field:</p>' +
+         '<p><b>Data:</b> labelled image collections growing from thousands to millions, and then the internet itself becoming the training data.</p>' +
+         '<p><b>Compute:</b> graphics cards being able to do matrix multiplication in parallel. The fact that all 16,777,216 multiplications we counted in the matrix lesson are independent of each other is what gets paid off here.</p>' +
+         '<p><b>Algorithm:</b> better initialisation, normalisation, residual connections, the attention mechanism. What they have in common is going further on the same compute. A scaled up version of the scaling lever in our experiment.</p>' +
+         '<p>What it does not say: <b>this curve does not go on forever</b>. Even in the experiment the scaling lever gains nothing after 300 rounds; the error stops at 0.0144. That is the floor set by noise, and no lever can touch it.</p>' +
+         '<p>And an honest limit: in this experiment the algorithm lever came out strongest. That does <b>not</b> mean the algorithm is always the strongest lever. It is only so for this problem, at these scales. On another problem the data lever may dominate. You cannot know without measuring.</p>',
+    learned:'<b>It exploded because all three arrived at once, not because of any one of them.</b><br><br>In the experiment the individual gains are 1.00, 1.51 and 4.17; together, <b>341.2</b>. The effect of one lever depends on the state of the others.<br><br>We measured the limit as well: after 300 rounds the error stops at <b>0.0144</b>. That is the noise floor and no lever can touch it. <b>Which lever dominates depends on the problem and cannot be known without measuring.</b>',
+    quiz:{
+      q:'A team\'s test error has been stuck in the same place for months. They doubled the dataset and nothing changed. Then they tripled the training time and again nothing changed. What should the next step be?',
+      opts:[
+        {t:'Test whether the model can represent the problem at all, because two ineffective levers point to a ceiling',
+         why:'Correct. This is exactly the pattern you measured in this lesson: the raw linear model hit a ceiling at 2.8735 even with 16 times the data and 200 times the compute, because the rule was not something it could represent. Two independent levers changing nothing is the strongest sign that the problem is one of form rather than quantity. The cheap way to test it: deliberately try to overfit a small subset, and if even that fails the representation problem is confirmed.'},
+        {t:'Double the data once more, twice may not have been enough',
+         why:'The measurement in this lesson shows why that is hopeless: growing the data 16 times left the gain at 1.00, which is exactly nothing. When there is a ceiling, adding data is a question of direction rather than scale.'},
+        {t:'Lower the learning rate and train for longer',
+         why:'That is another form of the compute lever, and that lever has already been tried. In the experiment, 200 times the compute bought only 1.51 times. More careful optimisation does not raise a ceiling.'},
+        {t:'Use a bigger model',
+         why:'The direction is right but the reasoning is incomplete: the issue here is not size but whether the model can express the necessary relationship. What produced the gain in this lesson was not raising the parameter count, it was adding the product term to the model\'s vocabulary. Confirm the representation problem first, then scale accordingly.'},
+      ], correct:0 },
+  },
+  ],
+};
