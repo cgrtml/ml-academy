@@ -10261,6 +10261,198 @@ VIZ.autoML = s => {
   }
 };
 
+
+/* ═══════════ AI PROJESİ KARARI ═══════════
+   Bir modelin ne zaman para kazandirdigi TAM aritmetik.
+   Muhasebe: modelsizken her olay gerceklesir ve C_kacir maliyeti verir.
+   Modelle: yakalanan olay C_mudahale ye iner, kacan olay yine C_kacir,
+   bosuna mudahale C_mudahale, ve her vaka icin C_cagri odenir. */
+const PK = {};
+PK.C_KACIR = 500;       /* kacan olayin maliyeti */
+PK.C_MUDAHALE = 20;     /* mudahale maliyeti · dogru ya da bosuna */
+PK.C_CAGRI = 2;         /* vaka basina model cagrisi */
+PK.tabanlar = [0.001, 0.01, 0.05, 0.20];
+PK.dogruluklar = [0.70, 0.80, 0.90, 0.95, 0.99];
+PK.mudahaleler = [5, 20, 50, 100];
+PK.N = 1000;
+/* net kazanc = modelsiz maliyet - modelli maliyet · TAM */
+PK.kazanc = (n, taban, d, cMud, cKac, cCag) => {
+  const dp = n*taban*d, yn = n*taban*(1 - d), yp = n*(1 - taban)*(1 - d);
+  const modelsiz = n*taban*cKac;
+  const modelli = dp*cMud + yn*cKac + yp*cMud + n*cCag;
+  return { modelsiz, modelli, kazanc: modelsiz - modelli, dp, yn, yp,
+           bosMudahale: yp, gereksizOran: (dp + yp) > 0 ? yp/(dp + yp) : 0 };
+};
+/* basabas dogruluk · kapali form
+   kazanc = n[ p*d*(cKac - cMud) - (1-p)(1-d)*cMud - cCag ] = 0
+   d* = [ (1-p)*cMud + cCag ] / [ p*(cKac - cMud) + (1-p)*cMud ] */
+PK.basabas = (taban, cMud, cKac, cCag) =>
+  ((1 - taban)*cMud + cCag)/(taban*(cKac - cMud) + (1 - taban)*cMud);
+/* hicbir dogrulugun yetmedigi taban orani · d* = 1 veren p */
+PK.imkansizTaban = (cMud, cKac, cCag) => {
+  /* d* = 1  ->  (1-p)cMud + cCag = p(cKac - cMud) + (1-p)cMud  ->  cCag = p(cKac - cMud) */
+  return cCag/(cKac - cMud);
+};
+PK.mypler = PK.mudahaleler;
+
+
+
+VIZ.projeKarari = s => {
+  clear();
+  const sahne = s.sahne || 'kazanc';
+  const ti = Math.max(0, Math.min(3, s.ti === undefined ? 2 : Math.round(s.ti)));
+  const taban = PK.tabanlar[ti];
+  const di = Math.max(0, Math.min(4, s.di === undefined ? 2 : Math.round(s.di)));
+  const d = PK.dogruluklar[di];
+  const mi = Math.max(0, Math.min(3, s.mi === undefined ? 1 : Math.round(s.mi)));
+  const cMud = PK.mudahaleler[mi];
+  const kart = (x, y, wd, ad, deger, rnk, alt) => {
+    box(x, y, wd, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + wd/2, y + 28, K.mut, 15);
+    txt(deger, x + wd/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + wd/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'basabas'){
+    baslikSerit('AI PROJESİ KARARI · BAŞABAŞ DOĞRULUK',
+      'Müdahale maliyeti ' + cMud + '. Kaçırma maliyeti ' + PK.C_KACIR +
+      '. Modelin kâra geçmesi için gereken doğruluk.', []);
+    const P = plot(rect(140, 200, 640, 400), -3.1, -0.6, 0, 1.25);
+    frame(P, 'olayın taban oranı (log)', 'doğruluk',
+          [-3, -2, -1], [0, 0.25, 0.5, 0.75, 1]);
+    [-3, -2, -1].forEach(e => txt('%' + (100*Math.pow(10, e)).toFixed(e < -2 ? 1 : 0),
+      P.sx(e), P.R.y + P.R.h + 50, K.mut, 14));
+    PK.mudahaleler.forEach((mv, i) => {
+      const renk = [K.green, K.blue, K.orange, K.red][i];
+      cx.strokeStyle = renk; cx.lineWidth = mv === cMud ? 3.8 : 1.8;
+      cx.globalAlpha = mv === cMud ? 1 : 0.4; cx.beginPath();
+      for (let q = 0; q <= 120; q++){ const e = -3.1 + 2.5*q/120, p = Math.pow(10, e);
+        const b = PK.basabas(p, mv, PK.C_KACIR, PK.C_CAGRI);
+        const y = P.sy(Math.min(1.25, b));
+        q ? cx.lineTo(P.sx(e), y) : cx.moveTo(P.sx(e), y); }
+      cx.stroke(); cx.globalAlpha = 1; });
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(1)); cx.lineTo(P.R.x + P.R.w, P.sy(1)); cx.stroke();
+    cx.setLineDash([]);
+    txt('doğruluk = 1 · üstü imkânsız', P.R.x + P.R.w - 14, P.sy(1) - 12, K.mut, 15, 'right');
+    PK.mudahaleler.forEach((mv, i) => {
+      const yy = P.sy(0.30 - i*0.062);
+      cx.strokeStyle = [K.green, K.blue, K.orange, K.red][i];
+      cx.lineWidth = mv === cMud ? 3.8 : 1.8;
+      cx.beginPath(); cx.moveTo(P.R.x + 16, yy - 5); cx.lineTo(P.R.x + 52, yy - 5); cx.stroke();
+      txt('müdahale ' + mv, P.R.x + 62, yy, [K.green, K.blue, K.orange, K.red][i], 15,
+          'left', mv === cMud ? 700 : 400); });
+    const bb = PK.basabas(taban, cMud, PK.C_KACIR, PK.C_CAGRI);
+    const esik = PK.imkansizTaban(cMud, PK.C_KACIR, PK.C_CAGRI);
+    const bx = 830;
+    kart(bx, 200, 260, 'TABAN ORANI', '%' + (100*taban).toFixed(1), K.blue);
+    kart(bx + 280, 200, 260, 'GEREKEN DOĞRULUK', bb > 1 ? 'imkânsız' : '%' + (100*bb).toFixed(1),
+         bb > 1 ? K.red : K.green);
+    kart(bx, 330, 260, 'İMKÂNSIZLIK EŞİĞİ', '%' + (100*esik).toFixed(3), K.red,
+         'taban bunun altında ise');
+    kart(bx + 280, 330, 260, 'MÜDAHALE MALİYETİ', String(cMud), K.purple,
+         'kaçırma ' + PK.C_KACIR);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('BAŞABAŞ NOKTASI KAPALI FORMDA', bx + 270, 494, K.mut, 17);
+    txt('d* = [(1−p)·C_müd + C_çağrı] /', bx + 18, 534, K.txt, 18, 'left');
+    txt('     [p·(C_kaçır − C_müd) + (1−p)·C_müd]', bx + 18, 562, K.txt, 18, 'left');
+    txt('Taban oranı düştükçe gereken doğruluk hızla', bx + 18, 602, K.orange, 18, 'left');
+    txt('yükseliyor ve bir noktada 1 i aşıyor.', bx + 18, 630, K.orange, 18, 'left');
+    txt('O nokta: p* = C_çağrı / (C_kaçır − C_müd) = %' +
+        (100*esik).toFixed(3) + '.', bx + 18, 670, K.red, 18, 'left');
+    txt('Altında hiçbir model, hiçbir doğrulukla kâr etmez.', bx + 18, 700, K.red, 18, 'left');
+  }
+
+  else if (sahne === 'alarm'){
+    baslikSerit('AI PROJESİ KARARI · ALARMLARIN KAÇI BOŞ',
+      'Taban oranı %' + (100*taban).toFixed(1) + '. Model doğruluğu değişiyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 4.35, 0, 1.05);
+    frame(P, 'model doğruluğu', 'boş alarm oranı', [], [0, 0.25, 0.5, 0.75, 1]);
+    PK.dogruluklar.forEach((dv, i) =>
+      txt('%' + (100*dv).toFixed(0), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    PK.tabanlar.forEach((tv, gi) => {
+      const renk = [K.red, K.orange, K.blue, K.green][gi];
+      cx.strokeStyle = renk; cx.lineWidth = tv === taban ? 3.8 : 1.8;
+      cx.globalAlpha = tv === taban ? 1 : 0.4; cx.beginPath();
+      PK.dogruluklar.forEach((dv, i) => {
+        const y = P.sy(PK.kazanc(PK.N, tv, dv, cMud, PK.C_KACIR, PK.C_CAGRI).gereksizOran);
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke(); cx.globalAlpha = 1; });
+    PK.tabanlar.forEach((tv, gi) => {
+      const yy = P.sy(0.30 - gi*0.062);
+      cx.strokeStyle = [K.red, K.orange, K.blue, K.green][gi];
+      cx.lineWidth = tv === taban ? 3.8 : 1.8;
+      cx.beginPath(); cx.moveTo(P.R.x + P.R.w - 156, yy - 5);
+      cx.lineTo(P.R.x + P.R.w - 120, yy - 5); cx.stroke();
+      txt('taban %' + (100*tv).toFixed(1), P.R.x + P.R.w - 110, yy,
+          [K.red, K.orange, K.blue, K.green][gi], 15, 'left', tv === taban ? 700 : 400); });
+    const r = PK.kazanc(PK.N, taban, d, cMud, PK.C_KACIR, PK.C_CAGRI);
+    const bx = 830;
+    kart(bx, 200, 260, 'DOĞRULUK', '%' + (100*d).toFixed(0), K.blue);
+    kart(bx + 280, 200, 260, 'BOŞ ALARM ORANI', '%' + (100*r.gereksizOran).toFixed(1),
+         r.gereksizOran > 0.5 ? K.red : K.orange);
+    kart(bx, 330, 260, 'GERÇEK OLAY', r.dp.toFixed(0), K.green, PK.N + ' vakada');
+    kart(bx + 280, 330, 260, 'BOŞUNA MÜDAHALE', r.yp.toFixed(0), K.red);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('YÜKSEK DOĞRULUK, BOŞ ALARM DENİZİ', bx + 270, 494, K.mut, 17);
+    txt('Taban oranı %' + (100*taban).toFixed(1) + ' ve doğruluk %' + (100*d).toFixed(0) + ' iken',
+        bx + 18, 534, K.txt, 18, 'left');
+    txt(PK.N + ' vakada ' + r.dp.toFixed(0) + ' gerçek olay yakalanıyor ama',
+        bx + 18, 562, K.txt, 18, 'left');
+    txt(r.yp.toFixed(0) + ' boşuna müdahale yapılıyor.', bx + 18, 590, K.txt, 18, 'left');
+    txt('Alarmların %' + (100*r.gereksizOran).toFixed(1) + ' i boş. Model kötü değil;',
+        bx + 18, 630, K.red, 18, 'left');
+    txt('olay nadir olduğu için negatiflerin küçük bir payı', bx + 18, 658, K.red, 18, 'left');
+    txt('bile pozitiflerin tamamını sayıca eziyor.', bx + 18, 686, K.red, 18, 'left');
+  }
+
+  else {
+    const r = PK.kazanc(PK.N, taban, d, cMud, PK.C_KACIR, PK.C_CAGRI);
+    baslikSerit('AI PROJESİ KARARI · MODEL PARA KAZANDIRIYOR MU',
+      PK.N + ' vaka. Kaçan olay ' + PK.C_KACIR + ', müdahale ' + cMud +
+      ', model çağrısı ' + PK.C_CAGRI + ' birim.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 4.35, -8000, 30000);
+    frame(P, 'model doğruluğu', 'net kazanç', [], [0, 10000, 20000, 30000]);
+    PK.dogruluklar.forEach((dv, i) =>
+      txt('%' + (100*dv).toFixed(0), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    PK.tabanlar.forEach((tv, gi) => {
+      const renk = [K.red, K.orange, K.blue, K.green][gi];
+      cx.strokeStyle = renk; cx.lineWidth = tv === taban ? 3.8 : 1.8;
+      cx.globalAlpha = tv === taban ? 1 : 0.4; cx.beginPath();
+      PK.dogruluklar.forEach((dv, i) => {
+        const y = P.sy(Math.max(-8000, Math.min(30000,
+          PK.kazanc(PK.N, tv, dv, cMud, PK.C_KACIR, PK.C_CAGRI).kazanc)));
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke(); cx.globalAlpha = 1; });
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(0)); cx.lineTo(P.R.x + P.R.w, P.sy(0)); cx.stroke();
+    cx.setLineDash([]);
+    txt('sıfır · altı zarar', P.R.x + P.R.w - 14, P.sy(0) - 12, K.mut, 15, 'right');
+    PK.tabanlar.forEach((tv, gi) => {
+      const yy = P.sy(29000 - gi*2400);
+      cx.strokeStyle = [K.red, K.orange, K.blue, K.green][gi];
+      cx.lineWidth = tv === taban ? 3.8 : 1.8;
+      cx.beginPath(); cx.moveTo(P.R.x + 16, yy - 5); cx.lineTo(P.R.x + 52, yy - 5); cx.stroke();
+      txt('taban %' + (100*tv).toFixed(1), P.R.x + 62, yy,
+          [K.red, K.orange, K.blue, K.green][gi], 15, 'left', tv === taban ? 700 : 400); });
+    const bx = 830;
+    kart(bx, 200, 260, 'TABAN · DOĞRULUK',
+         '%' + (100*taban).toFixed(1) + ' · %' + (100*d).toFixed(0), K.blue);
+    kart(bx + 280, 200, 260, 'MODELSİZ MALİYET', r.modelsiz.toFixed(0), K.mut);
+    kart(bx, 330, 260, 'MODELLİ MALİYET', r.modelli.toFixed(0), K.orange);
+    kart(bx + 280, 330, 260, 'NET KAZANÇ', r.kazanc.toFixed(0),
+         r.kazanc > 0 ? K.green : K.red);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('KARAR BİR DOĞRULUK DEĞİL, BİR ARİTMETİK', bx + 270, 494, K.mut, 16);
+    txt('Soru "model yeterince iyi mi" değil, "modelli', bx + 18, 534, K.txt, 18, 'left');
+    txt('maliyet modelsizden düşük mü".', bx + 18, 562, K.txt, 18, 'left');
+    txt('Dört sayı yeter: olayın taban oranı, kaçırmanın', bx + 18, 602, K.green, 18, 'left');
+    txt('maliyeti, müdahalenin maliyeti, çağrı maliyeti.', bx + 18, 630, K.green, 18, 'left');
+    txt('Doğruluk beşinci sayıdır ve tek başına hiçbir şey', bx + 18, 670, K.mut, 17, 'left');
+    txt('söylemez.', bx + 18, 696, K.mut, 17, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

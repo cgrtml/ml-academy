@@ -139,7 +139,7 @@ const ROTALAR = [
     {id:'acik-kapali',    ad:'Açık mı kapalı mı: modele nasıl erişirsin',      sure:10, durum:'planli'},
     {id:'yigin',          ad:'AI uygulama yığını: kim neyi inşa eder',         sure:10, durum:'planli'},
     {id:'ai-vs-ml',       ad:'AI mühendisliği klasik ML\'den nasıl ayrışır',    sure:10, durum:'planli'},
-    {id:'proje-karari',   ad:'Bir AI projesine nasıl karar verilir',           sure:12, durum:'planli'},
+    {id:'proje-karari',   ad:'Bir AI projesine nasıl karar verilir',           sure:16, durum:'hazir'},
     {id:'adillik',        ad:'Modelin aynadaki yüzü: adillik ve şeffaflık',    sure:16, durum:'hazir'},
     {id:'automl',         ad:'AutoML: modelini seçen model',                   sure:16, durum:'hazir'},
     {id:'aktif-ogrenme',  ad:'Aktif öğrenme: hangi örneği etiketleyelim',      sure:16, durum:'hazir'},
@@ -12401,6 +12401,190 @@ DERSLER['automl'] = {
       'İki uyarı: yüzlerce yapılandırmayı aynı doğrulama kümesinde denemek seçilen skoru ' +
       'yukarı saptırır (ayrı test kümesi şart); ve çoğu projede darboğaz model seçimi ' +
       'değil veri kalitesi ile problem tanımıdır.',
+    xp:75,
+  },
+]};
+
+/* --------------- PROJE KARARI --------------- */
+DERSLER['proje-karari'] = {
+  ad:'Bir AI projesine nasıl karar verilir',
+  alt:'"Model yeterince iyi mi" yanlış soru. Doğru soru dört sayıyla cevaplanıyor ve cevabı bazen "hiçbir doğruluk yetmez" oluyor.',
+  kaynaklar:[
+    {y:'Provost, F. & Fawcett, T.', t:'2013', b:'Data Science for Business', n:"O'Reilly", u:'https://data-science-for-biz.com/'},
+    {y:'Sculley, D. ve ark.', t:'2015', b:'Hidden Technical Debt in Machine Learning Systems', n:'NeurIPS 2015', u:'https://papers.nips.cc/paper/5656-hidden-technical-debt-in-machine-learning-systems'},
+    {y:'Zhu, W. ve ark.', t:'2010', b:'Sensitivity, Specificity, Accuracy, Associated Confidence Interval and ROC Analysis', n:'NESUG 2010'},
+    {y:'Bansal, G. ve ark.', t:'2021', b:'Does the Whole Exceed its Parts? The Effect of AI Explanations on Complementary Team Performance', n:'CHI 2021', u:'https://arxiv.org/abs/2006.14779'},
+  ],
+  rota:4,
+  adimlar:[
+  {
+    t:'Karar bir doğruluk değil, bir aritmetik',
+    goal:'Bir modelin değerini hangi sayıların belirlediğini göreceksin.',
+    todo:'Taban oranını ve doğruluğu değiştir. Net kazanç ne zaman sıfırın altına iniyor?',
+    kind:'controls', viz:'projeKarari', h:760,
+    controls:[
+      {k:'ti', lb:'OLAYIN TABAN ORANI', min:0, max:3, step:1, val:2,
+       fmt:v => '%' + (100*PK.tabanlar[Math.round(v)]).toFixed(1)},
+      {k:'di', lb:'MODEL DOGRULUGU', min:0, max:4, step:1, val:2,
+       fmt:v => '%' + (100*PK.dogruluklar[Math.round(v)]).toFixed(0)}],
+    state:{sahne:'kazanc', mi:1},
+    derive:s => ({k: PK.kazanc(PK.N, PK.tabanlar[Math.round(s.ti)],
+                    PK.dogruluklar[Math.round(s.di)], PK.C_MUDAHALE,
+                    PK.C_KACIR, PK.C_CAGRI).kazanc}),
+    live:s => [['TABAN', '%' + (100*PK.tabanlar[Math.round(s.ti)]).toFixed(1)],
+               ['DOGRULUK', '%' + (100*PK.dogruluklar[Math.round(s.di)]).toFixed(0)],
+               ['NET KAZANC', s.k.toFixed(0), s.k > 0 ? K.green : K.red],
+               ['HEDEF', 'zarara sok']],
+    unlock:s => s.k < 0,
+    unlockMsg:'Yüksek doğrulukta bile zarar eden bir durum bul',
+    body:'<p>Bir kaçak tespit modeli kuruyorsunuz. Karar vermek için dört sayı gerekiyor ' +
+      've hiçbiri modelle ilgili değil:</p>' +
+      '<p><b>Olayın taban oranı p.</b> Vakaların yüzde kaçı gerçekten kaçak?<br>' +
+      '<b>Kaçırmanın maliyeti.</b> Fark edilmeyen bir kaçak ne kadara mal oluyor? (500)<br>' +
+      '<b>Müdahalenin maliyeti.</b> Bir alarma bakmak ne tutuyor? (20)<br>' +
+      '<b>Çağrı maliyeti.</b> Her vaka için model çalıştırmak ne tutuyor? (2)</p>' +
+      '<p>Hesap doğrudan: modelsizken her olay kaçar ve n·p·500 maliyet doğar. ' +
+      'Modelle: yakalanan olaylar 500 yerine 20 ye iner, kaçanlar yine 500 tutar, ' +
+      'boşuna müdahaleler 20 şer tutar, ve her vaka için 2 birim çağrı ödenir.</p>' +
+      '<p>Taban oranı %5 ve doğruluk %90 iken 1000 vakada net kazanç <b>17.700</b>. ' +
+      'Aynı doğrulukla taban oranı %0.1 e inince kazanç <b>eksi 3.566</b> ya düşüyor: ' +
+      'model çalışıyor ama proje para kaybettiriyor.</p>' +
+      '<p>Doğruluk beşinci sayıdır ve tek başına hiçbir şey söylemez. "%90 doğruluk" ' +
+      'cümlesi, bu dört sayı verilmeden bir karar gerekçesi değildir.</p>',
+    learned:'<b>Karar dört sayıyla verilir: taban oranı, kaçırma maliyeti, müdahale ' +
+      'maliyeti, çağrı maliyeti.</b><br><br>' +
+      'Taban %5 ve doğruluk %90 iken 1000 vakada net kazanç 17.700. Aynı doğrulukla ' +
+      'taban %0.1 e inince kazanç eksi 3.566.<br><br>' +
+      'Doğruluk beşinci sayıdır ve tek başına bir karar gerekçesi değildir.',
+    xp:50,
+  },
+  {
+    t:'Başabaş doğruluk',
+    goal:'Modelin kâra geçmesi için gereken doğruluğu hesaplayacaksın.',
+    todo:'Taban oranını düşür. Gereken doğruluk nerede 1 i aşıyor?',
+    kind:'controls', viz:'projeKarari', h:760,
+    controls:[
+      {k:'ti', lb:'OLAYIN TABAN ORANI', min:0, max:3, step:1, val:2,
+       fmt:v => '%' + (100*PK.tabanlar[Math.round(v)]).toFixed(1)},
+      {k:'mi', lb:'MUDAHALE MALIYETI', min:0, max:3, step:1, val:1,
+       fmt:v => String(PK.mudahaleler[Math.round(v)])}],
+    state:{sahne:'basabas'},
+    derive:s => ({b: PK.basabas(PK.tabanlar[Math.round(s.ti)],
+                    PK.mudahaleler[Math.round(s.mi)], PK.C_KACIR, PK.C_CAGRI)}),
+    live:s => [['TABAN', '%' + (100*PK.tabanlar[Math.round(s.ti)]).toFixed(1)],
+               ['MUDAHALE', String(PK.mudahaleler[Math.round(s.mi)])],
+               ['GEREKEN DOGRULUK', s.b > 1 ? 'imkansiz' : '%' + (100*s.b).toFixed(1),
+                s.b > 1 ? K.red : K.green],
+               ['HEDEF', 'imkansiz yap']],
+    unlock:s => s.b > 1,
+    unlockMsg:'Hiçbir doğruluğun yetmediği bir durum bul',
+    body:'<p>Net kazancı sıfıra eşitleyip doğruluğu çekince kapalı bir form çıkıyor:</p>' +
+      '<p style="font-family:monospace">d* = [(1−p)·C_müd + C_çağrı] / ' +
+      '[p·(C_kaçır − C_müd) + (1−p)·C_müd]</p>' +
+      '<p>Ölçüm: taban oranı %20 iken gereken doğruluk sadece <b>%16.1</b>. ' +
+      '%5 te <b>%48.8</b>. %1 de <b>%88.6</b>. Ve %0.1 de <b>%107.4</b>, ' +
+      'yani <b>imkânsız</b>.</p>' +
+      '<p>Sebep şu: taban oranı düştükçe pozitif sınıf küçülür ama negatif sınıf büyür. ' +
+      'Negatiflerin küçük bir yüzdesi bile, pozitiflerin tamamından daha fazla ' +
+      'boşuna müdahale üretir. O müdahalelerin maliyeti kazancı yer.</p>' +
+      '<p>Müdahale maliyeti de en az doğruluk kadar belirleyici. Taban %5 te: ' +
+      'müdahale 5 birimse gereken doğruluk <b>%22.9</b>, 100 birimse <b>%84.4</b>.</p>' +
+      '<p>Pratikteki karşılığı önemli: bir projeyi kurtarmanın yolu her zaman modeli ' +
+      'iyileştirmek değildir. <b>Müdahaleyi ucuzlatmak</b> çoğu zaman daha kolay ve ' +
+      'daha etkilidir. Otomatik ön eleme, daha ucuz bir doğrulama adımı ya da alarmları ' +
+      'toplu işleme almak, gereken doğruluğu ciddi biçimde düşürür.</p>',
+    learned:'<b>Başabaş doğruluk kapalı formda hesaplanır ve taban oranına çok duyarlıdır.</b><br><br>' +
+      'Taban %20 → gereken doğruluk %16.1; %5 → %48.8; %1 → %88.6; %0.1 → %107.4 (imkânsız).<br><br>' +
+      'Müdahale maliyeti de en az doğruluk kadar belirleyici: taban %5 te müdahale 5 birimse ' +
+      '%22.9 yetiyor, 100 birimse %84.4 gerekiyor. <b>Müdahaleyi ucuzlatmak, modeli ' +
+      'iyileştirmekten çoğu zaman daha kolaydır.</b>',
+    xp:50,
+  },
+  {
+    t:'Alarmların kaçı boş',
+    goal:'Yüksek doğruluğun neden boş alarm denizi üretebildiğini göreceksin.',
+    todo:'Taban oranını düşür. %99 doğrulukta bile boş alarm oranı ne oluyor?',
+    kind:'controls', viz:'projeKarari', h:760,
+    controls:[
+      {k:'ti', lb:'OLAYIN TABAN ORANI', min:0, max:3, step:1, val:1,
+       fmt:v => '%' + (100*PK.tabanlar[Math.round(v)]).toFixed(1)},
+      {k:'di', lb:'MODEL DOGRULUGU', min:0, max:4, step:1, val:4,
+       fmt:v => '%' + (100*PK.dogruluklar[Math.round(v)]).toFixed(0)}],
+    state:{sahne:'alarm', mi:1},
+    derive:s => ({g: PK.kazanc(PK.N, PK.tabanlar[Math.round(s.ti)],
+                    PK.dogruluklar[Math.round(s.di)], PK.C_MUDAHALE,
+                    PK.C_KACIR, PK.C_CAGRI).gereksizOran}),
+    live:s => [['TABAN', '%' + (100*PK.tabanlar[Math.round(s.ti)]).toFixed(1)],
+               ['DOGRULUK', '%' + (100*PK.dogruluklar[Math.round(s.di)]).toFixed(0)],
+               ['BOS ALARM', '%' + (100*s.g).toFixed(1), s.g > 0.5 ? K.red : K.orange],
+               ['HEDEF', 'bos alarm > %90']],
+    unlock:s => s.g > 0.90,
+    unlockMsg:'Boş alarm oranını %90 ın üstüne çıkaran durumu bul',
+    body:'<p>Şimdi projenin insan tarafına bakalım: alarmlara bakacak olan ekip ne ' +
+      'görecek?</p>' +
+      '<p>Taban oranı %5 ve doğruluk %90 iken 1000 vakada 45 gerçek olay yakalanıyor ' +
+      'ama 95 boşuna müdahale yapılıyor. Alarmların <b>%67.9 u boş</b>.</p>' +
+      '<p>Taban %1 e inince, aynı %90 doğrulukla alarmların <b>%91.7 si boş</b>. ' +
+      'Doğruluğu %99 a çıkarsan bile %50.0.</p>' +
+      '<p>Bu, adillik dersinde gördüğün PPV meselesinin maliyet tarafından bakılmış hali. ' +
+      'Model kötü değil; olay nadir olduğu için negatiflerin küçük bir payı bile ' +
+      'pozitiflerin tamamını sayıca eziyor.</p>' +
+      '<p>Sonucu ciddi: boş alarm oranı yüksek bir sistemde ekip kısa sürede alarmlara ' +
+      'güvenmeyi bırakır. Aritmetik olarak kârlı olan bir sistem, pratikte terk edildiği ' +
+      'için değersiz hale gelebilir. Bu yüzden net kazanç hesabının yanına <b>alarm başına ' +
+      'iş yükü</b> ve <b>boş alarm oranı</b> mutlaka konmalıdır.</p>' +
+      '<p>Bansal ve arkadaşlarının (2021) gösterdiği gibi, insan ile modelin birlikte ' +
+      'çalıştığı sistemlerde ekibin modele ne kadar güvendiği, modelin doğruluğu kadar ' +
+      'belirleyici olabiliyor.</p>',
+    learned:'<b>Nadir olaylarda yüksek doğruluk bile boş alarm denizi üretir.</b><br><br>' +
+      'Taban %5, doğruluk %90: alarmların %67.9 u boş. Taban %1 de aynı doğrulukla %91.7; ' +
+      'doğruluk %99 a çıksa bile %50.0.<br><br>' +
+      'Aritmetik olarak kârlı bir sistem, ekip alarmlara güvenmeyi bıraktığı için ' +
+      'pratikte terk edilebilir. Net kazancın yanına boş alarm oranı da yazılmalıdır.',
+    xp:50,
+  },
+  {
+    t:'Karar listesi',
+    goal:'Hesabı bir karar sürecine çevireceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'controls', viz:'projeKarari', h:760,
+    controls:[
+      {k:'ti', lb:'OLAYIN TABAN ORANI', min:0, max:3, step:1, val:0,
+       fmt:v => '%' + (100*PK.tabanlar[Math.round(v)]).toFixed(1)},
+      {k:'mi', lb:'MUDAHALE MALIYETI', min:0, max:3, step:1, val:0,
+       fmt:v => String(PK.mudahaleler[Math.round(v)])}],
+    state:{sahne:'basabas'},
+    body:'<p>Ölçümlerin karar listesine çevrilmiş hali:</p>' +
+      '<p><b>1. Taban oranını ölç.</b> Model yazmadan önce. Olay çok nadirse ' +
+      'proje matematiksel olarak imkânsız olabilir ve bunu üç ay sonra öğrenmek ' +
+      'pahalıdır.</p>' +
+      '<p><b>2. Müdahale maliyetini ölç ve düşürmeye çalış.</b> Ölçtün: müdahaleyi ' +
+      '100 den 5 e indirmek, gereken doğruluğu %84.4 ten %22.9 a düşürüyor. Bu, ' +
+      'çoğu model iyileştirmesinden büyük bir kazanç.</p>' +
+      '<p><b>3. Başabaş doğruluğu hesapla ve bunu hedef olarak yaz.</b> "Mümkün olduğunca ' +
+      'iyi" bir hedef değildir; "%48.8 in üstü" bir hedeftir.</p>' +
+      '<p><b>4. Boş alarm oranını da raporla.</b> Kârlı ama kullanılamaz sistemler ' +
+      'yaygındır.</p>' +
+      '<p><b>5. Modelsiz taban çizgisini unutma.</b> Bu hesapta "modelsiz" seçeneği ' +
+      'hiçbir şey yapmamaktı. Gerçekte genellikle basit bir kural vardır (eşik, liste, ' +
+      'insan sezgisi) ve model onunla yarışır, sıfırla değil.</p>' +
+      '<p>Son olarak, buradaki hesap projenin <b>işletme</b> maliyetidir. Kurulum, ' +
+      'veri toplama, izleme ve bakım ayrıca gelir; Sculley ve arkadaşlarının (2015) ' +
+      '"gizli teknik borç" çalışması bu maliyetlerin genelde model kodundan büyük ' +
+      'olduğunu anlatır.</p>',
+    quiz:{ q:'Bir üretim hattında kritik arıza oranı %0.1. Kaçan arıza 500 birim, bir alarma bakmak 20 birim, model çağrısı 2 birim tutuyor. Ekip "%95 doğruluğa ulaşırsak projeyi başlatalım" diyor. Ne dersiniz?',
+      opts:[
+        {t:'Bu parametrelerle hiçbir doğruluk kâra geçmez; önce müdahale ya da çağrı maliyetini düşürmek gerekir', why:'Doğru. Başabaş formülü bu sayılarla %107.4 gereken doğruluk veriyor, yani 1 in üstünde: imkânsız. İmkânsızlık eşiği p* = C_çağrı/(C_kaçır − C_müd) = 2/480 = %0.417 ve %0.1 bunun altında. Doğruluk hedefi belirlemek boşuna; değiştirilmesi gereken şey maliyet yapısı. Müdahaleyi ucuzlatmak ya da modeli her vakaya değil bir ön elemeden geçenlere uygulamak gerçek çözümlerdir.'},
+        {t:'%95 makul bir hedef, projeyi başlatın', why:'Ölçüm bunun tersini söylüyor. %0.1 taban oranıyla gereken doğruluk %107.4; %95 fazlasıyla yetersiz. Bu parametrelerde en iyi model bile para kaybettirir.'},
+        {t:'Hedefi %99 a çıkarın', why:'%99 da yetmez. Gereken doğruluk 1 in üstünde olduğu için hiçbir hedef işe yaramaz. Sorun modelde değil, taban oranı ile maliyet yapısının birleşiminde.'},
+        {t:'Daha fazla veri toplayıp modeli güçlendirin', why:'Veri modeli iyileştirir ama gereken doğruluk zaten ulaşılamaz bir yerde. Buradaki kısıt istatistiksel değil, ekonomik.'},
+      ], correct:0 },
+    learned:'<b>Karar listesi: taban oranını ölç, müdahale maliyetini düşür, başabaş ' +
+      'doğruluğu hedef olarak yaz, boş alarm oranını raporla, modelsiz taban çizgisini ' +
+      'unutma.</b><br><br>' +
+      'Müdahaleyi 100 den 5 e indirmek gereken doğruluğu %84.4 ten %22.9 a düşürüyor: ' +
+      'çoğu model iyileştirmesinden büyük bir kazanç.<br><br>' +
+      'Bu hesap sadece işletme maliyetidir; kurulum, veri, izleme ve bakım ayrıca gelir.',
     xp:75,
   },
 ]};

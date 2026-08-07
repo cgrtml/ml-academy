@@ -3606,6 +3606,82 @@ console.log('═══ AUTOML ═══');
       if (AL.arama(nv, true).test >= AL.arama(nv, false).test) ihlal++; });
     iddia('AL - dar uzay her butcede daha iyi', 0, ihlal, 0); }
 }
+console.log('═══ AI PROJESİ KARARI ═══');
+{
+  /* muhasebe tutarli mi: dp + yn = olaylar, yp + dn = olay olmayanlar */
+  { let enBuyuk = 0;
+    PK.tabanlar.forEach(t => PK.dogruluklar.forEach(dv => {
+      const r = PK.kazanc(PK.N, t, dv, PK.C_MUDAHALE, PK.C_KACIR, PK.C_CAGRI);
+      enBuyuk = Math.max(enBuyuk, Math.abs(r.dp + r.yn - PK.N*t)); }));
+    iddia('PK - dogru pozitif + yanlis negatif = olay sayisi', 0, enBuyuk, 9); }
+  /* kazanc = modelsiz - modelli */
+  { let enBuyuk = 0;
+    PK.tabanlar.forEach(t => PK.dogruluklar.forEach(dv => {
+      const r = PK.kazanc(PK.N, t, dv, PK.C_MUDAHALE, PK.C_KACIR, PK.C_CAGRI);
+      enBuyuk = Math.max(enBuyuk, Math.abs(r.kazanc - (r.modelsiz - r.modelli))); }));
+    iddia('PK - kazanc tanimi tutarli', 0, enBuyuk, 9); }
+
+  /* 1. adim - net kazanc */
+  iddia('PK - taban 0.05, d=0.90 kazanc', 17700,
+        PK.kazanc(1000, 0.05, 0.90, PK.C_MUDAHALE, PK.C_KACIR, PK.C_CAGRI).kazanc, 0);
+  iddia('PK - taban 0.05, d=0.70 kazanc', 9100,
+        PK.kazanc(1000, 0.05, 0.70, PK.C_MUDAHALE, PK.C_KACIR, PK.C_CAGRI).kazanc, 0);
+  iddia('PK - taban 0.05, d=0.99 kazanc', 21570,
+        PK.kazanc(1000, 0.05, 0.99, PK.C_MUDAHALE, PK.C_KACIR, PK.C_CAGRI).kazanc, 0);
+  iddia('PK - taban 0.001, d=0.90 kazanc (ZARAR)', -3566,
+        PK.kazanc(1000, 0.001, 0.90, PK.C_MUDAHALE, PK.C_KACIR, PK.C_CAGRI).kazanc, 0);
+  iddia('PK - taban 0.001 de yuksek dogrulukta bile zarar', 1,
+        PK.kazanc(1000, 0.001, 0.99, PK.C_MUDAHALE, PK.C_KACIR, PK.C_CAGRI).kazanc < 0 ? 1 : 0, 0);
+  /* dogruluk arttikca kazanc artiyor */
+  { let ihlal = 0;
+    PK.tabanlar.forEach(t => { for (let i = 1; i < PK.dogruluklar.length; i++)
+      if (PK.kazanc(1000, t, PK.dogruluklar[i], PK.C_MUDAHALE, PK.C_KACIR, PK.C_CAGRI).kazanc <
+          PK.kazanc(1000, t, PK.dogruluklar[i-1], PK.C_MUDAHALE, PK.C_KACIR, PK.C_CAGRI).kazanc) ihlal++; });
+    iddia('PK - dogruluk arttikca kazanc artiyor', 0, ihlal, 0); }
+
+  /* 2. adim - basabas dogruluk */
+  iddia('PK - basabas - taban 0.20', 16.07, 100*PK.basabas(0.20, 20, 500, 2), 2);
+  iddia('PK - basabas - taban 0.05', 48.84, 100*PK.basabas(0.05, 20, 500, 2), 2);
+  iddia('PK - basabas - taban 0.01', 88.62, 100*PK.basabas(0.01, 20, 500, 2), 2);
+  iddia('PK - basabas - taban 0.001 (imkansiz)', 107.43, 100*PK.basabas(0.001, 20, 500, 2), 2);
+  iddia('PK - taban 0.001 de basabas 1 i asiyor', 1,
+        PK.basabas(0.001, 20, 500, 2) > 1 ? 1 : 0, 0);
+  /* kapali form ile sayisal kok ayni mi */
+  { let enBuyuk = 0;
+    PK.tabanlar.forEach(t => { const b = PK.basabas(t, 20, 500, 2);
+      if (b > 1) return;
+      const r = PK.kazanc(1000, t, b, 20, 500, 2);
+      enBuyuk = Math.max(enBuyuk, Math.abs(r.kazanc)); });
+    iddia('PK - basabas noktasinda kazanc tam sifir', 0, enBuyuk, 6); }
+  /* imkansizlik esigi */
+  iddia('PK - imkansizlik esigi', 0.417, 100*PK.imkansizTaban(20, 500, 2), 3);
+  iddia('PK - esikte basabas tam 1', 1, PK.basabas(PK.imkansizTaban(20, 500, 2), 20, 500, 2), 6);
+  iddia('PK - esigin biraz ustunde mumkun', 1,
+        PK.basabas(0.005, 20, 500, 2) < 1 ? 1 : 0, 0);
+  /* mudahale maliyeti etkisi */
+  iddia('PK - mudahale 5 - basabas', 22.88, 100*PK.basabas(0.05, 5, 500, 2), 2);
+  iddia('PK - mudahale 100 - basabas', 84.35, 100*PK.basabas(0.05, 100, 500, 2), 2);
+  iddia('PK - mudahale ucuzlatmak dogruluk hedefini dusuruyor', 1,
+        PK.basabas(0.05, 5, 500, 2) < PK.basabas(0.05, 100, 500, 2) ? 1 : 0, 0);
+
+  /* 3. adim - bos alarm orani */
+  iddia('PK - taban 0.05, d=0.90 bos alarm', 67.86,
+        100*PK.kazanc(1000, 0.05, 0.90, 20, 500, 2).gereksizOran, 2);
+  iddia('PK - taban 0.01, d=0.90 bos alarm', 91.67,
+        100*PK.kazanc(1000, 0.01, 0.90, 20, 500, 2).gereksizOran, 2);
+  iddia('PK - taban 0.01, d=0.99 bos alarm', 50.00,
+        100*PK.kazanc(1000, 0.01, 0.99, 20, 500, 2).gereksizOran, 2);
+  /* taban dustukce bos alarm orani artiyor */
+  { let ihlal = 0;
+    PK.dogruluklar.forEach(dv => { for (let i = 1; i < PK.tabanlar.length; i++)
+      if (PK.kazanc(1000, PK.tabanlar[i], dv, 20, 500, 2).gereksizOran >
+          PK.kazanc(1000, PK.tabanlar[i-1], dv, 20, 500, 2).gereksizOran) ihlal++; });
+    iddia('PK - taban dustukce bos alarm artiyor', 0, ihlal, 0); }
+  /* karli ama bos alarm oraninin yuksek oldugu durum GERCEKTEN var */
+  { const r = PK.kazanc(1000, 0.01, 0.90, 20, 500, 2);
+    iddia('PK - karli ama alarmlarin %90 dan fazlasi bos', 1,
+          (r.kazanc > 0 && r.gereksizOran > 0.9) ? 1 : 0, 0); }
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
