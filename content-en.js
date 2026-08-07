@@ -6636,3 +6636,218 @@ DERSLER_EN['ozellik-onemi'] = {
   },
   ],
 };
+
+DERSLER_EN['fisher-lda'] = {
+  ad:'Fisher\'s idea: the best direction for separating classes',
+  alt:'PCA picks the direction of most spread and gets 54.5% accuracy on this data. Fisher looks at the labels and gets 97.8%. The two directions are almost perpendicular.',
+  kaynaklar:[{"y":"Fisher, R. A.","t":"1936","b":"The Use of Multiple Measurements in Taxonomic Problems","n":"Annals of Eugenics, 7(2)"},
+             {"y":"Bishop, C. M.","t":"2006","b":"Pattern Recognition and Machine Learning, Section 4.1.4","n":"Springer"},
+             {"y":"Hastie, Tibshirani, Friedman","t":"2009","b":"The Elements of Statistical Learning, Section 4.3","n":"Springer"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'Reducing the data to a single direction',
+    goal:'You will see what it means to project two dimensional data onto a line.',
+    todo:'Turn the angle. How far apart do the two histograms at the top right move?',
+    kind:'controls', viz:'fisherLDA', h:700, xp:20,
+    body:'<p>There are two classes with 200 points each. The cloud is distinctly long and tilted.</p>' +
+         '<p>The yellow line picks a <b>direction</b>. Every point is projected perpendicularly onto that line, so two numbers become one. The histograms at the top right are the distribution of that one number: blue for one class and orange for the other.</p>' +
+         '<p>A good direction separates the two histograms. A bad one stacks them on top of each other. Watch for that as you turn the angle.</p>',
+    learned:'<b>Dimensionality reduction is a problem of choosing a direction.</b> The same data, a different direction, a completely different result.<br><br>The question is: on what basis do we choose the direction? There are two different answers and you will try both in this lesson.',
+    controls:[{k:'aci', lb:'PROJECTION DIRECTION', min:0, max:179, step:1, val:0}],
+  },
+  {
+    t:'The PCA direction: the side with the most spread',
+    goal:'You will see why a method that does not look at the labels can choose the wrong direction.',
+    todo:'Set the angle to 136°. The dashed purple line is the direction PCA chose. Look at the histograms.',
+    kind:'controls', viz:'fisherLDA', h:700, xp:40,
+    body:'<p>PCA asks one single thing: <b>in which direction does the data spread most?</b> It never looks at the labels; it is an unsupervised method after all.</p>' +
+         '<p>On this data the answer is <b>136.3°</b>. The spread in that direction is 6.200, larger than in any other. From PCA\'s point of view that direction is perfect: it preserves the most information.</p>' +
+         '<p>But look at the histograms. The two classes overlap completely. If you put a threshold in that direction and classify, the accuracy comes out at <b>54.5%</b>, almost a coin flip.</p>' +
+         '<p>The Fisher measure J in that direction is <b>0.0001</b>. Almost zero.</p>',
+    learned:'<b>The direction of most spread is not the direction that separates best.</b> On this data PCA picks 136.3°: the highest spread at 6.200, but an accuracy of <b>54.5%</b>.<br><br>The reason is simple: the length of the cloud comes not from the difference between the classes but from the noise WITHIN each class. PCA cannot tell those apart because it never sees the labels.',
+    controls:[{k:'aci', lb:'PROJECTION DIRECTION', min:0, max:179, step:1, val:0}],
+  },
+  {
+    t:'The Fisher direction: divide the difference by the spread',
+    goal:'You will see how a measure that uses the labels is built and why it works.',
+    todo:'Set the angle to around 44° or 45°. The dashed green line is the direction Fisher chose.',
+    kind:'controls', viz:'fisherLDA', h:700, xp:50,
+    body:'<p>Fisher asks a different question: <b>how far apart are the class means and how narrow is the spread within each class?</b></p>' +
+         '<p style="text-align:center"><b>J = (m₁ − m₂)² / (s₁² + s₂²)</b></p>' +
+         '<p>The numerator is the difference between the two class means: we want it large. The denominator is the spread within each class: we want it small. So the direction where "the means are apart but the clouds are narrow" wins.</p>' +
+         '<p>On this data the answer is <b>44.5°</b>: J = 0.0394, accuracy <b>97.8%</b>. The spread is only 0.758, an eighth of that of the PCA direction. Fisher picked the narrowest direction and won.</p>' +
+         '<p>The angle between the two directions is <b>91.8°</b>. Almost perpendicular to each other.</p>',
+    learned:'<b>Fisher brings the labels into play by dividing the difference by the spread.</b> J = (m₁ − m₂)² / (s₁² + s₂²).<br><br>On this data the Fisher direction is 44.5°, the accuracy 97.8% and J = 0.0394. In the PCA direction J = 0.0001. The ratio between them is <b>573</b>.<br><br>It also has a closed form solution: w ∝ S<sub>W</sub><sup>−1</sup>(m₁ − m₂), the inverse of the within-class scatter matrix times the difference of the means.',
+    controls:[{k:'aci', lb:'PROJECTION DIRECTION', min:0, max:179, step:1, val:0}],
+  },
+  {
+    t:'Which one when?',
+    goal:'You will make the right choice between supervised and unsupervised dimensionality reduction.',
+    todo:'Answer the question.',
+    kind:'static', viz:'fisherLDA', h:700, xp:45, state:{aci:45},
+    body:'<p>The two exist for different jobs:</p>' +
+         '<p><b>PCA</b> is unsupervised and needs no labels. It suits compressing the data, reducing noise, visualisation, or situations where there is no label.</p>' +
+         '<p><b>Fisher / LDA</b> is supervised and wants labels. It is usually better for dimensionality reduction before classification because it targets discriminability directly.</p>' +
+         '<p>One limit: LDA can produce at most <b>the number of classes minus one</b> dimensions. With two classes you only get a single direction. PCA has no such constraint.</p>',
+    learned:'<b>PCA does not see the label and LDA does; the two answer different questions.</b><br><br>Compression, noise reduction, visualisation → PCA.<br>Discriminative reduction before classification → LDA.<br><br>Two practical limits: LDA gives at most (number of classes − 1) dimensions, and in very high dimensions the within-class scatter matrix becomes singular. The standard solution to both is to apply PCA first.',
+    quiz:{
+      q:'You are going to do a 2 class classification on 10,000 dimensional text data and want to reduce the dimension first. What do you do?',
+      opts:[
+        {t:'LDA directly, because I am going to classify',
+         why:'LDA alone gets squeezed from two sides here. With two classes LDA gives you only 1 dimension, and going from 10,000 dimensions to 1 throws away far too much information. Also, in 10,000 dimensions the within-class scatter matrix is singular and cannot be inverted.'},
+        {t:'Go down to a reasonable dimension with PCA first, then apply LDA if needed',
+         why:'Correct. That is the standard practice and it is called PCA+LDA. PCA lowers the dimension enough to make the scatter matrix invertible, and LDA finds the discriminative direction in the remaining dimensions. This squeeze, known since Fisher\'s own 1936 paper, is resolved exactly this way in practice.'},
+        {t:'Logistic regression directly without reducing the dimension',
+         why:'It can work, and it works well with a penalty term. But the question already requires reducing the dimension; and in 10,000 dimensions the problems from the curse of dimensionality lesson start.'},
+        {t:'Go down to 2 dimensions with LDA',
+         why:'In a two class problem LDA can produce at most 1 dimension; 2 is mathematically impossible. The limit is the number of classes minus one.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['uretici-ayirici'] = {
+  ad:'Draw the boundary or generate the data',
+  alt:'Two philosophies compete. At 16 examples the generative model leads; at 1000 the discriminative model leads by 4.3 points. The crossing point forces a choice.',
+  kaynaklar:[{"y":"Ng, A. Y. & Jordan, M. I.","t":"2001","b":"On Discriminative vs. Generative Classifiers: A Comparison of Logistic Regression and Naive Bayes","n":"NeurIPS 2001"},
+             {"y":"Bishop, C. M.","t":"2006","b":"Pattern Recognition and Machine Learning, Sections 4.3 and 1.5.4","n":"Springer"},
+             {"y":"Hastie, Tibshirani, Friedman","t":"2009","b":"The Elements of Statistical Learning, Section 4.4.5","n":"Springer"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'Asking two different questions',
+    goal:'You will tell apart two fundamentally different ways of looking at the same classification problem.',
+    todo:'Leave the number of examples at its lowest value. Which model is ahead?',
+    kind:'controls', viz:'ureticiAyirici', h:700, xp:25,
+    body:'<p>The <b>discriminative approach</b> asks one thing: where is the boundary that separates the classes? Logistic regression learns the function P(class | data) directly. It takes no interest at all in where the data came from.</p>' +
+         '<p>The <b>generative approach</b> asks a bigger question: how does each class produce its data? Naive Bayes learns the mean and the spread of every feature for every class, then inverts it with Bayes\' rule to classify.</p>' +
+         '<p>The generative approach looks like it is trying to learn more, and that might be taken for a disadvantage. At 16 examples the result: naive Bayes <b>73.3%</b>, logistic regression <b>71.1%</b>.</p>',
+    learned:'<b>A discriminative model learns the boundary and a generative model learns the data.</b><br><br>Logistic regression estimates P(class | data) directly.<br>Naive Bayes first learns P(data | class) and P(class), then inverts with Bayes.<br><br>With little data the generative model leads: 73.3% against 71.1% at 16 examples.',
+    controls:[{k:'ni', lb:'TRAINING EXAMPLES', min:0, max:7, step:1, val:0}],
+  },
+  {
+    t:'Add data and the ordering changes',
+    goal:'You will see why the winner changes as the amount of data grows.',
+    todo:'Raise the number of examples to 1000. Where do the two curves cross?',
+    kind:'controls', viz:'ureticiAyirici', h:700, xp:45,
+    body:'<p>The curves go like this:</p>' +
+         '<p><b>16 examples:</b> NB 73.3% · LR 71.1% &nbsp;→&nbsp; generative ahead<br>' +
+         '<b>40 examples:</b> NB 77.4% · LR 77.4% &nbsp;→&nbsp; <b>they cross</b><br>' +
+         '<b>100 examples:</b> NB 79.6% · LR 81.6% &nbsp;→&nbsp; discriminative ahead<br>' +
+         '<b>1000 examples:</b> NB 79.8% · LR 84.1% &nbsp;→&nbsp; discriminative ahead by 4.3 points</p>' +
+         '<p>The thing to watch is naive Bayes <b>plateauing</b>. After 200 examples it stops at 79.8% and adding data changes nothing. Logistic regression keeps rising.</p>',
+    learned:'<b>The crossing is at roughly 40 examples.</b> Below it the generative model wins and above it the discriminative one.<br><br>Ng and Jordan showed this as a general result in 2001: the generative model converges faster but converges to a higher error level; the discriminative model starts slowly but goes lower.',
+    controls:[{k:'ni', lb:'TRAINING EXAMPLES', min:0, max:7, step:1, val:0}],
+  },
+  {
+    t:'Why does naive Bayes plateau?',
+    goal:'You will understand where a model\'s error that adding data does not fix comes from.',
+    todo:'Raise the number of examples from 200 to 1000. Does the purple curve move at all?',
+    kind:'controls', viz:'ureticiAyirici', h:700, xp:45,
+    body:'<p>The "naive" in naive Bayes comes from a single very strong assumption: <b>given a class, the features are independent of each other.</b></p>' +
+         '<p>On this data that assumption is <b>false</b>. When generating the data I added a common within-class factor to every example, so the 8 features are correlated with each other. Naive Bayes cannot see that, and because it cannot see it, however much data you give it, it just learns the same wrong model more precisely.</p>' +
+         '<p>The result: 79.8% at 200 examples, 79.8% at 400, 79.8% at 1000. A ceiling.</p>' +
+         '<p>Logistic regression has no such assumption; it only says "the boundary is linear", a much weaker claim. That is why it keeps rising with the data.</p>',
+    learned:'<b>A strong assumption teaches fast but sets a ceiling.</b><br><br>Because naive Bayes\' independence assumption is false on this data the model plateaus at 79.8%; adding data does not fix the bias, it just makes the wrong model more precise.<br><br>This is another face of the bias-variance lesson: naive Bayes is low variance and high bias, logistic regression is high variance and low bias.',
+    controls:[{k:'ni', lb:'TRAINING EXAMPLES', min:0, max:7, step:1, val:0}],
+  },
+  {
+    t:'Which one do you choose when?',
+    goal:'You will turn this distinction into a decision rule.',
+    todo:'Answer the question.',
+    kind:'static', viz:'ureticiAyirici', h:700, xp:50, state:{ni:7},
+    body:'<p>A generative model gives you things other than accuracy:</p>' +
+         '<p><b>It can generate new data.</b> Because P(data | class) is modelled, you can sample from it. A discriminative model cannot; all it has is a boundary.</p>' +
+         '<p><b>It can cope with missing values.</b> If a feature is absent, a generative model marginalises it out and carries on.</p>' +
+         '<p><b>It notices outliers.</b> If P(data) is low it can say "this example does not look like the world I have seen". That connects directly to the monitoring problem from the distribution shift lesson.</p>' +
+         '<p><b>It can be trained per class.</b> When a new class is added you build only that class\'s model and leave the others alone.</p>',
+    learned:'<b>Little data, a frequently changing class list, outlier detection, missing features → generative.</b><br><br><b>Lots of data and the sole aim of the highest accuracy → discriminative.</b><br><br>The crossing measured in this lesson is at roughly 40 examples; the discriminative model finishes 4.3 points ahead at 1000. But what a generative model gives you is not only accuracy.',
+    quiz:{
+      q:'You are building a medical diagnosis system: there are 40 disease types, some with only 20-30 examples, and new disease types are constantly being added to the system. Which approach?',
+      opts:[
+        {t:'A discriminative model, because it gives a lower error asymptotically',
+         why:'The asymptote does not apply here. Some classes have 20-30 examples, so you are far below the crossing point measured in this lesson. And every time a new disease is added you would have to retrain the whole discriminative model.'},
+        {t:'A generative model, because it works better with few examples and adding a new class does not disturb the others',
+         why:'Correct. Three reasons at once: 20-30 examples is below the crossing point; because a generative model models each class independently, adding a new disease does not affect the old ones; and when P(data) comes out low it can say "this does not look like any disease I know", which in medicine is a vital warning.'},
+        {t:'Train both and have them vote',
+         why:'An ensemble is usually a good idea but it does not solve the actual constraints in the question: you still have to retrain the discriminative component from scratch when a new class is added, and it stays weak on the classes with few examples anyway.'},
+        {t:'Deep learning, because medical data is complex',
+         why:'Complexity alone is not a justification. On classes with 20-30 examples a deep network suffers the most severe form of the variance problem you saw in this lesson.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['regresyon'] = {
+  ad:'Linear regression and least squares',
+  alt:'Gradient descent found it in 2142 steps. There is a formula that finds the same answer in a single line. But there is also a place where that formula breaks.',
+  kaynaklar:[{"y":"Gauss, C. F.","t":"1809","b":"Theoria Motus Corporum Coelestium (least squares)","n":"Perthes & Besser"},
+             {"y":"Bishop, C. M.","t":"2006","b":"Pattern Recognition and Machine Learning, Section 3.1.1","n":"Springer"},
+             {"y":"Hastie, Tibshirani, Friedman","t":"2009","b":"The Elements of Statistical Learning, Section 3.2","n":"Springer"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'No need to search, there is a formula',
+    goal:'You will see that the solution gradient descent searches for step by step has a closed form.',
+    todo:'Leave the correlation at 0 and look at the coefficients of the two samples on the right. Are they close to each other?',
+    kind:'controls', viz:'enKucukKare', h:700, xp:25,
+    body:'<p>In the "how does a model learn" lesson we found the line by gradient descent: 2142 steps, ending at w = 7.727 and b = 20.80 with an error of 5.20.</p>' +
+         '<p>There was actually no need to search at all. Set the derivative of the squared error to zero and solve, and you get the <b>normal equation</b>:</p>' +
+         '<p style="text-align:center"><b>w = (XᵀX)⁻¹ Xᵀy</b></p>' +
+         '<p>On the same 10 student dataset this formula gives w = 7.727, b = 20.80 and an error of 5.20 in a single step. Exactly where gradient descent arrived in 2142 steps.</p>' +
+         '<p>The example on screen has two features and two coefficients, with true values w₁ = 2.00 and w₂ = −1.00. While the correlation is zero, two separate samples give almost the same answer.</p>',
+    learned:'<b>Least squares has a closed form solution: w = (XᵀX)⁻¹Xᵀy.</b><br><br>Gradient descent approaches that point step by step; the normal equation goes straight there. On the 10 student dataset both find w = 7.727, b = 20.80 and an error of 5.20.<br><br>So why is gradient descent still used? Because the XᵀX matrix is p×p and inverting it grows with p³. With a million features that formula cannot be run.',
+    controls:[{k:'ri', lb:'CORRELATION BETWEEN FEATURES', min:0, max:5, step:1, val:0}],
+  },
+  {
+    t:'The formula breaks',
+    goal:'You will see why the closed form becomes meaningless when two features approach each other.',
+    todo:'Raise the correlation to 0.9999. Look at the determinant, the condition number and the difference between the two samples\' coefficients.',
+    kind:'controls', viz:'enKucukKare', h:700, xp:45,
+    body:'<p>As two features approach being copies of each other, the XᵀX matrix starts becoming singular. The determinant falls to zero and inverting it turns into a division by zero.</p>' +
+         '<p><b>correlation 0:</b> determinant 10560.1, condition number 1<br>' +
+         '<b>0.99:</b> determinant 210.1, condition 233<br>' +
+         '<b>0.999:</b> determinant 21.1, condition 2361<br>' +
+         '<b>0.9999:</b> determinant 2.1, condition <b>23669</b></p>' +
+         '<p>See the consequence in the two samples on the right. Two datasets drawn from the same process give [2.03, −1.00] and [2.00, −1.01] at correlation 0. At correlation 0.9999 they give [2.04, −1.00] and <b>[2.94, −1.94]</b>. The true value is 2.00 while one says 2.04 and the other 2.94.</p>',
+    learned:'<b>The closed form always exists but is not always meaningful.</b> At a correlation of 0.9999 the condition number rises to 23669 and the coefficient difference between the two samples jumps from 0.03 to <b>0.90</b>.<br><br>The condition number tells you by what factor a small change in the input will grow in the output. This is the numerical counterpart of the sentence "correlated features make unpenalised regression unstable" from the ridge lesson.',
+    controls:[{k:'ri', lb:'CORRELATION BETWEEN FEATURES', min:0, max:5, step:1, val:0}],
+  },
+  {
+    t:'Adding λ rescues the matrix',
+    goal:'You will see why the ridge penalty is not only a regularisation but also a numerical repair.',
+    todo:'Keep the correlation at 0.999 and raise λ. What does the condition number do?',
+    kind:'controls', viz:'enKucukKare', h:700, xp:50,
+    body:'<p>Recall the ridge formula: <b>w = (XᵀX + λI)⁻¹Xᵀy</b>. The only difference is adding λ to the diagonal.</p>' +
+         '<p>That addition stops the matrix being singular. At a correlation of 0.999:</p>' +
+         '<p><b>λ = 0:</b> condition 2361 &nbsp;·&nbsp; <b>λ = 0.1:</b> 1148 &nbsp;·&nbsp; <b>λ = 1:</b> 205 &nbsp;·&nbsp; <b>λ = 10:</b> <b>23</b></p>' +
+         '<p>So ridge does two jobs at once: statistically it lowers the variance, and numerically it produces an invertible matrix.</p>' +
+         '<p>The title of Hoerl and Kennard\'s 1970 paper says it already: "Biased estimation for nonorthogonal problems".</p>',
+    learned:'<b>Adding λI repairs the matrix.</b> At a correlation of 0.999 the condition number is 2361 at λ=0 and <b>23</b> at λ=10.<br><br>This is why ridge works even when there are more features than examples: XᵀX is certainly singular in that case, but XᵀX + λI is not.<br><br>For the same reason the matrix inverse is never actually taken when computing the closed form in practice; a QR or SVD decomposition is used, because those are more stable on ill-conditioned matrices.',
+    controls:[{k:'ri', lb:'CORRELATION', min:0, max:5, step:1, val:4},
+              {k:'lam', lb:'PENALTY λ', min:0, max:20, step:0.5, val:0}],
+  },
+  {
+    t:'When the formula, when the gradient?',
+    goal:'You will make the right choice between the two solution paths.',
+    todo:'Answer the question.',
+    kind:'static', viz:'enKucukKare', h:700, xp:45, state:{ri:0, lam:0},
+    body:'<p><b>The normal equation:</b> a single step, no setting like a learning rate, an exact solution. But building the XᵀX matrix is n·p² operations and inverting it is p³. If the number of features is large it does not scale.</p>' +
+         '<p><b>Gradient descent:</b> n·p operations per step, no need to keep all the data in memory (it works with mini batches), and it works with non-linear models too. But you have to choose a learning rate and convergence needs tuning.</p>',
+    learned:'<b>Few features → the normal equation. Many features, sparse data, a non-linear model → the gradient.</b><br><br>The threshold is roughly a few thousand features: below it the closed form is both fast and free of tuning, above it the p³ cost hits a wall.<br><br>And correlated features cause trouble on both paths. In gradient descent it shows up as slow convergence and in the normal equation as a bad condition number. The cure for both is the same: a penalty term.',
+    quiz:{
+      q:'You are going to train a linear regression on sparse text data with 500,000 features. Which path?',
+      opts:[
+        {t:'The normal equation, because it gives the exact solution in a single step',
+         why:'The XᵀX matrix would be 500,000 × 500,000. Just holding it in memory in double precision needs more than two terabytes, and inverting it means p³, on the order of 10¹⁷ operations. Impossible in practice.'},
+        {t:'Gradient descent or a variant, because each step scales linearly with the number of features and can exploit sparsity',
+         why:'Correct. Each step of gradient descent is n·p operations, and on sparse data only the non-zero entries are visited. It also never builds the XᵀX matrix or holds it in memory. This is why large scale linear models are almost always trained with iterative methods.'},
+        {t:'Reduce the dimension with PCA first and then use the normal equation',
+         why:'It sounds reasonable but PCA itself needs a covariance matrix or an SVD in 500,000 dimensions, so you hit the same wall of scale from the start. A partial SVD is possible on sparse data but it is an unnecessary detour.'},
+        {t:'It makes no difference, both give the same answer',
+         why:'They do go to the same point mathematically, that is true. But the question is which one can run. At this size the normal equation cannot be computed, so "the same answer" is a theoretical consolation.'},
+      ], correct:1 },
+  },
+  ],
+};
