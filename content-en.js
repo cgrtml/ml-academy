@@ -5861,3 +5861,142 @@ DERSLER_EN['soft-tree'] = {
   },
   ],
 };
+
+DERSLER_EN['kumeleme'] = {
+  ad:'k-means: learning without labels',
+  alt:'Until now we always knew the right answer. What if there are no labels at all? Can a model find the groups in the data by itself?',
+  kaynaklar:[{"y":"Lloyd, S. P.","t":"1982","b":"Least Squares Quantization in PCM","n":"IEEE Trans. Information Theory, 28(2)"},
+             {"y":"Arthur, D. & Vassilvitskii, S.","t":"2007","b":"k-means++: The Advantages of Careful Seeding","n":"SODA 2007"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'No labels, now what?',
+    goal:'You will see the difference between supervised and unsupervised learning on a running algorithm.',
+    todo:'The animation plays on its own. Notice that two steps repeat in turn.',
+    kind:'play', viz:'kmeans', h:700, hiz:700, xp:35,
+    learned:'<b>k-means repeats two steps:</b> (1) assign every point to the nearest centre · (2) move every centre to the middle of its own points.<br><br>That is all. No labels, no teacher, no right answer, and it still found the structure. This is called <b>unsupervised learning</b>: customer segmentation, anomaly detection and document grouping all belong to this family.',
+  },
+  {
+    t:'The breaking point: a bad start',
+    goal:'You will see that k-means <b>has no guarantee</b>, and why that matters in practice.',
+    todo:'Set the start option to "bad" and watch the animation again. What changed?',
+    kind:'controls', viz:'kmeans', h:700, xp:50,
+    body:'<p>The same data, the same algorithm, only the <b>starting position</b> of the centres is different.</p>' +
+         '<p><b style="color:#22d3a0">A good start:</b> the centres are spread out at the corners. It converges in 4 steps and the groups are 34/34/34. Perfect.</p>' +
+         '<p><b style="color:#f87171">A bad start:</b> all three centres are in the bottom left corner. The result is <b>0 / 68 / 34</b>: one centre gets no points at all (a <b>dead centre</b>) and two real clusters merge into one.</p>' +
+         '<p>And the algorithm <b>does not know</b> this is wrong. By its own criterion it converged, stopped and returned the result. Because there are no labels, there is no reference to say "wrong" either.</p>' +
+         '<p><b>What is done in practice:</b> k-means is run with many different random starts and the one with the lowest error is taken (<code>n_init</code> in scikit-learn). There is also a smart initialisation called <b>k-means++</b> that deliberately picks centres far from each other. That is the default, and the reason is exactly what you see here.</p>',
+    learned:'<b>The price of unsupervised learning:</b> because there is no right answer, there is no reference to tell you the model is wrong either.<br><br>k-means gets stuck in a local optimum and is happy about it. The fix: multiple starts plus k-means++ plus testing the result against domain knowledge. <b>An algorithm saying "I converged" does not mean "I found the right answer".</b>',
+    controls:[{k:'baslangic', lb:'START', min:0, max:1, step:1, val:0},
+              {k:'adim', lb:'STEP', min:0, max:12, step:1, val:12}],
+    quiz:{
+      q:'You are using k-means in a real project. Which risk is <b>the most critical</b>?',
+      opts:[
+        {t:'That it runs very slowly',
+         why:'k-means is one of the fastest clustering algorithms. Speed is rarely the problem.'},
+        {t:'That the result depends on the start and the algorithm cannot notice a bad result',
+         why:'Correct, and this is the general problem of unsupervised learning. In supervised learning the test set tells you "you got it wrong". Here there is nobody to say it. That is why multiple starts (n_init), k-means++ and measures such as the silhouette score are used.'},
+        {t:'That it only works with 2 dimensional data',
+         why:'No, k-means works in any dimension (in high dimensions the notion of distance weakens, but that is a separate topic).'},
+        {t:'That it finds the value of k by itself',
+         why:'The opposite: <b>you</b> have to supply k and that is a separate problem (the elbow method, silhouette).'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['boyut'] = {
+  ad:'PCA, t-SNE, UMAP',
+  alt:'Is a dataset with 20 columns really 20 dimensional? Usually not. And finding that out both speeds things up and makes them easier to understand.',
+  kaynaklar:[{"y":"Pearson, K.","t":"1901","b":"On Lines and Planes of Closest Fit to Systems of Points in Space","n":"Philosophical Magazine, 2(11)"},
+             {"y":"Hotelling, H.","t":"1933","b":"Analysis of a Complex of Statistical Variables into Principal Components","n":"J. Educational Psychology, 24"},
+             {"y":"van der Maaten, L. & Hinton, G.","t":"2008","b":"Visualizing Data using t-SNE","n":"JMLR, 9, 2579–2605"},
+             {"y":"McInnes, Healy, Melville","t":"2018","b":"UMAP: Uniform Manifold Approximation and Projection","n":"arXiv:1802.03426","u":"https://arxiv.org/abs/1802.03426"},
+             {"y":"Wattenberg, Viégas, Johnson","t":"2016","b":"How to Use t-SNE Effectively","n":"Distill","u":"https://distill.pub/2016/misread-tsne/"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'The true direction of the data',
+    goal:'You will see what PCA finds and why it goes after something called "the most variance".',
+    todo:'Use NEXT to walk through the four stages.',
+    kind:'phases', viz:'pca', h:740, xp:45,
+    learned:'<b>PCA = rotating onto the eigenvectors of the covariance matrix.</b> The eigenvalue is the variance in that direction, and they are sorted from largest to smallest.<br><br>The components are perpendicular to each other and are <b>mixtures</b> of the original features, which is why they buy you speed and noise reduction and cost you interpretability.',
+    phases:[
+      {state:{gosterPC:0},
+       body:'<p>160 points, two features. But look at the points: almost all of them are lined up <b>along a single direction</b>. There are two columns but the information looks one dimensional.</p>' +
+            '<p>The covariance matrix says so numerically: the off diagonal term is <b>0.70</b>, the two features are strongly related. When one goes up the other goes up too.</p>'},
+      {state:{gosterPC:1},
+       body:'<p><b style="color:#22d3a0">PC1 found.</b> This is the direction in which the data spreads most, mathematically the eigenvector corresponding to the <b>largest eigenvalue</b> of the covariance matrix.</p>' +
+            '<p>The eigenvalue λ₁ = <b>1.552</b>. <b>94.3%</b> of the total variance is in this single direction.</p>' +
+            '<p>The direction of PC1 is [0.804, 0.595], roughly <b>36.5°</b>. That direction is a mixture of the two features, which is why PCA components are considered "uninterpretable".</p>'},
+      {state:{gosterPC:2},
+       body:'<p><b style="color:#fb923c">PC2 added</b>, and note: it is <b>exactly perpendicular</b> to PC1. Their inner product is 0.000000.</p>' +
+            '<p>That is not a coincidence but a theorem: the eigenvectors of a symmetric matrix are perpendicular to each other. This is why PCA <b>rotates</b> the data; the new axes still form a perpendicular coordinate system.</p>' +
+            '<p>λ₂ = 0.093, which is only <b>5.7%</b> of the remaining variance.</p>'},
+      {state:{gosterPC:3},
+       body:'<p><b>Now the real move:</b> project every point onto PC1 alone (the yellow points). The yellow lines show the information lost.</p>' +
+            '<p>We went from 2 dimensions to 1, <b>and lost only 5.7% of the variance</b>. Every point is now represented by a single number: its position along PC1.</p>' +
+            '<p>In real problems that ratio is far more striking: a dataset with 1000 columns can keep 95% of its variance with 50 components.</p>'},
+    ],
+  },
+  {
+    t:'How many components are enough?',
+    goal:'You will see how the question "how many dimensions should I go down to" is answered, on a real scree plot.',
+    todo:'Lower the slider from 6 to 1. Look at where the preserved variance collapses.',
+    kind:'controls', viz:'scree', h:740, xp:55,
+    body:'<p>This data has <b>6 columns</b>. But it was deliberately generated like this: 2 hidden factors, 5 columns that are mixtures of those two factors, and 1 column of pure noise.</p>' +
+         '<p>PCA does not know that. It finds it anyway:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">PC1  →  72.5%    cumulative 72.5%<br>PC2  →  25.5%    cumulative <b>98.0%</b><br>PC3  →   1.0%    cumulative 99.0%<br>PC4  →   0.4%<br>PC5  →   0.3%<br>PC6  →   0.3%</p>' +
+         '<p><b>The first two components carry 98% of the variance.</b> Everything after PC3 is noise, and the curve flattens out there on the plot too. This is called the <b>elbow method</b>.</p>' +
+         '<p>Three criteria are used in practice:</p>' +
+         '<p>· <b>A variance threshold:</b> <code>PCA(n_components=0.95)</code>, take as many components as it takes to keep 95%<br>' +
+         '· <b>The elbow:</b> where the curve bends<br>' +
+         '· <b>Downstream performance:</b> which k the actual model works best with</p>' +
+         '<p style="color:#facc15"><b>A critical warning:</b> PCA is fitted on <b>the training set only</b>. If you fit it on all the data and split afterwards you have leaked data, exactly the trap you saw in the leakage lesson on Track 0. The fix: <code>Pipeline</code>.</p>',
+    learned:'<b>PCA tells you how many dimensions really carry the data.</b> You choose with the elbow point or a 95% threshold.<br><br>But it is <b>unsupervised</b>: it does not look at the label, so it can throw away a discriminative but low variance direction. And it is meaningless without scaling.',
+    controls:[{k:'k', lb:'COMPONENTS KEPT', min:1, max:6, step:1, val:6}],
+    quiz:{
+      q:'You ran PCA, kept 50 components, and the model accuracy fell. Which is <b>not</b> a likely cause?',
+      opts:[
+        {t:'You did not scale, so the large scale columns captured all the components',
+         why:'This is a <b>very likely</b> cause. PCA looks at variance; if income (in lira, in the millions) and age (in years, in the tens) are in the same data, income alone determines PC1. StandardScaler is mandatory.'},
+        {t:'The discarded components had low variance but were critical for separating the classes',
+         why:'This is a <b>real</b> cause too. PCA is unsupervised and never looks at the label. A direction with small variance but high discriminative power can easily be thrown away. The supervised alternative: LDA or feature selection directly.'},
+        {t:'PCA could not capture non-linear structure',
+         why:'This is also a valid cause. If the data lies on a curve, PCA cannot represent it with straight axes; kernel PCA or UMAP is needed.'},
+        {t:'The PCA components confused the model because they are correlated with each other',
+         why:'The right answer: this <b>cannot</b> be a cause. PCA components are by definition <b>perpendicular</b> and uncorrelated. Removing multicollinearity is in fact one of the things PCA does.'},
+      ], correct:3 },
+  },
+  {
+    t:'t-SNE and UMAP: a different purpose',
+    goal:'You will learn why the methods used for visualisation are fundamentally different from PCA and how they get misread.',
+    todo:'Read the text and answer the question.',
+    kind:'controls', viz:'scree', h:740, xp:50,
+    body:'<p>PCA is <b>linear</b>: it rotates the data and cuts. That makes it fast, deterministic and invertible, so you can unpack the data you compressed.</p>' +
+         '<p><b>t-SNE and UMAP do a completely different job.</b> Their aim is not to preserve variance but to preserve <b>neighbourhood relations</b>: points that are close together in high dimensions should stay close in 2 dimensions.</p>' +
+         '<p>The price of that is heavy:</p>' +
+         '<p>· <b>Not deterministic</b>, a different picture comes out on every run<br>' +
+         '· <b>Not invertible</b>, adding a new point to the map (in t-SNE) is impossible<br>' +
+         '· <b>Distances between clusters are meaningless</b>: two clusters being far apart on the map does not mean they are far apart in reality<br>' +
+         '· <b>Cluster sizes are meaningless</b>, the algorithm tries to equalise density</p>' +
+         '<p style="color:#f87171"><b>The most common mistake:</b> using the t-SNE/UMAP output as model input. These are <b>visualisation tools</b>, not feature extractors.</p>' +
+         '<p>The right usage: inspecting an embedding space by eye, looking at whether the clusters really do separate, hunting for label errors.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px;font-size:12.5px"><span style="color:#566674"># the right order: go down to 50 dimensions with PCA first, then UMAP</span><br>X50 = PCA(n_components=50).fit_transform(Xs)<br>emb = umap.UMAP(n_neighbors=15, min_dist=0.1).fit_transform(X50)</p>',
+    learned:'<b>PCA compresses (linear, invertible, deterministic). t-SNE/UMAP visualise (non-linear, not invertible, random).</b><br><br>The only reliable thing you can read off a UMAP plot: <b>does it separate or not.</b> Distance and size are not interpreted.<br><br><b>Track 1 complete</b>: 10 classical models, all with the build / compare / prove discipline.',
+    controls:[{k:'k', lb:'COMPONENTS KEPT', min:1, max:6, step:1, val:2}],
+    quiz:{
+      q:'Two clusters sit very far apart on a UMAP plot. What do you conclude?',
+      opts:[
+        {t:'These two groups are very different from each other',
+         why:'No. In UMAP and t-SNE the <b>distances between clusters are not preserved</b>. Two clusters can look far apart on the map while being neighbours in the original space, or the other way round.'},
+        {t:'The two clusters separate, but I cannot comment on how large the distance between them is',
+         why:'Correct. The only reliable information you can read from UMAP is <b>whether there is separation</b>. Distance, cluster size and shape cannot be interpreted. The Distill article "How to Use t-SNE Effectively" demonstrates these misconceptions interactively; it is in the sources section.'},
+        {t:'There are at least two different classes between them',
+         why:'There is no necessary relation between the number of clusters and the number of classes.'},
+        {t:'A model would separate these two groups easily',
+         why:'Groups that separate in UMAP may not separate in the original space; UMAP is an unsupervised transformation and is not the space the model will see.'},
+      ], correct:1 },
+  },
+  ],
+};
