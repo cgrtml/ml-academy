@@ -347,3 +347,247 @@ DERSLER_EN['algoritma'] = {
   },
   ],
 };
+
+DERSLER_EN['ezber'] = {
+  ad:'Memorising or finding the rule?',
+  alt:'Both models know the training data. One of them has learned, the other has memorised. There is only one way to tell them apart.',
+  kaynaklar:[{"y":"Alpaydın, E.","t":"2020","b":"Introduction to Machine Learning, 4th edition, Chapter 2","n":"MIT Press"},
+             {"y":"Wolpert, D.","t":"1996","b":"The Lack of A Priori Distinctions Between Learning Algorithms (No Free Lunch)","n":"Neural Computation, 8(7)"}],
+  rota:0,
+  adimlar:[
+  {
+    t:'Two rival models',
+    goal:'You will see two different approaches to the same data, and notice that both of them look like they are "working".',
+    todo:'Compare the two panels.',
+    kind:'static', viz:'ezberKural', xp:10, state:{},
+    body:'<p><b style="color:#fb923c">On the left, the model that memorises.</b> The only thing it does is find the closest record to the question and repeat its answer. What comes out is a staircase, because the only thing it knows is 10 records.</p>' +
+         '<p><b style="color:#22d3a0">On the right, the model that learns a rule.</b> It pulled a single straight line out of the points: <b>ŷ = 7.73·x + 20.8</b>. It passes through none of them exactly, but it caught the trend of all of them.</p>' +
+         '<p>Now the critical question: <b>which one is better?</b> You cannot decide by looking at the plot. The memorising model even looks <i>closer</i> to the points.</p>',
+    learned:'<b>Two approaches to the same data: memorise, or extract a rule.</b> The memorising model copies the nearest record, the rule learning model reduces everything to one formula: ŷ = 7.73·x + 20.8.<br><br>You cannot decide which one is good by looking at the plot. To decide you need a measurement, and the next step is where we try one.',
+  },
+  {
+    t:'On the training data both are perfect',
+    goal:'You will see why testing a model with <b>the data it learned from</b> proves nothing at all.',
+    todo:'Use NEXT to walk through the two stages.',
+    kind:'phases', viz:'ezberKural', xp:20,
+    learned:'<b>On training data, memorising always wins.</b> For x = 4 the memoriser says 51 (the truth is 51) and the rule learner says 51.7. For x = 8 the memoriser says 80 (the truth is 80) and the rule learner says 82.6.<br><br>The memoriser\'s training error is exactly zero. Which means that if you measure a model with the data it learned from, <b>you will always pick the wrong model</b>.',
+    phases:[
+      {state:{yeni:4},
+       body:'<p>Let us ask about a student who <b>is</b> in the table: x = 4 hours. The real score is 51.</p>' +
+            '<p><b>Memoriser:</b> 51. Flawless, because it is holding that record in memory already.<br><b>Rule learner:</b> 51.7. Almost right, but not exactly.</p>' +
+            '<p>This round the memoriser <b>won</b>. On training data, memorising always wins.</p>'},
+      {state:{yeni:8},
+       body:'<p>One more: x = 8, real score 80.</p>' +
+            '<p><b>Memoriser:</b> 80. Flawless again. <b>Rule learner:</b> 82.6. Approximate again.</p>' +
+            '<p>On the training data the memorising model\'s error is <b>exactly zero</b>. The rule learning model is always slightly off.</p>' +
+            '<p style="color:#facc15"><b>Watch this:</b> if you had judged the models on training data alone, you would have picked the memoriser. And that would have been a very bad decision.</p>'},
+    ],
+  },
+  {
+    t:'Now bring in a student it has never seen',
+    goal:'You will understand what generalisation means by putting the two models\' answers to the same new question side by side.',
+    todo:'Move the slider <b>in between the whole numbers</b> (try 4.5, 6.5, 7.5). Compare what the two panels answer.',
+    kind:'controls', viz:'ezberKural', xp:25,
+    body:'<p><b style="color:#fb923c">The memorising model</b> has no idea what to do with a new question. All it can do is copy the closest record. The result: <b>when x changes a little the answer does not change at all</b>, and then it jumps. That is what the staircase means.</p>' +
+         '<p><b style="color:#22d3a0">For the rule learning model</b> there is no such thing as a new question. It has a formula: put x in, take the answer out. When x changes smoothly, the answer changes smoothly.</p>' +
+         '<p>Take <b>x = 6.5</b>: the memoriser says "66" (the score of the 6 hour student), the rule learner says "71". Which one makes sense? If 6 hours gives 66 and 7 hours gives 78, then answering 66 for 6.5 hours is plainly wrong.</p>',
+    learned:'<b>Generalisation means giving a sensible answer to an input you have never seen.</b> For x = 6.5 the memoriser says 66 (it copies the 6 hour student\'s score), the rule learner says 71.<br><br>If 6 hours gives 66 and 7 hours gives 78, then 66 for 6.5 hours is plainly wrong. That is what the memoriser\'s staircase means: it rounds every value in between to the nearest record.',
+    controls:[{k:'yeni', lb:'NEW STUDENT · x', min:0.5, max:10.4, step:0.1, val:6.5}],
+  },
+  {
+    t:'It has a name: overfitting',
+    goal:'You will learn the standard names for these two behaviours and why both of them are dangerous.',
+    todo:'Answer the question.',
+    kind:'static', viz:'ezberKural', xp:35, state:{yeni:6.5},
+    body:'<p><b>Overfitting:</b> the model takes the training data too seriously and mistakes the noise for the rule. Perfect in training, poor in the real world. The memorising model on the left is the extreme case of this.</p>' +
+         '<p><b>Underfitting:</b> the model is too simple and cannot capture even the structure that really is in the data. Poor in training and poor in the real world.</p>' +
+         '<p>A good model sits between the two: <b>it catches the signal and not the noise.</b> But there is no shortcut for telling signal from noise, which is why we have to measure.</p>',
+    learned:'<b>Success on training data is not success.</b> A model is obliged to know the data it saw; the real question is what it does with data it has not seen.<br><br>This is why we split the data in two from the start: <b>training</b> (the model learns from this) and <b>test</b> (the model never sees this, we only use it to grade).',
+    quiz:{
+      q:'How do you <b>prove</b> that the memorising model is actually bad?',
+      opts:[
+        {t:'I look at its error on the training data; if it is low the model is good',
+         why:'No. The memorising model\'s training error is <b>zero</b>. By that measure it looks flawless. That is exactly why the measure is misleading.'},
+        {t:'I look at how complex the model is',
+         why:'Close, but not enough. Complexity is a <i>hint</i>, not proof. Sometimes a complex model really is necessary.'},
+        {t:'I split the data in two from the start: I <b>hide</b> part of it from the model and test only on the hidden part',
+         why:'Correct. This is called the <b>train/test split</b> and it is the most basic discipline in machine learning. What does the model do on data it has not seen? That is the only honest question, and the memorising model falls apart there.'},
+        {t:'I collect more data',
+         why:'That can help, but it does not <b>measure</b> the problem. You have to measure it first, then fix it.'},
+      ], correct:2 },
+  },
+  ],
+};
+
+DERSLER_EN['nasil-ogrenir'] = {
+  ad:'How does a model learn?',
+  alt:'Gradient descent, the single most important idea in machine learning. From scratch, step by step, with your own hands.',
+  kaynaklar:[{"y":"Cauchy, A.","t":"1847","b":"Méthode générale pour la résolution des systèmes d’équations simultanées","n":"C. R. Acad. Sci. Paris"},
+             {"y":"Goodfellow, Bengio, Courville","t":"2016","b":"Deep Learning, Chapters 4 & 8","n":"MIT Press","u":"https://www.deeplearningbook.org/"}],
+  rota:0,
+  adimlar:[
+  {
+    t:'A model is a formula',
+    goal:'A model\'s "knowledge" is nothing more than a few numbers. Here there are two: <b>w</b> and <b>b</b>. <b>You</b> are going to set them first.',
+    todo:'Move the two sliders and fit the line to the points. Target: push the error <b>below 100</b>.',
+    kind:'controls', viz:'dogruUydur', xp:40, state:{artik:true},
+    body:'<p>The rule: <b>ŷ = w·x + b</b>. That is, "predicted score = slope × hours + base".</p>' +
+         '<p><b>w</b> = how many points each extra hour of study is worth. <b>b</b> = the base score somebody who studies nothing would get. Those two numbers are <i>all the knowledge</i> the model has.</p>' +
+         '<p>The dashed red lines show how wrong you are for each student. Try to make them short.</p>',
+    learned:'You managed it, but did you notice how: <b>by trial and error</b>. With two parameters that is possible. A neural network has <b>billions</b> of them. You cannot move those by hand. Gradient descent is exactly the thing that turns this trial and error into a systematic procedure.',
+    controls:[{k:'w', lb:'w · SLOPE', min:0, max:15, step:0.1, val:2},
+              {k:'b', lb:'b · INTERCEPT', min:-10, max:50, step:1, val:40}],
+  },
+  {
+    t:'How does the error become a single number?',
+    goal:'The one number answer to "how bad is this model?" is the <b>loss function</b>. You will build it step by step.',
+    todo:'Use NEXT to walk through the four stages.',
+    kind:'phases', viz:'dogruUydur', xp:30,
+    learned:'<b>A loss function reduces a model\'s badness to a single number.</b> Without it, "learning" has no definition. MSE is the standard for regression; classification uses cross-entropy, but the logic is exactly the same.',
+    quiz:{
+      q:'There were two reasons for squaring the errors. Which one was <b>not</b> a reason?',
+      opts:[
+        {t:'So that positive and negative errors do not cancel each other out',
+         why:'That was a <b>real</b> reason. +10 and −10 add up to 0 and the model looks flawless.'},
+        {t:'So that large errors are punished disproportionately and the model fixes them first',
+         why:'That was a <b>real</b> reason too.'},
+        {t:'So that the result stays between 0 and 1',
+         why:'This is the right answer, it is <b>not</b> a reason. MSE is unbounded; in this lesson you will see it go past 2000.'},
+      ], correct:2 },
+    phases:[
+      {state:{w:6.5, b:25},
+       body:'<p>We have a random model in hand: <b>ŷ = 6.5·x + 25</b>. Not terrible, not perfect either.</p>' +
+            '<p>The question: how do we say how "bad" this is <b>with a single number</b>? Because you cannot improve what you cannot measure.</p>'},
+      {state:{w:6.5, b:25, artik:true},
+       body:'<p><b>1 · Measure the error for every point.</b> The red lines are the gap between the real score and the prediction. The name for this is a <b>residual</b>.</p>' +
+            '<p>But we cannot just add them up: some are positive, some negative. Added together they cancel out and the model <b>looks perfect</b>.</p>'},
+      {state:{w:6.5, b:25, artik:true, kare:true},
+       body:'<p><b>2 · Square every error.</b> Each line turned into a square whose side is that line. The <b>area</b> of the square is error².</p>' +
+            '<p>Two gains: everything is positive now (they can no longer cancel out) <b>and</b> large errors are punished disproportionately, an error of 10 counting 100 times an error of 1.</p>'},
+      {state:{w:6.5, b:25, artik:true, kare:true, mseGoster:true},
+       body:'<p><b>3 · Take the average.</b> Add up all the square areas and divide by the number of samples. The single number that comes out is <b>MSE</b> (mean squared error).</p>' +
+            '<p>Now learning has a clear target: <b>make this number smaller.</b> The whole of training is nothing more than that.</p>'},
+    ],
+  },
+  {
+    t:'A map of every possibility',
+    goal:'Every (w, b) pair has an error. Draw them all at once and you get a <b>map</b>, and learning is the search for the lowest point on that map.',
+    todo:'Wander around the map with the sliders. The yellow dots are the places <b>you</b> tried in step 1.',
+    kind:'controls', viz:'kayipHarita', xp:30,
+    body:'<p>The map on the left: horizontal axis <b>w</b>, vertical axis <b>b</b>. The colour of each pixel is that pair\'s error, <b style="color:#4cc4ff">dark = low error</b>, <b style="color:#f87171">red = high error</b>.</p>' +
+         '<p>The green ring is the mathematically best point (w=7.73, b=20.8). The yellow dots are your own attempts by hand.</p>' +
+         '<p>The learning problem has shrunk to one sentence: <b>find the lowest point on this map.</b></p>',
+    learned:'<b>Learning is the search for the lowest point on the loss map.</b> But the map is invisible. All we have is the <b>slope</b> at the point where we are standing, like walking down a foggy mountain by feeling the ground under your feet.',
+    controls:[{k:'w', lb:'w position', min:0.5, max:14.5, step:0.1, val:11},
+              {k:'b', lb:'b position', min:-8, max:48, step:1, val:42}],
+    quiz:{
+      q:'Why can we not draw this map for a real neural network?',
+      opts:[
+        {t:'Computers cannot display that many colours',
+         why:'No, the problem is not visualisation.'},
+        {t:'There are billions of parameters, so instead of a 2D map there is a billion dimensional space, and scanning it is impossible',
+         why:'Correct. Here we computed about 5000 points, 72×72, for 2 parameters. Doing the same thing with a billion parameters would take longer than the age of the universe. This is why we have to descend <b>without seeing the map</b>, using only the slope under our feet.'},
+        {t:'The loss function is undefined for neural networks',
+         why:'No, it is perfectly well defined, it just lives in very high dimension.'},
+      ], correct:1 },
+  },
+  {
+    t:'A compass in the fog: the derivative',
+    goal:'Even when you cannot see the map, you can compute the <b>slope</b> at the point where you stand. That slope gives you a direction.',
+    todo:'Move to different points with the sliders and watch how the two arrows turn.',
+    kind:'controls', viz:'kayipHarita', xp:30, state:{gradyan:true},
+    body:'<p><b style="color:#f87171">The red arrow is the gradient (∇L).</b> The derivative of the loss function with respect to each parameter. It always points <b>straight UPHILL</b>.</p>' +
+         '<p><b style="color:#22d3a0">The green arrow is the opposite of the gradient.</b> We want to go down, so this is the way we move. The minus sign in the formula (θ − η∇L) exists for exactly this reason.</p>' +
+         '<p><b>The critical part:</b> computing these arrows does not require knowing the map. We only take a few derivatives at the point where we stand. It works the same way in a billion dimensions, and in neural networks the algorithm that does it is called <b>backpropagation</b>.</p>',
+    learned:'<b>The derivative is a local compass.</b> Without seeing the whole map, just by looking at the ground under your feet, you know which way to go.',
+    controls:[{k:'w', lb:'w position', min:0.5, max:14.5, step:0.1, val:12},
+              {k:'b', lb:'b position', min:-8, max:48, step:1, val:42}],
+    quiz:{
+      q:'If the gradient points straight uphill, why do we go the <b>other</b> way?',
+      opts:[
+        {t:'Because we want to <b>reduce</b> the error, and going downhill is what that means',
+         why:'Correct. Loss is badness. Reducing badness means going down, which means the opposite of the gradient. That is the entire meaning of the minus sign in the formula.'},
+        {t:'Because the derivative comes out with the wrong sign',
+         why:'No, the derivative gives the right sign. We flip the direction deliberately.'},
+        {t:'It is an arbitrary choice, it could have been a plus',
+         why:'No. With a plus (gradient <i>ascent</i>) you would increase the error. That is a real method too, but its goal is to maximise a reward, and it is used in reinforcement learning.'},
+      ], correct:0 },
+  },
+  {
+    t:'The anatomy of a single step',
+    goal:'You will follow <b>one</b> step of gradient descent, line of code by line of code, number by number.',
+    todo:'Use NEXT to walk through the five stages. Watch the numbers that change at each one.',
+    kind:'phases', viz:'kayipHarita', xp:50,
+    learned:'<b>θ ← θ − η·∇L</b>, the single most important line in machine learning. Compute the slope, take a small step against it, repeat. Every model from GPT down to logistic regression is trained with this line.',
+    phases:[
+      {state:{w:12, b:42},
+       body:'<p>Starting point: <b>w=12, b=42</b>. The line sits far above the points and the error is <b>2154</b>. A bad model.</p>'},
+      {state:{w:12, b:42},
+       body:'<p><b>Learning rate (lr) = 0.01.</b> The setting for "how far do I move in the direction the slope shows". In the last step we will try to break it.</p>'},
+      {state:{w:12, b:42, gradyan:'ters'},
+       body:'<p><b>Slope in the w direction: 562.20</b>. Positive, so if I <i>increase</i> w the error increases. Which means w has to <b>go down</b>.</p>'},
+      {state:{w:12, b:42, gradyan:'ters'},
+       body:'<p><b>Slope in the b direction: 89.40</b>. Also positive, so b has to go down as well. The two slopes together fix exactly the direction we move on the map.</p>'},
+      {state:{w:6.377999999999999, b:41.106, yol:[[12,42],[6.377999999999999,41.106]]},
+       body:'<p><b>The step is taken.</b> w: 12 − 0.01×562.20 = <b>6.38</b> · b: 42 − 0.01×89.40 = <b>41.1</b></p>' +
+            '<p>The error goes from <b>2154</b> to <b>186</b>. A <b>91%</b> drop in a single step.</p>' +
+            '<p><b>That is the whole of gradient descent.</b> Everything else is repeating this step.</p>'},
+    ],
+  },
+  {
+    t:'The same step, 2142 times',
+    goal:'You have seen one step. Now you will watch the model <b>actually learn</b> as that step repeats.',
+    todo:'Press PLAY. On the left the path is drawn on the map, on the right the line settles onto the points.',
+    kind:'play', viz:'kayipHarita', xp:50,
+    learned:'<b>Learning is the same small step repeated thousands of times.</b> No magic, no single clever move. You also saw that the first steps are fast and the rest is slow. That is the "valley" problem, and it is the reason modern optimizers exist.',
+  },
+  {
+    t:'Break the learning rate',
+    goal:'η is a <b>hyperparameter</b>. The model does not learn it, you choose it. Choose badly and training either crawls or explodes. You will see both.',
+    todo:'Try all three regions: <b>0.001</b> (too small) · <b>0.01</b> (good) · <b>0.028+</b> (explosion). The question will not unlock until you have seen all three.',
+    kind:'controls', viz:'kayipHarita', xp:60,
+    learned:'<b>This is how a model learns:</b> (1) it makes a prediction · (2) it turns the error into a single number · (3) it computes the slope of that number · (4) it takes a small step against the slope · (5) it repeats thousands of times.<br><br>GPT does the same five things as the line you just trained. The only difference is the number of parameters: <b>2</b> here, <b>hundreds of billions</b> there.',
+    controls:[{k:'lr', lb:'LEARNING RATE η', min:0.0005, max:0.032, step:0.0005, val:0.01}],
+    quiz:{
+      q:'<b>Scenario:</b> your team is training a neural network. At epoch 3 the loss became <code>nan</code>. What is your first move?',
+      opts:[
+        {t:'I collect more data',
+         why:'No. <code>nan</code> does not come from a shortage of data, it comes from numerical overflow. Collecting data takes days and does not fix it.'},
+        {t:'I make the model bigger, its capacity must be too small',
+         why:'No, that is a move in the wrong direction. Making the model bigger usually makes the overflow worse.'},
+        {t:'I lower the learning rate (and add gradient clipping)',
+         why:'Correct. The most common cause of <code>nan</code> is an η that is far too large. It is the same thing you saw above 0.028 on this screen. First response: divide η by 10 and add gradient clipping.'},
+        {t:'I increase the number of epochs',
+         why:'No. Running a diverging training run for longer only produces more <code>nan</code>.'},
+      ], correct:2 },
+    bolgeSayisi:3,
+  },
+  {
+    t:'Write the update line yourself',
+    goal:'You will put everything you have learned into a single line, and the algorithm will actually run.',
+    todo:'Fill the three boxes and press RUN. It runs even if you write it wrong; you get to see what happens.',
+    kind:'controls', viz:'kayipHarita', xp:60,
+    body:'<p>This entire lesson comes down to one line: <b>θ ← θ − η·∇L</b>. Now you build it.</p>' +
+         '<p>Click the boxes and choose from the bank below. Once all three are filled, RUN unlocks.</p>',
+    learned:'<b>θ ← θ − η·∇L</b>, the single most important line in machine learning. Compute the slope, take a small step against it, repeat. Every model from GPT down to logistic regression is trained with this line.',
+    controls:[{k:'w', lb:'starting w', min:0.5, max:14.5, step:0.5, val:12},
+              {k:'b', lb:'starting b', min:-8, max:48, step:1, val:42}],
+    kodlab:{
+      q:'Write the core line of gradient descent <b>yourself</b>. Fill the three boxes, then press RUN. The algorithm really runs, and if you wrote it correctly the model learns.',
+      satirlar:[
+        '<span class="kw">for</span> step <span class="kw">in</span> <span class="fn">range</span>(<span class="st">2000</span>):',
+        '    gw, gb = <span class="fn">gradient</span>(w, b)      <span class="cm"># slope: the uphill direction</span>',
+        '    w = w <b1> lr <b2> gw',
+        '    b = b <b1> lr <b2> gb',
+        '    <span class="cm"># lr = <b3></span>'
+      ],
+      bosluklar:{
+        b1:{ secenekler:['+','-'], dogru:'-' },
+        b2:{ secenekler:['*','/'], dogru:'*' },
+        b3:{ secenekler:['0.01','0.5'], dogru:'0.01' },
+      },
+      ipucu:'The slope points UPHILL and we are going down. And the size of the step is the learning rate times the slope.',
+    },
+  },
+  ],
+};
