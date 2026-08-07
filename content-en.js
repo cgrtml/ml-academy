@@ -3668,3 +3668,114 @@ DERSLER_EN['attention'] = {
   },
   ],
 };
+
+DERSLER_EN['transformer'] = {
+  ad:'One transformer block, end to end',
+  alt:'You have seen attention. Now everything around it, and where 7 billion parameters actually go.',
+  kaynaklar:[{"y":"Vaswani, A. et al.","t":"2017","b":"Attention Is All You Need","n":"NeurIPS 2017","u":"https://arxiv.org/abs/1706.03762"},
+             {"y":"He, K. et al.","t":"2016","b":"Deep Residual Learning for Image Recognition (residual connections)","n":"CVPR 2016"},
+             {"y":"Zhang, B. & Sennrich, R.","t":"2019","b":"Root Mean Square Layer Normalization (RMSNorm)","n":"NeurIPS 2019","u":"https://arxiv.org/abs/1910.07467"},
+             {"y":"Shazeer, N.","t":"2020","b":"GLU Variants Improve Transformer (SwiGLU)","n":"arXiv:2002.05202","u":"https://arxiv.org/abs/2002.05202"},
+             {"y":"Touvron, H. et al.","t":"2023","b":"LLaMA: Open and Efficient Foundation Language Models","n":"arXiv:2302.13971","u":"https://arxiv.org/abs/2302.13971"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'Nine steps',
+    goal:'You will see every step of a transformer block, one at a time, and why each one is there.',
+    todo:'Move the step from 1 to 9. Follow the explanation and the parameter share on the right.',
+    kind:'controls', viz:'tfmBlok', h:780, xp:55,
+    body:'<p>In the attention lesson you saw a single mechanism. But a transformer block is not only that; attention is one link in a chain of nine steps.</p>' +
+         '<p><b>Two design decisions are especially critical:</b></p>' +
+         '<p><b>The residual connection (steps 6 and 9):</b> <code>x = x + attn(x)</code>. The layer\'s output does not <i>replace</i> the input, it is <b>added</b> to it. The consequence is that during backpropagation the gradient can flow by skipping over layers. That is the architectural solution to the problem you saw in the vanishing gradient lesson: without residual connections a 32 layer network cannot be trained.</p>' +
+         '<p><b>The MLP (step 8):</b> attention carries information <i>between</i> tokens. The MLP works <b>separately</b> for every token, with no communication between them. That is why it is the "thinking per token" layer, and surprisingly most of the parameters live here.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">attention (Q,K,V,O):   67.1 M   (33%)<br>MLP (SwiGLU)      :  135.3 M   (<b>67%</b>)<br>norm              :    0.008 M<br>BLOCK             :  202.4 M</p>' +
+         '<p><b>The MLP holds twice the parameters of attention.</b> People say "a transformer is attention", but two thirds of the parameters are not in attention at all.</p>',
+    learned:'<b>The block is norm → attention → residual → norm → MLP → residual.</b><br><br>Residual connections are a gradient motorway (they make depth possible). The MLP works per token and holds <b>67%</b> of the parameters.',
+    controls:[{k:'adim', lb:'STEP', min:0, max:8, step:1, val:0}],
+  },
+  {
+    t:'Where do 7 billion parameters come from?',
+    goal:'You will compute the size of a language model with your own hand and see what it means for memory.',
+    todo:'Walk through the steps and look at the parameter shares, then answer the question.',
+    kind:'controls', viz:'tfmBlok', h:780, xp:60,
+    body:'<p>The Llama-7B architecture: <b>d_model 4096 · 32 layers · 32 heads · FFN 11008 · vocabulary 32000</b>.</p>' +
+         '<p>The arithmetic is completely open:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">attention = 4 × d²     = 4 × 4096²        =  67.1 M<br>MLP       = 3 × d × ffn = 3 × 4096 × 11008 = 135.3 M<br>norm      = 2 × d       = 8192             =   0.008 M<br>                                   BLOCK  = <b>202.4 M</b><br><br>32 blocks                                 =   6.48 B<br>embeddings (in + out) = 2 × 32000 × 4096  =   0.26 B<br>                                   TOTAL  = <b>6.74 B</b></p>' +
+         '<p>The real Llama-7B has <b>6.74 billion</b> parameters. The arithmetic checks out; the size of a language model is not a mystical number, it is <b>multiplication</b>.</p>' +
+         '<p><b>What that means for memory:</b></p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">fp16 weights          : 6.74 B × 2 bytes = <b>13.5 GB</b><br>int8 quantised        : ~6.7 GB<br>int4 quantised        : ~3.4 GB<br><br>TRAINING (with Adam)  : weights + gradients + 2 optimizer states<br>                      ≈ 6.74B × (2+2+4+4) = <b>~81 GB</b></p>' +
+         '<p>This is why a 7B model <b>can be run</b> on a single 24 GB graphics card but <b>cannot be fully fine tuned</b> on one: training needs six times the memory of inference. That is exactly why LoRA exists.</p>',
+    learned:'<b>Parameter count = 12·d²·L + vocabulary·d·2 (roughly).</b> d_model has a squared effect and the layer count a linear one.<br><br>Memory: for inference, the weights × 2 bytes (fp16). For training, <b>about 6 times that</b> (gradients plus optimizer states), which is why LoRA and quantisation exist.',
+    controls:[{k:'adim', lb:'STEP', min:0, max:8, step:1, val:7}],
+    quiz:{
+      q:'If you raise the number of layers from 32 to 64 (keeping d_model fixed), what happens to the parameter count?',
+      opts:[
+        {t:'It stays the same, depth adds no parameters',
+         why:'No, every layer has its own weights.'},
+        {t:'It roughly doubles, but not exactly, because the embedding layer stays fixed',
+         why:'Correct. 202.4M per block is fixed, so 64 blocks instead of 32 gives 12.96B. The embeddings (0.26B) do not change, so the total becomes 13.2B, which is 1.96 times 6.74B rather than exactly 2. That subtle difference is far more pronounced in small models: in a 1B model the embeddings can be 20 to 30% of the total.'},
+        {t:'It quadruples',
+         why:'No, the parameter count grows linearly with the layer count, not with its square. What grows with the square is d_model.'},
+        {t:'It cannot be computed, it depends on the architecture',
+         why:'With the architecture given it is perfectly computable, and this whole lesson shows that.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['sampling'] = {
+  ad:'Temperature, top-k, top-p',
+  alt:'The model gives probabilities, you make the choice. The same model, the same prompt: these three numbers change the output completely.',
+  kaynaklar:[{"y":"Holtzman, A. et al.","t":"2020","b":"The Curious Case of Neural Text Degeneration (nucleus sampling)","n":"ICLR 2020","u":"https://arxiv.org/abs/1904.09751"},
+             {"y":"Fan, A. et al.","t":"2018","b":"Hierarchical Neural Story Generation (top-k sampling)","n":"ACL 2018","u":"https://arxiv.org/abs/1805.04833"},
+             {"y":"Hinton, Vinyals, Dean","t":"2015","b":"Distilling the Knowledge in a Neural Network (the temperature concept)","n":"arXiv:1503.02531"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'Temperature: flattening the distribution',
+    goal:'You will see how a single number decides whether a model is "creative" or "monotonous".',
+    todo:'Pull T to <b>0.1</b> and then to <b>2.5</b>. Watch the shape of the bars and the entropy.',
+    kind:'controls', viz:'ornekleme', h:780, xp:50, state:{k:12, p:1},
+    body:'<p>The model does <b>not pick a word</b>, it produces a probability distribution over the whole vocabulary. For "for breakfast we usually have ___" we have 12 candidates and their raw scores (logits).</p>' +
+         '<p>Temperature is a divisor inside the softmax:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">p_i = exp(logit_i / T) / Σ exp(logit_j / T)</p>' +
+         '<p>The measured results:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">T = 0.1  →  "eggs" <b>97.8%</b>   entropy 0.15 bits<br>T = 0.5  →  "eggs"  56.5%   entropy 1.78<br>T = 1.0  →  "eggs"  33.1%   entropy 2.79<br>T = 2.5  →  "eggs"  16.8%   entropy 3.42</p>' +
+         '<p><b>As T shrinks the rich get richer.</b> In the limit T → 0 the model always picks the most likely token (greedy decoding): deterministic, but repetitive and dull.</p>' +
+         '<p><b>As T grows the distribution flattens.</b> At T = 2.5 low probability candidates like "jam" and "toast" gain a serious chance. Creativity rises but so does <b>incoherence</b>.</p>' +
+         '<p><b>Entropy</b> measures that diversity: 0 bits means one option, 3.58 bits means 12 equally likely options.</p>',
+    learned:'<b>Temperature sets the sharpness of the distribution.</b> A small T is stable and repetitive, a large T is diverse and incoherent.<br><br>In practice: for factual tasks (summarisation, translation, code) use <b>T = 0 to 0.3</b>; for creative writing <b>T = 0.7 to 1.0</b>. Above that rarely helps.',
+    controls:[{k:'T', lb:'TEMPERATURE  T', min:0.1, max:2.5, step:0.05, val:1}],
+  },
+  {
+    t:'top-k and top-p: cutting the tail',
+    goal:'You will see why temperature alone is not enough and what separates the two filters.',
+    todo:'First lower <b>top-k</b> to 3, then open k back up and lower <b>top-p</b> to 0.5. Watch which tokens get eliminated.',
+    kind:'controls', viz:'ornekleme', h:780, xp:60,
+    body:'<p>Temperature on its own does not solve one problem: <b>the long tail</b>. In a vocabulary of 50,000 tokens, even if each one has a probability of 0.001%, together they add up to 50%. Over a long enough text a nonsense token is eventually picked and the text goes off the rails from there.</p>' +
+         '<p>Holtzman et al. (2020) documented the phenomenon and proposed the fix. Two filters:</p>' +
+         '<p><b style="color:#4cc4ff">top-k</b>: keep only the k most likely tokens and <b>zero out</b> the rest.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">k =  1 → 1 token    entropy 0.00   (greedy)<br>k =  3 → 3 tokens   entropy 1.47<br>k =  5 → 5 tokens   entropy 2.10<br>k = 12 → all of them entropy 2.79</p>' +
+         '<p><b style="color:#a78bfa">top-p (nucleus)</b>: sort the probabilities from largest to smallest and take them until the cumulative sum passes p.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">p = 0.50 → <b>2</b> tokens   entropy 0.97<br>p = 0.80 → <b>5</b> tokens   entropy 2.10<br>p = 0.90 → <b>7</b> tokens   entropy 2.43<br>p = 0.95 → <b>8</b> tokens   entropy 2.54</p>' +
+         '<p><b>The critical difference:</b> top-k takes a fixed number of tokens, top-p changes <b>with the situation</b>. If the model is very sure (one token at 95%) top-p takes only 1 token; if it is uncertain it may take 30. <b>top-k cannot adapt like that</b>: it leaves an unnecessary tail where the model is sure and cuts good candidates where it is not.</p>' +
+         '<p>Which is why today\'s default is usually <b>top-p ≈ 0.9 to 0.95</b>, often together with top-k as a safety net.</p>',
+    learned:'<b>top-k takes a fixed number of candidates; top-p adapts to the situation.</b><br><br>The long tail is the main reason generation goes off the rails, and temperature alone does not cut it.<br><br>A practical default: <b>T 0.7 · top-p 0.9</b> for creative work, <b>T 0 to 0.3</b> for factual work.',
+    controls:[{k:'T', lb:'TEMPERATURE  T', min:0.1, max:2.5, step:0.05, val:1},
+              {k:'k', lb:'top-k', min:1, max:12, step:1, val:12},
+              {k:'p', lb:'top-p', min:0.3, max:1, step:0.01, val:1}],
+    quiz:{
+      q:'A customer service bot sometimes produces completely irrelevant sentences. What do you change first in the sampling settings?',
+      opts:[
+        {t:'I raise the temperature',
+         why:'The wrong direction. Raising the temperature flattens the distribution further and increases the chance of irrelevant tokens.'},
+        {t:'I lower the temperature and tighten top-p (say T=0.3, p=0.9), cutting the tail',
+         why:'Correct. Irrelevant outputs typically come from the long tail: tokens that are individually unlikely but collectively substantial. The two moves work together, a low T sharpens the distribution and top-p cuts the tail. For factual work requiring consistency, like customer service, T = 0 to 0.3 is standard.'},
+        {t:'I use a bigger model',
+         why:'It might help, but with the wrong sampling settings a large model goes off the rails too. And it is far more expensive.'},
+        {t:'I make the prompt longer',
+         why:'A prompt can improve quality, but the long tail problem is at the sampling stage, not the prompting stage.'},
+      ], correct:1 },
+  },
+  ],
+};
