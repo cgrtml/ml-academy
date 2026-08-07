@@ -3282,3 +3282,238 @@ DERSLER_EN['kuantizasyon'] = {
   },
   ],
 };
+
+DERSLER_EN['mdn'] = {
+  ad:'When one answer is not enough: the mixture density network',
+  alt:'If a question has more than one right answer, a model that gives a single number says the average. And the average is never one of those answers.',
+  kaynaklar:[{"y":"Bishop, C. M.","t":"1994","b":"Mixture Density Networks","n":"Aston University Technical Report NCRG/94/004"},
+             {"y":"Bishop, C. M.","t":"2006","b":"Pattern Recognition and Machine Learning, Chapter 5.6","n":"Springer"},
+             {"y":"Graves, A.","t":"2013","b":"Generating Sequences With Recurrent Neural Networks","n":"arXiv:1308.0850"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'Two right answers for one x',
+    goal:'You will see a problem that a single valued function cannot describe.',
+    todo:'Look at the data. How many valid y values are there for each x, and where is the average?',
+    kind:'static', viz:'karisimYogunluk', h:770, xp:25, state:{sahne:'veri'},
+    body:'<p>We generated this data as follows: for every example we picked an x, then <b>tossed a coin</b> and set y to either +(0.4 + 0.5x²) or &minus;(0.4 + 0.5x²), plus a little noise.</p>' +
+         '<p>So for every x there are <b>two valid answers</b> and both are equally right. This is not a contrived setup: most inverse problems are like this. There are several joint angles that put the tip of a robot arm at a given point. There can be several physical states that explain one measurement.</p>' +
+         '<p>At x = 0 the answers are <b>±0.400</b>, at x = 0.8 they are <b>±0.720</b>.</p>' +
+         '<p>Now the critical point: because the two branches are symmetric, the <b>conditional mean is exactly zero</b>. And zero is not a valid answer for any x.</p>' +
+         '<p>Let us measure how invalid. The standard deviation of the noise is 0.08. Even the nearest branch is <b>5 deviations</b> away at x = 0 and <b>11 deviations</b> at x = ±1. So the average sits in a region the data practically never visits.</p>',
+    learned:'<b>In some problems one input corresponds to more than one right answer.</b><br><br>Here there are two answers for every x, ±(0.4 + 0.5x²), and both are equally likely.<br><br>The conditional mean is exactly <b>zero</b>, but zero is never a valid answer: even the nearest branch is <b>5 to 11 noise deviations</b> away.',
+  },
+  {
+    t:'What an MSE model learns',
+    goal:'You will see through measurement what squared error mathematically targets.',
+    todo:'Look at the red line. Does it ever sit on top of the branches?',
+    kind:'static', viz:'karisimYogunluk', h:770, xp:50, state:{sahne:'mdn'},
+    body:'<p>We trained an ordinary regression network on this data: input x, output a single number, loss squared error.</p>' +
+         '<p>The result is the red line. It is almost exactly zero: the mean absolute value of the predictions is <b>0.0782</b>.</p>' +
+         '<p>Its mean distance to the nearest valid answer is <b>0.4918</b>. Even at its best point it is <b>0.3388</b>. So the model comes close to the right answer at <b>no x at all</b>.</p>' +
+         '<p>But the model is not making a mistake. The point at which squared error loss is minimised is, by definition, the <b>conditional mean</b>. The model is doing exactly what was asked of it perfectly.</p>' +
+         '<p>The problem is not in the model, it is in <b>the question asked</b>. When you say "give me a single number", on a problem with several answers the best single number is the average, and the average can be invalid.</p>' +
+         '<p>This model\'s measurement is fully reproducible: nudging one of the weights by 10⁻¹² gives a largest change in the predictions of <b>3.3 × 10⁻¹⁴</b>. We will come back to that detail in the next steps.</p>',
+    learned:'<b>Squared error targets the conditional mean and it does that correctly.</b><br><br>The MSE model\'s predictions have a mean absolute value of <b>0.0782</b>, a mean distance to the nearest valid answer of <b>0.4918</b>, and <b>0.3388</b> even at its best point.<br><br>The model works perfectly. What is wrong is <b>asking for a single number</b> on a problem with several answers.',
+  },
+  {
+    t:'What a single Gaussian loses',
+    goal:'You will compute the price of a single mode output in closed form, without any training.',
+    todo:'Change x. Look at the true density where the red line passes.',
+    kind:'controls', viz:'karisimYogunluk', h:770, xp:50, state:{sahne:'yogunluk'},
+    body:'<p>Now let us drop training entirely and look directly at the probabilities. Every number in this step is computed in <b>closed form</b>, so none of it depends on training.</p>' +
+         '<p>The green curve is the true conditional density: a <b>mixture</b> with two peaks. The orange curve is the <b>best single Gaussian</b> with the same mean and variance. The MSE model\'s answer, y = 0, is the dashed red line.</p>' +
+         '<p>At x = 0 the true density at y = 0 is <b>1.86 × 10⁻⁵</b>, against <b>2.4934</b> at the peak of a branch. A ratio of <b>134,000</b>.</p>' +
+         '<p>At x = 0.8 the same numbers are <b>1.29 × 10⁻¹⁷</b> and <b>2.4934</b>. A ratio of <b>1.94 × 10¹⁷</b>.</p>' +
+         '<p>So the answer the MSE model gives is practically an <b>impossible</b> point under the distribution the data came from.</p>' +
+         '<p>We can also measure it in terms of information: the best single Gaussian loses <b>1.2557 nats</b> per observation against the true mixture. That is, the mixture makes the same data <b>3.51 times</b> more likely. This is not a shortfall in training: the <b>shape</b> of a single Gaussian cannot represent two peaks.</p>' +
+         '<p>The solution is visible here too: let the output be neither a single number nor a single Gaussian but a <b>mixture</b>. Let the network output the π weights, the μ means and the σ widths for every x. The green curve on the plot is exactly what that targets.</p>',
+    learned:'<b>A single mode output cannot represent a two peaked distribution with any amount of training.</b><br><br>At x = 0.8 the true density at the MSE answer is <b>1.29 × 10⁻¹⁷</b> against <b>2.4934</b> at the branch peak: a ratio of <b>1.94 × 10¹⁷</b>.<br><br>The best single Gaussian loses <b>1.2557 nats</b> per observation, so the mixture is <b>3.51 times</b> more likely. These numbers come from <b>closed form</b>, not from training.',
+    controls:[{k:'x0', lb:'VALUE OF x', min:-0.8, max:0.8, step:0.2, val:0}],
+  },
+  {
+    t:'The mixture\'s own trap',
+    goal:'You will measure a rarely discussed difficulty with mixture models.',
+    todo:'Answer the question.',
+    kind:'static', viz:'karisimYogunluk', h:770, xp:50, state:{sahne:'mdn'},
+    body:'<p>A mixture density network solves this problem: the green curves on the plot are the means of the two components and together they cover both branches.</p>' +
+         '<p>But look carefully: the curves cross in the middle. So <b>the first component has not learned the upper branch everywhere</b>; it carries the lower branch on the left and the upper one on the right. The learned distribution is right, but which component falls on which branch is arbitrary. That is exactly the subject of this step.</p>' +
+         '<p>And we did <b>not report a single number</b> from the MDN in this lesson, for a reason.</p>' +
+         '<p>A mixture likelihood is <b>not identifiable</b>. The first component can learn the upper branch and the second the lower one, or the other way around. Both give the same distribution and take the same loss. On the loss surface that means several optima that are copies of each other.</p>' +
+         '<p>We measured the consequence: nudging one of the weights by <b>10⁻¹²</b> and rerunning training from the start gives a largest change in the learned means of <b>0.35</b>. Compare that with the MSE model, which changed by <b>3.3 × 10⁻¹⁴</b> under the same test.</p>' +
+         '<p>So MDN training is <b>chaotic</b>. Under the rule we set in the exploding gradient lesson, the numbers from such a run cannot be reported on this page, because they may come out differently in your browser.</p>' +
+         '<p>This is not a flaw but a property you need to know about. Three things are done in practice: keep more components than needed and prune the idle ones, put a lower bound on σ so a component cannot collapse onto a single point, and train from several initialisations and pick the best likelihood.</p>' +
+         '<p>Evaluation also has to be <b>independent of component order</b>: you do not ask "what did the first component learn", you ask "how close is the learned distribution to the truth".</p>',
+    learned:'<b>A mixture likelihood is not identifiable: the components can swap places.</b><br><br>Nudging a weight by 10⁻¹² gives a largest change of <b>0.35</b> in the learned means; the MSE model gave <b>3.3 × 10⁻¹⁴</b> under the same test.<br><br>This is why no MDN numbers were reported in this lesson. In practice one uses extra components, a lower bound on σ and multiple initialisations, and evaluation must be <b>independent of component order</b>.',
+    quiz:{
+      q:'You are building a model to generate handwriting: it has to predict the next pen movement. You trained it with squared error and the output keeps turning into a flat, average line. What do you do?',
+      opts:[
+        {t:'I make the output a mixture distribution rather than a single point, and sample from it when generating',
+         why:'Correct. There are several plausible continuations for the next pen movement, and as you measured in this lesson squared error gives the conditional mean in that situation: here the mean of the two branches came out as 0, and that point was 5 to 11 noise deviations away. In handwriting the average movement is a straight line. A mixture output represents several possible continuations at every step, and sampling produces traces that look like real writing. Graves\'s handwriting generation work does exactly this.'},
+        {t:'I use a bigger network',
+         why:'It is not a capacity problem. In this lesson the MSE model did what was asked of it perfectly: the minimum of squared error is the conditional mean and the model went exactly there. A bigger network finds the same average faster.'},
+        {t:'I change the loss to absolute error',
+         why:'Absolute error targets the conditional median rather than the mean. That helps in some situations but still gives a single number; with two equally likely continuations the median also falls somewhere between them. The problem is not which single number it is, it is that a single number is being asked for.'},
+        {t:'I train for longer',
+         why:'The model has already converged and the place it went to is correct: the conditional mean. As you measured in this lesson, the problem is not incomplete training, it is the shape of the target.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['bayes-ag'] = {
+  ad:'Doubting the weights: ensembles and calibration',
+  alt:'A distribution instead of a single set of weights. Its practical counterpart is an ensemble, and when we measure it, it gives uncertainty in the right direction but at the wrong scale.',
+  kaynaklar:[{"y":"Lakshminarayanan, B., Pritzel, A. & Blundell, C.","t":"2017","b":"Simple and Scalable Predictive Uncertainty Estimation Using Deep Ensembles","n":"NeurIPS 2017"},
+             {"y":"Blundell, C. et al.","t":"2015","b":"Weight Uncertainty in Neural Networks","n":"ICML 2015"},
+             {"y":"Ovadia, Y. et al.","t":"2019","b":"Can You Trust Your Model’s Uncertainty?","n":"NeurIPS 2019"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'Many sets of weights instead of one',
+    goal:'You will see the simplest practical way to put uncertainty on the weights.',
+    todo:'Increase the number of members. How does the band outside the data change?',
+    kind:'controls', viz:'bayesAg', h:770, xp:25, state:{sahne:'topluluk'},
+    body:'<p>Until now a network\'s weights were a single set of numbers. In the Bayesian view the weights also have a <b>distribution</b>: there are several sets of weights consistent with the data and all of them are candidate explanations.</p>' +
+         '<p>Computing that distribution exactly is not practical in a network with millions of parameters. The simplest and most useful approximation is an <b>ensemble</b>: train several networks on the same data from different initialisations and look at the differences between them.</p>' +
+         '<p>All 10 networks are drawn on the plot. In the region where there is data (the blue strip) they lie on top of each other. Where the data ends they separate.</p>' +
+         '<p>The reason is simple: where there is data they all have to fit the same points. Once the data ends nothing constrains them and the differences from initialisation come out.</p>' +
+         '<p>The measurement: mean spread inside the data <b>0.0224</b>, at x = 4 <b>0.1478</b> (<b>6.6 times</b>), at x = 5 <b>0.1899</b> (<b>8.5 times</b>).</p>' +
+         '<p>The same band as in the Gaussian Process lesson, but this time with a neural network and without a closed formula.</p>',
+    learned:'<b>An ensemble is the simplest practical approximation to weight uncertainty.</b><br><br>Where there is data the members have to agree; once the data ends they separate.<br><br>Measured spread: <b>0.0224</b> inside the data, <b>0.1478</b> at x = 4 (6.6 times), <b>0.1899</b> at x = 5 (8.5 times). Each member\'s training is reproducible: a 10⁻¹² perturbation changes it by <b>2 × 10⁻¹³</b>.',
+    controls:[{k:'m', lb:'NUMBER OF MEMBERS', min:2, max:10, step:2, val:2}],
+  },
+  {
+    t:'The right direction, the wrong scale',
+    goal:'You will measure that uncertainty widening and uncertainty being correct are different things.',
+    todo:'Look at the deviation values on the cards. How many standard deviations away is it?',
+    kind:'static', viz:'bayesAg', h:770, xp:50, state:{sahne:'kalibre'},
+    body:'<p>Uncertainty widening once the data ends is a good sign. But the real question is: <b>does the widened band actually contain the truth?</b></p>' +
+         '<p>We measured it. The fraction of points at which a ±2 standard deviation band contains the true function:</p>' +
+         '<p>inside the data (between &minus;2 and 2): <b>77.8%</b><br>' +
+         'just outside (between 2 and 3): <b>9.5%</b><br>' +
+         'far away (between 3 and 5): <b>19.5%</b></p>' +
+         '<p>A calibrated ±2σ band would be expected to cover about <b>95%</b>. Even inside the data it stops at 77.8%, and just outside it covers almost nothing.</p>' +
+         '<p>Looking at individual points makes it clearer: at x = 4 the true function is <b>6.43 standard deviations</b> from the ensemble mean, and at x = 5 it is <b>13.61</b>.</p>' +
+         '<p>We measured the same kind of overshoot in the Gaussian Process lesson, where the deviation at x = 5 came out as <b>2.77σ</b>. That was outside the band too, but this one is about <b>5 times</b> worse.</p>' +
+         '<p>The conclusion: ensemble uncertainty moves in the <b>right direction</b> (it widens once the data ends) but its <b>scale is wrong</b>. It gives relative information, not a calibrated interval.</p>',
+    learned:'<b>Uncertainty moving in the right direction does not mean it has the right magnitude.</b><br><br>Coverage of a ±2σ band: <b>77.8%</b> inside the data, <b>9.5%</b> just outside, <b>19.5%</b> far away. Calibrated, 95% would be expected.<br><br>At x = 5 the true value is <b>13.61σ</b> away. At the same point in the Gaussian Process lesson that number was <b>2.77σ</b>: also insufficient, but <b>5 times</b> better.',
+  },
+  {
+    t:'It cannot even be sure inside the data',
+    goal:'You will see that the problem is not only outside.',
+    todo:'Raise the number of members from 2 to 10. Does the spread grow monotonically?',
+    kind:'controls', viz:'bayesAg', h:770, xp:50, state:{sahne:'topluluk'},
+    body:'<p>The coverage is not 95% inside the data either, it is <b>77.8%</b>. So the problem is not only outside.</p>' +
+         '<p>The reason is visible: around x = 0 all the members find almost the same curve and the spread falls to <b>0.0075</b>. But at that point the ensemble mean is <b>3.28 standard deviations</b> from the true value.</p>' +
+         '<p>So the ensemble agrees with itself there but is <b>wrong together</b>. Because the members share the same data, the same architecture and the same learning procedure, they share the same bias. Disagreement is a measure of uncertainty, but it <b>cannot measure a shared bias</b>.</p>' +
+         '<p>The effect of the number of members is instructive too. The spread at x = 4 is <b>0.0803</b> with 2 members and <b>0.1478</b> with 10. But it is not monotonic in between: it falls to <b>0.0674</b> at 4 members and jumps to <b>0.1735</b> at 6.</p>' +
+         '<p>A standard deviation computed from few members is itself a noisy estimate. The 1/&radic;N rule from the probability lesson applies here too: a spread measured from few samples is wobbly.</p>',
+    learned:'<b>An ensemble agreeing does not mean it is right.</b><br><br>At x = 0 the spread falls to <b>0.0075</b> while the mean is <b>3.28σ</b> from the truth: the members share the same bias.<br><br>The number of members does not have a monotonic effect either: at x = 4 the spread is <b>0.0803</b> with 2 members, <b>0.0674</b> with 4 and <b>0.1478</b> with 10. A spread measured from few samples is wobbly.',
+    controls:[{k:'m', lb:'NUMBER OF MEMBERS', min:2, max:10, step:2, val:10}],
+  },
+  {
+    t:'So what is it good for',
+    goal:'You will see which decisions this uncertainty can be used for.',
+    todo:'Answer the question.',
+    kind:'static', viz:'bayesAg', h:770, xp:50, state:{sahne:'kalibre'},
+    body:'<p>What we measured is this: ensemble uncertainty gets the <b>ordering</b> right (outside the data is 6 to 8 times more uncertain than inside) but not the <b>magnitude</b> (coverage of 10 to 78% instead of 95%).</p>' +
+         '<p>That determines which decisions it is sufficient for.</p>' +
+         '<p><b>It works for:</b> the question "does this input look like the training distribution". Flagging inputs where the spread is abnormally large and routing them to a human. Choosing the next example to label in active learning. The Bayesian optimisation idea from the Gaussian Process lesson is in this class too: it only asks <b>where should I look</b>.</p>' +
+         '<p><b>It does not work for:</b> saying "with 95% probability the value is in this interval". The coverage we measured does not permit that.</p>' +
+         '<p>If you want calibration it takes a separate step, and that step is done <b>with held out data</b>: scaling the band so that it gives the desired coverage on a held out validation set. This is called calibration or conformal prediction. The critical point is that this too is valid <b>inside the training distribution</b>; it gives no guarantee outside, because outside there is no data to measure with in the first place.</p>' +
+         '<p>The summary of this lesson: an uncertainty estimate is also a model, and <b>it too cannot be trusted without measurement</b>. We reached the same conclusion in the Gaussian Process lesson, where a wide band meant "I do not know" rather than a guarantee that "the truth is here".</p>',
+    learned:'<b>Uncalibrated uncertainty is not useless, it is useful for something else.</b><br><br>The ordering is right: the spread outside the data is <b>6 to 8 times</b> the inside. That is enough to flag unusual inputs and choose where to look.<br><br>The magnitude is wrong: coverage is <b>78% rather than 95%</b> (and <b>9.5%</b> outside). Reporting an interval requires a separate <b>calibration step</b>, and it must be written down that the step is valid <b>only inside the training distribution</b>.',
+    quiz:{
+      q:'You built an ensemble for a medical imaging model. A "±2σ confidence interval" will be reported along with the output, and a clinician will make decisions based on it. When you measure on a validation set you find the band covers the truth 78% of the time. What do you do?',
+      opts:[
+        {t:'I scale the band on the validation set until it reaches the desired coverage, and report that this holds only inside the training distribution',
+         why:'Correct. 78% coverage means the band cannot be reported as is: as you measured in this lesson, raw ensemble spread is in the right direction but at the wrong scale. Scaling the band on a held out validation set brings the coverage to target. But that adjustment is only valid inside that distribution, and this lesson measured coverage falling to 9.5% outside, so stating the limit explicitly is mandatory.'},
+        {t:'I increase the number of members, the spread will grow and the coverage will improve',
+         why:'As you measured in this lesson the effect of the member count is neither monotonic nor sufficient: at x = 4 the spread is 0.0803 with 2 members, 0.0674 with 4 and 0.1478 with 10. And because the members share the same bias they can be wrong together; at x = 0 the spread fell to 0.0075 while the deviation was 3.28σ.'},
+        {t:'I report the band as it is, 78% is reasonable coverage',
+         why:'When a clinician is told ±2σ, what they expect is about 95%. 78% coverage means the truth falls outside the band in more than one case in five, which is a very different thing from what the interval promises.'},
+        {t:'I remove uncertainty reporting altogether',
+         why:'The measured uncertainty is not calibrated but it is not useless either: this lesson measured the spread growing 6 to 8 times outside the data. That ordering information is valuable for flagging unusual inputs and routing them to a human. The right move is to correct what it promises.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['enc-dec'] = {
+  ad:'Encoder or decoder: to understand, or to generate?',
+  alt:'The same architecture, with one difference: the attention mask. Bidirectional context improves understanding measurably; a causal mask is the precondition for generation.',
+  kaynaklar:[{"y":"Vaswani, A. et al.","t":"2017","b":"Attention Is All You Need","n":"NeurIPS 2017"},
+             {"y":"Devlin, J. et al.","t":"2019","b":"BERT: Pre-training of Deep Bidirectional Transformers","n":"NAACL 2019"},
+             {"y":"Raffel, C. et al.","t":"2020","b":"Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer","n":"JMLR 21(140)"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'The only difference: who can see whom',
+    goal:'You will see that the difference between the two families of architecture lies in a single mask.',
+    todo:'Increase the sequence length. Where does the ratio of the two masks go?',
+    kind:'controls', viz:'kodlayiciCozucu', h:770, xp:25, state:{sahne:'maske'},
+    body:'<p>The difference between encoder and decoder architectures is far smaller than most explanations imply. The layers are the same, the attention is the same, the feedforward is the same. The only thing that changes is <b>which position can see which</b>.</p>' +
+         '<p><b>In an encoder</b> every position sees the whole sequence: the past and the future. The number of visible (query, key) pairs is <b>n²</b>.</p>' +
+         '<p><b>In a decoder</b> every position sees only itself and what came before. A triangular mask. The number of visible pairs is <b>n(n+1)/2</b>.</p>' +
+         '<p>The two squares on the left show exactly that: filled cells are visible connections.</p>' +
+         '<p>The ratio approaches 2 with length: <b>1.7778</b> at 8 positions, <b>1.9692</b> at 64, <b>1.9995</b> at 4096.</p>' +
+         '<p>So on long sequences an encoder sees exactly twice as many connections as a decoder. In the next two steps we measure what that difference costs and what it buys.</p>',
+    learned:'<b>The difference between an encoder and a decoder is a single mask.</b><br><br>An encoder sees <b>n²</b> pairs, a decoder <b>n(n+1)/2</b>. The ratio approaches 2 with length: 1.7778 at 8 positions, <b>1.9995</b> at 4096.<br><br>The layers, the attention and the feedforward are the same. The whole difference is in <b>the information seen</b>.',
+    controls:[{k:'ni', lb:'SEQUENCE LENGTH', min:0, max:3, step:1, val:0}],
+  },
+  {
+    t:'Understanding needs both sides',
+    goal:'You will measure the gain from bidirectional context against a ceiling derived in closed form.',
+    todo:'Compare the two bars. Can the causal model reach its theoretical ceiling?',
+    kind:'static', viz:'kodlayiciCozucu', h:770, xp:50, state:{sahne:'anlama'},
+    body:'<p>Let us set up a task: for every position in the sequence the target is <b>the sum of its two neighbours</b>. y(t) = x(t&minus;1) + x(t+1). The x values are independent random numbers.</p>' +
+         '<p>The answer to this task can be computed in advance. Var(y) = 2. A causal model sees x(t&minus;1) but cannot see x(t+1), so it can never explain <b>exactly half</b> of the variance. The theoretical ceiling: <b>R² = 0.5</b>.</p>' +
+         '<p>The measurement: the causal model gets <b>0.501383</b> and the bidirectional model <b>1.000000</b>.</p>' +
+         '<p>The causal model sits on its ceiling, so its shortfall comes from its <b>field of view</b> rather than from training. The bidirectional model solves the task exactly.</p>' +
+         '<p>The learned weights confirm the mechanism. The causal model carries <b>0.9926</b> on x(t&minus;1) and everything else is close to zero: it did what it could. The bidirectional model finds exactly <b>1.0000</b> and <b>1.0000</b> on x(t&minus;1) and x(t+1) and <b>0.0000</b> everywhere else. It recovered the rule exactly.</p>' +
+         '<p>This explains why the BERT family is trained with fill-in-the-blank tasks: understanding requires being able to look from both sides.</p>',
+    learned:'<b>Bidirectional context adds information a unidirectional model cannot see, measurably.</b><br><br>On the task y(t) = x(t&minus;1) + x(t+1) the causal model\'s theoretical ceiling is <b>0.5</b> and its measured value is <b>0.501383</b>: it sits on the ceiling. The bidirectional model gets <b>1.000000</b>.<br><br>The weights show it too: the bidirectional model finds both neighbours with a coefficient of exactly <b>1.0000</b>, the causal model only the left one.',
+  },
+  {
+    t:'Generation requires hiding the future',
+    goal:'You will see why a causal mask is not a restriction but a requirement.',
+    todo:'Look at the two bars. Which one gets a perfect score, and is it any use?',
+    kind:'static', viz:'kodlayiciCozucu', h:770, xp:50, state:{sahne:'uretim'},
+    body:'<p>Now let us change the task: the model has to predict <b>x(t) itself</b>. That is the essence of language modelling: predicting the next token.</p>' +
+         '<p>We compare two models. The causal model sees only what comes before x(t). The leaking model has <b>x(t) itself</b> inside its window.</p>' +
+         '<p>The result:</p>' +
+         '<p>causal: <b>&minus;0.000433</b> &nbsp;·&nbsp; leaking: <b>1.000000</b></p>' +
+         '<p>The leaking model is perfect. Look at its weights: exactly <b>1.000000</b> on x(t) and <b>0</b> at every other position. So it learned nothing at all, it only learned to <b>copy</b>.</p>' +
+         '<p>And copying is useless in generation, because at generation time x(t) <b>does not exist yet</b>. The model is being called to produce it.</p>' +
+         '<p>The causal model getting &minus;0.000433 is right too: because the x values were generated independently, the past really carries no information for predicting the future. The model honestly says "I do not know".</p>' +
+         '<p>The lesson: <b>a causal mask is not a restriction, it is the definition of generation</b>. Remove it and the training score goes up while the model becomes unusable. The same pattern as in the data leakage lesson, this time inside the architecture.</p>',
+    learned:'<b>Without a causal mask the model learns to copy and cannot generate.</b><br><br>On the task of predicting x(t) the leaking model gets <b>R² = 1.000000</b>, because its weight on x(t) is exactly <b>1.000000</b>: it can see the answer in the input.<br><br>At generation time x(t) does not exist yet. <b>A perfect score, zero value.</b>',
+  },
+  {
+    t:'Which one when',
+    goal:'You will learn to choose between the three families of architecture.',
+    todo:'Answer the question.',
+    kind:'static', viz:'kodlayiciCozucu', h:770, xp:50, state:{sahne:'maske', ni:3},
+    body:'<p>What we measured separates the three families naturally.</p>' +
+         '<p><b>Encoder only</b> (the BERT family). Bidirectional context, n² visible pairs. For work that requires understanding the input: classification, tagging, producing embeddings for search. It cannot generate, because there is no causal order.</p>' +
+         '<p><b>Decoder only</b> (the GPT family). A causal mask, n(n+1)/2 pairs. It can generate. The price is the one we measured: every position sees only half the context and its ceiling is low on tasks that need information from the right.</p>' +
+         '<p><b>Encoder-decoder</b> (the T5 family). The input is read bidirectionally and the output is generated causally. The natural choice for work where the input and the output are different languages, such as translation, summarisation and question answering: no constraint on the understanding side, and the constraint is needed anyway on the generation side.</p>' +
+         '<p>Most generative models today are decoder only, despite the disadvantage we measured. The reason is about scale: with a single objective (predict the next one) every piece of text becomes training data, and because the architecture is simpler it can be pushed to far larger scales.</p>' +
+         '<p>So the choice is not "which is better" but <b>which constraint serves you</b>.</p>',
+    learned:'<b>The choice is not "which is better" but "which constraint serves you".</b><br><br><b>Encoder:</b> n² pairs, for understanding. <b>Decoder:</b> n(n+1)/2 pairs, for generating. <b>Encoder-decoder:</b> no constraint on the input, and one that is needed anyway on the output.<br><br>The current prevalence of decoder only models does not remove the disadvantage we measured; it <b>compensates for it with scale</b>.',
+    quiz:{
+      q:'In a search system you are going to turn documents into vectors and do similarity search. You have a decoder only language model to hand and you are thinking of using it. What should you take into account?',
+      opts:[
+        {t:'Because of the causal mask every token sees only the context to its left; a bidirectional encoder is structurally more suitable for a document representation',
+         why:'Correct. As you measured in this lesson, a causal mask removes roughly half the visible connections and pinned the ceiling at 0.5 on a task that needed information from the right. In a document representation the meaning of a word usually depends on what follows it. A decoder only model can be used, but that takes extra work; a bidirectional encoder is suited to this task from the start.'},
+        {t:'It makes no difference, both use the same layers',
+         why:'The layers really are the same, and that was the starting point of this lesson. But the mask, the one difference, can set the ceiling of the task as this lesson measured: on the same data the causal model got 0.501383 and the bidirectional one 1.000000.'},
+        {t:'A decoder only model is always better because it is trained at a larger scale',
+         why:'Scale really is an important advantage and the last step of this lesson says so. But scale does not remove the structural constraint the mask imposes; it can only compensate for it. The right question for the task is which context is required.'},
+        {t:'I would run the model in generation mode and use the text it produces as the vector',
+         why:'Generated text is an output, not a representation. What search needs is a fixed vector encoding the document itself; generation does not give that and can change on every call.'},
+      ], correct:0 },
+  },
+  ],
+};
