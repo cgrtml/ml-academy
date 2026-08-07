@@ -3682,6 +3682,57 @@ console.log('═══ AI PROJESİ KARARI ═══');
     iddia('PK - karli ama alarmlarin %90 dan fazlasi bos', 1,
           (r.kazanc > 0 && r.gereksizOran > 0.9) ? 1 : 0, 0); }
 }
+console.log('═══ AÇIK MI KAPALI MI ═══');
+{
+  iddia('AK - tek GPU aylik kapasite (M token)', 2365, AK.kapasite(1)/1e6, 0);
+  iddia('AK - tek GPU aylik maliyet', 5825, AK.kendiMaliyet(1), 0);
+  /* gereken GPU kapasiteyi karsiliyor mu */
+  { let ihlal = 0;
+    AK.hacimler.forEach(h => { if (AK.kapasite(AK.gerekenGpu(h)) < h) ihlal++; });
+    iddia('AK - secilen GPU sayisi hacmi karsiliyor', 0, ihlal, 0); }
+  /* bir eksik GPU yetmiyor · minimal secim */
+  { let ihlal = 0;
+    AK.hacimler.forEach(h => { const g = AK.gerekenGpu(h);
+      if (g > 1 && AK.kapasite(g - 1) >= h) ihlal++; });
+    iddia('AK - GPU sayisi minimal', 0, ihlal, 0); }
+
+  /* basabas */
+  iddia('AK - basabas hacim (API 8/M, milyon token)', 728, AK.basabas(8)/1e6, 0);
+  iddia('AK - basabas hacim (API 30/M, milyon token)', 194, AK.basabas(30)/1e6, 0);
+  iddia('AK - basabas hacim (API 2/M, milyar token)', 3.8, AK.basabas(2)/1e9, 1);
+  /* basabas noktasinda iki maliyet esit */
+  { let enBuyuk = 0;
+    AK.apiFiyatlari.forEach(f => { const b = AK.basabas(f);
+      enBuyuk = Math.max(enBuyuk, Math.abs(AK.apiToplam(b, f) - AK.kendiToplam(b))/AK.kendiToplam(b)); });
+    iddia('AK - basabas noktasinda iki maliyet esit (bagil)', 0, enBuyuk, 3); }
+  /* API fiyati dustukce basabas hacmi buyuyor */
+  { let ihlal = 0;
+    for (let i = 1; i < AK.apiFiyatlari.length; i++)
+      if (AK.basabas(AK.apiFiyatlari[i]) > AK.basabas(AK.apiFiyatlari[i-1])) ihlal++;
+    iddia('AK - API pahalilastikca basabas dusuyor', 0, ihlal, 0); }
+
+  /* kullanim orani */
+  iddia('AK - 100M tokende kullanim', 4.2, 100*AK.kullanim(1e8), 1);
+  iddia('AK - 100M tokende M token basina', 58.25, AK.tokenBasina(1e8), 2);
+  iddia('AK - 100M tokende API nin kac kati', 7.3, AK.tokenBasina(1e8)/8, 1);
+  iddia('AK - 10 milyar tokende kullanim', 84.6, 100*AK.kullanim(1e10), 1);
+  iddia('AK - 10 milyar tokende M token basina', 1.31, AK.tokenBasina(1e10), 2);
+  iddia('AK - 10 milyar tokende API den ucuz', 1, AK.tokenBasina(1e10) < 8 ? 1 : 0, 0);
+  /* kullanim orani hicbir zaman 1 i asmiyor */
+  { let ihlal = 0;
+    AK.hacimler.forEach(h => { if (AK.kullanim(h) > 1 + 1e-9) ihlal++; });
+    iddia('AK - kullanim orani 1 i asmiyor', 0, ihlal, 0); }
+  /* birim maliyet hacimle dusuyor */
+  { let ihlal = 0;
+    for (let i = 1; i < AK.hacimler.length; i++)
+      if (AK.tokenBasina(AK.hacimler[i]) > AK.tokenBasina(AK.hacimler[i-1])) ihlal++;
+    iddia('AK - birim maliyet hacimle dusuyor', 0, ihlal, 0); }
+  /* API birim maliyeti hacimden BAGIMSIZ */
+  { let enBuyuk = 0;
+    AK.hacimler.forEach(h => enBuyuk = Math.max(enBuyuk,
+      Math.abs(AK.apiToplam(h, 8)/h*1e6 - 8)));
+    iddia('AK - API birim maliyeti hacimden bagimsiz', 0, enBuyuk, 9); }
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

@@ -10453,6 +10453,145 @@ VIZ.projeKarari = s => {
   }
 };
 
+
+/* ═══════════ AÇIK MI KAPALI MI ═══════════
+   Kendi barindirma ile API arasindaki basabas noktasi. Tamamen
+   aritmetik; her sayi kapali formda. */
+const AK = {};
+AK.GPU_SAAT = 2.5;          /* GPU saat ucreti · birim */
+AK.TOKEN_HIZI = 900;        /* saniyede uretilen token · kendi barindirma */
+AK.API_MTOKEN = 8;          /* API · milyon token basina ucret */
+AK.SABIT_AYLIK = 4000;      /* kurulum, bakim, izleme · aylik */
+AK.SAAT = 730;              /* aydaki saat */
+AK.gpular = [1, 2, 4, 8];
+AK.hacimler = [1e6, 1e7, 1e8, 1e9, 1e10];   /* aylik token */
+AK.apiFiyatlari = [2, 8, 30];
+/* kendi barindirma: GPU sayisi ile kapasite ve maliyet */
+AK.kapasite = g => g*AK.TOKEN_HIZI*3600*AK.SAAT;   /* aylik token */
+AK.kendiMaliyet = g => g*AK.GPU_SAAT*AK.SAAT + AK.SABIT_AYLIK;
+/* bir hacim icin gereken en az GPU */
+AK.gerekenGpu = hacim => Math.max(1, Math.ceil(hacim/(AK.TOKEN_HIZI*3600*AK.SAAT)));
+AK.kendiToplam = hacim => AK.kendiMaliyet(AK.gerekenGpu(hacim));
+AK.apiToplam = (hacim, fiyat) => hacim/1e6*fiyat;
+/* basabas hacim: API maliyeti = kendi maliyeti · kapali form (tek GPU icin) */
+AK.basabas = fiyat => {
+  /* once tek GPU varsayimiyla · sonra kapasite siniri kontrol edilir */
+  let a = 1e3, z = 1e12;
+  for (let i = 0; i < 200; i++){ const m = Math.sqrt(a*z);
+    if (AK.apiToplam(m, fiyat) < AK.kendiToplam(m)) a = m; else z = m; }
+  return Math.sqrt(a*z);
+};
+/* kullanim orani · kapasitenin ne kadari kullaniliyor */
+AK.kullanim = hacim => hacim/AK.kapasite(AK.gerekenGpu(hacim));
+AK.tokenBasina = hacim => AK.kendiToplam(hacim)/hacim*1e6;   /* milyon token basina */
+
+
+VIZ.acikKapali = s => {
+  clear();
+  const sahne = s.sahne || 'basabas';
+  const hi = Math.max(0, Math.min(4, s.hi === undefined ? 2 : Math.round(s.hi)));
+  const hacim = AK.hacimler[hi];
+  const fi = Math.max(0, Math.min(2, s.fi === undefined ? 1 : Math.round(s.fi)));
+  const fiyat = AK.apiFiyatlari[fi];
+  const kart = (x, y, wd, ad, deger, rnk, alt) => {
+    box(x, y, wd, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + wd/2, y + 28, K.mut, 15);
+    txt(deger, x + wd/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + wd/2, y + 95, K.mut, 14);
+  };
+  const hEks = P => AK.hacimler.forEach((hv, i) =>
+    txt((hv/1e6) >= 1000 ? (hv/1e9).toFixed(0) + 'Mr' : (hv/1e6).toFixed(0) + 'M',
+        P.sx(i), P.R.y + P.R.h + 28, K.mut, 15));
+
+  if (sahne === 'kullanim'){
+    baslikSerit('AÇIK MI KAPALI MI · ASIL BELİRLEYİCİ KULLANIM ORANI',
+      'Kendi barındırmada donanımı kirala ya da kirala, ödersin. Boş kapasite doğrudan zarardır.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 4.35, -1.2, 4.2);
+    frame(P, 'aylık token hacmi', 'log₁₀ birim maliyet', [], [-1, 0, 1, 2, 3, 4]);
+    hEks(P);
+    cx.strokeStyle = K.orange; cx.lineWidth = 3.6; cx.beginPath();
+    AK.hacimler.forEach((hv, i) => { const y = P.sy(Math.log10(AK.tokenBasina(hv)));
+      i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+    cx.stroke();
+    AK.hacimler.forEach((hv, i) =>
+      dot(P.sx(i), P.sy(Math.log10(AK.tokenBasina(hv))), 5, K.orange));
+    cx.strokeStyle = K.blue; cx.lineWidth = 3; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(Math.log10(fiyat)));
+    cx.lineTo(P.R.x + P.R.w, P.sy(Math.log10(fiyat))); cx.stroke();
+    cx.setLineDash([]);
+    txt('API fiyatı ' + fiyat + '/M', P.R.x + P.R.w - 14, P.sy(Math.log10(fiyat)) - 12,
+        K.blue, 16, 'right');
+    txt('turuncu: kendi barındırmada M token başına maliyet',
+        P.R.x + 16, P.R.y + 28, K.orange, 16, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'AYLIK HACİM',
+         (hacim/1e6) >= 1000 ? (hacim/1e9).toFixed(0) + ' milyar' : (hacim/1e6).toFixed(0) + ' milyon',
+         K.blue, 'token');
+    kart(bx + 280, 200, 260, 'KULLANIM ORANI', '%' + (100*AK.kullanim(hacim)).toFixed(1),
+         AK.kullanim(hacim) > 0.5 ? K.green : K.red);
+    kart(bx, 330, 260, 'M TOKEN BAŞINA', AK.tokenBasina(hacim).toFixed(2),
+         AK.tokenBasina(hacim) < fiyat ? K.green : K.red);
+    kart(bx + 280, 330, 260, 'API FİYATI', fiyat.toFixed(2), K.blue);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('BOŞ KAPASİTE DOĞRUDAN ZARAR', bx + 270, 494, K.mut, 18);
+    txt('API de kullandığın kadar ödersin; kendi', bx + 18, 534, K.txt, 18, 'left');
+    txt('barındırmada kapasitenin tamamını ödersin.', bx + 18, 562, K.txt, 18, 'left');
+    txt('%' + (100*AK.kullanim(hacim)).toFixed(1) + ' kullanımda M token başına ' +
+        AK.tokenBasina(hacim).toFixed(2) + ',', bx + 18, 602, K.orange, 18, 'left');
+    txt('API nin ' + (AK.tokenBasina(hacim)/fiyat).toFixed(1) + ' katı.',
+        bx + 18, 630, K.orange, 18, 'left');
+    txt('Eğri log ölçekte düz iniyor: maliyet hacme değil,', bx + 18, 670, K.mut, 17, 'left');
+    txt('kapasiteye bağlı olduğu için hacim onu böler.', bx + 18, 696, K.mut, 17, 'left');
+  }
+
+  else {
+    baslikSerit('AÇIK MI KAPALI MI · BAŞABAŞ HACMİ',
+      'GPU saati ' + AK.GPU_SAAT + ', sabit aylık ' + AK.SABIT_AYLIK +
+      ', tek GPU kapasitesi ' + (AK.kapasite(1)/1e6).toFixed(0) + 'M token/ay.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 4.35, 0.5, 5.2);
+    frame(P, 'aylık token hacmi', 'log₁₀ aylık maliyet', [], [1, 2, 3, 4, 5]);
+    hEks(P);
+    cx.strokeStyle = K.orange; cx.lineWidth = 3.6; cx.beginPath();
+    AK.hacimler.forEach((hv, i) => { const y = P.sy(Math.log10(AK.kendiToplam(hv)));
+      i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+    cx.stroke();
+    AK.hacimler.forEach((hv, i) =>
+      dot(P.sx(i), P.sy(Math.log10(AK.kendiToplam(hv))), 5, K.orange));
+    AK.apiFiyatlari.forEach((fv, gi) => {
+      const renk = [K.green, K.blue, K.purple][gi];
+      cx.strokeStyle = renk; cx.lineWidth = fv === fiyat ? 3.6 : 1.8;
+      cx.globalAlpha = fv === fiyat ? 1 : 0.45; cx.beginPath();
+      AK.hacimler.forEach((hv, i) => { const y = P.sy(Math.log10(AK.apiToplam(hv, fv)));
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke(); cx.globalAlpha = 1; });
+    txt('turuncu: kendi barındırma', P.R.x + 16, P.sy(5.05), K.orange, 16, 'left');
+    AK.apiFiyatlari.forEach((fv, gi) =>
+      txt('API ' + fv + '/M token', P.R.x + 16, P.sy(4.75 - gi*0.30),
+          [K.green, K.blue, K.purple][gi], 16, 'left', fv === fiyat ? 700 : 400));
+    const bb = AK.basabas(fiyat);
+    const bx = 830;
+    kart(bx, 200, 260, 'API FİYATI', fiyat + ' / M', K.blue);
+    kart(bx + 280, 200, 260, 'BAŞABAŞ HACİM',
+         (bb/1e6) >= 1000 ? (bb/1e9).toFixed(1) + ' milyar' : (bb/1e6).toFixed(0) + ' milyon',
+         K.purple, 'token / ay');
+    kart(bx, 330, 260, 'BU HACİMDE KENDİ', AK.kendiToplam(hacim).toFixed(0), K.orange);
+    kart(bx + 280, 330, 260, 'BU HACİMDE API', AK.apiToplam(hacim, fiyat).toFixed(0),
+         AK.apiToplam(hacim, fiyat) < AK.kendiToplam(hacim) ? K.green : K.red);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('İKİ FARKLI MALİYET ŞEKLİ', bx + 270, 494, K.mut, 18);
+    txt('API doğrusal: hacimle birlikte artar, sıfırda', bx + 18, 534, K.txt, 18, 'left');
+    txt('sıfırdır. Kendi barındırma basamaklı: kapasite', bx + 18, 562, K.txt, 18, 'left');
+    txt('dolana kadar sabit, sonra GPU ekleyip zıplar.', bx + 18, 590, K.txt, 18, 'left');
+    txt('Bu fiyatta başabaş ' +
+        ((bb/1e6) >= 1000 ? (bb/1e9).toFixed(1) + ' milyar' : (bb/1e6).toFixed(0) + ' milyon') +
+        ' token/ay.', bx + 18, 630, K.purple, 18, 'left');
+    txt('Altında API, üstünde kendi barındırma ucuz.', bx + 18, 658, K.purple, 18, 'left');
+    txt('API fiyatı ' + AK.apiFiyatlari[0] + ' olsaydı başabaş ' +
+        (AK.basabas(AK.apiFiyatlari[0])/1e9).toFixed(1) + ' milyara çıkardı.',
+        bx + 18, 698, K.mut, 17, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

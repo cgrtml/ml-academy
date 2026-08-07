@@ -136,7 +136,7 @@ const ROTALAR = [
     {id:'kirmizi',   ad:'Kırmızı takım ve savunma',        sure:16, durum:'hazir'},
     {id:'maliyet',   ad:'Maliyet ve gecikme',              sure:12, durum:'hazir'},
     {id:'kuantizasyon',   ad:'Kuantizasyon: modeli küçültmenin bedeli',        sure:16, durum:'hazir'},
-    {id:'acik-kapali',    ad:'Açık mı kapalı mı: modele nasıl erişirsin',      sure:10, durum:'planli'},
+    {id:'acik-kapali',    ad:'Açık mı kapalı mı: modele nasıl erişirsin',      sure:12, durum:'hazir'},
     {id:'yigin',          ad:'AI uygulama yığını: kim neyi inşa eder',         sure:10, durum:'planli'},
     {id:'ai-vs-ml',       ad:'AI mühendisliği klasik ML\'den nasıl ayrışır',    sure:10, durum:'planli'},
     {id:'proje-karari',   ad:'Bir AI projesine nasıl karar verilir',           sure:16, durum:'hazir'},
@@ -12585,6 +12585,149 @@ DERSLER['proje-karari'] = {
       'Müdahaleyi 100 den 5 e indirmek gereken doğruluğu %84.4 ten %22.9 a düşürüyor: ' +
       'çoğu model iyileştirmesinden büyük bir kazanç.<br><br>' +
       'Bu hesap sadece işletme maliyetidir; kurulum, veri, izleme ve bakım ayrıca gelir.',
+    xp:75,
+  },
+]};
+
+/* --------------- ACIK MI KAPALI MI --------------- */
+DERSLER['acik-kapali'] = {
+  ad:'Açık mı kapalı mı: modele nasıl erişirsin',
+  alt:'Tartışma genelde ideolojik yürütülüyor ama kararın büyük kısmı iki eğrinin kesiştiği noktada. Geri kalanı da ölçülebilir.',
+  kaynaklar:[
+    {y:'Touvron, H. ve ark.', t:'2023', b:'Llama 2: Open Foundation and Fine-Tuned Chat Models', n:'arXiv:2307.09288', u:'https://arxiv.org/abs/2307.09288'},
+    {y:'Solaiman, I.', t:'2023', b:'The Gradient of Generative AI Release: Methods and Considerations', n:'FAccT 2023', u:'https://arxiv.org/abs/2302.04844'},
+    {y:'Kwon, W. ve ark.', t:'2023', b:'Efficient Memory Management for Large Language Model Serving with PagedAttention (vLLM)', n:'SOSP 2023', u:'https://arxiv.org/abs/2309.06180'},
+    {y:'Bommasani, R. ve ark.', t:'2023', b:'The Foundation Model Transparency Index', n:'arXiv:2310.12941', u:'https://arxiv.org/abs/2310.12941'},
+  ],
+  rota:4,
+  adimlar:[
+  {
+    t:'İki farklı maliyet şekli',
+    goal:'Kararın maliyet tarafını bir denklem olarak göreceksin.',
+    todo:'API fiyatını ve hacmi değiştir. Başabaş noktası nereye kayıyor?',
+    kind:'controls', viz:'acikKapali', h:760,
+    controls:[
+      {k:'fi', lb:'API FIYATI (M token)', min:0, max:2, step:1, val:1,
+       fmt:v => AK.apiFiyatlari[Math.round(v)] + ' birim'},
+      {k:'hi', lb:'AYLIK HACIM', min:0, max:4, step:1, val:2,
+       fmt:v => { const h = AK.hacimler[Math.round(v)];
+         return (h/1e6) >= 1000 ? (h/1e9).toFixed(0) + ' milyar' : (h/1e6).toFixed(0) + ' milyon'; }}],
+    state:{sahne:'basabas'},
+    derive:s => ({bb: AK.basabas(AK.apiFiyatlari[Math.round(s.fi)])}),
+    live:s => { const h = AK.hacimler[Math.round(s.hi)], f = AK.apiFiyatlari[Math.round(s.fi)];
+      return [['KENDI', AK.kendiToplam(h).toFixed(0), K.orange],
+              ['API', AK.apiToplam(h, f).toFixed(0), K.blue],
+              ['BASABAS', (s.bb/1e6).toFixed(0) + 'M', K.purple],
+              ['HEDEF', 'kendi barindirma ucuz']]; },
+    unlock:s => AK.kendiToplam(AK.hacimler[Math.round(s.hi)]) <
+                AK.apiToplam(AK.hacimler[Math.round(s.hi)], AK.apiFiyatlari[Math.round(s.fi)]),
+    unlockMsg:'Kendi barındırmanın API den ucuz olduğu bir noktayı bul',
+    body:'<p>Karar üç boyutlu: maliyet, kontrol ve yetenek. Önce maliyeti bitirelim, ' +
+      'çünkü orası tamamen aritmetik.</p>' +
+      '<p>Varsayımlar açık: GPU saati 2.5 birim, tek GPU saniyede 900 token üretiyor, ' +
+      'kurulum ve bakım için aylık 4000 birim sabit gider var. Tek GPU nun aylık kapasitesi ' +
+      '<b>2.365 milyar token</b>.</p>' +
+      '<p>İki maliyet eğrisinin <b>şekli</b> farklı. API doğrusal: hacimle orantılı artar ' +
+      've sıfır hacimde sıfırdır. Kendi barındırma basamaklı: kapasite dolana kadar sabit ' +
+      'kalır, sonra bir GPU daha ekleyip zıplar.</p>' +
+      '<p>API fiyatı milyon token başına 8 birimken başabaş noktası <b>728 milyon token/ay</b>. ' +
+      'Altında API ucuz, üstünde kendi barındırma.</p>' +
+      '<p>Fiyat duyarlılığı büyük: API 30 birimse başabaş <b>194 milyon</b> tokene iner, ' +
+      '2 birimse <b>3.8 milyar</b> tokene çıkar. Yani "hangisi ucuz" sorusunun cevabı, ' +
+      'sizin hacminizle piyasa fiyatının kesiştiği yerdedir ve piyasa fiyatı düştükçe ' +
+      'kendi barındırmanın alanı daralır.</p>',
+    learned:'<b>API doğrusal, kendi barındırma basamaklı bir maliyet eğrisidir.</b><br><br>' +
+      'Bu varsayımlarla başabaş noktası API fiyatı 8/M iken 728 milyon token/ay. ' +
+      'Fiyat 30 ise 194 milyon, fiyat 2 ise 3.8 milyar.<br><br>' +
+      'Başabaş hacim piyasa fiyatına çok duyarlıdır ve fiyatlar düştükçe kendi ' +
+      'barındırmanın ekonomik alanı daralır.',
+    xp:50,
+  },
+  {
+    t:'Asıl belirleyici: kullanım oranı',
+    goal:'Kendi barındırmanın gerçek maliyet sürücüsünü göreceksin.',
+    todo:'Hacmi düşür. M token başına maliyet ne oluyor?',
+    kind:'controls', viz:'acikKapali', h:760,
+    controls:[
+      {k:'hi', lb:'AYLIK HACIM', min:0, max:4, step:1, val:2,
+       fmt:v => { const h = AK.hacimler[Math.round(v)];
+         return (h/1e6) >= 1000 ? (h/1e9).toFixed(0) + ' milyar' : (h/1e6).toFixed(0) + ' milyon'; }},
+      {k:'fi', lb:'API FIYATI (M token)', min:0, max:2, step:1, val:1,
+       fmt:v => AK.apiFiyatlari[Math.round(v)] + ' birim'}],
+    state:{sahne:'kullanim'},
+    derive:s => ({k: AK.kullanim(AK.hacimler[Math.round(s.hi)]),
+                  t: AK.tokenBasina(AK.hacimler[Math.round(s.hi)])}),
+    live:s => [['KULLANIM', '%' + (100*s.k).toFixed(1), s.k > 0.5 ? K.green : K.red],
+               ['M TOKEN BASINA', s.t.toFixed(2), K.orange],
+               ['API', AK.apiFiyatlari[Math.round(s.fi)].toFixed(2), K.blue],
+               ['HEDEF', 'kullanim > %80']],
+    unlock:s => s.k > 0.80,
+    unlockMsg:'Kullanım oranını %80 in üstüne çıkaran hacmi bul',
+    body:'<p>Başabaş noktası aslında tek bir şeyin gölgesi: <b>kullanım oranı</b>.</p>' +
+      '<p>API de kullandığın kadar ödersin. Kendi barındırmada kapasitenin tamamını ' +
+      'ödersin, kullansan da kullanmasan da. Boş kapasite doğrudan zarardır.</p>' +
+      '<p>Ölçüm: aylık 100 milyon token üretiyorsan tek GPU nun kapasitesinin sadece ' +
+      '<b>%4.2</b> sini kullanıyorsun ve milyon token başına <b>58.25</b> birim ' +
+      'ödüyorsun. API 8 birim. Yani <b>7.3 kat</b> pahalı.</p>' +
+      '<p>Aylık 10 milyar tokende kullanım %84.6 ya çıkıyor ve maliyet <b>1.31</b> e ' +
+      'iniyor: API nin altıda biri.</p>' +
+      '<p>Grafikteki eğri log ölçekte düz iniyor ve sebebi doğrudan: maliyet hacme değil ' +
+      'kapasiteye bağlı, hacim ise onu bölüyor. Yani kendi barındırmanın birim maliyeti ' +
+      'hacimle <b>ters orantılı</b> düşer, ta ki kapasite dolup yeni GPU gerekene kadar.</p>' +
+      '<p>Pratik sonuç: kendi barındırma kararı bir <b>doluluk</b> kararıdır. Trafiğin ' +
+      'gün içinde dalgalanıyorsa ortalama kullanımın düşer ve hesap bozulur. Toplu işleme, ' +
+      'istek birleştirme ve vLLM gibi verimli sunum katmanları (Kwon ve ark., 2023) ' +
+      'tam olarak bu doluluğu artırmak içindir.</p>',
+    learned:'<b>Kendi barındırmanın birim maliyetini hacim değil doluluk belirler.</b><br><br>' +
+      'Aylık 100 milyon tokende kullanım %4.2 ve M token başına 58.25 birim: API nin ' +
+      '7.3 katı. 10 milyar tokende kullanım %84.6 ve maliyet 1.31: API nin altıda biri.<br><br>' +
+      'Trafiğin dalgalanıyorsa ortalama doluluğun düşer ve hesap bozulur. Verimli sunum ' +
+      'katmanlarının varlık sebebi budur.',
+    xp:50,
+  },
+  {
+    t:'Maliyetin ölçmediği şeyler',
+    goal:'Kararın aritmetik dışında kalan kısmını göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'controls', viz:'acikKapali', h:760,
+    controls:[
+      {k:'fi', lb:'API FIYATI (M token)', min:0, max:2, step:1, val:0,
+       fmt:v => AK.apiFiyatlari[Math.round(v)] + ' birim'},
+      {k:'hi', lb:'AYLIK HACIM', min:0, max:4, step:1, val:4,
+       fmt:v => { const h = AK.hacimler[Math.round(v)];
+         return (h/1e6) >= 1000 ? (h/1e9).toFixed(0) + ' milyar' : (h/1e6).toFixed(0) + ' milyon'; }}],
+    state:{sahne:'basabas'},
+    body:'<p>Maliyet hesabı kararın sadece bir boyutu. Diğerleri sayıya dökülmesi zor ama ' +
+      'çoğu zaman daha belirleyici:</p>' +
+      '<p><b>Veri nereye gidiyor.</b> Sağlık, hukuk ve kamu verisinde bu genellikle ' +
+      'tartışma dışıdır ve hacim ne olursa olsun kendi barındırmayı zorunlu kılar.</p>' +
+      '<p><b>Model değişmeyecek mi.</b> Kapalı bir modelin sürümü sizden habersiz ' +
+      'güncellenebilir ve dikkatle ayarladığınız promptlar bozulabilir. Açık ağırlıklarla ' +
+      'model sizde donar; bunun bedeli ise güncellemeleri kendinizin taşımasıdır.</p>' +
+      '<p><b>İnce ayar ve kuantizasyon hakkı.</b> Ağırlıklar sizdeyse alan verinizle ' +
+      'devam eğitimi yapabilir, kuantize edip küçültebilirsiniz. Kapalı modellerde bu ' +
+      'sağlayıcının izin verdiği kadardır.</p>' +
+      '<p><b>Yetenek farkı.</b> En güçlü kapalı modeller birçok görevde hâlâ öndedir. ' +
+      'Bu fark daralıyor ama sıfır değil ve göreve göre değişiyor. Ölçmeden varsaymayın.</p>' +
+      '<p><b>Bakım yükü.</b> Hesaptaki 4000 birimlik sabit gider gerçekte bir ekibin ' +
+      'zamanıdır: sürüm yönetimi, ölçekleme, izleme, nöbet. Küçük ekiplerde bu, GPU ' +
+      'kirasından pahalıya gelir.</p>' +
+      '<p>Son olarak "açık" tek bir şey değil. Ağırlıkların yayınlanması, eğitim verisinin ' +
+      'açıklanması ve lisansın izin verdikleri ayrı ayrı sorulardır (Solaiman, 2023). ' +
+      'Bir modelin "açık" denmesi, ticari kullanıma izin verdiği anlamına gelmez.</p>',
+    quiz:{ q:'Aylık 40 milyon token üreten bir ürününüz var, veri hassas değil ve API fiyatı milyon token başına 8 birim. Ekip kendi modelini barındırmak istiyor. Ne dersiniz?',
+      opts:[
+        {t:'Bu hacimde API belirgin şekilde ucuz; kendi barındırma ancak veri, kontrol ya da yetenek gerekçesiyle savunulabilir', why:'Doğru. Başabaş noktası bu fiyatta 728 milyon token/ay ve sizin hacminiz onun yaklaşık yirmide biri. Bu hacimde tek bir GPU nun kapasitesinin %2 sinden azını kullanırsınız, yani milyon token başına maliyet API nin kat kat üstüne çıkar. Karar yine de kendi barındırma yönünde olabilir ama gerekçesi maliyet olamaz; veri ikametgahı, sürüm kararlılığı ya da ince ayar ihtiyacı olmalı.'},
+        {t:'Kendi barındırma her zaman daha ucuzdur, ekip haklı', why:'Ölçüm bunun tersini söylüyor. Kendi barındırmanın maliyeti kapasiteye bağlıdır; düşük hacimde boş kapasitenin tamamını ödersiniz. 40 milyon tokende milyon token başına maliyet API nin çok üstündedir.'},
+        {t:'Daha büyük bir GPU alıp maliyeti düşürün', why:'Ters yönde. Daha büyük kapasite, aynı hacimde daha düşük doluluk demektir ve birim maliyeti artırır. Bu hacimde sorun kapasite yetersizliği değil, kapasite fazlalığıdır.'},
+        {t:'Hacim büyüyene kadar bekleyip sonra karar verin', why:'Makul bir sezgi ama eksik: karar sadece maliyet değil. Veri hassas olsaydı ya da sürüm kararlılığı kritik olsaydı, hacim beklenmeden kendi barındırma gerekebilirdi. Ayrıca beklemek yerine başabaş hacmini hesaplayıp bir eşik yazmak daha iyidir.'},
+      ], correct:0 },
+    learned:'<b>Maliyet kararın sadece bir boyutu.</b><br><br>' +
+      'Diğerleri: veri nereye gidiyor, model sürümü sizden habersiz değişebilir mi, ince ' +
+      'ayar ve kuantizasyon hakkınız var mı, yetenek farkı ne kadar, bakım yükünü kim ' +
+      'taşıyacak.<br><br>' +
+      'Ve "açık" tek bir şey değildir: ağırlıkların yayınlanması, eğitim verisinin ' +
+      'açıklanması ve lisansın izin verdikleri ayrı sorulardır.',
     xp:75,
   },
 ]};
