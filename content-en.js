@@ -1330,3 +1330,134 @@ DERSLER_EN['kombinatorik'] = {
   },
   ],
 };
+
+DERSLER_EN['prompt'] = {
+  ad:'Anatomy of a prompt',
+  alt:'A good prompt is not a well written text, it is a well built structure. Six parts, and which of them actually does the work.',
+  kaynaklar:[{"y":"Brown, T. et al.","t":"2020","b":"Language Models are Few-Shot Learners (GPT-3)","n":"NeurIPS 2020","u":"https://arxiv.org/abs/2005.14165"},
+             {"y":"Wei, J. et al.","t":"2022","b":"Chain-of-Thought Prompting Elicits Reasoning in LLMs","n":"NeurIPS 2022","u":"https://arxiv.org/abs/2201.11903"},
+             {"y":"Sclar, M. et al.","t":"2024","b":"Quantifying Language Models' Sensitivity to Spurious Features in Prompt Design","n":"ICLR 2024","u":"https://arxiv.org/abs/2310.11324"},
+             {"y":"Anthropic","t":"-","b":"Prompt Engineering Overview","n":"docs.anthropic.com","u":"https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview"}],
+  rota:4,
+  adimlar:[
+  {
+    t:'Six parts',
+    goal:'You will learn what components a prompt is made of and how much each one actually matters.',
+    todo:'Walk through the parts one at a time. Pay attention to the effectiveness ranking at the bottom right.',
+    kind:'controls', viz:'prompt', h:760, xp:50,
+    body:'<p>There is a lot of noise around prompt engineering. What actually gets done is putting a few components in the right order, clearly.</p>' +
+         '<p><b>Ranked by effectiveness</b> (from what makes the most difference in practice to the least):</p>' +
+         '<p>1. <b>A clear task plus a format</b>, the schema of the output. The single biggest gain.<br>' +
+         '2. <b>Constraints and source requirements</b>, "use only the context provided". The most effective sentence against hallucination.<br>' +
+         '3. <b>One or two examples (few-shot)</b>, usually more effective than a long explanation.<br>' +
+         '4. <b>Labelling the context</b>, wrapping the data in something like <code>&lt;invoice&gt;...&lt;/invoice&gt;</code>.<br>' +
+         '5. <b>A role definition</b>, useful but not as much as its reputation suggests.</p>' +
+         '<p style="color:#facc15"><b>An uncomfortable finding:</b> Sclar et al. (2024) showed that models are surprisingly sensitive to <b>meaningless formatting details</b> in a prompt. Changing a separator, whitespace or bullet style can swing accuracy by tens of points. That weakens the "art of prompting" narrative and strengthens the case for <b>measurement</b>: the thing you believe you improved by intuition may be a formatting coincidence.</p>' +
+         '<p><b>Chain-of-thought:</b> the instruction "think step by step" produces a clear gain on tasks that require reasoning (Wei et al. 2022). But on simple extraction tasks it only burns tokens and adds latency. Do not put it everywhere, <b>measure it</b>.</p>',
+    learned:'<b>Prompt = role + task + context + constraint + format + example.</b><br><br>What works most: a clear format and a source constraint. What is most overrated: the role definition.<br><br>And models are more sensitive to formatting details than you would expect, which is why <b>every prompt change has to be measured</b> rather than trusted to intuition.',
+    controls:[{k:'parca', lb:'PART', min:0, max:5, step:1, val:0}],
+  },
+  ],
+};
+
+DERSLER_EN['eval'] = {
+  ad:'Building an eval set',
+  alt:'How do you know your prompt got better? If you are not measuring, you do not. And measuring with 10 examples is not much better than not measuring at all.',
+  kaynaklar:[{"y":"Wilson, E. B.","t":"1927","b":"Probable Inference, the Law of Succession, and Statistical Inference","n":"JASA, 22(158)"},
+             {"y":"Liang, P. et al.","t":"2023","b":"Holistic Evaluation of Language Models (HELM)","n":"TMLR","u":"https://arxiv.org/abs/2211.09110"},
+             {"y":"Zheng, L. et al.","t":"2023","b":"Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena","n":"NeurIPS 2023","u":"https://arxiv.org/abs/2306.05685"},
+             {"y":"Alpaydın, E.","t":"1999","b":"Combined 5×2cv F Test for Comparing Supervised Classification Learning Algorithms","n":"Neural Computation, 11(8)"}],
+  rota:4,
+  adimlar:[
+  {
+    t:'Why 10 examples are not enough',
+    goal:'You will see, through confidence intervals, why small eval sets tell you nothing.',
+    todo:'Drag the number of examples from 10 to 1000. Watch when the two bars separate.',
+    kind:'controls', viz:'eval', h:780, xp:60,
+    body:'<p>You tried prompt A on 10 test examples and got 8 right → <b>80%</b>. Prompt B got 9 right → <b>90%</b>. B is better, is it not?</p>' +
+         '<p><b>No. You know nothing.</b></p>' +
+         '<p>When you observe 80% on 10 examples, the 95% confidence interval for the true success rate is:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">n =   10  →  [<b>49.0%</b>, <b>94.3%</b>]   width <b style="color:#f87171">45.3 points</b><br>n =   25  →  [60.9%, 91.1%]   30.3 points<br>n =   50  →  [67.0%, 88.8%]   21.8 points<br>n =  100  →  [71.1%, 86.7%]   15.5 points<br>n =  400  →  [75.8%, 83.6%]    7.8 points<br>n = 1000  →  [77.4%, 82.4%]    <b style="color:#22d3a0">5.0 points</b></p>' +
+         '<p>The "80%" you measured on 10 examples could really be <b>anything between 49% and 94%</b>. You cannot make any decision with that interval.</p>' +
+         '<p>And the question of comparing two prompts (A at 80%, B at 90%):</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">n =  10 → z = -0.63   p = 0.5312   <b style="color:#f87171">not significant</b><br>n =  50 → z = -1.40   p = 0.1614   <b style="color:#f87171">not significant</b><br>n = 100 → z = -1.98   p = <b style="color:#22d3a0">0.0477</b>   significant<br>n = 400 → z = -3.96   p = 0.0001   significant</p>' +
+         '<p><b>It takes about 100 examples to show that a 10 point difference is real.</b> Smaller differences (2 to 3 points) take thousands.</p>' +
+         '<p style="color:#facc15">This is the same thing as the <b>"is this model really better?"</b> lesson in Track 0, only with a prompt instead of a model. The discipline does not change.</p>',
+    learned:'<b>The number you measured is not a point, it is an interval.</b> 80% on 10 examples means somewhere between 49% and 94% in reality.<br><br>Proving a 10 point difference takes about 100 examples; proving a 3 point difference takes about 1000. <b>If your eval set is small, you cannot say you improved anything.</b>',
+    controls:[{k:'n', lb:'EVAL SET SIZE', min:10, max:1000, step:5, val:10}],
+  },
+  {
+    t:'How to build a good eval set',
+    goal:'You will walk away with a concrete, usable procedure for building an eval.',
+    todo:'Read the procedure, solve the scenario.',
+    kind:'controls', viz:'eval', h:780, xp:60,
+    body:'<p>Building an eval set is <b>more important</b> than writing prompts, and it gets done far less often. The procedure:</p>' +
+         '<p><b>1 · Eval first, prompt second.</b> Before you write a prompt, collect 50 to 200 real examples and write the expected output by hand. This order is critical; if you write the eval while looking at the prompt you copy your own blind spots into it.</p>' +
+         '<p><b>2 · Use real inputs.</b> Made up test cases come out too clean. Take what users actually wrote, with typos, missing pieces and odd formatting.</p>' +
+         '<p><b>3 · Deliberately include the hard cases.</b> Edge cases, ambiguous questions, questions with no answer, trick questions. An eval set full of easy examples gives every prompt 95% and distinguishes nothing.</p>' +
+         '<p><b>4 · Make it automatically scorable.</b> Exact match, numeric comparison, a JSON schema or a regex where possible. Where not, LLM-as-judge, but <b>validate the judge itself against humans</b>.</p>' +
+         '<p><b>5 · Lock the eval set.</b> Tune the prompt against the eval enough times and you <b>overfit</b> the eval set. This is the same discipline as the test set in Track 0: a separate development set, a separate final evaluation set, used <b>once</b>.</p>' +
+         '<p><b>6 · Put it under version control.</b> The eval set is part of the code. Run it on every change. When the model provider quietly updates the model, your eval is the only thing that catches it.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px;font-size:12.5px"><span style="color:#566674"># a minimal eval skeleton</span><br>cases = json.load(open(\'eval.json\'))   <span style="color:#566674"># [{input, expected}]</span><br>hits = sum(score(model(c[\'input\']), c[\'expected\']) for c in cases)<br>n = len(cases)<br>lo, hi = wilson(hits, n)<br>print(f"{hits}/{n} = {hits/n:.1%}  [95% CI: {lo:.1%}–{hi:.1%}]")</p>',
+    learned:'<b>Eval first, prompt second.</b> Real inputs, hard cases, automatic scoring, version control.<br><br>And the most critical discipline: <b>the development set and the final evaluation set are separate.</b> Every choice you make while looking at the eval dirties that set a little more.',
+    controls:[{k:'n', lb:'EVAL SET SIZE', min:10, max:1000, step:5, val:200}],
+    quiz:{
+      q:'You tried your prompt 40 times on the eval set and the best one scored 94%. Do you report that number to your manager?',
+      opts:[
+        {t:'Yes, it is a measured number',
+         why:'No. If you ran 40 attempts and picked the best, that number contains <b>overfitting to the eval set</b>. You have selected the luckiest end of the random variation.'},
+        {t:'No, I made my choices on the development set; I have to measure the final number once on a separate set I never touched',
+         why:'Correct, and it is exactly the test set discipline from Track 0. Picking the best of 40 attempts turns the eval set into a <b>selection tool</b>, and the 94% on it is no longer an honest estimate. The right flow: experiment as much as you like on the development set, then measure once on a <b>separate, untouched</b> set and report whatever comes out, whether you like it or not.'},
+        {t:'Yes, but together with a confidence interval',
+         why:'A confidence interval is a good habit but it does not correct selection bias. The interval describes performance "on this set"; the problem is that the set is no longer representative.'},
+        {t:'I report the average of the 40 attempts',
+         why:'An average does not represent the performance of the prompt you chose.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['judge'] = {
+  ad:'LLM-as-judge',
+  alt:'The only practical way to score answer quality automatically. But using a judge without validating it is weighing things on a broken scale.',
+  kaynaklar:[{"y":"Zheng, L. et al.","t":"2023","b":"Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena","n":"NeurIPS 2023","u":"https://arxiv.org/abs/2306.05685"},
+             {"y":"Wang, P. et al.","t":"2023","b":"Large Language Models are not Fair Evaluators (position bias)","n":"ACL 2024","u":"https://arxiv.org/abs/2305.17926"},
+             {"y":"Panickssery, A. et al.","t":"2024","b":"LLM Evaluators Recognize and Favor Their Own Generations","n":"NeurIPS 2024","u":"https://arxiv.org/abs/2404.13076"},
+             {"y":"Cohen, J.","t":"1960","b":"A Coefficient of Agreement for Nominal Scales (kappa)","n":"Educational and Psychological Measurement, 20(1)"}],
+  rota:4,
+  adimlar:[
+  {
+    t:'Validate the judge first',
+    goal:'You will learn how to measure whether a judge is reliable, and meet Cohen\'s kappa.',
+    todo:'Change the agreement rate. Watch how κ responds.',
+    kind:'controls', viz:'judge', h:760, xp:60,
+    body:'<p>Your eval set has open ended answers that cannot be scored by exact match. You could use a model and ask it "is this answer good?". Cheap, fast, scalable.</p>' +
+         '<p><b>But first you have to validate the judge itself.</b> The procedure:</p>' +
+         '<p>1 · Score 100 answers <b>by hand</b> (or have two people score them)<br>' +
+         '2 · Have the judge score the same 100 answers<br>' +
+         '3 · Measure the agreement</p>' +
+         '<p><b>The raw agreement rate is misleading.</b> Even two raters assigning scores at random agree 50% of the time on a two class task. This is why <b>Cohen\'s kappa</b> is used; it subtracts the agreement you would get by chance:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">κ = (observed agreement − chance agreement) / (1 − chance agreement)<br><br>agreement 50%  →  κ = 0.00   (no better than chance)<br>agreement 70%  →  κ = 0.40   (weak)<br>agreement 80%  →  κ = 0.60   (borderline)<br>agreement 90%  →  κ = 0.80   (good)</p>' +
+         '<p><b>The common convention:</b> κ above 0.6 is usable, κ above 0.8 is good. Below that, the judge\'s output is not a measurement, it is noise.</p>' +
+         '<p style="color:#f87171"><b>Known biases of a judge:</b></p>' +
+         '<p>· <b>Position bias</b>, a tendency to prefer <b>whichever answer is shown first</b> when comparing two (Wang et al. 2023). The fix: randomise the order, or ask in both orders.<br>' +
+         '· <b>Length bias</b>, mistaking a longer answer for a better one.<br>' +
+         '· <b>Self preference</b>, Panickssery et al. (2024) showed that models recognise text they generated themselves and score it higher. The judge and the model under test <b>must not be the same</b>.<br>' +
+         '· <b>Format bias</b>, preferring text with bullets and headings.</p>',
+    learned:'<b>A judge is a measuring instrument and has to be calibrated first.</b> Measure its agreement with humans using Cohen\'s κ; do not use it below κ = 0.6.<br><br>Known biases: position, length, <b>self preference</b>, format. The judge and the model under test must never be the same.',
+    controls:[{k:'uyum', lb:'AGREEMENT WITH HUMANS', min:0.5, max:0.98, step:0.01, val:0.8}],
+    quiz:{
+      q:'You generate answers with GPT-4 and then score them with GPT-4 as well. What is the biggest risk?',
+      opts:[
+        {t:'The cost doubles',
+         why:'True but unimportant; the real problem is methodological.'},
+        {t:'Self preference: the model recognises text it produced itself and systematically scores it higher',
+         why:'Correct. Panickssery et al. (2024) demonstrated this experimentally: LLM evaluators can recognise their own outputs and prefer them. That adds a systematic bias to your measurement, and if you are comparing models the result is invalid. The fix: use a <b>different model family</b> as the judge and always measure κ against a human subset.'},
+        {t:'GPT-4 cannot see its own mistakes',
+         why:'Partly true, but the more specific and measured problem is self preference.'},
+        {t:'The judge becomes too slow',
+         why:'Speed is not the deciding factor here.'},
+      ], correct:1 },
+  },
+  ],
+};
