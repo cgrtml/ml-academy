@@ -8394,6 +8394,230 @@ VIZ.cokDilli = s => {
   }
 };
 
+
+/* ═══════════ ALANA ÖZEL MODEL ═══════════
+   Genelci mi uzman mı sorusunun cevabı tek bir sayıya bağlı:
+   alanlar birbirine ne kadar benziyor. Lojistik regresyon burada
+   gerçekten eğitiliyor; problem konveks olduğu için sonuç kararlı. */
+const AM = {};
+AM.D = 8;                 /* özellik boyutu */
+AM.NA = 400;              /* genel alan (A) örnek sayısı · sabit */
+AM.nBler = [5, 10, 20, 50, 100, 400];
+AM.aciler = [0, 30, 60, 90];   /* alanlar arası açı · derece */
+AM.TEST = 2000;
+AM.LAMBDA = 0.02;
+AM.ADIM = 400;
+AM.LR = 0.5;
+const _amC = {};
+/* iki alanın ağırlık vektörleri: açı büyüdükçe alanlar ayrışıyor */
+AM.agirliklar = aci => {
+  const r = rng(3), wA = [], wP = [];
+  for (let i = 0; i < AM.D; i++){ wA.push(omNormal(r)); wP.push(omNormal(r)); }
+  const nrm = w => { const s = Math.sqrt(w.reduce((a, z) => a + z*z, 0)); return w.map(z => z/s); };
+  const a = nrm(wA);
+  /* wP yi a ya dik hale getir */
+  const ip = wP.reduce((s, z, i) => s + z*a[i], 0);
+  const p = nrm(wP.map((z, i) => z - ip*a[i]));
+  const t = aci*Math.PI/180;
+  return { A: a, B: a.map((z, i) => Math.cos(t)*z + Math.sin(t)*p[i]) };
+};
+AM.veri = (w, n, seed) => {
+  const r = rng(seed), X = [], y = [];
+  for (let i = 0; i < n; i++){
+    const x = []; for (let j = 0; j < AM.D; j++) x.push(omNormal(r));
+    const z = x.reduce((s, v2, j) => s + v2*w[j], 0);
+    /* etiket gürültüsü: sigmoid ile örnekleniyor */
+    y.push(r() < 1/(1 + Math.exp(-2.5*z)) ? 1 : 0);
+    X.push(x); }
+  return { X, y };
+};
+/* L2 cezalı lojistik regresyon · tam gradyan inişi · konveks */
+AM.egit = (X, y, agirlik) => {
+  const w = new Array(AM.D).fill(0);
+  const n = X.length;
+  if (n === 0) return w;
+  for (let t = 0; t < AM.ADIM; t++){
+    const g = new Array(AM.D).fill(0);
+    let toplamAgirlik = 0;
+    for (let i = 0; i < n; i++){
+      const a = agirlik ? agirlik[i] : 1;
+      toplamAgirlik += a;
+      let z = 0; for (let j = 0; j < AM.D; j++) z += w[j]*X[i][j];
+      const p = 1/(1 + Math.exp(-z)), e = (p - y[i])*a;
+      for (let j = 0; j < AM.D; j++) g[j] += e*X[i][j]; }
+    for (let j = 0; j < AM.D; j++) w[j] = w[j] - AM.LR*(g[j]/toplamAgirlik + AM.LAMBDA*w[j]); }
+  return w;
+};
+AM.dogruluk = (w, T) => {
+  let d = 0;
+  for (let i = 0; i < T.X.length; i++){
+    let z = 0; for (let j = 0; j < AM.D; j++) z += w[j]*T.X[i][j];
+    if ((z > 0 ? 1 : 0) === T.y[i]) d++; }
+  return d/T.X.length;
+};
+/* üç model: uzman (sadece B), genelci (A + B), aktarım (A ağırlıklı az) */
+AM.sonuc = (aci, nB) => {
+  const key = 's' + aci + ':' + nB;
+  if (_amC[key]) return _amC[key];
+  const W = AM.agirliklar(aci);
+  const A = AM.veri(W.A, AM.NA, 101);
+  const B = AM.veri(W.B, nB, 202);
+  const T = AM.veri(W.B, AM.TEST, 303);
+  /* uzman: sadece B */
+  const wU = AM.egit(B.X, B.y);
+  /* genelci: A + B, hepsi eşit ağırlıkta */
+  const gX = A.X.concat(B.X), gy = A.y.concat(B.y);
+  const wG = AM.egit(gX, gy);
+  /* sadece A ile eğitilmiş model · B yi hiç görmemiş */
+  const wA = AM.egit(A.X, A.y);
+  return (_amC[key] = {
+    uzman: AM.dogruluk(wU, T),
+    genelci: AM.dogruluk(wG, T),
+    sadeceA: AM.dogruluk(wA, T),
+    tavan: AM.dogruluk(W.B, T) });
+};
+/* uzmanın genelciyi geçtiği ilk nB */
+AM.kesisim = aci => {
+  const key = 'k' + aci;
+  if (_amC[key] !== undefined) return _amC[key];
+  for (const nB of AM.nBler){ const s = AM.sonuc(aci, nB);
+    if (s.uzman > s.genelci) return (_amC[key] = nB); }
+  return (_amC[key] = 0);
+};
+
+
+VIZ.alanModeli = s => {
+  clear();
+  const sahne = s.sahne || 'egri';
+  const ai = Math.max(0, Math.min(3, s.ai === undefined ? 1 : Math.round(s.ai)));
+  const aci = AM.aciler[ai];
+  const kart = (x, y, wd, ad, deger, rnk, alt) => {
+    box(x, y, wd, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + wd/2, y + 28, K.mut, 15);
+    txt(deger, x + wd/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + wd/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'kesisim'){
+    baslikSerit('ALANA ÖZEL MODEL · KESİŞİM NEREDE',
+      'Uzmanın genelciyi geçtiği örnek sayısı, alanlar arası açıya göre değişiyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 3.35, 0, 60);
+    frame(P, 'alanlar arası açı', 'eşik örnek sayısı', [], [0, 10, 20, 30, 40, 50]);
+    AM.aciler.forEach((av, i) => txt(av + '°', P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    const gen = (P.R.w/4)*0.44;
+    AM.aciler.forEach((av, i) => {
+      const k = AM.kesisim(av), x = P.sx(i), y0 = P.sy(0);
+      const y1 = P.sy(k === 0 ? 58 : k);
+      box(x - gen/2, y1, gen, y0 - y1,
+          k === 0 ? 'rgba(239,68,68,.22)' : 'rgba(34,197,94,.28)',
+          k === 0 ? K.red : K.green, 2);
+      txt(k === 0 ? 'hiç' : String(k), x, y1 - 12, k === 0 ? K.red : K.green, 17); });
+    txt('kırmızı: uzman hiçbir örnek sayısında öne geçemiyor',
+        P.R.x + 16, P.R.y + 28, K.red, 16, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, '0° · AYNI ALAN', 'hiç', K.red, 'genelci hep önde');
+    kart(bx + 280, 200, 260, '30° · BENZER', String(AM.kesisim(30)) + ' örnek', K.green);
+    kart(bx, 330, 260, '60° · UZAK', String(AM.kesisim(60)) + ' örnek', K.green);
+    kart(bx + 280, 330, 260, '90° · İLGİSİZ', String(AM.kesisim(90)) + ' örnek', K.green);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('TEK SORU: ALANLAR NE KADAR BENZİYOR', bx + 270, 494, K.mut, 17);
+    txt('Alanlar aynıysa genel veri bedava veridir ve', bx + 18, 534, K.txt, 18, 'left');
+    txt('uzman olmanın hiçbir anlamı yoktur.', bx + 18, 564, K.txt, 18, 'left');
+    txt('Alanlar uzaklaştıkça genel verinin taşıdığı bilgi', bx + 18, 606, K.green, 18, 'left');
+    txt('azalır ve eşik hızla düşer: 30° de ' + AM.kesisim(30) + ' örnek,',
+        bx + 18, 636, K.green, 18, 'left');
+    txt('90° de sadece ' + AM.kesisim(90) + ' örnek yetiyor.', bx + 18, 666, K.green, 18, 'left');
+    txt('Soru "uzman mı genelci mi" değil, "ne kadar uzak".', bx + 18, 702, K.mut, 17, 'left');
+  }
+
+  else if (sahne === 'aktarim'){
+    baslikSerit('ALANA ÖZEL MODEL · GENEL VERİ NE KADAR BİLGİ TAŞIYOR',
+      'Hedef alandan tek bir örnek görmemiş model, hedef alanda ne yapıyor?', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 3.35, 0.45, 0.88);
+    frame(P, 'alanlar arası açı', 'doğruluk', [], [0.5, 0.6, 0.7, 0.8]);
+    AM.aciler.forEach((av, i) => txt(av + '°', P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    cx.strokeStyle = K.blue; cx.lineWidth = 3.6; cx.beginPath();
+    AM.aciler.forEach((av, i) => { const y = P.sy(AM.sonuc(av, 5).sadeceA);
+      i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+    cx.stroke();
+    AM.aciler.forEach((av, i) => dot(P.sx(i), P.sy(AM.sonuc(av, 5).sadeceA), 6, K.blue));
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(0.5)); cx.lineTo(P.R.x + P.R.w, P.sy(0.5)); cx.stroke();
+    cx.strokeStyle = K.green;
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(AM.sonuc(aci, 5).tavan));
+    cx.lineTo(P.R.x + P.R.w, P.sy(AM.sonuc(aci, 5).tavan)); cx.stroke();
+    cx.setLineDash([]);
+    txt('yazı tura %50', P.R.x + 16, P.sy(0.5) - 12, K.mut, 15, 'left');
+    txt('gürültü tavanı', P.R.x + 16, P.sy(AM.sonuc(aci, 5).tavan) - 12, K.green, 15, 'left');
+    dot(P.sx(ai), P.sy(AM.sonuc(aci, 5).sadeceA), 9, K.yellow);
+    const bx = 830;
+    kart(bx, 200, 260, 'AÇI', aci + '°', K.blue);
+    kart(bx + 280, 200, 260, 'GENEL MODEL', '%' + (100*AM.sonuc(aci, 5).sadeceA).toFixed(1), K.blue,
+         'hedef alanda');
+    kart(bx, 330, 260, '0° DE', '%' + (100*AM.sonuc(0, 5).sadeceA).toFixed(1), K.green);
+    kart(bx + 280, 330, 260, '90° DE', '%' + (100*AM.sonuc(90, 5).sadeceA).toFixed(1), K.red,
+         'yazı tura');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('AKTARIM BEDAVA DEĞİL, ÖLÇÜLEBİLİR', bx + 270, 494, K.mut, 17);
+    txt('Bu model hedef alandan hiç örnek görmedi.', bx + 18, 534, K.txt, 18, 'left');
+    txt('Yine de 0° de %' + (100*AM.sonuc(0, 5).sadeceA).toFixed(1) + ' doğru, çünkü alanlar aynı.',
+        bx + 18, 564, K.txt, 18, 'left');
+    txt('90° de %' + (100*AM.sonuc(90, 5).sadeceA).toFixed(1) + ': yazı turadan farksız.',
+        bx + 18, 606, K.red, 18, 'left');
+    txt('Genel veriyi eklemek her zaman kazandırmaz;', bx + 18, 646, K.orange, 18, 'left');
+    txt('ilgisiz veri modeli yanlış yöne çeker.', bx + 18, 676, K.orange, 18, 'left');
+  }
+
+  else {
+    const S = AM.nBler.map(n => AM.sonuc(aci, n));
+    baslikSerit('ALANA ÖZEL MODEL · UZMAN MI, GENELCİ Mİ',
+      'Alanlar arası açı ' + aci + '°. Genelci ' + AM.NA + ' genel örnek + alan örneklerini görüyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 5.35, 0.3, 0.9);
+    frame(P, 'hedef alandan örnek sayısı', 'doğruluk', [],
+          [0.4, 0.5, 0.6, 0.7, 0.8]);
+    AM.nBler.forEach((nv, i) => txt(String(nv), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    [['uzman', K.green], ['genelci', K.blue]].forEach(([alan, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = 3.6; cx.beginPath();
+      S.forEach((sv, i) => { const y = P.sy(sv[alan]);
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      S.forEach((sv, i) => dot(P.sx(i), P.sy(sv[alan]), 5, renk)); });
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(S[0].tavan));
+    cx.lineTo(P.R.x + P.R.w, P.sy(S[0].tavan)); cx.stroke();
+    cx.setLineDash([]);
+    txt('gürültü tavanı %' + (100*S[0].tavan).toFixed(1),
+        P.R.x + P.R.w - 14, P.sy(S[0].tavan) - 12, K.mut, 15, 'right');
+    txt('uzman · sadece alan verisi', P.R.x + 16, P.sy(0.36), K.green, 17, 'left');
+    txt('genelci · genel + alan verisi', P.R.x + 16, P.sy(0.33), K.blue, 17, 'left');
+    const k = AM.kesisim(aci);
+    const bx = 830;
+    kart(bx, 200, 260, 'AÇI', aci + '°', K.blue, 'alanlar arası');
+    kart(bx + 280, 200, 260, '5 ÖRNEKTE',
+         '%' + (100*S[0].uzman).toFixed(1) + ' / %' + (100*S[0].genelci).toFixed(1), K.mut,
+         'uzman / genelci');
+    kart(bx, 330, 260, '400 ÖRNEKTE',
+         '%' + (100*S[5].uzman).toFixed(1) + ' / %' + (100*S[5].genelci).toFixed(1), K.mut,
+         'uzman / genelci');
+    kart(bx + 280, 330, 260, 'KESİŞİM', k === 0 ? 'yok' : k + ' örnek',
+         k === 0 ? K.red : K.green);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('AZ VERİDE GENELCİ, ÇOK VERİDE UZMAN', bx + 270, 494, K.mut, 17);
+    txt('Az alan verisiyle genelci önde: genel veri', bx + 18, 534, K.txt, 18, 'left');
+    txt('boşluğu dolduruyor.', bx + 18, 564, K.txt, 18, 'left');
+    txt(k === 0
+        ? 'Bu açıda uzman hiçbir noktada öne geçemiyor.'
+        : 'Uzman ' + k + ' örnekte öne geçiyor ve bir daha',
+        bx + 18, 606, k === 0 ? K.red : K.green, 18, 'left');
+    txt(k === 0
+        ? 'Alanlar aynıysa ayrı model kurmak boş emektir.'
+        : 'geri düşmüyor: genel veri artık engel.',
+        bx + 18, 636, k === 0 ? K.red : K.green, 18, 'left');
+    txt('Küçük örnek sayılarında eğriler dalgalı, çünkü', bx + 18, 676, K.mut, 17, 'left');
+    txt('5-20 örnekle eğitilen model örneklem şansına bağlı.', bx + 18, 702, K.mut, 17, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

@@ -117,7 +117,7 @@ const ROTALAR = [
     {id:'hafiza',         ad:'Konuşma hafızası: model neyi hatırlar',          sure:16, durum:'hazir'},
     {id:'tokenizer-fark',  ad:'Tokenizer\'lar neden farklı davranır',            sure:12, durum:'planli'},
     {id:'cokdilli',       ad:'Çok dilli modellerin kör noktası',               sure:14, durum:'hazir'},
-    {id:'alan-model',     ad:'Alana özel modeller: genelci mi, uzman mı',      sure:12, durum:'planli'},
+    {id:'alan-model',     ad:'Alana özel modeller: genelci mi, uzman mı',      sure:16, durum:'hazir'},
     {id:'temel-model',    ad:'Temel modeller: tek modelden her şeye',          sure:12, durum:'planli'},
     {id:'llm-siniflandirici',  ad:'LLM\'i sınıflandırıcıya çevirmek',                sure:12, durum:'planli'},
     {id:'konu-kesif',     ad:'Gömmelerden konuya: kümeleme ile konu bulmak',   sure:12, durum:'planli'},
@@ -11138,6 +11138,159 @@ DERSLER['cokdilli'] = {
       '(aktarım kaybıyla).<br><br>' +
       'Uygulama tarafında yapılacak en kısa iş: kendi metinlerinde kelime başına token ' +
       'sayısını ölçmek. Maliyet, bağlam ve gecikme tahminlerinin üçü de bu sayıya bağlıdır.',
+    xp:75,
+  },
+]};
+
+/* --------------- ALANA OZEL MODEL --------------- */
+DERSLER['alan-model'] = {
+  ad:'Alana özel modeller: genelci mi, uzman mı',
+  alt:'Sorunun cevabı bir tercih değil, ölçülebilir bir eşik. Ve eşiği belirleyen şey alanların birbirine ne kadar benzediği.',
+  kaynaklar:[
+    {y:'Gururangan, S. ve ark.', t:'2020', b:"Don't Stop Pretraining: Adapt Language Models to Domains and Tasks", n:'ACL 2020', u:'https://arxiv.org/abs/2004.10964'},
+    {y:'Lee, J. ve ark.', t:'2020', b:'BioBERT: a pre-trained biomedical language representation model', n:'Bioinformatics 36(4)', u:'https://arxiv.org/abs/1901.08746'},
+    {y:'Bommasani, R. ve ark.', t:'2021', b:'On the Opportunities and Risks of Foundation Models', n:'arXiv:2108.07258', u:'https://arxiv.org/abs/2108.07258'},
+    {y:'Rosenstein, M. T. ve ark.', t:'2005', b:'To Transfer or Not To Transfer', n:'NeurIPS 2005 Workshop on Transfer Learning'},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'İki eğri kesişiyor',
+    goal:'Uzman ve genelci modelin nerede yer değiştirdiğini ölçeceksin.',
+    todo:'Alanlar arası açıyı değiştir. Kesişim nereye kayıyor?',
+    kind:'controls', viz:'alanModeli', h:760,
+    controls:[{k:'ai', lb:'ALANLAR ARASI ACI', min:0, max:3, step:1, val:1,
+      fmt:v => AM.aciler[Math.round(v)] + ' derece'}],
+    state:{sahne:'egri'},
+    derive:s => ({k: AM.kesisim(AM.aciler[Math.round(s.ai)])}),
+    live:s => { const a = AM.aciler[Math.round(s.ai)];
+      return [['ACI', a + ' derece'],
+              ['5 ORNEK', '%' + (100*AM.sonuc(a, 5).uzman).toFixed(1) + ' / %' +
+                          (100*AM.sonuc(a, 5).genelci).toFixed(1), K.mut],
+              ['400 ORNEK', '%' + (100*AM.sonuc(a, 400).uzman).toFixed(1) + ' / %' +
+                          (100*AM.sonuc(a, 400).genelci).toFixed(1), K.mut],
+              ['KESISIM', s.k === 0 ? 'yok' : s.k + ' ornek', s.k === 0 ? K.red : K.green]]; },
+    body:'<p>Kurulum gerçek bir deney: 8 boyutlu ikili sınıflandırma, L2 cezalı lojistik ' +
+      'regresyon, tam gradyan inişi. Problem konveks olduğu için sonuç kararlıdır.</p>' +
+      '<p>İki alan var. <b>Genel alan A</b>: 400 örnek, hep elimizde. <b>Hedef alan B</b>: ' +
+      'örnek sayısı değişken ve pahalı. İkisinin karar sınırları arasında bir <b>açı</b> var; ' +
+      'açı 0 ise alanlar aynı, 90 derece ise tamamen ilgisiz.</p>' +
+      '<p>İki model karşılaştırılıyor: <b>uzman</b> sadece B verisiyle eğitiliyor, ' +
+      '<b>genelci</b> A ve B verisini birlikte görüyor. İkisi de B üzerinde ölçülüyor.</p>' +
+      '<p>30 derecede sonuç net: 5 örnekle uzman %57.8, genelci %77.5. Ama 400 örnekte ' +
+      'uzman %81.0, genelci %79.5. Eğriler <b>50 örnekte</b> kesişiyor.</p>' +
+      '<p>Kesişimden sonra genel veri artık yardım değil <b>engel</b>: modeli hedef alanın ' +
+      'dışına doğru çekiyor. Bu, klasik bir aktarım öğrenmesi olgusudur ve literatürde ' +
+      'olumsuz aktarım diye geçer (Rosenstein ve ark., 2005).</p>' +
+      '<p>Küçük örnek sayılarında eğriler dalgalı görünüyor ve bu gerçek: 5 ile 20 örnek ' +
+      'arasında eğitilen bir modelin başarımı büyük ölçüde hangi örneklerin geldiğine bağlı.</p>',
+    learned:'<b>Uzman ve genelci eğrileri kesişir; soru hangisinin daha iyi olduğu değil, ' +
+      'kesişimin nerede olduğudur.</b><br><br>' +
+      '30 derecede: 5 örnekle uzman %57.8 genelci %77.5; 400 örnekle uzman %81.0 genelci %79.5. ' +
+      'Kesişim 50 örnekte.<br><br>' +
+      'Kesişimden sonra genel veri modeli hedef alandan uzağa çeker. Buna olumsuz aktarım denir.',
+    xp:50,
+  },
+  {
+    t:'Kesişim nerede',
+    goal:'Eşiği belirleyen tek değişkeni göreceksin.',
+    todo:'Dört açıdaki eşik değerlerini karşılaştır.',
+    kind:'static', viz:'alanModeli', h:760,
+    state:{sahne:'kesisim', ai:1},
+    body:'<p>Aynı deneyi dört açıda tekrarlayıp uzmanın öne geçtiği ilk örnek sayısını ' +
+      'ölçelim.</p>' +
+      '<p><b>0 derece</b> (alanlar aynı): uzman hiçbir örnek sayısında öne geçemiyor. ' +
+      'Beklenen sonuç, çünkü genel veri burada birebir hedef alan verisidir. Bu durumda ' +
+      'ayrı bir uzman model kurmak boş emektir.</p>' +
+      '<p><b>30 derece</b>: eşik 50 örnek.<br>' +
+      '<b>60 derece</b>: eşik 10 örnek.<br>' +
+      '<b>90 derece</b>: eşik 5 örnek, yani neredeyse hemen.</p>' +
+      '<p>Eğilim açık: alanlar uzaklaştıkça genel verinin taşıdığı bilgi azalır ve uzman ' +
+      'çok daha az veriyle öne geçer. 90 derecede genel veri hiçbir şey söylemediği için ' +
+      'beş örnek bile onu geçmeye yetiyor.</p>' +
+      '<p>Pratikteki karşılığı şu: "alanımız çok özel, kendi modelimizi eğitelim" cümlesi ' +
+      'tek başına bir gerekçe değildir. Gerekçe olması için alanın gerçekten uzak olması ' +
+      've elde yeterli alan verisi bulunması gerekir. İkisi de ölçülebilir.</p>',
+    learned:'<b>Eşiği belirleyen tek değişken alanlar arası uzaklıktır.</b><br><br>' +
+      '0 derece: eşik yok, genelci hep önde. 30 derece: 50 örnek. 60 derece: 10 örnek. ' +
+      '90 derece: 5 örnek.<br><br>' +
+      '"Bizim alanımız özel" iddiası ancak iki şeyle desteklenirse geçerlidir: alan gerçekten ' +
+      'uzak mı, ve elde yeterli alan verisi var mı. İkisi de ölçülebilir sorulardır.',
+    xp:50,
+  },
+  {
+    t:'Genel veri ne kadar bilgi taşıyor',
+    goal:'Aktarımın değerini doğrudan ölçeceksin.',
+    todo:'Açıyı değiştir. Hedef alandan hiç örnek görmemiş model ne yapıyor?',
+    kind:'controls', viz:'alanModeli', h:760,
+    controls:[{k:'ai', lb:'ALANLAR ARASI ACI', min:0, max:3, step:1, val:0,
+      fmt:v => AM.aciler[Math.round(v)] + ' derece'}],
+    state:{sahne:'aktarim'},
+    derive:s => ({d: AM.sonuc(AM.aciler[Math.round(s.ai)], 5).sadeceA}),
+    live:s => [['ACI', AM.aciler[Math.round(s.ai)] + ' derece'],
+               ['HEDEF ALANDA', '%' + (100*s.d).toFixed(1), K.blue],
+               ['YAZI TURA', '%50.0', K.mut],
+               ['HEDEF', 'aktarimi sifirla']],
+    unlock:s => s.d < 0.55,
+    unlockMsg:'Aktarimin tamamen kayboldugu aciyi bul',
+    body:'<p>Şimdi üçüncü bir model: sadece genel alan A ile eğitilmiş, hedef alandan ' +
+      '<b>hiç örnek görmemiş</b> bir model. Onu hedef alanda ölçüyoruz. Bu, aktarımın ' +
+      'ham değerini doğrudan verir.</p>' +
+      '<p>0 derecede %79.5. Model hedef alandan tek bir örnek bile görmediği halde neredeyse ' +
+      'gürültü tavanında, çünkü alanlar aynı.</p>' +
+      '<p>30 derecede %77.2, 60 derecede %65.9, 90 derecede <b>%51.8</b>. Son sayı yazı ' +
+      'turadan ayırt edilemez.</p>' +
+      '<p>Buradaki asıl mesaj şu: <b>aktarım bedava değil, ölçülebilir bir miktardır</b>. ' +
+      'Ve miktarı sıfıra yaklaştığında genel veri sadece işe yaramaz olmaz, aktif olarak ' +
+      'zarar verir: birinci adımda gördüğün gibi 90 derecede genelci modeli 400 alan ' +
+      'örneğiyle bile uzmanın gerisinde kalıyor.</p>' +
+      '<p>Bir uyarı: buradaki "açı" gerçek hayatta doğrudan ölçemeyeceğin bir şey. Ama ' +
+      'vekili ölçülebilir: genel modeli hedef alanda test etmek. Aldığın sayı, aktarımın ' +
+      'ne kadar işe yarayacağının en iyi göstergesidir ve bu testi yapmak bir öğleden ' +
+      'sonra sürer.</p>',
+    learned:'<b>Aktarımın değeri ölçülebilir: genel modeli hedef alanda test et.</b><br><br>' +
+      'Hedef alandan hiç örnek görmemiş model: 0 derecede %79.5, 30 derecede %77.2, ' +
+      '60 derecede %65.9, 90 derecede %51.8 (yazı tura).<br><br>' +
+      'Gerçek hayatta açıyı doğrudan ölçemezsin ama vekilini ölçebilirsin. Genel modelin ' +
+      'hedef alandaki ham başarımı, aktarımın ne kadar işe yarayacağının en iyi göstergesidir.',
+    xp:50,
+  },
+  {
+    t:'Karar kuralı',
+    goal:'Ölçümleri bir karara çevireceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'controls', viz:'alanModeli', h:760,
+    controls:[{k:'ai', lb:'ALANLAR ARASI ACI', min:0, max:3, step:1, val:2,
+      fmt:v => AM.aciler[Math.round(v)] + ' derece'}],
+    state:{sahne:'egri'},
+    body:'<p>Üç ölçümü bir araya koyunca karar kuralı çıkıyor:</p>' +
+      '<p><b>1. Genel modeli hedef alanda test et.</b> Sonuç gürültü tavanına yakınsa alan ' +
+      'uzak değildir ve ayrı model kurmak muhtemelen boş emektir.</p>' +
+      '<p><b>2. Elindeki alan verisini say.</b> Eşiğin altındaysan genelciyi kullan; ' +
+      'üstündeysen uzman kazanır.</p>' +
+      '<p><b>3. Aradaki bölgede üçüncü bir yol var:</b> genel modelden başlayıp alan verisiyle ' +
+      'devam eğitimi. Gururangan ve arkadaşlarının (2020) alan içi devam eğitimi çalışması ' +
+      'bunun sıfırdan eğitmeye göre çok daha az veriyle iyi sonuç verdiğini gösteriyor; ' +
+      'BioBERT (Lee ve ark., 2020) aynı yaklaşımın biyomedikal metinlerdeki uygulamasıdır.</p>' +
+      '<p>Bu üçüncü yol burada ölçtüğümüz iki uçtan daha iyidir çünkü genel veriyi bir ' +
+      '<b>başlangıç noktası</b> olarak kullanır, eğitim sırasında sürekli çeken bir ağırlık ' +
+      'olarak değil. Yani olumsuz aktarımın kaynağını ortadan kaldırır.</p>' +
+      '<p>Son not: temel modeller çağında "genelci" seçeneği artık kendi eğittiğin bir model ' +
+      'değil, hazır bir temel modeldir. Karar kuralı aynı kalır, sadece genelcinin maliyeti ' +
+      'neredeyse sıfıra iner ve bu da dengeyi genelci lehine kaydırır.</p>',
+    quiz:{ q:'Bir sigorta şirketi için hasar dosyası sınıflandırıcısı kuruyorsun. Elinde 300 etiketli şirket dosyası var. Hazır bir genel model bu dosyalarda hiç eğitim görmeden %78 doğruluk veriyor, insan uzmanların üst sınırı ise yaklaşık %90. Ne yaparsın?',
+      opts:[
+        {t:'Genel modelden başlayıp 300 dosyayla devam eğitimi yap', why:'Doğru. %78 lik sıfır atışlık sonuç aktarımın güçlü olduğunu söylüyor, yani alan uzak değil. Ama %90 tavana göre boşluk var, yani alan verisinin katacağı bir şey de var. Devam eğitimi tam bu aradaki durumun cevabıdır: genel modeli başlangıç noktası olarak kullanır, böylece hem aktarımı korur hem genel verinin sürekli çekmesinden kaynaklanan olumsuz aktarımı önler.'},
+        {t:'Sıfırdan uzman model eğit, genel veriyi hiç kullanma', why:'Ölçüm bunun aleyhine. Genel model daha hiç eğitim görmeden %78 veriyor, yani genel veri bu alanda gerçek bilgi taşıyor. Derste 0 ile 30 derece arasındaki durumlar buna karşılık geliyordu ve orada uzman ancak çok daha fazla veriyle öne geçebiliyordu. 300 dosya bunun için muhtemelen az.'},
+        {t:'Genel modeli olduğu gibi kullan, alan verisini sakla', why:'%78 ile %90 arasındaki boşluğu değerlendirmemek olur. Elinde 300 etiketli dosya varken bunu kullanmamak için bir sebep yok; devam eğitiminin maliyeti düşük.'},
+        {t:'Daha fazla veri toplanana kadar beklemek', why:'Ölçüm beklemeyi gerektirmiyor. %78 lik başlangıç zaten kullanılabilir bir taban ve 300 dosya devam eğitimi için yeterli bir başlangıç. Beklemek, ölçülebilir bir kazancı ertelemektir.'},
+      ], correct:0 },
+    learned:'<b>Karar üç ölçümle veriliyor: aktarımın değeri, alan verisinin miktarı, eşiğin yeri.</b><br><br>' +
+      'Genel modeli hedef alanda test et. Tavana yakınsa ayrı model kurma. Uzaksa ve verin ' +
+      'varsa uzman kazanır.<br><br>' +
+      'Aradaki bölgede en iyi yol üçüncüsüdür: genel modelden başlayıp alan verisiyle devam ' +
+      'eğitimi. Genel veriyi başlangıç noktası yapar, sürekli çeken bir ağırlık değil, ' +
+      'böylece olumsuz aktarımın kaynağını ortadan kaldırır.',
     xp:75,
   },
 ]};

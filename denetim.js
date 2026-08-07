@@ -3028,6 +3028,73 @@ console.log('═══ ÇOK DİLLİ KÖR NOKTA ═══');
       enBuyuk2 = Math.max(enBuyuk2, Math.abs(s5.maliyet*s5.pencere - 1)); });
     iddia('CD · maliyet × sığan = 1', 0, enBuyuk2, 9); }
 }
+console.log('═══ ALANA ÖZEL MODEL ═══');
+{
+  iddia('AM - ozellik boyutu', 8, AM.D, 0);
+  iddia('AM - genel alan ornek sayisi', 400, AM.NA, 0);
+  /* aci gercekten istenen aci mi: iki agirlik vektorunun ic carpimi cos(aci) */
+  { let enBuyuk = 0;
+    AM.aciler.forEach(av => { const W = AM.agirliklar(av);
+      const ip = W.A.reduce((s, z, i) => s + z*W.B[i], 0);
+      enBuyuk = Math.max(enBuyuk, Math.abs(ip - Math.cos(av*Math.PI/180))); });
+    iddia('AM - kurulan aci tam olarak istenen aci', 0, enBuyuk, 9); }
+  { let enBuyuk = 0;
+    AM.aciler.forEach(av => { const W = AM.agirliklar(av);
+      enBuyuk = Math.max(enBuyuk, Math.abs(W.B.reduce((s, z) => s + z*z, 0) - 1)); });
+    iddia('AM - agirlik vektorleri birim uzunlukta', 0, enBuyuk, 9); }
+
+  /* 1. adim - egriler */
+  { const s30_5 = AM.sonuc(30, 5), s30_400 = AM.sonuc(30, 400);
+    iddia('AM - 30 derece - 5 ornek - uzman', 57.8, 100*s30_5.uzman, 1);
+    iddia('AM - 30 derece - 5 ornek - genelci', 77.5, 100*s30_5.genelci, 1);
+    iddia('AM - 30 derece - 400 ornek - uzman', 81.0, 100*s30_400.uzman, 1);
+    iddia('AM - 30 derece - 400 ornek - genelci', 79.5, 100*s30_400.genelci, 1);
+    iddia('AM - 30 derece - az veride genelci onde', 1, s30_5.genelci > s30_5.uzman ? 1 : 0, 0);
+    iddia('AM - 30 derece - cok veride uzman onde', 1, s30_400.uzman > s30_400.genelci ? 1 : 0, 0); }
+  { const s90_5 = AM.sonuc(90, 5), s90_400 = AM.sonuc(90, 400);
+    iddia('AM - 90 derece - 5 ornek - uzman', 69.7, 100*s90_5.uzman, 1);
+    iddia('AM - 90 derece - 5 ornek - genelci', 52.4, 100*s90_5.genelci, 1);
+    iddia('AM - 90 derece - 400 ornek - genelci', 71.7, 100*s90_400.genelci, 1);
+    iddia('AM - 90 derece - genelci 400 ornekte bile geride', 1,
+          s90_400.genelci < s90_400.uzman ? 1 : 0, 0); }
+  /* hicbir model gurultu tavanini anlamli olcude asmiyor */
+  { let asan = 0;
+    AM.aciler.forEach(av => AM.nBler.forEach(nv => { const sv = AM.sonuc(av, nv);
+      if (sv.uzman > sv.tavan + 0.02) asan++;
+      if (sv.genelci > sv.tavan + 0.02) asan++; }));
+    iddia('AM - gurultu tavani asilmiyor', 0, asan, 0); }
+  /* tavan etiket gurultusunden dolayi %100 degil */
+  iddia('AM - 30 derece gurultu tavani', 80.8, 100*AM.sonuc(30, 5).tavan, 1);
+
+  /* 2. adim - kesisim */
+  iddia('AM - kesisim - 0 derece (yok)', 0, AM.kesisim(0), 0);
+  iddia('AM - kesisim - 30 derece', 50, AM.kesisim(30), 0);
+  iddia('AM - kesisim - 60 derece', 10, AM.kesisim(60), 0);
+  iddia('AM - kesisim - 90 derece', 5, AM.kesisim(90), 0);
+  /* aci buyudukce esik dusuyor (0 = hic, disarida) */
+  { let ihlal = 0;
+    const e = [30, 60, 90].map(av => AM.kesisim(av));
+    for (let i = 1; i < e.length; i++) if (e[i] > e[i-1]) ihlal++;
+    iddia('AM - aci buyudukce esik dusuyor', 0, ihlal, 0); }
+
+  /* 3. adim - aktarimin degeri */
+  iddia('AM - sadece genel model - 0 derece', 79.5, 100*AM.sonuc(0, 5).sadeceA, 1);
+  iddia('AM - sadece genel model - 30 derece', 77.2, 100*AM.sonuc(30, 5).sadeceA, 1);
+  iddia('AM - sadece genel model - 60 derece', 65.9, 100*AM.sonuc(60, 5).sadeceA, 1);
+  iddia('AM - sadece genel model - 90 derece', 51.8, 100*AM.sonuc(90, 5).sadeceA, 1);
+  /* aci buyudukce aktarim monoton azaliyor */
+  { let ihlal = 0;
+    for (let i = 1; i < AM.aciler.length; i++)
+      if (AM.sonuc(AM.aciler[i], 5).sadeceA > AM.sonuc(AM.aciler[i-1], 5).sadeceA) ihlal++;
+    iddia('AM - aktarim aciyla monoton azaliyor', 0, ihlal, 0); }
+  iddia('AM - 90 derecede aktarim yazi turaya inmis', 1,
+        Math.abs(AM.sonuc(90, 5).sadeceA - 0.5) < 0.03 ? 1 : 0, 0);
+  /* sadeceA nB den bagimsiz olmali: B verisini hic kullanmiyor */
+  { let ihlal = 0;
+    AM.aciler.forEach(av => { const t = AM.sonuc(av, AM.nBler[0]).sadeceA;
+      AM.nBler.forEach(nv => { if (Math.abs(AM.sonuc(av, nv).sadeceA - t) > 1e-12) ihlal++; }); });
+    iddia('AM - genel model hedef veriden bagimsiz', 0, ihlal, 0); }
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
