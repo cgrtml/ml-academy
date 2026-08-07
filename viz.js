@@ -7957,6 +7957,199 @@ VIZ.gramerKisiti = s => {
   }
 };
 
+
+/* ═══════════ KONUŞMA HAFIZASI ═══════════
+   Üç strateji, üç farklı hatırlama eğrisi. Hepsi kapalı formda. */
+const HF = {};
+HF.T = 40;                       /* konuşmadaki tur sayısı · her tur bir olgu getiriyor */
+HF.Wler = [5, 10, 20, 40];       /* kayan pencere boyu */
+HF.rholar = [0.80, 0.90, 0.95, 0.99];  /* özette bir olgunun bir turu atlatma olasılığı */
+HF.rler = [0.50, 0.70, 0.85, 0.95];    /* getirme başarısı */
+/* yaş = olgunun kaç tur önce söylendiği (0 = en son tur) */
+HF.pencere = (W, yas) => yas < W ? 1 : 0;
+HF.ozet = (rho, yas) => Math.pow(rho, yas);
+HF.getirme = r => r;
+/* genel hatırlama: tüm yaşların ortalaması · TAM */
+HF.pencereGenel = W => Math.min(W, HF.T)/HF.T;
+HF.ozetGenel = rho => rho === 1 ? 1 : (1 - Math.pow(rho, HF.T))/(HF.T*(1 - rho));
+/* özetin penceleye denk geldiği ρ · sayısal kök */
+HF.denkRho = W => { let a = 0.5, z = 0.999999, h = HF.pencereGenel(W);
+  for (let i = 0; i < 80; i++){ const m = (a + z)/2;
+    if (HF.ozetGenel(m) < h) a = m; else z = m; }
+  return (a + z)/2; };
+/* bir stratejinin belirli yaştan sonrasını hiç hatırlamama noktası */
+HF.ozetYariOmur = rho => Math.log(0.5)/Math.log(rho);
+
+VIZ.konusmaHafizasi = s => {
+  clear();
+  const sahne = s.sahne || 'pencere';
+  const Wi = Math.max(0, Math.min(3, s.Wi === undefined ? 1 : Math.round(s.Wi)));
+  const W = HF.Wler[Wi];
+  const rhoi = Math.max(0, Math.min(3, s.rhoi === undefined ? 1 : Math.round(s.rhoi)));
+  const rho = HF.rholar[rhoi];
+  const ri = Math.max(0, Math.min(3, s.ri === undefined ? 1 : Math.round(s.ri)));
+  const rr = HF.rler[ri];
+  const kart = (x, y, wd, ad, deger, rnk, alt) => {
+    box(x, y, wd, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + wd/2, y + 28, K.mut, 15);
+    txt(deger, x + wd/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + wd/2, y + 95, K.mut, 14);
+  };
+  const yasEkseni = P => frame(P, 'olgunun yaşı (kaç tur önce söylendi)', 'hatırlama',
+    [0, 10, 20, 30, 39], [0, 0.25, 0.5, 0.75, 1]);
+  const cizgi = (P, f, renk, kalin) => {
+    cx.strokeStyle = renk; cx.lineWidth = kalin ? 3.6 : 1.8;
+    cx.globalAlpha = kalin ? 1 : 0.4; cx.beginPath();
+    for (let y = 0; y < HF.T; y++){ const px = P.sx(y), py = P.sy(f(y));
+      if (y === 0) cx.moveTo(px, py);
+      else { cx.lineTo(px, P.sy(f(y - 1))); cx.lineTo(px, py); } }
+    cx.stroke(); cx.globalAlpha = 1;
+  };
+
+  if (sahne === 'ozet'){
+    baslikSerit('KONUŞMA HAFIZASI · ÖZET: KESKİN DUVAR YOK, YAVAŞ SOLMA VAR',
+      'Her turda geçmiş yeniden özetleniyor. Bir olgu her özetlemeyi ρ olasılıkla atlatıyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -1, 40, 0, 1.08);
+    yasEkseni(P);
+    HF.rholar.forEach((rv, i) => cizgi(P, y => HF.ozet(rv, y),
+      [K.red, K.orange, K.blue, K.green][i], rv === rho));
+    cizgi(P, y => HF.pencere(10, y), K.purple, false);
+    txt('mor: 10 turluk pencere', P.R.x + P.R.w - 14, P.R.y + 28, K.purple, 16, 'right');
+    HF.rholar.forEach((rv, i) => {
+      const yy = P.sy(0.98 - i*0.075);
+      cx.strokeStyle = [K.red, K.orange, K.blue, K.green][i];
+      cx.lineWidth = rv === rho ? 3.6 : 1.8;
+      cx.beginPath(); cx.moveTo(P.R.x + 16, yy - 5); cx.lineTo(P.R.x + 52, yy - 5); cx.stroke();
+      txt('ρ = ' + rv.toFixed(2), P.R.x + 62, yy, [K.red, K.orange, K.blue, K.green][i], 16,
+          'left', rv === rho ? 700 : 400); });
+    const bx = 830;
+    kart(bx, 200, 260, 'TUR BAŞINA SAĞ KALMA', rho.toFixed(2), K.blue);
+    kart(bx + 280, 200, 260, 'GENEL HATIRLAMA', '%' + (100*HF.ozetGenel(rho)).toFixed(1), K.green);
+    kart(bx, 330, 260, 'YARI ÖMÜR', HF.ozetYariOmur(rho).toFixed(1) + ' tur', K.orange,
+         'hatırlama %50 ye düşüyor');
+    kart(bx + 280, 330, 260, 'DENK PENCERE',
+         (HF.T*HF.ozetGenel(rho)).toFixed(1) + ' tur', K.purple, 'aynı genel hatırlama');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('ÜSTEL SOLMA', bx + 270, 494, K.mut, 18);
+    txt('Bir olgu T − t özetlemeden geçiyor, yani hatırlama', bx + 18, 534, K.txt, 18, 'left');
+    txt('olasılığı ρ^yaş. Keskin duvar yok ama kuyruk da', bx + 18, 564, K.txt, 18, 'left');
+    txt('yok: ρ = ' + rho.toFixed(2) + ' de ' + HF.ozetYariOmur(rho).toFixed(0) +
+        ' turda yarısı gidiyor.', bx + 18, 594, K.txt, 18, 'left');
+    txt('Genel hatırlama (1 − ρᵀ) / T(1 − ρ) = %' +
+        (100*HF.ozetGenel(rho)).toFixed(1) + ',', bx + 18, 634, K.green, 18, 'left');
+    txt('yani ' + (HF.T*HF.ozetGenel(rho)).toFixed(1) + ' turluk bir pencereyle aynı.',
+        bx + 18, 664, K.green, 18, 'left');
+    txt('Özet "sınırsız hafıza" değil, farklı şekilli bir sınır.', bx + 18, 700, K.mut, 17, 'left');
+  }
+
+  else if (sahne === 'ucu'){
+    baslikSerit('KONUŞMA HAFIZASI · ÜÇ STRATEJİ YAN YANA',
+      'Aynı 40 turluk konuşma. Pencere keskin, özet solan, getirme düz.', []);
+    const P = plot(rect(140, 200, 640, 400), -1, 40, 0, 1.08);
+    yasEkseni(P);
+    cizgi(P, y => HF.pencere(W, y), K.purple, true);
+    cizgi(P, y => HF.ozet(rho, y), K.orange, true);
+    cx.strokeStyle = K.green; cx.lineWidth = 3.6;
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(rr)); cx.lineTo(P.R.x + P.R.w, P.sy(rr)); cx.stroke();
+    /* efsane sag altta: o bandi hicbir egri kesmiyor (getirme >= 0.50) */
+    txt('pencere (' + W + ' tur)', P.R.x + P.R.w - 14, P.sy(0.30), K.purple, 17, 'right');
+    txt('özet (ρ = ' + rho.toFixed(2) + ')', P.R.x + P.R.w - 14, P.sy(0.22), K.orange, 17, 'right');
+    txt('getirme (r = ' + rr.toFixed(2) + ')', P.R.x + P.R.w - 14, P.sy(0.14), K.green, 17, 'right');
+    const gp = HF.pencereGenel(W), go = HF.ozetGenel(rho);
+    const bx = 830;
+    kart(bx, 200, 260, 'PENCERE · GENEL', '%' + (100*gp).toFixed(1), K.purple);
+    kart(bx + 280, 200, 260, 'ÖZET · GENEL', '%' + (100*go).toFixed(1), K.orange);
+    kart(bx, 330, 260, 'GETİRME · GENEL', '%' + (100*rr).toFixed(1), K.green);
+    { let enIyi = 'getirme', v2 = rr, rnk = K.green;
+      if (gp > v2){ enIyi = 'pencere'; v2 = gp; rnk = K.purple; }
+      if (go > v2){ enIyi = 'özet'; v2 = go; rnk = K.orange; }
+      kart(bx + 280, 330, 260, 'EN İYİSİ', enIyi, rnk, '%' + (100*v2).toFixed(1)); }
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('ŞEKİLLER FARKLI, SAYILAR KARŞILAŞTIRILABİLİR', bx + 270, 494, K.mut, 16);
+    txt('Pencere son ' + W + ' turu kusursuz, öncesini hiç', bx + 18, 534, K.txt, 18, 'left');
+    txt('bilmiyor. Özet her yaşta bir şans veriyor ama', bx + 18, 564, K.txt, 18, 'left');
+    txt('yaş büyüdükçe şans üstel azalıyor.', bx + 18, 594, K.txt, 18, 'left');
+    txt('Getirme yaştan bağımsız: 39 tur önceki olgu ile', bx + 18, 634, K.green, 18, 'left');
+    txt('dünkü olgu aynı olasılıkla geliyor.', bx + 18, 664, K.green, 18, 'left');
+    txt('Uzun konuşmada tek ölçeklenen strateji bu.', bx + 18, 700, K.mut, 17, 'left');
+  }
+
+  else if (sahne === 'maliyet'){
+    baslikSerit('KONUŞMA HAFIZASI · HATIRLAMA BAŞINA BAĞLAM',
+      'Yatay eksen her çağrıda taşınan tur sayısı, dikey eksen genel hatırlama.', []);
+    const P = plot(rect(140, 200, 640, 400), -1.5, 42, 0, 1.08);
+    frame(P, 'her çağrıda taşınan tur', 'hatırlama', [0, 10, 20, 30, 40],
+          [0, 0.25, 0.5, 0.75, 1]);
+    /* pencere: tasinan tur = W */
+    cx.strokeStyle = K.purple; cx.lineWidth = 3.4; cx.beginPath();
+    for (let Wv = 1; Wv <= HF.T; Wv++){ const x = P.sx(Wv), y = P.sy(HF.pencereGenel(Wv));
+      Wv === 1 ? cx.moveTo(x, y) : cx.lineTo(x, y); }
+    cx.stroke();
+    HF.Wler.forEach(Wv => dot(P.sx(Wv), P.sy(HF.pencereGenel(Wv)), 5, K.purple));
+    /* ozet: tasinan tur sabit 1 (ozetin kendisi) */
+    HF.rholar.forEach((rv, i) => {
+      dot(P.sx(1), P.sy(HF.ozetGenel(rv)), 6, K.orange);
+      txt('ρ=' + rv.toFixed(2), P.sx(1) + 14, P.sy(HF.ozetGenel(rv)) + 6, K.orange, 14, 'left'); });
+    /* getirme: tasinan tur = k (burada 3) */
+    HF.rler.forEach(rv => dot(P.sx(3), P.sy(rv), 6, K.green));
+    /* efsane sag altta: mor dogru orada 0.4 in uzerinde */
+    txt('mor: kayan pencere', P.R.x + P.R.w - 14, P.sy(0.30), K.purple, 16, 'right');
+    txt('turuncu: özet · 1 tur', P.R.x + P.R.w - 14, P.sy(0.22), K.orange, 16, 'right');
+    txt('yeşil: getirme · 3 tur', P.R.x + P.R.w - 14, P.sy(0.14), K.green, 16, 'right');
+    const bx = 830;
+    kart(bx, 200, 260, 'PENCERE ' + W, '%' + (100*HF.pencereGenel(W)).toFixed(1), K.purple,
+         W + ' tur taşınıyor');
+    kart(bx + 280, 200, 260, 'ÖZET ρ=' + rho.toFixed(2),
+         '%' + (100*HF.ozetGenel(rho)).toFixed(1), K.orange, '1 tur taşınıyor');
+    kart(bx, 330, 260, 'GETİRME r=' + rr.toFixed(2), '%' + (100*rr).toFixed(1), K.green,
+         '3 tur taşınıyor');
+    kart(bx + 280, 330, 260, 'ÖZETİN DENGİ', HF.denkRho(W).toFixed(4), K.purple,
+         'pencere ' + W + ' ile aynı');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('AYNI HATIRLAMA, FARKLI FATURA', bx + 270, 494, K.mut, 18);
+    txt('Pencerede hatırlama taşınan turla doğru orantılı:', bx + 18, 534, K.txt, 18, 'left');
+    txt('iki katı hatırlama iki katı bağlam demek.', bx + 18, 564, K.txt, 18, 'left');
+    txt('Özet 1 tur taşıyıp %' + (100*HF.ozetGenel(rho)).toFixed(1) + ' veriyor; aynı sayıyı',
+        bx + 18, 606, K.orange, 18, 'left');
+    txt('pencereyle almak ' + (HF.T*HF.ozetGenel(rho)).toFixed(0) + ' tur taşımayı gerektirir.',
+        bx + 18, 636, K.orange, 18, 'left');
+    txt('Getirme 3 tur taşıyıp %' + (100*rr).toFixed(0) + ' veriyor ve bu sayı', bx + 18, 676, K.green, 18, 'left');
+    txt('konuşma uzadıkça düşmüyor.', bx + 18, 702, K.green, 18, 'left');
+  }
+
+  else {
+    baslikSerit('KONUŞMA HAFIZASI · KAYAN PENCERE KESKİN BİR DUVAR',
+      '40 turluk bir konuşma. Her tur bir olgu getiriyor, sonunda rastgele bir olgu soruluyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -1, 40, 0, 1.08);
+    yasEkseni(P);
+    HF.Wler.forEach((Wv, i) => cizgi(P, y => HF.pencere(Wv, y),
+      [K.red, K.orange, K.blue, K.green][i], Wv === W));
+    HF.Wler.forEach((Wv, i) => {
+      const yy = P.sy(0.62 - i*0.075);
+      cx.strokeStyle = [K.red, K.orange, K.blue, K.green][i];
+      cx.lineWidth = Wv === W ? 3.6 : 1.8;
+      cx.beginPath(); cx.moveTo(P.R.x + P.R.w - 156, yy - 5);
+      cx.lineTo(P.R.x + P.R.w - 120, yy - 5); cx.stroke();
+      txt(Wv + ' tur', P.R.x + P.R.w - 110, yy, [K.red, K.orange, K.blue, K.green][i], 16,
+          'left', Wv === W ? 700 : 400); });
+    const bx = 830;
+    kart(bx, 200, 260, 'PENCERE BOYU', W + ' tur', K.blue, HF.T + ' turluk konuşma');
+    kart(bx + 280, 200, 260, 'GENEL HATIRLAMA', '%' + (100*HF.pencereGenel(W)).toFixed(1),
+         HF.pencereGenel(W) > 0.9 ? K.green : K.orange);
+    kart(bx, 330, 260, 'PENCERE İÇİNDE', '%100', K.green, 'son ' + W + ' tur');
+    kart(bx + 280, 330, 260, 'PENCERE DIŞINDA', '%0', K.red,
+         'önceki ' + (HF.T - W) + ' tur');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('İKİ DEĞERLİ HAFIZA', bx + 270, 494, K.mut, 18);
+    txt('Kayan pencere ya tam hatırlıyor ya hiç. Arada', bx + 18, 534, K.txt, 18, 'left');
+    txt('bir bölge yok, çünkü olgu ya bağlamda ya değil.', bx + 18, 564, K.txt, 18, 'left');
+    txt('Genel hatırlama tam olarak W / T = ' + W + ' / ' + HF.T + ' = %' +
+        (100*HF.pencereGenel(W)).toFixed(1) + '.', bx + 18, 606, K.blue, 18, 'left');
+    txt('Konuşma uzadıkça bu oran düşüyor: aynı pencere', bx + 18, 646, K.orange, 18, 'left');
+    txt('80 turluk konuşmada %' + (100*W/80).toFixed(1) + ' verir.', bx + 18, 676, K.orange, 18, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

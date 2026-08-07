@@ -114,7 +114,7 @@ const ROTALAR = [
     {id:'icl',            ad:'Örnekle öğretmek: in-context learning',          sure:17, durum:'hazir'},
     {id:'zincir-prompt',  ad:'Problemi bölmek: zincirleme promptlar',          sure:16, durum:'hazir'},
     {id:'gramer',         ad:'Çıktıyı kalıba sıkıştırmak: gramer ve şema',     sure:16, durum:'hazir'},
-    {id:'hafiza',         ad:'Konuşma hafızası: model neyi hatırlar',          sure:12, durum:'planli'},
+    {id:'hafiza',         ad:'Konuşma hafızası: model neyi hatırlar',          sure:16, durum:'hazir'},
     {id:'tokenizer-fark',  ad:'Tokenizer\'lar neden farklı davranır',            sure:12, durum:'planli'},
     {id:'cokdilli',       ad:'Çok dilli modellerin kör noktası',               sure:12, durum:'planli'},
     {id:'alan-model',     ad:'Alana özel modeller: genelci mi, uzman mı',      sure:12, durum:'planli'},
@@ -10819,6 +10819,175 @@ DERSLER['gramer'] = {
       'bile TV = 0.1667.<br><br>' +
       'İki pratik sonuç: kısıtlı çözümlemeden çıkan olasılıkları güven skoru olarak kullanma, ' +
       've akıl yürütmeyi biçimlendirmeden ayrı bir çağrıya koy.',
+    xp:75,
+  },
+]};
+
+/* ─────────────── KONUŞMA HAFIZASI ─────────────── */
+DERSLER['hafiza'] = {
+  ad:'Konuşma hafızası: model neyi hatırlar',
+  alt:'Model hiçbir şey hatırlamaz; her çağrıda ona ne taşırsan onu bilir. Üç taşıma stratejisinin üç farklı unutma şekli var.',
+  kaynaklar:[
+    {y:'Liu, N. F. ve ark.', t:'2024', b:'Lost in the Middle: How Language Models Use Long Contexts', n:'TACL 2024', u:'https://arxiv.org/abs/2307.03172'},
+    {y:'Lewis, P. ve ark.', t:'2020', b:'Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks', n:'NeurIPS 2020', u:'https://arxiv.org/abs/2005.11401'},
+    {y:'Packer, C. ve ark.', t:'2023', b:'MemGPT: Towards LLMs as Operating Systems', n:'arXiv:2310.08560', u:'https://arxiv.org/abs/2310.08560'},
+    {y:'Xu, P. ve ark.', t:'2024', b:'Retrieval Meets Long Context Large Language Models', n:'ICLR 2024', u:'https://arxiv.org/abs/2310.03025'},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'Kayan pencere: keskin bir duvar',
+    goal:'En yaygın hafıza stratejisinin tam olarak ne verdiğini göreceksin.',
+    todo:'Pencere boyunu değiştir. Eğrinin şekli neden basamak?',
+    kind:'controls', viz:'konusmaHafizasi', h:760,
+    controls:[{k:'Wi', lb:'PENCERE BOYU', min:0, max:3, step:1, val:1,
+      fmt:v => HF.Wler[Math.round(v)] + ' tur'}],
+    state:{sahne:'pencere'},
+    derive:s => ({g: HF.pencereGenel(HF.Wler[Math.round(s.Wi)])}),
+    live:s => [['PENCERE', HF.Wler[Math.round(s.Wi)] + ' tur'],
+               ['GENEL HATIRLAMA', '%' + (100*s.g).toFixed(1), K.blue],
+               ['KONUŞMA', '40 tur'],
+               ['HEDEF', 'genel > %45']],
+    unlock:s => s.g > 0.45,
+    unlockMsg:'Genel hatırlamayı %45 in üstüne çıkaran pencere boyunu bul',
+    body:'<p>Önce yanlış anlaşılan bir noktayı düzeltelim: model konuşmayı <b>hatırlamaz</b>. ' +
+      'Her çağrıda ona ne gönderirsen onu bilir. "Hafıza" dediğimiz şey, geçmişin hangi ' +
+      'kısmını taşımaya karar verdiğindir.</p>' +
+      '<p>Kurulum: 40 turluk bir konuşma, her tur bir olgu getiriyor. Sonunda rastgele ' +
+      'seçilmiş bir olgu soruluyor.</p>' +
+      '<p>En yaygın strateji <b>kayan pencere</b>: son W turu aynen taşı, öncesini at. ' +
+      'Hatırlama eğrisi bir basamak, çünkü olgu ya bağlamdadır ya değildir. Arada bölge yok.</p>' +
+      '<p>Genel hatırlama tam olarak <b>W / T</b>. 10 turluk pencerede %25.0, ' +
+      '20 turlukta %50.0, 40 turlukta %100.0.</p>' +
+      '<p>Sorun ölçekte. Aynı 10 turluk pencere 80 turluk bir konuşmada %12.5 verir. ' +
+      'Pencere sabitken hatırlama, konuşma uzunluğuyla <b>ters orantılı</b> düşer. ' +
+      'Pencereyi büyütmek çalışır ama bedeli her çağrıda taşınan bağlamdır.</p>' +
+      '<p>Bir uyarı: burada pencere içinde hatırlamayı %100 kabul ediyoruz. Gerçekte öyle ' +
+      'değil; uzun bağlamlarda ortada kalan bilgi baştaki ve sondakine göre belirgin şekilde ' +
+      'daha az kullanılıyor (Liu ve ark., 2024). Yani buradaki basamak eğrisi kayan pencere ' +
+      'için <b>iyimser</b> bir üst sınır.</p>',
+    learned:'<b>Kayan pencerenin genel hatırlaması tam olarak W / T dir.</b><br><br>' +
+      '40 turluk konuşmada 10 turluk pencere %25.0, 20 turluk %50.0.<br><br>' +
+      'Eğri bir basamak: pencere içinde tam, dışında sıfır. Konuşma uzadıkça aynı pencere ' +
+      'giderek daha az şey hatırlar. Üstelik bu iyimser bir hesap, çünkü uzun bağlamın ' +
+      'ortasındaki bilgi pratikte daha az kullanılıyor.',
+    xp:50,
+  },
+  {
+    t:'Özet: duvar yok, solma var',
+    goal:'Özetleme stratejisinin unutma şeklini ve tam formülünü göreceksin.',
+    todo:'Sağ kalma oranını değiştir. Yarı ömür nasıl davranıyor?',
+    kind:'controls', viz:'konusmaHafizasi', h:760,
+    controls:[{k:'rhoi', lb:'TUR BAŞINA SAĞ KALMA', min:0, max:3, step:1, val:1,
+      fmt:v => 'ρ = ' + HF.rholar[Math.round(v)].toFixed(2)}],
+    state:{sahne:'ozet'},
+    derive:s => ({g: HF.ozetGenel(HF.rholar[Math.round(s.rhoi)])}),
+    live:s => { const rv = HF.rholar[Math.round(s.rhoi)];
+      return [['ρ', rv.toFixed(2)],
+              ['GENEL', '%' + (100*s.g).toFixed(1), K.green],
+              ['YARI ÖMÜR', HF.ozetYariOmur(rv).toFixed(1) + ' tur', K.orange],
+              ['DENK PENCERE', (40*s.g).toFixed(1) + ' tur', K.purple]]; },
+    body:'<p>İkinci strateji: her turdan sonra geçmişi bir <b>özete</b> sıkıştır ve sadece ' +
+      'onu taşı. Böylece taşınan bağlam sabit kalır, konuşma ne kadar uzarsa uzasın.</p>' +
+      '<p>Ama sıkıştırma kayıplı. Bir olgunun bir özetleme turunu atlatma olasılığına ρ diyelim. ' +
+      'Yaşı y olan bir olgu y kere özetlenmiştir, yani hatırlama olasılığı <b>ρ^y</b>.</p>' +
+      '<p>Genel hatırlama kapalı formda:</p>' +
+      '<p style="font-family:monospace">(1 − ρ<sup>T</sup>) / [T (1 − ρ)]</p>' +
+      '<p>ρ = 0.90 da bu <b>%24.6</b>. İlginç olan şu: aynı sayıyı 9.9 turluk bir kayan ' +
+      'pencere de veriyor. Yani "her turda %10 kaybeden bir özet", 40 turluk konuşmada ' +
+      '<b>10 turluk pencere kadar</b> hatırlıyor.</p>' +
+      '<p>Şekli farklı ama sınırı var. ρ = 0.90 da yarı ömür <b>6.6 tur</b>: altı yedi tur ' +
+      'önce söylenen bir şeyin hatırlanma şansı yarıya inmiş oluyor. ρ = 0.95 te 13.5 tur, ' +
+      'ρ = 0.99 da 69.0 tur.</p>' +
+      '<p>Buradaki asıl ders: özet "sınırsız hafıza" değildir, <b>farklı şekilli bir sınırdır</b>. ' +
+      'Keskin duvar yerine üstel bir solma alırsın. Eski bir olgu hiçbir zaman kesin ' +
+      'kaybolmaz ama pratikte de gelmez.</p>',
+    learned:'<b>Özetin hatırlaması ρ^yaş, genel hatırlaması (1 − ρᵀ) / T(1 − ρ) dir.</b><br><br>' +
+      'ρ = 0.90 → %24.6 (yarı ömür 6.6 tur), ρ = 0.95 → %43.6 (13.5 tur), ' +
+      'ρ = 0.99 → %82.8 (69.0 tur).<br><br>' +
+      'Her ρ değeri belirli bir pencere boyuna denk geliyor: ρ = 0.90 yaklaşık 10 turluk ' +
+      'pencere kadar. <b>Özet sınırsız hafıza değil, üstel şekilli bir sınırdır.</b>',
+    xp:50,
+  },
+  {
+    t:'Getirme: yaştan bağımsız',
+    goal:'Üç stratejinin hatırlama şekillerini yan yana göreceksin.',
+    todo:'Üç ayarı değiştirip hangisinin ne zaman kazandığını bul.',
+    kind:'controls', viz:'konusmaHafizasi', h:760,
+    controls:[
+      {k:'Wi', lb:'PENCERE', min:0, max:3, step:1, val:1, fmt:v => HF.Wler[Math.round(v)] + ' tur'},
+      {k:'rhoi', lb:'ÖZET ρ', min:0, max:3, step:1, val:1, fmt:v => HF.rholar[Math.round(v)].toFixed(2)},
+      {k:'ri', lb:'GETİRME r', min:0, max:3, step:1, val:1, fmt:v => HF.rler[Math.round(v)].toFixed(2)}],
+    state:{sahne:'ucu'},
+    live:s => [['PENCERE', '%' + (100*HF.pencereGenel(HF.Wler[Math.round(s.Wi)])).toFixed(1), K.purple],
+               ['ÖZET', '%' + (100*HF.ozetGenel(HF.rholar[Math.round(s.rhoi)])).toFixed(1), K.orange],
+               ['GETİRME', '%' + (100*HF.rler[Math.round(s.ri)]).toFixed(1), K.green]],
+    body:'<p>Üçüncü strateji: geçmişi olduğu gibi sakla, ama her soruda sadece <b>ilgili</b> ' +
+      'birkaç turu getir. Erişimli üretimin (RAG) konuşmaya uygulanmış hali.</p>' +
+      '<p>Bu stratejinin hatırlama eğrisi <b>düz</b>. 39 tur önceki olgu ile dünkü olgu ' +
+      'aynı olasılıkla geliyor, çünkü getirici mesafeye değil ilgiye bakıyor. ' +
+      'Değer, getiricinin kalitesi r.</p>' +
+      '<p>Üç şekli yan yana koyunca kararı vermek kolaylaşıyor:</p>' +
+      '<p><b>Pencere</b> son olaylar için kusursuz, eskiler için sıfır. Kısa ve akışkan ' +
+      'konuşmalarda en iyisi ve en basiti.<br>' +
+      '<b>Özet</b> her yaşa bir şans veriyor ama şans üstel azalıyor. Konuşmanın genel ' +
+      'çerçevesini korumada iyi, tek bir eski ayrıntıyı çağırmada zayıf.<br>' +
+      '<b>Getirme</b> yaştan bağımsız. Uzun konuşmalarda <b>ölçeklenen tek strateji</b>.</p>' +
+      '<p>Pratikte üçü birden kullanılır ve bu tesadüf değil: pencere yakın bağlamı, özet ' +
+      'genel çerçeveyi, getirme eski ayrıntıyı taşır. Üçünün zayıflıkları farklı yerlerde ' +
+      'olduğu için birbirlerini kapatırlar.</p>',
+    learned:'<b>Üç stratejinin unutma şekli farklıdır: basamak, üstel, düz.</b><br><br>' +
+      'Pencere yakınları kusursuz bilir eskiyi hiç bilmez; özet her yaşa üstel azalan bir ' +
+      'şans verir; getirme yaştan bağımsızdır.<br><br>' +
+      'Konuşma uzadıkça pencerenin ve özetin genel hatırlaması düşer, getirmeninki düşmez. ' +
+      'Uzun konuşmalarda ölçeklenen tek yapı getirmedir; ama üçü birlikte kullanıldığında ' +
+      'zayıflıkları farklı yerlerde olduğu için birbirini tamamlar.',
+    xp:50,
+  },
+  {
+    t:'Bağlam faturası',
+    goal:'Hatırlamanın taşınan bağlam cinsinden fiyatını göreceksin.',
+    todo:'Üç noktayı karşılaştır, sonra soruyu cevapla.',
+    kind:'controls', viz:'konusmaHafizasi', h:760,
+    controls:[
+      {k:'Wi', lb:'PENCERE', min:0, max:3, step:1, val:2, fmt:v => HF.Wler[Math.round(v)] + ' tur'},
+      {k:'rhoi', lb:'ÖZET ρ', min:0, max:3, step:1, val:1, fmt:v => HF.rholar[Math.round(v)].toFixed(2)}],
+    state:{sahne:'maliyet', ri:1},
+    live:s => { const Wv = HF.Wler[Math.round(s.Wi)], rv = HF.rholar[Math.round(s.rhoi)];
+      return [['PENCERE ' + Wv, '%' + (100*HF.pencereGenel(Wv)).toFixed(1), K.purple],
+              ['ÖZET', '%' + (100*HF.ozetGenel(rv)).toFixed(1), K.orange],
+              ['DENK ρ', HF.denkRho(Wv).toFixed(4), K.blue],
+              ['GETİRME r=0.70', '%70.0', K.green]]; },
+    body:'<p>Şimdi aynı üç stratejiyi "her çağrıda kaç tur taşıyorum" ekseninde karşılaştıralım.</p>' +
+      '<p><b>Pencere</b> düz bir doğru: hatırlama tam olarak taşınan turla orantılı. ' +
+      'İki kat hatırlama, iki kat bağlam, iki kat maliyet.</p>' +
+      '<p><b>Özet</b> tek tur taşıyor. ρ = 0.90 ile %24.6 veriyor; aynı sayıyı pencereyle ' +
+      'almak için yaklaşık <b>10 tur</b> taşımak gerekirdi. ρ = 0.99 ile 1 tur taşıyıp ' +
+      '<b>%82.8</b> alıyorsun, pencerede bunun karşılığı 33 tur.</p>' +
+      '<p><b>Getirme</b> 3 tur taşıyıp getiricinin kalitesi kadar veriyor. r = 0.85 ise ' +
+      '3 turluk bağlamla %85, pencerede karşılığı 34 tur.</p>' +
+      '<p>Sayılar özet ve getirmeyi çok cazip gösteriyor ve bu gerçekten de doğru: bağlam ' +
+      'başına hatırlama açısından ikisi pencereden çok daha verimli. Ama iki gizli maliyet var. ' +
+      'Özet her turda fazladan bir model çağrısı ister. Getirme bir dizin, gömme hesabı ve ' +
+      'bakım ister; ayrıca r hiçbir zaman 1 değildir ve <b>getirilemeyen şey modelin ' +
+      'hiç bilmediği şeydir</b>.</p>' +
+      '<p>Son bir uyarı: buradaki hesapların hepsi "bağlamdaysa hatırlar" varsayımına dayanıyor. ' +
+      'Pencereyi çok büyütmek bu varsayımı zayıflatır, çünkü uzun bağlamın ortasındaki bilgi ' +
+      'pratikte daha az kullanılır. Yani pencereyi büyütmek, grafikteki doğrunun vaat ettiği ' +
+      'kadar iyi çalışmaz.</p>',
+    quiz:{ q:'Bir destek asistanı yazıyorsun. Konuşmalar 100 turu geçebiliyor ve kullanıcılar sık sık "ilk mesajımda verdiğim sipariş numarası neydi" tarzı sorular soruyor. Bağlam bütçen kısıtlı. Hangi tasarım bu ihtiyaca uyar?',
+      opts:[
+        {t:'Son birkaç turluk pencere + tüm geçmiş üzerinde getirme', why:'Doğru. Sorulan şey tek ve eski bir ayrıntı, yani yaştan bağımsız erişim gerekiyor. Derste ölçtüğün gibi getirmenin hatırlama eğrisi düz; pencere ve özetinki yaşla düşüyor. Pencere de gerekli çünkü yakın turlardaki akış getirmeyle iyi yakalanmaz. Bu ikisi zayıflıkları farklı yerlerde olduğu için birbirini tamamlar.'},
+        {t:'Sadece pencereyi büyütmek', why:'100 turluk konuşmada pencereyi büyütmek hatırlamayı doğrusal artırır ama bağlam maliyetini de aynı oranda artırır ve bütçen kısıtlı. Ayrıca ilk mesajdaki numara için pencerenin 100 turu kapsaması gerekir, yani hiç sıkıştırma yapmamış olursun.'},
+        {t:'Sadece özetleme', why:'Özet genel çerçeveyi korur ama tek bir eski ayrıntı için zayıftır: hatırlama ρ^yaş ile üstel düşer. ρ = 0.95 te bile yarı ömür 13.5 tur, yani 100 tur önceki sipariş numarası pratikte gelmez.'},
+        {t:'Her turda tüm geçmişi göndermek', why:'En yüksek hatırlamayı verir ama bütçe kısıtı bunu dışlıyor. Ayrıca uzun bağlamın ortasındaki bilgi pratikte daha az kullanıldığı için, taşımak ile kullanılmak aynı şey değildir.'},
+      ], correct:0 },
+    learned:'<b>Bağlam başına hatırlamada özet ve getirme, pencereden çok daha verimlidir.</b><br><br>' +
+      'Pencere: hatırlama taşınan turla doğru orantılı. Özet: 1 tur taşıyıp ρ = 0.99 ile %82.8. ' +
+      'Getirme: 3 tur taşıyıp getirici kalitesi kadar.<br><br>' +
+      'Gizli maliyetler: özet her turda fazladan bir çağrı, getirme bir dizin ve bakım ister. ' +
+      'Ve tüm bu hesaplar "bağlamdaysa hatırlar" varsayımına dayanır; pencere büyüdükçe ' +
+      'bu varsayım zayıflar.',
     xp:75,
   },
 ]};

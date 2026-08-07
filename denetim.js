@@ -2830,6 +2830,98 @@ console.log('═══ DİLBİLGİSİ KISITI ═══');
   iddia('GR · w=2 de deneme sayısı w=0 ın 14 katından fazla', 1,
         (1/GR.analiz(2).Pg) > 14*(1/GR.analiz(0).Pg) ? 1 : 0, 0);
 }
+console.log('═══ KONUŞMA HAFIZASI ═══');
+{
+  iddia('HF · konuşma turu', 40, HF.T, 0);
+  /* 1. adım · pencere */
+  iddia('HF · pencere 5 · genel', 12.5, 100*HF.pencereGenel(5), 1);
+  iddia('HF · pencere 10 · genel', 25.0, 100*HF.pencereGenel(10), 1);
+  iddia('HF · pencere 20 · genel', 50.0, 100*HF.pencereGenel(20), 1);
+  iddia('HF · pencere 40 · genel', 100.0, 100*HF.pencereGenel(40), 1);
+  /* egri basamak: pencere icinde 1, disinda 0 */
+  { let hata = 0;
+    HF.Wler.forEach(Wv => { for (let y = 0; y < HF.T; y++){
+      const beklenen = y < Wv ? 1 : 0;
+      if (HF.pencere(Wv, y) !== beklenen) hata++; } });
+    iddia('HF · pencere eğrisi tam basamak', 0, hata, 0);
+    /* yas ortalamasi = W/T · tanimla tutarli mi */
+    let ihlal = 0;
+    HF.Wler.forEach(Wv => { let s2 = 0;
+      for (let y = 0; y < HF.T; y++) s2 += HF.pencere(Wv, y);
+      if (Math.abs(s2/HF.T - HF.pencereGenel(Wv)) > 1e-12) ihlal++; });
+    iddia('HF · pencere genel = yaş ortalaması', 0, ihlal, 0); }
+  /* konusma uzayinca ayni pencere yariya dusuyor */
+  iddia('HF · 10 turluk pencere 80 turda', 12.5, 100*10/80, 1);
+
+  /* 2. adım · özet */
+  iddia('HF · özet ρ=0.80 · genel', 12.5, 100*HF.ozetGenel(0.80), 1);
+  iddia('HF · özet ρ=0.90 · genel', 24.6, 100*HF.ozetGenel(0.90), 1);
+  iddia('HF · özet ρ=0.95 · genel', 43.6, 100*HF.ozetGenel(0.95), 1);
+  iddia('HF · özet ρ=0.99 · genel', 82.8, 100*HF.ozetGenel(0.99), 1);
+  iddia('HF · yarı ömür ρ=0.90', 6.6, HF.ozetYariOmur(0.90), 1);
+  iddia('HF · yarı ömür ρ=0.95', 13.5, HF.ozetYariOmur(0.95), 1);
+  iddia('HF · yarı ömür ρ=0.99', 69.0, HF.ozetYariOmur(0.99), 1);
+  /* kapali form ile toplamin ozdesligi */
+  { let enBuyuk = 0;
+    HF.rholar.forEach(rv => { let s2 = 0;
+      for (let y = 0; y < HF.T; y++) s2 += HF.ozet(rv, y);
+      enBuyuk = Math.max(enBuyuk, Math.abs(s2/HF.T - HF.ozetGenel(rv))); });
+    iddia('HF · kapalı form = toplam (en büyük sapma × 1e15)', 0,
+          Math.round(enBuyuk*1e15)/1000, 2); }
+  /* yari omurde hatirlama tam yarim */
+  { let enBuyuk = 0;
+    HF.rholar.forEach(rv =>
+      enBuyuk = Math.max(enBuyuk, Math.abs(HF.ozet(rv, HF.ozetYariOmur(rv)) - 0.5)));
+    iddia('HF · yarı ömürde hatırlama tam 0.5', 0, enBuyuk, 9); }
+  /* denk pencere: ozetin genel hatirlamasi = W/T olan W */
+  iddia('HF · ρ=0.90 denk pencere (tur)', 9.9, HF.T*HF.ozetGenel(0.90), 1);
+  iddia('HF · ρ=0.99 denk pencere (tur)', 33.1, HF.T*HF.ozetGenel(0.99), 1);
+  iddia('HF · pencere 5 in denk ρ değeri', 0.8000, HF.denkRho(5), 4);
+  iddia('HF · pencere 10 un denk ρ değeri', 0.9016, HF.denkRho(10), 4);
+  iddia('HF · pencere 20 nin denk ρ değeri', 0.9596, HF.denkRho(20), 4);
+  /* denk rho gercekten denk mi */
+  { let enBuyuk = 0;
+    [5, 10, 20].forEach(Wv =>
+      enBuyuk = Math.max(enBuyuk, Math.abs(HF.ozetGenel(HF.denkRho(Wv)) - HF.pencereGenel(Wv))));
+    iddia('HF · denk ρ gerçekten aynı genel hatırlamayı veriyor', 0, 100*enBuyuk, 4); }
+  /* ozet monoton azaliyor, pencere ise basamak · ikisi W de kesisiyor */
+  { let ihlal = 0;
+    HF.rholar.forEach(rv => { for (let y = 1; y < HF.T; y++)
+      if (HF.ozet(rv, y) > HF.ozet(rv, y-1)) ihlal++; });
+    iddia('HF · özet yaşta monoton azalıyor', 0, ihlal, 0); }
+  /* ozet pencere icinde daima daha kotu, disinda daima daha iyi */
+  { let ihlal = 0;
+    HF.Wler.forEach(Wv => HF.rholar.forEach(rv => { for (let y = 0; y < HF.T; y++){
+      if (y < Wv && HF.ozet(rv, y) > HF.pencere(Wv, y) + 1e-12) ihlal++;
+      if (y >= Wv && HF.ozet(rv, y) < HF.pencere(Wv, y) - 1e-12) ihlal++; } }));
+    iddia('HF · özet pencere içinde kötü, dışında iyi', 0, ihlal, 0); }
+
+  /* 3. adım · getirme */
+  { let ihlal = 0;
+    HF.rler.forEach(rv => { for (let y = 0; y < HF.T; y++)
+      if (Math.abs(HF.getirme(rv) - rv) > 1e-15) ihlal++; });
+    iddia('HF · getirme yaştan bağımsız', 0, ihlal, 0); }
+  /* uzun konusmada getirme kazaniyor · T buyudukce digerleri dusuyor */
+  { const eskiT = HF.T;
+    HF.T = 200;
+    const p200 = HF.pencereGenel(20), o200 = HF.ozetGenel(0.95);
+    HF.T = eskiT;
+    iddia('HF · 200 turda pencere 20', 10.0, 100*p200, 1);
+    iddia('HF · 200 turda özet ρ=0.95', 10.0, 100*o200, 1);
+    iddia('HF · 200 turda getirme değişmiyor', 85.0, 100*HF.getirme(0.85), 1);
+    iddia('HF · uzun konuşmada getirme ikisini de geçiyor', 1,
+          (0.85 > p200 && 0.85 > o200) ? 1 : 0, 0); }
+
+  /* 4. adım · fatura */
+  iddia('HF · özet 1 tur taşıyıp ρ=0.99 ile', 82.8, 100*HF.ozetGenel(0.99), 1);
+  iddia('HF · aynı sayı için gereken pencere (tur)', 33.1, HF.T*HF.ozetGenel(0.99), 1);
+  iddia('HF · getirme r=0.85 in denk penceresi (tur)', 34.0, HF.T*0.85, 1);
+  /* pencerede hatirlama tasinan turla dogru orantili */
+  { let ihlal = 0;
+    for (let Wv = 1; Wv <= HF.T; Wv++)
+      if (Math.abs(HF.pencereGenel(Wv) - Wv/HF.T) > 1e-15) ihlal++;
+    iddia('HF · pencere hatırlaması taşınan turla doğru orantılı', 0, ihlal, 0); }
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
