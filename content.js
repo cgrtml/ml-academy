@@ -141,7 +141,7 @@ const ROTALAR = [
     {id:'ai-vs-ml',       ad:'AI mühendisliği klasik ML\'den nasıl ayrışır',    sure:10, durum:'planli'},
     {id:'proje-karari',   ad:'Bir AI projesine nasıl karar verilir',           sure:12, durum:'planli'},
     {id:'adillik',        ad:'Modelin aynadaki yüzü: adillik ve şeffaflık',    sure:16, durum:'hazir'},
-    {id:'automl',         ad:'AutoML: modelini seçen model',                   sure:14, durum:'planli'},
+    {id:'automl',         ad:'AutoML: modelini seçen model',                   sure:16, durum:'hazir'},
     {id:'aktif-ogrenme',  ad:'Aktif öğrenme: hangi örneği etiketleyelim',      sure:16, durum:'hazir'},
     {id:'leaderboard',    ad:'Yarışma yanılsaması: skor tablosuna ne kadar güvenilir',  sure:16, durum:'hazir'},
   ],
@@ -12249,6 +12249,158 @@ DERSLER['aktif-ogrenme'] = {
       'kazancı büyütür, ve başlangıç modeli makul olmalı.<br><br>' +
       'Gizli maliyet: toplanan etiket kümesi yanlıdır ve modeli değiştirdiğinizde o etiketler ' +
       'yeni model için en bilgilendirici küme olmayabilir.',
+    xp:75,
+  },
+]};
+
+/* --------------- AUTOML --------------- */
+DERSLER['automl'] = {
+  ad:'AutoML: modelini seçen model',
+  alt:'Otomatik arama gerçekten çalışıyor. Ama kazancın büyük kısmı arama algoritmasından değil, arama uzayını kimin tanımladığından geliyor.',
+  kaynaklar:[
+    {y:'Bergstra, J. & Bengio, Y.', t:'2012', b:'Random Search for Hyper-Parameter Optimization', n:'JMLR 13', u:'https://jmlr.org/papers/v13/bergstra12a.html'},
+    {y:'Feurer, M. ve ark.', t:'2015', b:'Efficient and Robust Automated Machine Learning (auto-sklearn)', n:'NeurIPS 2015', u:'https://papers.nips.cc/paper/5872-efficient-and-robust-automated-machine-learning'},
+    {y:'Erickson, N. ve ark.', t:'2020', b:'AutoGluon-Tabular: Robust and Accurate AutoML for Structured Data', n:'arXiv:2003.06505', u:'https://arxiv.org/abs/2003.06505'},
+    {y:'Yang, L. & Shami, A.', t:'2020', b:'On Hyperparameter Optimization of Machine Learning Algorithms: Theory and Practice', n:'Neurocomputing 415', u:'https://arxiv.org/abs/2007.15745'},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Arama uzayının içinde ne var',
+    goal:'Aramanın neyin içinde aradığını göreceksin.',
+    todo:'Kırmızı ve yeşil çubukların sayısına bak.',
+    kind:'static', viz:'autoML', h:760,
+    state:{sahne:'uzay'},
+    body:'<p>Kurulum: 12 farklı regresyon görevi, her biri gürültülü bir üçüncü derece ' +
+      'polinom. Model ailesi ridge regresyon; iki hiperparametre var: ceza katsayısı λ ' +
+      '(6 değer) ve polinom derecesi (5 değer). Toplam <b>30 yapılandırma</b>.</p>' +
+      '<p>Ridge kapalı formda çözülüyor, yani buradaki her sayı tam hesap.</p>' +
+      '<p>Grafik, 30 yapılandırmanın 12 görev üzerindeki ortalama test hatasını sıralı ' +
+      'gösteriyor. Mavi kesikli çizgi makul bir <b>varsayılan</b> yapılandırma ' +
+      '(λ = 0.1, derece 3).</p>' +
+      '<p>Sonuç çarpıcı: 30 yapılandırmanın <b>27 si</b> (yüzde 90) varsayılandan kötü. ' +
+      'Sadece üçü daha iyi.</p>' +
+      '<p>Aradaki dinamik aralık da büyük: en iyisi <b>0.8677</b> (λ = 0.01, derece 3), ' +
+      'en kötüsü <b>27.0</b> (λ = 100, derece 1). Yaklaşık otuz kat.</p>' +
+      '<p>Buradan çıkan şey aramanın kendisi hakkında değil: rastgele arama, bütçesinin ' +
+      'yüzde 90 ını varsayılandan kötü seçeneklere harcayacak. Bu bir algoritma sorunu ' +
+      'değil, <b>uzayı kimin tanımladığı</b> sorunu.</p>',
+    learned:'<b>Arama uzayının çoğu genellikle çöptür.</b><br><br>' +
+      '30 yapılandırmanın 27 si (%90) makul bir varsayılandan kötü. En iyisi 0.8677, ' +
+      'en kötüsü 27.0: otuz kat fark.<br><br>' +
+      'Rastgele arama bütçesinin %90 ını varsayılandan kötü seçeneklere harcar. ' +
+      'Bu bir algoritma değil, uzay tanımı sorunudur.',
+    xp:50,
+  },
+  {
+    t:'Arama önce varsayılanı yakalamalı',
+    goal:'Aramanın ne zaman kâra geçtiğini ölçeceksin.',
+    todo:'Deneme sayısını artır. Turuncu eğri mavi çizgiyi nerede geçiyor?',
+    kind:'controls', viz:'autoML', h:760,
+    controls:[{k:'ni', lb:'DENEME SAYISI', min:0, max:5, step:1, val:3,
+      fmt:v => AL.denemeler[Math.round(v)] + ' deneme'}],
+    state:{sahne:'arama'},
+    derive:s => ({t: AL.arama(AL.denemeler[Math.round(s.ni)], false).test}),
+    live:s => [['DENEME', String(AL.denemeler[Math.round(s.ni)])],
+               ['ARAMA', s.t.toFixed(4), s.t < AL.ortVarsayilan() ? K.green : K.red],
+               ['VARSAYILAN', AL.ortVarsayilan().toFixed(4), K.blue],
+               ['HEDEF', 'aramayi one gecir']],
+    unlock:s => s.t < AL.ortVarsayilan(),
+    unlockMsg:'Aramayı varsayılanın önüne geçiren deneme sayısını bul',
+    body:'<p>Şimdi rastgele arama yapalım: uzaydan N yapılandırma çek, doğrulama kümesinde ' +
+      'en iyisini seç, test hatasını raporla. Her sayı 40 bağımsız aramanın ortalaması.</p>' +
+      '<p>Tek deneme: <b>7.92</b>. Varsayılan 0.8988. Yani tek bir rastgele yapılandırma ' +
+      'varsayılandan yaklaşık <b>dokuz kat</b> kötü. Beklenen bir sonuç, çünkü uzayın ' +
+      '%90 ı zaten kötü.</p>' +
+      '<p>5 denemede 1.24, hâlâ geride. <b>10 denemede 0.9022</b>: arama ancak burada ' +
+      'varsayılanı yakalıyor.</p>' +
+      '<p>20 denemede 0.8738, 30 denemede 0.8703. Erişilebilir en iyi ortalama 0.8507.</p>' +
+      '<p>Yani otuz denemelik bir arama, hiç arama yapmamaya göre 0.8988 den 0.8703 e ' +
+      'iniyor. Kazanç gerçek ama küçük, ve ilk on deneme sadece başlangıç noktasını ' +
+      'geri kazanmaya gitti.</p>' +
+      '<p>Bu, AutoML araçlarının neden makul varsayılanlarla ve önceden tanımlı ' +
+      '"portföylerle" başladığını açıklıyor (Feurer ve ark., 2015). Sıfırdan rastgele ' +
+      'aramak bütçenin çoğunu israf eder.</p>',
+    learned:'<b>Kötü tanımlı bir uzayda arama, önce varsayılanı yakalamak için bütçe harcar.</b><br><br>' +
+      'Tek deneme 7.92 (varsayılan 0.8988). 10 denemede 0.9022 ile ancak eşitleniyor. ' +
+      '30 denemede 0.8703.<br><br>' +
+      'Kazanç gerçek ama küçük ve ilk on deneme sadece başlangıç noktasını geri kazanıyor. ' +
+      'AutoML araçlarının makul varsayılanlarla başlamasının sebebi budur.',
+    xp:50,
+  },
+  {
+    t:'Uzayı daraltmak',
+    goal:'Arama uzayı ile arama algoritması arasındaki ağırlığı göreceksin.',
+    todo:'Yeşil eğri ile turuncu eğriyi aynı deneme sayısında karşılaştır.',
+    kind:'controls', viz:'autoML', h:760,
+    controls:[{k:'ni', lb:'DENEME SAYISI', min:0, max:5, step:1, val:0,
+      fmt:v => AL.denemeler[Math.round(v)] + ' deneme'}],
+    state:{sahne:'dar'},
+    derive:s => ({d: AL.arama(AL.denemeler[Math.round(s.ni)], true).test,
+                  g: AL.arama(AL.denemeler[Math.round(s.ni)], false).test}),
+    live:s => [['DENEME', String(AL.denemeler[Math.round(s.ni)])],
+               ['DAR UZAY', s.d.toFixed(4), K.green],
+               ['GENIS UZAY', s.g.toFixed(4), K.orange],
+               ['VARSAYILAN', AL.ortVarsayilan().toFixed(4), K.blue]],
+    body:'<p>Şimdi tek bir şeyi değiştiriyoruz: arama uzayını, birinci adımdaki ölçüme ' +
+      'göre iyi bölgeyle sınırlıyoruz. λ ∈ {0.001, 0.01, 0.1} ve derece ∈ {3, 4}. ' +
+      'Toplam <b>6 yapılandırma</b>. Arama algoritması aynı, bütçe aynı.</p>' +
+      '<p>Sonuç: dar uzayda <b>tek deneme 0.8932</b>. Yani hiç arama yapmadan, tek bir ' +
+      'rastgele çekilişle varsayılandan (0.8988) zaten daha iyi.</p>' +
+      '<p>Geniş uzay bu seviyeye ancak <b>10 denemede</b> ulaşıyor (0.9022).</p>' +
+      '<p>Daha çarpıcısı: dar uzayda <b>5 deneme</b> (0.8643), geniş uzayda ' +
+      '<b>30 denemeden</b> (0.8703) daha iyi. Altı kat az hesapla daha iyi sonuç.</p>' +
+      '<p>Buradaki ders AutoML in en az konuşulan tarafıdır: <b>arama uzayı, arama ' +
+      'algoritmasından daha önemlidir.</b> Bergstra ve Bengio nun (2012) rastgele aramanın ' +
+      'ızgara aramasından iyi olduğunu göstermesi önemliydi, ama ikisi de aynı uzayın ' +
+      'içinde arıyor. Uzayı daraltmak her ikisini birden geçiyor.</p>' +
+      '<p>Bir dürüstlük notu: dar uzayı birinci adımdaki ölçüme bakarak seçtik, yani ' +
+      '"cevaba bakarak" daralttık. Gerçek hayatta bu bilgi alan bilgisinden, önceki ' +
+      'işlerden ya da küçük bir ön denemeden gelir. Nereden gelirse gelsin, <b>en değerli ' +
+      'girdi budur</b>.</p>',
+    learned:'<b>Arama uzayı, arama algoritmasından daha önemlidir.</b><br><br>' +
+      'Dar uzayda tek deneme 0.8932: varsayılandan zaten iyi. Geniş uzay bu seviyeye ' +
+      '10 denemede ulaşıyor. Dar uzayda 5 deneme (0.8643), geniş uzayda 30 denemeden ' +
+      '(0.8703) iyi.<br><br>' +
+      'Uzayı daraltan bilgi alan bilgisinden, önceki işlerden ya da küçük bir ön denemeden ' +
+      'gelir. Nereden gelirse gelsin en değerli girdi odur.',
+    xp:50,
+  },
+  {
+    t:'AutoML ne zaman kullanılır',
+    goal:'Aracı doğru yere koyacaksın.',
+    todo:'Soruyu cevapla.',
+    kind:'controls', viz:'autoML', h:760,
+    controls:[{k:'ni', lb:'DENEME SAYISI', min:0, max:5, step:1, val:4,
+      fmt:v => AL.denemeler[Math.round(v)] + ' deneme'}],
+    state:{sahne:'arama'},
+    body:'<p>Ölçümlerden çıkan yerleştirme:</p>' +
+      '<p><b>AutoML iyi bir taban çizgisi üreticisidir.</b> İnsan uzman yokken, makul ' +
+      'varsayılanlar ve önceden tanımlı portföylerle başlayan bir araç hızlıca ' +
+      'kullanılabilir bir model verir. AutoGluon gibi araçların gücü büyük ölçüde ' +
+      'buradan ve sonda yaptıkları topluluk birleştirmesinden gelir (Erickson ve ark., 2020).</p>' +
+      '<p><b>AutoML alan bilgisinin yerine geçmez.</b> Ölçtün: uzayı daraltan bilgi, ' +
+      'aramanın kendisinden daha çok kazandırıyor. O bilgi araçta değil, sende.</p>' +
+      '<p><b>Doğrulama kümesi tükenir.</b> Yüzlerce yapılandırmayı aynı doğrulama ' +
+      'kümesinde denemek, skor tablosu dersinde ölçtüğün kazananın laneti ile aynı ' +
+      'sorundur: seçilen yapılandırmanın doğrulama skoru yukarı sapmalıdır. Bu yüzden ' +
+      'AutoML sonucunun mutlaka ayrı bir test kümesinde doğrulanması gerekir.</p>' +
+      '<p><b>Asıl darboğaz genelde model seçimi değildir.</b> Özellik mühendisliği, veri ' +
+      'kalitesi ve problem tanımı çoğu projede hiperparametre seçiminden çok daha ' +
+      'belirleyicidir. AutoML bunların hiçbirini yapmaz.</p>',
+    quiz:{ q:'Bir AutoML aracını 500 deneme ile çalıştırdınız ve en iyi yapılandırma doğrulama kümesinde %94.2 verdi. Elinizdeki basit varsayılan model %93.6 veriyordu. Ne yaparsınız?',
+      opts:[
+        {t:'Farkı ayrı bir test kümesinde doğrularım; 500 denemelik seçim sonrası doğrulama skoru yukarı sapmalıdır', why:'Doğru. 500 yapılandırmayı aynı doğrulama kümesinde denemek, skor tablosu dersinde ölçtüğün kazananın laneti ile birebir aynı durumdur: seçilen yapılandırmanın doğrulama skoru yukarı sapmalıdır. 0.6 puanlık fark bu sapmanın içinde kalıyor olabilir. Ayrı bir test kümesi bu sorunun tek dürüst cevabıdır.'},
+        {t:'AutoML sonucunu kullanırım, %94.2 > %93.6', why:'Doğrulama skoru 500 denemelik bir seçimin sonucudur ve yansız değildir. Farkı doğrulamadan kabul etmek, tam olarak skor tablosu dersinde ölçtüğün hatadır.'},
+        {t:'Deneme sayısını 5000 e çıkarırım', week:'', why:'Bu sorunu büyütür: daha çok deneme, doğrulama kümesindeki sapmayı artırır. Ayrıca derste ölçtüğün gibi kazanç doyar; asıl kazanç uzayı daraltmaktan gelir, deneme sayısını artırmaktan değil.'},
+        {t:'Varsayılanı kullanırım, AutoML in kazancı önemsizdir', why:'Fazla katı. Kazanç gerçek olabilir; sorun onun ölçülmemiş olması. Doğru hamle reddetmek değil, ayrı bir test kümesiyle doğrulamak.'},
+      ], correct:0 },
+    learned:'<b>AutoML iyi bir taban çizgisi üreticisidir, alan bilgisinin yerine geçmez.</b><br><br>' +
+      'Uzayı daraltan bilgi, aramanın kendisinden daha çok kazandırır ve o bilgi araçta ' +
+      'değil sizdedir.<br><br>' +
+      'İki uyarı: yüzlerce yapılandırmayı aynı doğrulama kümesinde denemek seçilen skoru ' +
+      'yukarı saptırır (ayrı test kümesi şart); ve çoğu projede darboğaz model seçimi ' +
+      'değil veri kalitesi ile problem tanımıdır.',
     xp:75,
   },
 ]};

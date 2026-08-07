@@ -10020,6 +10020,247 @@ VIZ.aktifOgrenme = s => {
   }
 };
 
+
+/* ═══════════ AUTOML ═══════════
+   Aramanin ne kadarini makul bir varsayilan zaten kapatiyor.
+   Ridge regresyon kapali formda cozuluyor; her sayi tam hesap. */
+const AL = {};
+AL.LAMBDALAR = [1e-3, 1e-2, 1e-1, 1, 10, 100];
+AL.DERECELER = [1, 2, 3, 4, 5];
+AL.VARSAYILAN = { li: 2, di: 2 };      /* lambda 0.1, derece 3 */
+AL.denemeler = [1, 2, 5, 10, 20, 30];
+AL.GOREV = 12;
+AL.NEG = 60; AL.NDOG = 40; AL.NTEST = 2000;
+const _alC = {};
+/* kucuk dogrusal sistem cozucu · Gauss elemesi, kismi pivotlama */
+AL.coz = (A, b) => {
+  const n = b.length, M = A.map((r, i) => r.concat([b[i]]));
+  for (let c = 0; c < n; c++){
+    let p = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    const t = M[c]; M[c] = M[p]; M[p] = t;
+    if (Math.abs(M[c][c]) < 1e-14) continue;
+    for (let r = 0; r < n; r++){ if (r === c) continue;
+      const f = M[r][c]/M[c][c];
+      for (let q = c; q <= n; q++) M[r][q] -= f*M[c][q]; } }
+  return M.map((r, i) => Math.abs(r[i]) < 1e-14 ? 0 : r[n]/r[i]);
+};
+/* gorev: tek degiskenli, gercek fonksiyon rastgele bir 3. derece polinom */
+AL.gorevUret = g => {
+  const key = 'g' + g;
+  if (_alC[key]) return _alC[key];
+  const r = rng(300 + g);
+  const c = [omNormal(r), omNormal(r), omNormal(r), omNormal(r)];
+  const uret = (n, seed) => { const q = rng(seed), X = [], y = [];
+    for (let i = 0; i < n; i++){ const x = -2 + 4*q();
+      let f = 0; for (let d = 0; d < 4; d++) f += c[d]*Math.pow(x, d);
+      X.push(x); y.push(f + 0.9*omNormal(q)); }
+    return { X, y }; };
+  return (_alC[key] = { egitim: uret(AL.NEG, 900 + g), dogrulama: uret(AL.NDOG, 1900 + g),
+                        test: uret(AL.NTEST, 2900 + g) });
+};
+AL.tasarim = (X, derece) => X.map(x => {
+  const row = []; for (let d = 0; d <= derece; d++) row.push(Math.pow(x, d));
+  return row; });
+AL.ridge = (X, y, derece, lam) => {
+  const P = AL.tasarim(X, derece), p = derece + 1;
+  const A = [], b = new Array(p).fill(0);
+  for (let i = 0; i < p; i++){ const row = new Array(p).fill(0); A.push(row); }
+  for (let i = 0; i < P.length; i++)
+    for (let j = 0; j < p; j++){ b[j] += P[i][j]*y[i];
+      for (let k = 0; k < p; k++) A[j][k] += P[i][j]*P[i][k]; }
+  for (let j = 0; j < p; j++) A[j][j] += lam*P.length;
+  return AL.coz(A, b);
+};
+AL.hata = (w, X, y, derece) => { const P = AL.tasarim(X, derece);
+  let s = 0;
+  for (let i = 0; i < P.length; i++){ let o = 0;
+    for (let j = 0; j < w.length; j++) o += w[j]*P[i][j];
+    s += (o - y[i])*(o - y[i]); }
+  return s/P.length; };
+/* bir gorev icin butun yapilandirmalarin dogrulama ve test hatasi
+   dar = true ise arama uzayi makul yapilandirmalarla sinirli */
+/* dar izgara OLCUME gore secildi: ortalama test hatasi en dusuk bolge */
+AL.DAR_L = [0, 1, 2];         /* lambda 0.001, 0.01, 0.1 */
+AL.DAR_D = [2, 3];            /* derece 3, 4 */
+AL.tablo = (g, dar) => {
+  const key = 't' + g + (dar ? 'd' : 'g');
+  if (_alC[key]) return _alC[key];
+  const G = AL.gorevUret(g), o = [];
+  AL.LAMBDALAR.forEach((lam, li) => AL.DERECELER.forEach((der, di) => {
+    if (dar && (AL.DAR_L.indexOf(li) < 0 || AL.DAR_D.indexOf(di) < 0)) return;
+    const w = AL.ridge(G.egitim.X, G.egitim.y, der, lam);
+    o.push({ li, di,
+      dog: AL.hata(w, G.dogrulama.X, G.dogrulama.y, der),
+      test: AL.hata(w, G.test.X, G.test.y, der) }); }));
+  return (_alC[key] = o);
+};
+AL.varsayilanTest = g => { const T = AL.tablo(g, false);
+  return T.find(z => z.li === AL.VARSAYILAN.li && z.di === AL.VARSAYILAN.di).test; };
+AL.enIyiTest = g => Math.min(...AL.tablo(g, false).map(z => z.test));
+/* N denemelik rastgele arama · dogrulama ile secip test raporluyor */
+AL.arama = (N, dar) => {
+  const key = 'a' + N + ':' + (dar ? 1 : 0);
+  if (_alC[key]) return _alC[key];
+  let test = 0, dog = 0, kapali = 0, gecti = 0;
+  for (let g = 0; g < AL.GOREV; g++){
+    const T = AL.tablo(g, dar), vt = AL.varsayilanTest(g), et = AL.enIyiTest(g);
+    let tOrt = 0, dOrt = 0, kOrt = 0, gOrt = 0;
+    for (let t = 0; t < AL.TEKRAR; t++){
+      const r = rng(5000 + 97*g + 13*t + 7*N + (dar ? 3 : 0));
+      let enDog = Infinity, sec = null;
+      for (let i = 0; i < N; i++){ const z = T[Math.floor(T.length*r())];
+        if (z.dog < enDog){ enDog = z.dog; sec = z; } }
+      tOrt += sec.test; dOrt += sec.dog;
+      kOrt += (vt - et) < 1e-12 ? 1 : (vt - sec.test)/(vt - et);
+      if (sec.test < vt) gOrt += 1; }
+    test += tOrt/AL.TEKRAR; dog += dOrt/AL.TEKRAR;
+    kapali += kOrt/AL.TEKRAR; gecti += gOrt/AL.TEKRAR; }
+  return (_alC[key] = { test: test/AL.GOREV, dogrulama: dog/AL.GOREV,
+                        kapali: kapali/AL.GOREV, gecti: gecti/AL.GOREV });
+};
+AL.TEKRAR = 40;
+AL.ortVarsayilan = () => { let s = 0;
+  for (let g = 0; g < AL.GOREV; g++) s += AL.varsayilanTest(g);
+  return s/AL.GOREV; };
+AL.ortEnIyi = () => { let s = 0;
+  for (let g = 0; g < AL.GOREV; g++) s += AL.enIyiTest(g);
+  return s/AL.GOREV; };
+
+
+/* yapilandirmalarin gorevler uzerindeki ortalama test hatasi · siraliyor */
+AL.siraliYapilandirma = () => {
+  if (_alC['sy']) return _alC['sy'];
+  const T0 = AL.tablo(0, false);
+  const o = T0.map((z, i) => { let s = 0;
+    for (let g = 0; g < AL.GOREV; g++) s += AL.tablo(g, false)[i].test;
+    return { li: z.li, di: z.di, ort: s/AL.GOREV }; });
+  o.sort((a, b) => a.ort - b.ort);
+  return (_alC['sy'] = o);
+};
+AL.kotuSayisi = () => AL.siraliYapilandirma().filter(z => z.ort > AL.ortVarsayilan()).length;
+
+VIZ.autoML = s => {
+  clear();
+  const sahne = s.sahne || 'uzay';
+  const ni = Math.max(0, Math.min(5, s.ni === undefined ? 3 : Math.round(s.ni)));
+  const N = AL.denemeler[ni];
+  const kart = (x, y, wd, ad, deger, rnk, alt) => {
+    box(x, y, wd, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + wd/2, y + 28, K.mut, 15);
+    txt(deger, x + wd/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + wd/2, y + 95, K.mut, 14);
+  };
+  const nEks = P => AL.denemeler.forEach((nv, i) =>
+    txt(String(nv), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+
+  if (sahne === 'arama' || sahne === 'dar'){
+    const dar = sahne === 'dar';
+    baslikSerit(dar ? 'AUTOML · UZAYI DARALTMAK' : 'AUTOML · GENİŞ UZAYDA RASTGELE ARAMA',
+      dar ? 'Ölçüme göre seçilmiş 6 makul yapılandırma. Aynı arama, aynı bütçe.'
+          : '30 yapılandırmadan N tanesi deneniyor, doğrulama ile seçiliyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 5.35, 0.82, 1.35);
+    frame(P, 'deneme sayısı', 'test hatası', [], [0.85, 0.95, 1.05, 1.15, 1.25]);
+    nEks(P);
+    [[false, K.orange], [true, K.green]].forEach(([dv, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = dv === dar ? 3.8 : 1.8;
+      cx.globalAlpha = dv === dar ? 1 : 0.4; cx.beginPath();
+      AL.denemeler.forEach((nv, i) => { const y = P.sy(Math.min(1.35, AL.arama(nv, dv).test));
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      AL.denemeler.forEach((nv, i) => {
+        const t = AL.arama(nv, dv).test;
+        if (t <= 1.35) dot(P.sx(i), P.sy(t), 5, renk); });
+      cx.globalAlpha = 1; });
+    cx.strokeStyle = K.blue; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(AL.ortVarsayilan()));
+    cx.lineTo(P.R.x + P.R.w, P.sy(AL.ortVarsayilan())); cx.stroke();
+    cx.strokeStyle = K.mut;
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(AL.ortEnIyi()));
+    cx.lineTo(P.R.x + P.R.w, P.sy(AL.ortEnIyi())); cx.stroke();
+    cx.setLineDash([]);
+    txt('varsayılan ' + AL.ortVarsayilan().toFixed(4),
+        P.R.x + P.R.w - 14, P.sy(AL.ortVarsayilan()) - 12, K.blue, 15, 'right');
+    txt('erişilebilir en iyi ' + AL.ortEnIyi().toFixed(4),
+        P.R.x + P.R.w - 14, P.sy(AL.ortEnIyi()) + 26, K.mut, 15, 'right');
+    txt('geniş uzay · 30 yapılandırma', P.R.x + 16, P.sy(1.32), K.orange, 17, 'left');
+    txt('dar uzay · 6 yapılandırma', P.R.x + 16, P.sy(1.27), K.green, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'DENEME', String(N), K.blue);
+    kart(bx + 280, 200, 260, 'GENİŞ UZAY', AL.arama(N, false).test.toFixed(4), K.orange);
+    kart(bx, 330, 260, 'DAR UZAY', AL.arama(N, true).test.toFixed(4), K.green);
+    kart(bx + 280, 330, 260, 'VARSAYILAN', AL.ortVarsayilan().toFixed(4), K.blue,
+         'hiç arama yok');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    if (dar){
+      txt('UZAY, ALGORİTMADAN ÖNEMLİ', bx + 270, 494, K.mut, 18);
+      txt('Aynı rastgele arama, sadece uzay daraltıldı.', bx + 18, 534, K.txt, 18, 'left');
+      txt('Dar uzayda TEK deneme ' + AL.arama(1, true).test.toFixed(4) + ': varsayılandan',
+          bx + 18, 572, K.green, 18, 'left');
+      txt('zaten iyi. Geniş uzay bunu ancak 10 denemede', bx + 18, 600, K.green, 18, 'left');
+      txt('yakalıyor (' + AL.arama(10, false).test.toFixed(4) + ').', bx + 18, 628, K.green, 18, 'left');
+      txt('Dar uzayda 5 deneme (' + AL.arama(5, true).test.toFixed(4) + '), geniş uzayda',
+          bx + 18, 668, K.purple, 18, 'left');
+      txt('30 denemeden (' + AL.arama(30, false).test.toFixed(4) + ') daha iyi.',
+          bx + 18, 696, K.purple, 18, 'left');
+    } else {
+      txt('ARAMA ÖNCE VARSAYILANI YAKALAMALI', bx + 270, 494, K.mut, 17);
+      txt('Tek deneme ' + AL.arama(1, false).test.toFixed(2) + ': varsayılandan ' +
+          (AL.arama(1, false).test/AL.ortVarsayilan()).toFixed(0) + ' kat kötü.',
+          bx + 18, 534, K.red, 18, 'left');
+      txt('Çünkü uzayın çoğu kötü ve rastgele seçim onlara', bx + 18, 562, K.red, 18, 'left');
+      txt('düşüyor.', bx + 18, 590, K.red, 18, 'left');
+      txt('Arama varsayılanı ancak 10 denemede yakalıyor', bx + 18, 630, K.orange, 18, 'left');
+      txt('(' + AL.arama(10, false).test.toFixed(4) + ' e karşı ' + AL.ortVarsayilan().toFixed(4) + ').',
+          bx + 18, 658, K.orange, 18, 'left');
+      txt('30 denemede ' + AL.arama(30, false).test.toFixed(4) + ': kazanç var ama küçük.',
+          bx + 18, 698, K.mut, 17, 'left');
+    }
+  }
+
+  else {
+    const SY = AL.siraliYapilandirma(), vt = AL.ortVarsayilan();
+    baslikSerit('AUTOML · ARAMA UZAYININ İÇİNDE NE VAR',
+      '30 yapılandırmanın ' + AL.GOREV + ' görev üzerindeki ortalama test hatası, sıralı.', []);
+    const P = plot(rect(140, 200, 640, 400), -1, 30, 0.8, 2.2);
+    frame(P, 'yapılandırmalar (iyiden kötüye)', 'test hatası', [],
+          [1.0, 1.4, 1.8, 2.2]);
+    const gen = (P.R.w/30)*0.62;
+    SY.forEach((z, i) => {
+      const x = P.sx(i), y0 = P.sy(0.8), y1 = P.sy(Math.min(2.2, z.ort));
+      const iyi = z.ort <= vt;
+      box(x - gen/2, y1, gen, y0 - y1, iyi ? 'rgba(34,197,94,.35)' : 'rgba(239,68,68,.22)',
+          iyi ? K.green : K.red, 1.5); });
+    cx.strokeStyle = K.blue; cx.lineWidth = 2.5; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(vt)); cx.lineTo(P.R.x + P.R.w, P.sy(vt)); cx.stroke();
+    cx.setLineDash([]);
+    txt('varsayılan ' + vt.toFixed(4), P.R.x + P.R.w - 14, P.sy(vt) - 12, K.blue, 16, 'right');
+    txt('çubuklar 2.2 de kırpıldı · en kötüsü ' + SY[SY.length-1].ort.toFixed(1),
+        P.R.x + 16, P.R.y + 28, K.mut, 16, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'YAPILANDIRMA', String(SY.length), K.blue, 'arama uzayında');
+    kart(bx + 280, 200, 260, 'VARSAYILANDAN İYİ', String(SY.length - AL.kotuSayisi()),
+         K.green);
+    kart(bx, 330, 260, 'VARSAYILANDAN KÖTÜ', String(AL.kotuSayisi()), K.red,
+         '%' + (100*AL.kotuSayisi()/SY.length).toFixed(0));
+    kart(bx + 280, 330, 260, 'EN KÖTÜSÜ', SY[SY.length-1].ort.toFixed(1), K.red,
+         'λ=' + AL.LAMBDALAR[SY[SY.length-1].li] + ' derece ' + AL.DERECELER[SY[SY.length-1].di]);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.red, 2);
+    txt('UZAYIN ÇOĞU ÇÖP', bx + 270, 494, K.mut, 18);
+    txt('30 yapılandırmanın ' + AL.kotuSayisi() + ' i (%' +
+        (100*AL.kotuSayisi()/SY.length).toFixed(0) + ') varsayılandan kötü.',
+        bx + 18, 534, K.red, 18, 'left');
+    txt('En iyisi ' + SY[0].ort.toFixed(4) + ' (λ=' + AL.LAMBDALAR[SY[0].li] +
+        ', derece ' + AL.DERECELER[SY[0].di] + '),', bx + 18, 572, K.green, 18, 'left');
+    txt('en kötüsü ' + SY[SY.length-1].ort.toFixed(1) + '. Otuz kat fark.',
+        bx + 18, 600, K.green, 18, 'left');
+    txt('Rastgele arama bütçesinin %' + (100*AL.kotuSayisi()/SY.length).toFixed(0) +
+        ' unu varsayılandan', bx + 18, 640, K.orange, 18, 'left');
+    txt('kötü seçeneklere harcıyor. Bu bir algoritma sorunu', bx + 18, 668, K.orange, 18, 'left');
+    txt('değil, uzayı kimin tanımladığı sorunu.', bx + 18, 696, K.orange, 18, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

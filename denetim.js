@@ -3536,6 +3536,76 @@ console.log('═══ AKTİF ÖĞRENME ═══');
   iddia('AO - 16 etiket kazanc - denge 0.20 (puan)', 3.4,
         100*(AO.sonuc('belirsizlik', 16, 0.20).dogruluk - AO.sonuc('rastgele', 16, 0.20).dogruluk), 1);
 }
+console.log('═══ AUTOML ═══');
+{
+  iddia('AL - gorev sayisi', 12, AL.GOREV, 0);
+  iddia('AL - genis uzayda yapilandirma', 30, AL.tablo(0, false).length, 0);
+  iddia('AL - dar uzayda yapilandirma', 6, AL.tablo(0, true).length, 0);
+  /* ridge cozucu dogru mu: lambda=0 da normal denklemleri saglamali */
+  { const G = AL.gorevUret(0), w = AL.ridge(G.egitim.X, G.egitim.y, 2, 1e-9);
+    const P = AL.tasarim(G.egitim.X, 2);
+    let enBuyuk = 0;
+    for (let j = 0; j < 3; j++){ let g = 0;
+      for (let i = 0; i < P.length; i++){ let o = 0;
+        for (let q = 0; q < 3; q++) o += w[q]*P[i][q];
+        g += (o - G.egitim.y[i])*P[i][j]; }
+      enBuyuk = Math.max(enBuyuk, Math.abs(g/P.length)); }
+    iddia('AL - ridge cozumu normal denklemleri sagliyor', 0, enBuyuk, 4); }
+
+  /* 1. adim - uzayin icerigi */
+  iddia('AL - varsayilan ortalama test hatasi', 0.8988, AL.ortVarsayilan(), 4);
+  iddia('AL - erisilebilir en iyi ortalama', 0.8507, AL.ortEnIyi(), 4);
+  iddia('AL - varsayilandan kotu yapilandirma sayisi', 27, AL.kotuSayisi(), 0);
+  { const SY = AL.siraliYapilandirma();
+    iddia('AL - en iyi yapilandirmanin ortalamasi', 0.8677, SY[0].ort, 4);
+    iddia('AL - en iyi yapilandirma lambda', 0.01, AL.LAMBDALAR[SY[0].li], 4);
+    iddia('AL - en iyi yapilandirma derece', 3, AL.DERECELER[SY[0].di], 0);
+    iddia('AL - en kotu yapilandirmanin ortalamasi', 27.0, SY[SY.length-1].ort, 1);
+    iddia('AL - en kotu / en iyi orani', 31.1, SY[SY.length-1].ort/SY[0].ort, 1);
+    /* sirali mi */
+    let ihlal = 0;
+    for (let i = 1; i < SY.length; i++) if (SY[i].ort < SY[i-1].ort - 1e-12) ihlal++;
+    iddia('AL - yapilandirmalar sirali', 0, ihlal, 0); }
+
+  /* 2. adim - genis uzayda arama */
+  iddia('AL - genis - 1 deneme', 7.9217, AL.arama(1, false).test, 3);
+  iddia('AL - genis - 5 deneme', 1.2357, AL.arama(5, false).test, 3);
+  iddia('AL - genis - 10 deneme', 0.9022, AL.arama(10, false).test, 4);
+  iddia('AL - genis - 30 deneme', 0.8703, AL.arama(30, false).test, 4);
+  iddia('AL - genis - 1 deneme varsayilandan kac kat kotu', 8.8,
+        AL.arama(1, false).test/AL.ortVarsayilan(), 1);
+  iddia('AL - genis - 5 denemede hala geride', 1,
+        AL.arama(5, false).test > AL.ortVarsayilan() ? 1 : 0, 0);
+  iddia('AL - genis - 20 denemede one gecmis', 1,
+        AL.arama(20, false).test < AL.ortVarsayilan() ? 1 : 0, 0);
+  /* deneme arttikca hata dusuyor */
+  { let ihlal = 0;
+    [false, true].forEach(dv => { for (let i = 1; i < AL.denemeler.length; i++)
+      if (AL.arama(AL.denemeler[i], dv).test >
+          AL.arama(AL.denemeler[i-1], dv).test + 1e-12) ihlal++; });
+    iddia('AL - deneme arttikca hata dusuyor', 0, ihlal, 0); }
+  /* hicbir arama erisilebilir en iyinin altina inemiyor */
+  { let ihlal = 0;
+    [false, true].forEach(dv => AL.denemeler.forEach(nv => {
+      if (AL.arama(nv, dv).test < AL.ortEnIyi() - 1e-9) ihlal++; }));
+    iddia('AL - arama erisilebilir en iyiyi asamiyor', 0, ihlal, 0); }
+
+  /* 3. adim - dar uzay */
+  iddia('AL - dar - 1 deneme', 0.8932, AL.arama(1, true).test, 4);
+  iddia('AL - dar - 5 deneme', 0.8643, AL.arama(5, true).test, 4);
+  iddia('AL - dar - 30 deneme', 0.8589, AL.arama(30, true).test, 4);
+  iddia('AL - dar uzayda TEK deneme varsayilandan iyi', 1,
+        AL.arama(1, true).test < AL.ortVarsayilan() ? 1 : 0, 0);
+  iddia('AL - dar 1 deneme, genis 10 denemeden iyi', 1,
+        AL.arama(1, true).test < AL.arama(10, false).test ? 1 : 0, 0);
+  iddia('AL - dar 5 deneme, genis 30 denemeden iyi', 1,
+        AL.arama(5, true).test < AL.arama(30, false).test ? 1 : 0, 0);
+  /* dar uzay her butcede daha iyi */
+  { let ihlal = 0;
+    AL.denemeler.forEach(nv => {
+      if (AL.arama(nv, true).test >= AL.arama(nv, false).test) ihlal++; });
+    iddia('AL - dar uzay her butcede daha iyi', 0, ihlal, 0); }
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
