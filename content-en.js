@@ -4437,3 +4437,154 @@ DERSLER_EN['icl'] = {
   },
   ],
 };
+
+DERSLER_EN['cot'] = {
+  ad:'Chain-of-Thought: thinking before answering',
+  alt:'Telling a model to "think step by step" changes everything on some tasks and nothing on others. You will measure where the difference lies.',
+  kaynaklar:[{"y":"Wei, J. et al.","t":"2022","b":"Chain-of-Thought Prompting Elicits Reasoning in Large Language Models","n":"NeurIPS 2022","u":"https://arxiv.org/abs/2201.11903"},
+             {"y":"Nye, M. et al.","t":"2021","b":"Show Your Work: Scratchpads for Intermediate Computation with Language Models","n":"arXiv:2112.00114","u":"https://arxiv.org/abs/2112.00114"},
+             {"y":"Kojima, T. et al.","t":"2022","b":"Large Language Models are Zero-Shot Reasoners","n":"NeurIPS 2022","u":"https://arxiv.org/abs/2205.11916"},
+             {"y":"Feng, G. et al.","t":"2023","b":"Towards Revealing the Mystery behind Chain of Thought: A Theoretical Perspective","n":"NeurIPS 2023","u":"https://arxiv.org/abs/2305.15408"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'The same task, two routes',
+    goal:'You will see why writing intermediate steps lowers the number of facts that have to be learned.',
+    todo:'Increase the number of training examples. At which point does the green curve hit the ceiling, and at which point the orange one?',
+    kind:'controls', viz:'dusunmeZinciri', h:760, xp:50, state:{sahne:'olgu', ayrismaz:false},
+    body:'<p>A small and completely closed task: there are 12 states and a function f sending every state to another. The question comes in this form: <b>start from state s, apply f n times, where do you end up?</b> n is at most 8, so there are 12 × 8 = <b>96</b> different questions in total.</p>' +
+         '<p>Two models are trained on the same examples:</p>' +
+         '<p><b>Direct answer.</b> It keeps a table mapping questions to answers. It cannot know a (state, number of steps) pair it did not see in training, because for it that pair is a brand new fact.</p>' +
+         '<p><b>Chain of thought.</b> It only learns the f table and then applies it n times. For it there is one kind of fact: "where does f send this state?"</p>' +
+         '<p>The measurement: the direct model cannot reach 100% before 96 examples (56.3% at 48 examples). The CoT model reaches 100% at exactly <b>12</b> examples. The ratio is <b>8 fold</b> and that is no coincidence: 96 / 12 = 8, the number of values n can take in the question.</p>',
+    learned:'<b>Writing intermediate steps divides the number of facts to be learned.</b><br><br>The direct model has to memorise 96 separate (state, step) pairs and only reaches 100% at 96 examples. The CoT model learns the 12 entry f table and reaches 100% at <b>12 examples</b>.<br><br>The gain does not come from the model being smarter but from <b>the task being decomposable</b>. The chain reduces a compound question to one question asked repeatedly.',
+    controls:[{k:'ei', lb:'TRAINING EXAMPLES', min:0, max:5, step:1, val:0}],
+  },
+  {
+    t:'A fixed budget, a varying chain length',
+    goal:'You will separate what determines the accuracy of the two models.',
+    todo:'Compare the two curves. Why does the orange one go up and down?',
+    kind:'static', viz:'dusunmeZinciri', h:760, xp:50, state:{sahne:'uzunluk'},
+    body:'<p>Now the training budget is fixed: <b>24 examples</b> for both models. The only thing that changes is how many steps the question requires.</p>' +
+         '<p>The CoT model is at <b>100%</b> for every value of n. For it n is not a difficulty, only more work: it reads the same table eight times instead of once.</p>' +
+         '<p>The direct model\'s curve is interesting. 33.3% at n = 1, 50.0% at n = 2, 16.7% at n = 5, 25.0% at n = 8. <b>There is no regular decline</b>, the curve goes up and down.</p>' +
+         '<p>The reason: 24 examples is a random quarter of the 96 pairs. The accuracy for a given n depends on how many of the 12 pairs belonging to that n fell into that random selection. So the shape of the orange curve shows not the structure of the task but the <b>luck of the sampling</b>. Its average is 32.3%, slightly above the 25% budget ratio, because you can get an unknown pair right by chance.</p>' +
+         '<p>To put the distinction plainly: the CoT model\'s accuracy is determined by <b>the structure of the task</b> and the direct model\'s by <b>which examples it happened to see</b>.</p>',
+    learned:'<b>Different things determine the accuracy of the two models.</b><br><br>On a fixed budget of 24 examples, CoT is at 100% for every chain length. The direct model wanders irregularly between 16.7% and 50.0%, averaging 32.3%.<br><br>Note: the wobble in the orange curve is not a trend. When you see a measurement curve go up and down, the first question should be <b>is this shape signal or sampling noise</b>. Here it is noise, and we know exactly why, because we built the task ourselves.',
+  },
+  {
+    t:'The price: the error accumulates',
+    goal:'You will measure why a long chain brings its own risk.',
+    todo:'Raise the per step error. Where does the rate of finishing correctly on an 8 step chain fall to?',
+    kind:'controls', viz:'dusunmeZinciri', h:760, xp:50, state:{sahne:'hata'},
+    body:'<p>Writing a chain has a price: every intermediate step can be wrong, and because <b>f is a permutation</b> a chain that once goes astray cannot return to the truth on its own. Continuing from a wrong state leads to a wrong answer.</p>' +
+         '<p>Put a deviation probability of ε on every step. The probability that all n steps go right is <b>(1 − ε)ⁿ</b>. The measurement (40,000 trials) confirms it:</p>' +
+         '<p><b>ε = 0.02:</b> 1 step 98.0%, 8 steps 85.1% · theory 85.1%<br>' +
+         '<b>ε = 0.05:</b> 1 step 95.0%, 8 steps 66.8% · theory 66.3%<br>' +
+         '<b>ε = 0.10:</b> 1 step 90.2%, 8 steps 44.7% · theory 43.0%<br>' +
+         '<b>ε = 0.20:</b> 1 step 80.1%, 8 steps 21.4% · theory 16.8%</p>' +
+         '<p>The measurement stays slightly above the theory at high ε and that is not an error. Because a deviation goes to a random state, it occasionally lands back on the correct chain by chance. (1 − ε)ⁿ does not count that second chance, so it is a <b>lower bound</b>; as ε shrinks the coincidence becomes rarer and the two numbers coincide exactly.</p>' +
+         '<p>The practical counterpart: long reasoning chains collapse in the end unless the per step error is very small. That is why in production chains are kept short, intermediate steps are verified, and several chains are put into play.</p>',
+    learned:'<b>As a chain lengthens the error compounds multiplicatively: the probability of finishing correctly is (1 − ε)ⁿ.</b><br><br>Only 10% error per step means 44.7% accuracy over 8 steps. A model that looks good per step can easily become unusable per chain.<br><br>(1 − ε)ⁿ is a lower bound: a wrong step can return to the correct chain by chance, which is why the measurement stays above the theory at high ε (21.4% against 16.8% at ε = 0.20).',
+    controls:[{k:'epsi', lb:'ERROR PER STEP', min:0, max:3, step:1, val:0}],
+  },
+  {
+    t:'Where the chain does nothing at all',
+    goal:'You will see when thinking step by step is an empty ceremony.',
+    todo:'Watch the same two models on a task that does not decompose. Then answer the question.',
+    kind:'controls', viz:'dusunmeZinciri', h:760, xp:75, state:{sahne:'olgu', ayrismaz:true},
+    body:'<p>We change the task in exactly one place. The answer is no longer f applied n times; a <b>random</b> answer has been assigned to every (state, number of steps) pair. The question looks the same and the structure inside it is gone.</p>' +
+         '<p>The direct model is completely unaffected: still 100% at 96 examples. For it the task was always memorisation, and whether what is memorised is meaningful makes no difference.</p>' +
+         '<p>The CoT model collapses. 10.4% at 12 examples and <b>10.4% at 96 examples too</b>. However much data you give it, it does not budge, stuck just above random guessing (8.3%).</p>' +
+         '<p>The reason is simple: the only thing the CoT model can learn is the f table. Even if it learns f perfectly, that has nothing to do with the target. <b>The chain is imitating a structure that does not exist.</b></p>' +
+         '<p>The practical rule that follows: "think step by step" is not magic, it is a <b>bet</b>. If the task really does decompose into intermediate steps it pays enormously (the first step: 8 times fewer facts). If it does not, it pays nothing, and you still pay the cost of the error accumulation from the third step.</p>',
+    learned:'<b>A chain uses structure that already exists in the task; it does not create structure out of nothing.</b><br><br>On the non decomposable task the CoT model is at 10.4% with 12 examples and with 96, against 8.3% for random. On the same task the direct model reaches 100% at 96 examples.<br><br>The decision rule: does the task really decompose into intermediate steps? If it does, CoT learns with less data and works at every chain length. If it does not, the gain is zero while the cost of error accumulation stays.',
+    controls:[{k:'ei', lb:'TRAINING EXAMPLES', min:0, max:5, step:1, val:5}],
+    quiz:{
+      q:'You give a model two jobs. (A) Compute the total of the line items on a long invoice. (B) Say which artist a fragment of song lyrics belongs to. On which one does "think step by step" bring a meaningful gain?',
+      opts:[
+        {t:'Only A',
+         why:'Correct. Addition decomposes into intermediate steps by definition: every partial sum is the input to the next, exactly like applying f repeatedly in the lesson. Recognising an artist is a single association; either the model knows that mapping or it does not. Writing intermediate steps there is the case of the non decomposable task: the green curve stuck at 10.4%.'},
+        {t:'Only B',
+         why:'The opposite. In B, producing intermediate steps only produces text that looks like justification; it does not change the answer. In the lesson, on the non decomposable task, CoT stayed at 10.4% with 12 examples and with 96.'},
+        {t:'On both',
+         why:'There is no gain in B. "Think step by step" adds nothing to the structure of a task; it only makes existing structure usable. With no structure the chain is an empty ceremony.'},
+        {t:'On neither, because chain error accumulates',
+         why:'Error accumulation is a real cost (the third step: 44.7% over 8 steps at ε = 0.10) but in A there is no alternative: a model answering directly cannot do the long sum at all. You have to compare the cost against the gain, not see the cost and ignore the gain.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['self-cons'] = {
+  ad:'Self-consistency: trusting the majority',
+  alt:'Asking the same question K times and taking the majority answer can make a model that is usually wrong almost flawless. On one condition.',
+  kaynaklar:[{"y":"Wang, X. et al.","t":"2023","b":"Self-Consistency Improves Chain of Thought Reasoning in Language Models","n":"ICLR 2023","u":"https://arxiv.org/abs/2203.11171"},
+             {"y":"Cobbe, K. et al.","t":"2021","b":"Training Verifiers to Solve Math Word Problems","n":"arXiv:2110.14168","u":"https://arxiv.org/abs/2110.14168"},
+             {"y":"Snell, C. et al.","t":"2024","b":"Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters","n":"arXiv:2408.03314","u":"https://arxiv.org/abs/2408.03314"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'Getting a right answer out of a usually wrong model',
+    goal:'You will see what a vote over independent attempts fixes.',
+    todo:'Change the per step error. At ε = 0.20 look at the gap between a single chain and 41 votes.',
+    kind:'controls', viz:'ozTutarlilik', h:760, xp:50, state:{sahne:'oy'},
+    body:'<p>In the previous lesson you measured the error accumulating as the chain lengthens. The same task, the same 8 step chain, ε error per step. The only new thing: we ask the same question <b>K times independently</b> and take the most frequent answer.</p>' +
+         '<p>At ε = 0.20 a single chain is <b>21.3%</b> correct. So the model is wrong on four questions out of five. Take 41 independent answers from the same model and vote, and the accuracy becomes <b>79.9%</b>; at 101 votes, <b>97.6%</b>.</p>' +
+         '<p>At first sight that looks impossible: how can a majority vote find the truth when the majority is already wrong? The answer is in the next step and is surprisingly simple.</p>' +
+         '<p>At ε = 0.30 the same trick works much less well: a single chain is 12.7% and 201 votes only reach 62.2%. At ε = 0.10, 41 votes give <b>100.0%</b>. The power of voting is very sensitive to the raw quality of the model.</p>',
+    learned:'<b>A majority vote over independent attempts can carry a model that is usually wrong on its own to the right answer.</b><br><br>At ε = 0.20: a single chain is 21.3%, 41 votes 79.9%, 101 votes 97.6%.<br><br>The gain depends heavily on the model\'s quality: at ε = 0.10, 41 votes give 100.0%, while at ε = 0.30 even 201 votes only reach 62.2%.',
+    controls:[{k:'epsi', lb:'ERROR PER STEP', min:0, max:3, step:1, val:2}],
+  },
+  {
+    t:'Why it works: the wrong answers split',
+    goal:'You will see the single condition for voting.',
+    todo:'Change ε and look at the gap between the green bar and the tallest red one.',
+    kind:'controls', viz:'ozTutarlilik', h:760, xp:50, state:{sahne:'pay'},
+    body:'<p>Let us work out the distribution of answers the model gives to a question. That distribution is <b>an exact computation, not a sample</b>: multiplying the step distribution of the 12 state chain eight times is enough.</p>' +
+         '<p>At ε = 0.20 the share of the right answer is <b>p = 0.2113</b>. Each of the remaining 11 wrong answers gets <b>0.0717</b>, and 0.2113 + 11 × 0.0717 = 1. The wrong answers are split exactly evenly, because the deviation is random.</p>' +
+         '<p>The "single chain 21.3%" from the previous step was a measurement of that p: a sample of 8000 trials finds the true value of 21.13% to within 0.2 points.</p>' +
+         '<p>Here is the answer: a majority vote does <b>not require a majority, only first place</b>. The right answer, with its 21% share, is far below half, but because each of its 11 rivals stays at 7% it is in first place. As K grows the vote shares converge to the true shares and whoever is first wins.</p>' +
+         '<p>At ε = 0.10 the gap is even clearer: p = 0.4471 against a largest wrong answer of 0.0503. A ratio of <b>8.9</b>, which is why 41 votes are more than enough.</p>' +
+         '<p>This is the same condition as for the "wisdom of crowds": <b>the errors have to be independent and scattered</b>. In the next step we break that condition.</p>',
+    learned:'<b>The single condition for voting: the right answer has to be the model\'s most likely answer.</b><br><br>At ε = 0.20 the right answer\'s share is 0.2113 and the largest wrong one\'s is 0.0717. The right answer does not have an absolute majority but it is first, and that is exactly what a plurality vote needs.<br><br>Because the wrong answers split across 11 separate options, none of them can overtake the right one. The power of voting comes not from the model being good but from <b>its errors being scattered</b>.',
+    controls:[{k:'epsi', lb:'ERROR PER STEP', min:0, max:3, step:1, val:2}],
+  },
+  {
+    t:'Voting erases noise, not error',
+    goal:'You will see where self-consistency turns around.',
+    todo:'Compare the two curves and the dashed limit lines. Where does the red curve peak?',
+    kind:'static', viz:'ozTutarlilik', h:760, xp:50, state:{sahne:'yanli'},
+    body:'<p>Now we change one thing: <b>one entry is wrong</b> in the model\'s 12 entry f table. It believes state 10 goes to 4 when it should go to 3. The step noise is the same (ε = 0.20); that is the only change.</p>' +
+         '<p>The critical difference: the noise is <b>different</b> in every chain and the wrong belief is <b>the same</b> in every chain. The chains do not correct each other, they agree on the same mistake.</p>' +
+         '<p>The result is a hump. A single chain is 15.3%. As the number of votes grows it first rises, peaking at <b>29.6%</b> at K = 101, and then falls: 27.7% at K = 201, 20.9% at K = 1001, 12.3% at K = 4001.</p>' +
+         '<p>The dashed line is the limit at infinite votes, and it is not an estimate but an <b>exact computation</b>: a plurality vote converges to the tallest bar of the distribution on every question, so the limit is "the fraction of questions on which the right answer is the most likely answer". With a correct table that is 12/12, or <b>100%</b>. With one wrong entry it is <b>1/12 = 8.3%</b>: below even the 15.3% of a single chain.</p>' +
+         '<p>So with enough votes, self-consistency <b>does harm</b>. Stopping early saves you, but to know where to stop you would have to know the model\'s wrong belief, and if you knew it you would have fixed it already.</p>',
+    learned:'<b>Self-consistency cleans up random error and amplifies systematic error.</b><br><br>With a single wrong table entry the curve humps: 15.3% → 29.6% at K=101 → 12.3% at K=4001, and 8.3% at infinite votes.<br><br>The limit at infinite votes can be computed exactly: the fraction of questions on which the right answer is the model\'s most likely answer. 12/12 with a correct table, 1/12 with one wrong entry.<br><br>Voting does not change what the model knows, it only <b>announces what it knows more clearly</b>.',
+  },
+  {
+    t:'The price tag',
+    goal:'You will see the trade between buying votes and fixing the model.',
+    todo:'Look at the purple bars, then answer the question.',
+    kind:'static', viz:'ozTutarlilik', h:760, xp:75, state:{sahne:'maliyet'},
+    body:'<p>K votes means K times the computation. The purple bars on the plot show <b>how many points are gained per additional chain</b> (ε = 0.20, correct table).</p>' +
+         '<p>The gain first rises (3.12 points per chain at K = 5) and then falls steadily: 0.96 at K = 41, 0.30 at K = 101, <b>0.02</b> at K = 201. The last 100 chains bring less than 2 points in total.</p>' +
+         '<p>Here is the real comparison. Halve the per step error (ε: 0.20 → 0.10) and <b>with the same 11 votes</b> the accuracy goes from 43.7% to <b>91.2%</b>. The worse model only passes that level at 101 votes (97.6%), that is by paying roughly <b>9 times the computation</b>.</p>' +
+         '<p>The place for voting in practice: when improving the model is long and expensive, it is a simple way of squeezing a little more accuracy out of the model you have at test time. But it is not an unlimited lever, and as you saw in the previous step it can also work in the wrong direction.</p>' +
+         '<p>A note: here we measured a plurality vote. Having the answers scored by a <b>verifier</b> (such as substituting the answer back and checking) is usually better, because a verifier looks at what is correct rather than what is most frequent, and does not have to share the model\'s wrong belief.</p>',
+    learned:'<b>The price of voting is linear and its return is diminishing.</b><br><br>At ε = 0.20 the gain per chain is 3.12 points at K = 5, 0.30 at K = 101 and 0.02 at K = 201.<br><br>With the same 11 votes the ε = 0.10 model gives 91.2% and the ε = 0.20 model 43.7%. For the worse model to catch that costs roughly 9 times the computation: <b>fixing the model is cheaper than buying votes</b>.<br><br>Scoring with a verifier is usually better than a plurality vote, because a verifier looks at what is correct rather than what is most frequent.',
+    quiz:{
+      q:'You are running a model on a multi step task. A single attempt gives 30% accuracy. Taking 20 independent attempts and voting raises it to 31%, and at 100 attempts it falls to 29%. What does that mean?',
+      opts:[
+        {t:'The model\'s errors are systematic: its most frequent answer is wrong on most questions',
+         why:'Correct. As the number of votes grows, voting converges to the model\'s most likely answer. If the accuracy is not rising, and is even falling, that most likely answer is wrong on most questions. You measured exactly this in the lesson: with one wrong table entry the curve peaked at 29.6% and fell to 8.3%. Taking more attempts in that situation burns money; the thing to do is find the model\'s wrong belief or use a verifier.'},
+        {t:'You did not take enough attempts, 1000 will fix it',
+         why:'The opposite. The curve already fell going from 20 to 100. As K grows, voting picks the model\'s mode more sharply, so a wrong mode gets picked more decisively with more attempts. In the lesson the accuracy fell to 12.3% at K = 4001.'},
+        {t:'The attempts are not independent enough',
+         why:'Independence is a real condition but it does not explain the observation. Fully dependent attempts would make voting ineffective, so the accuracy would stay at 30%. Accuracy rising and then falling is the signature of independent attempts agreeing on a shared mistake.'},
+        {t:'Self-consistency is too simple for this task, it needs chain-of-thought',
+         why:'The task is already multi step and these are not mutually exclusive methods: self-consistency is built on top of chains. And the problem is not the absence of a chain but that the answer voting converges to is wrong.'},
+      ], correct:0 },
+  },
+  ],
+};
