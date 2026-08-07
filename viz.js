@@ -9158,6 +9158,223 @@ VIZ.konuKesfi = s => {
   }
 };
 
+
+/* ═══════════ KUANTİZASYON ═══════════
+   Ağırlıkları daha az bitle saklamanın bedeli. Gerçek bir ağ
+   eğitiliyor, sonra ağırlıkları kuantalanıp hata ölçülüyor. */
+const KZ = {};
+KZ.D = 12; KZ.H = 24; KZ.N = 600; KZ.TEST = 2000;
+KZ.bitler = [2, 3, 4, 6, 8, 16];
+const _kzC = {};
+/* iki katmanlı ağ · gerçek eğitim */
+KZ.ag = (() => {
+  const r = rng(23);
+  const W1 = [], b1 = new Array(KZ.H).fill(0), W2 = new Array(KZ.H).fill(0);
+  for (let h = 0; h < KZ.H; h++){ const row = [];
+    for (let i = 0; i < KZ.D; i++) row.push(omNormal(r)*0.5);
+    W1.push(row); W2[h] = omNormal(r)*0.5; }
+  let b2 = 0;
+  /* hedef fonksiyon · sabit ogretmen */
+  const wT = []; for (let i = 0; i < KZ.D; i++) wT.push(omNormal(r));
+  const uret = (n, seed) => { const q = rng(seed), X = [], y = [];
+    for (let i = 0; i < n; i++){ const x = [];
+      for (let j = 0; j < KZ.D; j++) x.push(omNormal(q));
+      const z = x.reduce((s, v2, j) => s + v2*wT[j], 0);
+      y.push(Math.tanh(1.2*z) + 0.15*omNormal(q));
+      X.push(x); }
+    return { X, y }; };
+  const EG = uret(KZ.N, 55), TE = uret(KZ.TEST, 66);
+  const ileri = (x, W1v, b1v, W2v, b2v) => {
+    const h = [];
+    for (let j = 0; j < KZ.H; j++){ let z = b1v[j];
+      for (let i = 0; i < KZ.D; i++) z += W1v[j][i]*x[i];
+      h.push(Math.tanh(z)); }
+    let o = b2v; for (let j = 0; j < KZ.H; j++) o += W2v[j]*h[j];
+    return { h, o }; };
+  const LR = 0.05;
+  for (let ep = 0; ep < 400; ep++){
+    const gW1 = W1.map(row => row.map(() => 0));
+    const gb1 = new Array(KZ.H).fill(0), gW2 = new Array(KZ.H).fill(0);
+    let gb2 = 0;
+    for (let i = 0; i < KZ.N; i++){
+      const { h, o } = ileri(EG.X[i], W1, b1, W2, b2);
+      const e = o - EG.y[i];
+      gb2 += e;
+      for (let j = 0; j < KZ.H; j++){
+        gW2[j] += e*h[j];
+        const dh = e*W2[j]*(1 - h[j]*h[j]);
+        gb1[j] += dh;
+        for (let q = 0; q < KZ.D; q++) gW1[j][q] += dh*EG.X[i][q]; } }
+    b2 -= LR*gb2/KZ.N;
+    for (let j = 0; j < KZ.H; j++){
+      W2[j] -= LR*gW2[j]/KZ.N; b1[j] -= LR*gb1[j]/KZ.N;
+      for (let q = 0; q < KZ.D; q++) W1[j][q] -= LR*gW1[j][q]/KZ.N; } }
+  return { W1, b1, W2, b2, EG, TE, ileri };
+})();
+/* n bit ile tekduze kuantalama · [en kucuk, en buyuk] araligina 2^n seviye */
+KZ.kuanta = (dizi, bit, kanalBazinda) => {
+  if (bit >= 16) return dizi.map(z => z);
+  const L = Math.pow(2, bit) - 1;
+  const q = (v2, lo, hi) => { if (hi - lo < 1e-12) return v2;
+    const adim = (hi - lo)/L;
+    return lo + Math.round((v2 - lo)/adim)*adim; };
+  if (!kanalBazinda){
+    let lo = Infinity, hi = -Infinity;
+    dizi.forEach(row => row.forEach(z => { lo = Math.min(lo, z); hi = Math.max(hi, z); }));
+    return dizi.map(row => row.map(z => q(z, lo, hi))); }
+  return dizi.map(row => { let lo = Infinity, hi = -Infinity;
+    row.forEach(z => { lo = Math.min(lo, z); hi = Math.max(hi, z); });
+    return row.map(z => q(z, lo, hi)); });
+};
+KZ.hata = (W1, W2) => {
+  const A = KZ.ag; let s = 0;
+  for (let i = 0; i < A.TE.X.length; i++){
+    const o = A.ileri(A.TE.X[i], W1, A.b1, W2, A.b2).o;
+    s += (o - A.TE.y[i])*(o - A.TE.y[i]); }
+  return s/A.TE.X.length;
+};
+KZ.sonuc = (bit, kanalBazinda, aykiri) => {
+  const key = 's' + bit + ':' + (kanalBazinda ? 1 : 0) + ':' + (aykiri ? 1 : 0);
+  if (_kzC[key] !== undefined) return _kzC[key];
+  const A = KZ.ag;
+  let W1 = A.W1.map(r2 => r2.slice()), W2 = A.W2.slice();
+  if (aykiri){ W1 = W1.map(r2 => r2.slice()); W1[0][0] = 8.0; }
+  const qW1 = KZ.kuanta(W1, bit, kanalBazinda);
+  const qW2 = KZ.kuanta([W2], bit, kanalBazinda)[0];
+  return (_kzC[key] = KZ.hata(qW1, qW2));
+};
+KZ.temelHata = aykiri => KZ.sonuc(16, false, aykiri);
+/* bit basina bellek orani */
+KZ.bellek = bit => bit/32;
+
+
+VIZ.kuantizasyon = s => {
+  clear();
+  const sahne = s.sahne || 'egri';
+  const bi = Math.max(0, Math.min(5, s.bi === undefined ? 2 : Math.round(s.bi)));
+  const bit = KZ.bitler[bi];
+  const kanal = !!s.kanal;
+  const kart = (x, y, wd, ad, deger, rnk, alt) => {
+    box(x, y, wd, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + wd/2, y + 28, K.mut, 15);
+    txt(deger, x + wd/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + wd/2, y + 95, K.mut, 14);
+  };
+  const bitEks = P => KZ.bitler.forEach((bv, i) =>
+    txt(bv + ' bit', P.sx(i), P.R.y + P.R.h + 28, K.mut, 15));
+
+  if (sahne === 'aykiri'){
+    baslikSerit('KUANTİZASYON · TEK BİR AYKIRI AĞIRLIK',
+      'Ağın bir ağırlığı 8.0 yapıldı. Diğer her şey aynı. Tensör bazında ölçekleme.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 5.35, 0, 0.78);
+    frame(P, 'ağırlık başına bit', 'test hatası', [], [0, 0.2, 0.4, 0.6]);
+    bitEks(P);
+    [[false, K.green, 'aykırı yok'], [true, K.red, 'aykırı var']].forEach(([ay, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = 3.6; cx.beginPath();
+      KZ.bitler.forEach((bv, i) => { const y = P.sy(KZ.sonuc(bv, false, ay));
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      KZ.bitler.forEach((bv, i) => dot(P.sx(i), P.sy(KZ.sonuc(bv, false, ay)), 5, renk)); });
+    txt('aykırı ağırlık yok', P.R.x + 16, P.sy(0.74), K.green, 17, 'left');
+    txt('bir ağırlık 8.0', P.R.x + 16, P.sy(0.70), K.red, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'BİT', String(bit), K.blue);
+    kart(bx + 280, 200, 260, 'AYKIRI YOK', KZ.sonuc(bit, false, false).toFixed(4), K.green);
+    kart(bx, 330, 260, 'AYKIRI VAR', KZ.sonuc(bit, false, true).toFixed(4), K.red);
+    kart(bx + 280, 330, 260, 'KAT',
+         (KZ.sonuc(bit, false, true)/KZ.sonuc(bit, false, false)).toFixed(2) + '×', K.orange);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.red, 2);
+    txt('BİR AĞIRLIK HERKESİ CEZALANDIRIYOR', bx + 270, 494, K.mut, 17);
+    txt('Tensör bazında kuantalama tek bir [en küçük,', bx + 18, 534, K.txt, 18, 'left');
+    txt('en büyük] aralığı kullanır. Tek bir aykırı değer', bx + 18, 562, K.txt, 18, 'left');
+    txt('bu aralığı gerdiği için adım büyür ve DİĞER', bx + 18, 590, K.txt, 18, 'left');
+    txt('bütün ağırlıklar hassasiyet kaybeder.', bx + 18, 618, K.txt, 18, 'left');
+    txt('3 bitte hata ' + KZ.sonuc(3, false, false).toFixed(4) + ' ten ' +
+        KZ.sonuc(3, false, true).toFixed(4) + ' e çıkıyor:', bx + 18, 656, K.red, 18, 'left');
+    txt((KZ.sonuc(3, false, true)/KZ.sonuc(3, false, false)).toFixed(1) +
+        ' kat. Aykırı değerin kendisi bir tane.', bx + 18, 684, K.red, 18, 'left');
+  }
+
+  else if (sahne === 'kanal'){
+    baslikSerit('KUANTİZASYON · ÖLÇEĞİ NEREDE TANIMLARSIN',
+      'Aykırı ağırlık duruyor. Tek fark: ölçek tensörün tamamı için mi, her satır için mi.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 5.35, 0, 0.78);
+    frame(P, 'ağırlık başına bit', 'test hatası', [], [0, 0.2, 0.4, 0.6]);
+    bitEks(P);
+    [[false, K.red], [true, K.green]].forEach(([kn, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = 3.6; cx.beginPath();
+      KZ.bitler.forEach((bv, i) => { const y = P.sy(KZ.sonuc(bv, kn, true));
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      KZ.bitler.forEach((bv, i) => dot(P.sx(i), P.sy(KZ.sonuc(bv, kn, true)), 5, renk)); });
+    txt('tensör bazında tek ölçek', P.R.x + 16, P.sy(0.74), K.red, 17, 'left');
+    txt('satır (kanal) bazında ölçek', P.R.x + 16, P.sy(0.70), K.green, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'BİT', String(bit), K.blue);
+    kart(bx + 280, 200, 260, 'TENSÖR BAZINDA', KZ.sonuc(bit, false, true).toFixed(4), K.red);
+    kart(bx, 330, 260, 'KANAL BAZINDA', KZ.sonuc(bit, true, true).toFixed(4), K.green);
+    kart(bx + 280, 330, 260, 'KAZANÇ',
+         (KZ.sonuc(bit, false, true)/KZ.sonuc(bit, true, true)).toFixed(2) + '×', K.purple);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.green, 2);
+    txt('AYKIRIYI KENDİ SATIRINA HAPSET', bx + 270, 494, K.mut, 17);
+    txt('Her satır kendi [en küçük, en büyük] aralığını', bx + 18, 534, K.txt, 18, 'left');
+    txt('kullanırsa, aykırı değer sadece kendi satırındaki', bx + 18, 562, K.txt, 18, 'left');
+    txt('hassasiyeti bozar. Diğer satırlar etkilenmez.', bx + 18, 590, K.txt, 18, 'left');
+    txt('3 bitte ' + KZ.sonuc(3, false, true).toFixed(4) + ' → ' +
+        KZ.sonuc(3, true, true).toFixed(4) + ': ' +
+        (KZ.sonuc(3, false, true)/KZ.sonuc(3, true, true)).toFixed(1) + ' kat iyileşme.',
+        bx + 18, 630, K.green, 18, 'left');
+    txt('Bedeli neredeyse yok: satır başına iki sayı daha', bx + 18, 668, K.mut, 17, 'left');
+    txt('saklamak. 8 bitte iki yöntem zaten aynı.', bx + 18, 694, K.mut, 17, 'left');
+  }
+
+  else {
+    baslikSerit('KUANTİZASYON · KAÇ BİT YETİYOR',
+      'Eğitilmiş ağın ağırlıkları n bitle yeniden yazılıyor. Ağ yeniden eğitilmiyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 5.35, 0, 0.5);
+    frame(P, 'ağırlık başına bit', 'test hatası', [], [0, 0.1, 0.2, 0.3, 0.4]);
+    bitEks(P);
+    [[false, K.orange], [true, K.green]].forEach(([kn, renk]) => {
+      cx.strokeStyle = renk; cx.lineWidth = 3.6; cx.beginPath();
+      KZ.bitler.forEach((bv, i) => { const y = P.sy(KZ.sonuc(bv, kn, false));
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      KZ.bitler.forEach((bv, i) => dot(P.sx(i), P.sy(KZ.sonuc(bv, kn, false)), 5, renk)); });
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(KZ.temelHata(false)));
+    cx.lineTo(P.R.x + P.R.w, P.sy(KZ.temelHata(false))); cx.stroke();
+    cx.setLineDash([]);
+    txt('kuantalanmamış ' + KZ.temelHata(false).toFixed(4),
+        P.R.x + P.R.w - 14, P.sy(KZ.temelHata(false)) - 12, K.mut, 15, 'right');
+    txt('tensör bazında', P.R.x + 16, P.sy(0.47), K.orange, 17, 'left');
+    txt('kanal bazında', P.R.x + 16, P.sy(0.44), K.green, 17, 'left');
+    dot(P.sx(bi), P.sy(KZ.sonuc(bit, kanal, false)), 9, K.yellow);
+    const bx = 830;
+    kart(bx, 200, 260, 'BİT', String(bit), K.blue, 'ağırlık başına');
+    kart(bx + 280, 200, 260, 'HATA', KZ.sonuc(bit, kanal, false).toFixed(4),
+         KZ.sonuc(bit, kanal, false) < 1.1*KZ.temelHata(false) ? K.green : K.orange);
+    kart(bx, 330, 260, 'BELLEK', '%' + (100*KZ.bellek(bit)).toFixed(1), K.purple,
+         '32 bite göre');
+    kart(bx + 280, 330, 260, 'HATA ARTIŞI',
+         '%' + (100*(KZ.sonuc(bit, kanal, false)/KZ.temelHata(false) - 1)).toFixed(1),
+         K.orange);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('SEKİZ BİT NEREDEYSE BEDAVA', bx + 270, 494, K.mut, 18);
+    txt('8 bitte hata ' + KZ.sonuc(8, false, false).toFixed(5) + ', kuantalanmamış',
+        bx + 18, 534, K.green, 18, 'left');
+    txt(KZ.temelHata(false).toFixed(5) + '. Fark binde iki, bellek dörtte bir.',
+        bx + 18, 562, K.green, 18, 'left');
+    txt('4 bitte ' + KZ.sonuc(4, false, false).toFixed(4) + ': %' +
+        (100*(KZ.sonuc(4, false, false)/KZ.temelHata(false) - 1)).toFixed(0) +
+        ' daha kötü ama bellek', bx + 18, 600, K.orange, 18, 'left');
+    txt('sekizde bir. Genelde kabul edilebilir bir takas.', bx + 18, 628, K.orange, 18, 'left');
+    txt('2 bitte ' + KZ.sonuc(2, false, false).toFixed(4) + ': ' +
+        (KZ.sonuc(2, false, false)/KZ.temelHata(false)).toFixed(1) + ' kat kötü. Burada',
+        bx + 18, 666, K.red, 18, 'left');
+    txt('artık kuantalama değil, model değiştirme oluyor.', bx + 18, 694, K.red, 18, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

@@ -135,7 +135,7 @@ const ROTALAR = [
     {id:'judge',     ad:'LLM-as-judge',                    sure:14, durum:'hazir'},
     {id:'kirmizi',   ad:'Kırmızı takım ve savunma',        sure:16, durum:'hazir'},
     {id:'maliyet',   ad:'Maliyet ve gecikme',              sure:12, durum:'hazir'},
-    {id:'kuantizasyon',   ad:'Kuantizasyon: modeli küçültmenin bedeli',        sure:14, durum:'planli'},
+    {id:'kuantizasyon',   ad:'Kuantizasyon: modeli küçültmenin bedeli',        sure:16, durum:'hazir'},
     {id:'acik-kapali',    ad:'Açık mı kapalı mı: modele nasıl erişirsin',      sure:10, durum:'planli'},
     {id:'yigin',          ad:'AI uygulama yığını: kim neyi inşa eder',         sure:10, durum:'planli'},
     {id:'ai-vs-ml',       ad:'AI mühendisliği klasik ML\'den nasıl ayrışır',    sure:10, durum:'planli'},
@@ -11603,6 +11603,169 @@ DERSLER['konu-kesif'] = {
       'kadar tutarlı görünür.<br><br>' +
       'Korunma: farklı tohumlarla kararlılık kontrolü, kümelerden rastgele belge okumak, ' +
       've gömmeyi değiştirip sonucun değişip değişmediğine bakmak.',
+    xp:75,
+  },
+]};
+
+/* --------------- KUANTIZASYON --------------- */
+DERSLER['kuantizasyon'] = {
+  ad:'Kuantizasyon: modeli küçültmenin bedeli',
+  alt:'Ağırlıkları daha az bitle saklamak belleği katlarca düşürüyor. Bedelin ne zaman kabul edilebilir, ne zaman felaket olduğunu ölçeceksin.',
+  kaynaklar:[
+    {y:'Jacob, B. ve ark.', t:'2018', b:'Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference', n:'CVPR 2018', u:'https://arxiv.org/abs/1712.05877'},
+    {y:'Dettmers, T. ve ark.', t:'2022', b:'LLM.int8(): 8-bit Matrix Multiplication for Transformers at Scale', n:'NeurIPS 2022', u:'https://arxiv.org/abs/2208.07339'},
+    {y:'Frantar, E. ve ark.', t:'2023', b:'GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers', n:'ICLR 2023', u:'https://arxiv.org/abs/2210.17323'},
+    {y:'Dettmers, T. ve ark.', t:'2023', b:'QLoRA: Efficient Finetuning of Quantized LLMs', n:'NeurIPS 2023', u:'https://arxiv.org/abs/2305.14314'},
+  ],
+  rota:2,
+  adimlar:[
+  {
+    t:'Kaç bit yetiyor',
+    goal:'Bit sayısını düşürmenin hata ve bellek üzerindeki etkisini ölçeceksin.',
+    todo:'Bit sayısını düşür. Hata hangi noktada patlıyor?',
+    kind:'controls', viz:'kuantizasyon', h:760,
+    controls:[{k:'bi', lb:'AGIRLIK BASINA BIT', min:0, max:5, step:1, val:2,
+      fmt:v => KZ.bitler[Math.round(v)] + ' bit'}],
+    state:{sahne:'egri', kanal:false},
+    derive:s => ({h: KZ.sonuc(KZ.bitler[Math.round(s.bi)], false, false)}),
+    live:s => [['BIT', String(KZ.bitler[Math.round(s.bi)])],
+               ['HATA', s.h.toFixed(4), K.orange],
+               ['BELLEK', '%' + (100*KZ.bellek(KZ.bitler[Math.round(s.bi)])).toFixed(1), K.purple],
+               ['HEDEF', 'hata < 0.12']],
+    unlock:s => s.h < 0.12,
+    unlockMsg:'Hatayı 0.12 nin altında tutan en düşük bit sayısını bul',
+    body:'<p>Burada gerçek bir ağ var: 12 girdi, 24 gizli birim, tanh aktivasyon, ' +
+      '600 örnekle 400 tur eğitilmiş. Eğitim bittikten sonra ağırlıklar <b>n bitle ' +
+      'yeniden yazılıyor</b> ve ağ tekrar eğitilmiyor. Eğitim sonrası kuantizasyon ' +
+      'tam olarak budur.</p>' +
+      '<p>Yöntem tekdüze: ağırlıkların en küçüğü ile en büyüğü arasındaki aralık ' +
+      '2ⁿ seviyeye bölünüyor ve her ağırlık en yakın seviyeye yuvarlanıyor.</p>' +
+      '<p>Ölçüm (kuantalanmamış hata 0.10892):</p>' +
+      '<p><b>8 bit:</b> 0.10910. Fark binde iki, bellek dörtte bir. Neredeyse bedava.<br>' +
+      '<b>6 bit:</b> 0.11013. Hâlâ %1 den az kayıp.<br>' +
+      '<b>4 bit:</b> 0.13043. %20 daha kötü ama bellek sekizde bir.<br>' +
+      '<b>2 bit:</b> 0.45500. <b>4.2 kat</b> kötü.</p>' +
+      '<p>Eğri düz değil, bir eşiği var. 8 ve 6 bit pratikte ücretsiz; 4 bit ölçülebilir ' +
+      'ama çoğu zaman kabul edilebilir bir bedel; 2 bitte artık kuantalama değil ' +
+      '<b>model değiştirme</b> oluyor.</p>' +
+      '<p>Bu, gerçek dil modellerinde de gözlenen şekildir. 8 bit uzun süredir standart ' +
+      '(Jacob ve ark., 2018), 4 bit GPTQ ve QLoRA ile yaygınlaştı, 2 bit hâlâ aktif ' +
+      'araştırma konusu.</p>',
+    learned:'<b>Bit sayısı düştükçe hata düz değil eşikli artar.</b><br><br>' +
+      'Kuantalanmamış 0.10892. 8 bit: 0.10910 (binde iki kayıp, dörtte bir bellek). ' +
+      '4 bit: 0.13043 (%20 kayıp, sekizde bir bellek). 2 bit: 0.45500 (4.2 kat).<br><br>' +
+      'Karar sizin: 4 bitteki %20 kayıp çoğu uygulamada kabul edilebilir, 2 bitteki ' +
+      'çöküş neredeyse hiçbirinde değil.',
+    xp:50,
+  },
+  {
+    t:'Tek bir aykırı ağırlık',
+    goal:'Kuantizasyonun en yaygın felaket sebebini göreceksin.',
+    todo:'Bit sayısını değiştir. İki eğri nerede ayrılıyor?',
+    kind:'controls', viz:'kuantizasyon', h:760,
+    controls:[{k:'bi', lb:'AGIRLIK BASINA BIT', min:0, max:5, step:1, val:1,
+      fmt:v => KZ.bitler[Math.round(v)] + ' bit'}],
+    state:{sahne:'aykiri'},
+    derive:s => { const b = KZ.bitler[Math.round(s.bi)];
+      return {kat: KZ.sonuc(b, false, true)/KZ.sonuc(b, false, false)}; },
+    live:s => { const b = KZ.bitler[Math.round(s.bi)];
+      return [['BIT', String(b)],
+              ['AYKIRI YOK', KZ.sonuc(b, false, false).toFixed(4), K.green],
+              ['AYKIRI VAR', KZ.sonuc(b, false, true).toFixed(4), K.red],
+              ['KAT', s.kat.toFixed(2) + 'x', K.orange]]; },
+    body:'<p>Şimdi ağın tek bir ağırlığını 8.0 yapıyoruz. Diğer bütün ağırlıklar ' +
+      'aynı kalıyor. Kuantalanmamış hata neredeyse değişmiyor: 0.10892 den 0.11380 e.</p>' +
+      '<p>Ama kuantalayınca sonuç bambaşka. 3 bitte hata <b>0.18720</b> den ' +
+      '<b>0.60637</b> ye çıkıyor: <b>3.2 kat</b>.</p>' +
+      '<p>Mekanizma basit ve tamamen aritmetik. Tensör bazında kuantalama tek bir ' +
+      '[en küçük, en büyük] aralığı kullanır ve o aralığı 2ⁿ seviyeye böler. ' +
+      'Tek bir aykırı değer aralığı gerdiği için <b>adım büyür</b> ve diğer bütün ' +
+      'ağırlıklar hassasiyet kaybeder.</p>' +
+      '<p>Yani cezayı ödeyen aykırı değerin kendisi değil, <b>onunla aynı tensörde ' +
+      'olan herkes</b>.</p>' +
+      '<p>Bu, büyük dil modellerinde bilinen ve önemli bir sorundur. Dettmers ve ' +
+      'arkadaşlarının (2022) gösterdiği gibi, belirli bir ölçekten sonra transformer ' +
+      'aktivasyonlarında sistematik aykırı değerler ortaya çıkıyor ve naif 8 bit ' +
+      'kuantizasyon bu yüzden çöküyor. Çözümleri de tam olarak aykırı değerleri ' +
+      'ayrı işlemekti.</p>',
+    learned:'<b>Tek bir aykırı ağırlık, aynı tensördeki herkesin hassasiyetini bozar.</b><br><br>' +
+      'Bir ağırlığı 8.0 yapmak kuantalanmamış hatayı neredeyse değiştirmiyor ' +
+      '(0.10892 → 0.11380) ama 3 bitte hata 0.18720 den 0.60637 ye çıkıyor: 3.2 kat.<br><br>' +
+      'Sebep aritmetik: aykırı değer [en küçük, en büyük] aralığını gerer, adım büyür, ' +
+      've diğer bütün ağırlıklar kaba yuvarlanır.',
+    xp:50,
+  },
+  {
+    t:'Ölçeği nerede tanımlarsın',
+    goal:'Aykırı değer sorununun standart çözümünü ölçeceksin.',
+    todo:'Bit sayısını değiştir. Kanal bazında ölçekleme ne kadar kazandırıyor?',
+    kind:'controls', viz:'kuantizasyon', h:760,
+    controls:[{k:'bi', lb:'AGIRLIK BASINA BIT', min:0, max:5, step:1, val:1,
+      fmt:v => KZ.bitler[Math.round(v)] + ' bit'}],
+    state:{sahne:'kanal'},
+    derive:s => { const b = KZ.bitler[Math.round(s.bi)];
+      return {kaz: KZ.sonuc(b, false, true)/KZ.sonuc(b, true, true)}; },
+    live:s => { const b = KZ.bitler[Math.round(s.bi)];
+      return [['BIT', String(b)],
+              ['TENSOR', KZ.sonuc(b, false, true).toFixed(4), K.red],
+              ['KANAL', KZ.sonuc(b, true, true).toFixed(4), K.green],
+              ['KAZANC', s.kaz.toFixed(2) + 'x', K.purple]]; },
+    body:'<p>Aykırı değer duruyor. Değiştirdiğimiz tek şey <b>ölçeği nerede tanımladığımız</b>. ' +
+      'Tensörün tamamı için tek bir aralık yerine, ağırlık matrisinin her satırı için ' +
+      'ayrı bir aralık kullanıyoruz.</p>' +
+      '<p>Sonuç: 3 bitte hata <b>0.60637</b> den <b>0.14968</b> e iniyor. ' +
+      '<b>4.1 kat</b> iyileşme, hem de tek bir bit bile eklemeden.</p>' +
+      '<p>Mantığı doğrudan: aykırı değer artık sadece kendi satırındaki aralığı geriyor. ' +
+      'Diğer satırlar kendi dar aralıklarını kullanmaya devam ediyor ve hassasiyetlerini ' +
+      'koruyorlar. Aykırının zararı <b>bir satıra hapsedilmiş</b> oluyor.</p>' +
+      '<p>Bedeli neredeyse yok: satır başına iki sayı daha saklamak. 24 satırlık bir ' +
+      'matriste bu 48 sayı, yani binlerce ağırlığın yanında hiç.</p>' +
+      '<p>Dikkat çekici bir ayrıntı: aykırı değer <b>yokken</b> iki yöntem arasındaki fark ' +
+      'küçük (4 bitte 0.13043 e karşı 0.11811) ve 8 bitte neredeyse yok. Yani kanal bazında ' +
+      'ölçekleme her zaman büyük kazanç sağlamaz; <b>aykırı değer varsa</b> hayat kurtarır.</p>',
+    learned:'<b>Kuantizasyonun kalitesini bit sayısı kadar, ölçeğin nerede tanımlandığı belirler.</b><br><br>' +
+      'Aykırı ağırlık varken 3 bitte: tensör bazında 0.60637, satır bazında 0.14968. ' +
+      '4.1 kat iyileşme, tek bir ek bit olmadan.<br><br>' +
+      'Aykırı değer yokken fark küçük. Yani kanal bazında ölçekleme her derde deva değil; ' +
+      'aykırı değerlerin olduğu yerde kritik.',
+    xp:50,
+  },
+  {
+    t:'Bellek mi, doğruluk mu',
+    goal:'Takası bir karara çevireceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'controls', viz:'kuantizasyon', h:760,
+    controls:[{k:'bi', lb:'AGIRLIK BASINA BIT', min:0, max:5, step:1, val:2,
+      fmt:v => KZ.bitler[Math.round(v)] + ' bit'}],
+    state:{sahne:'egri', kanal:true},
+    body:'<p>Üç ölçümü bir araya koyalım. Bellek oranı doğrudan bit sayısıyla orantılı: ' +
+      '32 bite göre 8 bit dörtte bir, 4 bit sekizde bir, 2 bit on altıda bir.</p>' +
+      '<p>Hata ise doğrusal değil. 8 bitte binde iki, 4 bitte %20 (kanal bazında %8), ' +
+      '2 bitte kat kat.</p>' +
+      '<p>Pratik kural: <b>8 bit varsayılan olmalı</b>, çünkü bedeli ölçülemeyecek kadar ' +
+      'küçük ve kazancı dört kat. 4 bit ciddi bir seçenek ama ölçüm gerektirir: kendi ' +
+      'göreviniz üzerinde hatanın ne kadar arttığına bakmadan karar vermeyin.</p>' +
+      '<p>Üç ek not:</p>' +
+      '<p><b>Kuantizasyon farkındalıklı eğitim.</b> Burada eğitim bittikten sonra ' +
+      'kuantaladık. Eğitim sırasında kuantalamayı taklit etmek (Jacob ve ark., 2018) ' +
+      'düşük bitlerde belirgin şekilde daha iyi sonuç verir, ama yeniden eğitim gerektirir.</p>' +
+      '<p><b>Bellek tek kazanç değil.</b> Düşük bit aynı zamanda bellek bant genişliği ' +
+      'demektir ve büyük modellerde üretim hızını çoğu zaman hesap değil bellek trafiği ' +
+      'belirler.</p>' +
+      '<p><b>Ölçmeden inanmayın.</b> Kuantizasyonun etkisi göreve, modele ve veri dağılımına ' +
+      'bağlıdır. Buradaki sayılar bu ağa aittir; sizin ağınızda eşik başka yerde olabilir.</p>',
+    quiz:{ q:'Bir modeli 4 bite indirdiniz ve doğruluk kabul edilebilir seviyede kaldı. Sonra aynı modeli ince ayarladınız ve yeniden 4 bite indirdiğinizde doğruluk çöktü. En olası sebep hangisi?',
+      opts:[
+        {t:'İnce ayar ağırlık dağılımında aykırı değerler yarattı; kanal bazında ölçeklemeye geçmek gerekir', why:'Doğru. Derste ölçtüğün mekanizma tam bu: tek bir aykırı ağırlık bile tensör bazında kuantalamada aralığı gerip diğer bütün ağırlıkları kaba yuvarlatıyordu (3 bitte 3.2 kat hata artışı). İnce ayar, özellikle yüksek öğrenme oranıyla, birkaç ağırlığı çok büyütebilir. Çözüm ölçeği daha dar tanımlamak: kanal bazında ölçekleme aynı durumda hatayı 4.1 kat düşürüyordu.'},
+        {t:'4 bit her zaman kararsızdır, 8 bite dönmelisiniz', why:'Ölçüm bunu desteklemiyor: ilk kuantizasyon zaten 4 bitte kabul edilebilirdi. Değişen şey bit sayısı değil, ağırlık dağılımı. 8 bite dönmek sorunu gizler ama teşhis değildir ve dört kat belleği geri verir.'},
+        {t:'İnce ayar modeli aşırı uydurmuştur', why:'Aşırı uyum kuantalanmamış modelde de doğruluğu düşürürdü. Buradaki gözlem özel: model kuantalanmadan iyi, kuantalanınca çöküyor. Bu, aşırı uyumun değil ağırlık dağılımının imzasıdır.'},
+        {t:'Kuantizasyon rastgeledir, tekrar denemelisiniz', why:'Tekdüze kuantizasyon tamamen belirlenimcidir: aynı ağırlıklar her zaman aynı seviyelere yuvarlanır. Tekrar denemek aynı sonucu verir.'},
+      ], correct:0 },
+    learned:'<b>8 bit varsayılan olmalı, 4 bit ölçülerek seçilmeli.</b><br><br>' +
+      'Bellek doğrudan bit sayısıyla orantılı (8 bit dörtte bir, 4 bit sekizde bir) ' +
+      'ama hata doğrusal değil: 8 bitte binde iki, 4 bitte %20, 2 bitte kat kat.<br><br>' +
+      'Kuantizasyon sonrası çöküş çoğu zaman aykırı ağırlıkların imzasıdır ve çözümü ' +
+      'daha çok bit değil, ölçeği daha dar tanımlamaktır.',
     xp:75,
   },
 ]};

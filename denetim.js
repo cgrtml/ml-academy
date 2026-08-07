@@ -3243,6 +3243,76 @@ console.log('═══ KONU KEŞFİ ═══');
   iddia('KK - iyi ayrimda siluet daha yuksek', 1,
         KK.siluet(3.0, 4) > KK.siluet(0.6, 4) ? 1 : 0, 0);
 }
+console.log('═══ KUANTİZASYON ═══');
+{
+  iddia('KZ - girdi boyutu', 12, KZ.D, 0);
+  iddia('KZ - gizli birim', 24, KZ.H, 0);
+  iddia('KZ - kuantalanmamis hata', 0.10892, KZ.temelHata(false), 5);
+  /* 16 bit = kuantalama yok */
+  iddia('KZ - 16 bit degistirmiyor', 0, Math.abs(KZ.sonuc(16, false, false) - KZ.temelHata(false)), 9);
+  /* kuantalama gercekten seviyeleri sinirliyor mu */
+  { const q = KZ.kuanta(KZ.ag.W1, 3, false);
+    const set = new Set();
+    q.forEach(row => row.forEach(z => set.add(Math.round(z*1e9))));
+    iddia('KZ - 3 bit en fazla 8 farkli deger', 1, set.size <= 8 ? 1 : 0, 0);
+    const q8 = KZ.kuanta(KZ.ag.W1, 8, false);
+    const set8 = new Set();
+    q8.forEach(row => row.forEach(z => set8.add(Math.round(z*1e9))));
+    iddia('KZ - 8 bit en fazla 256 farkli deger', 1, set8.size <= 256 ? 1 : 0, 0); }
+
+  /* 1. adim - bit egrisi */
+  iddia('KZ - 8 bit hata', 0.10910, KZ.sonuc(8, false, false), 5);
+  iddia('KZ - 6 bit hata', 0.11013, KZ.sonuc(6, false, false), 5);
+  iddia('KZ - 4 bit hata', 0.13043, KZ.sonuc(4, false, false), 5);
+  iddia('KZ - 3 bit hata', 0.18720, KZ.sonuc(3, false, false), 5);
+  iddia('KZ - 2 bit hata', 0.45500, KZ.sonuc(2, false, false), 5);
+  iddia('KZ - 2 bit kac kat kotu', 4.2, KZ.sonuc(2, false, false)/KZ.temelHata(false), 1);
+  iddia('KZ - 4 bit hata artisi yuzde', 19.8,
+        100*(KZ.sonuc(4, false, false)/KZ.temelHata(false) - 1), 1);
+  iddia('KZ - 8 bit hata artisi yuzde', 0.2,
+        100*(KZ.sonuc(8, false, false)/KZ.temelHata(false) - 1), 1);
+  /* bit arttikca hata monoton dusuyor */
+  { let ihlal = 0;
+    for (let i = 1; i < KZ.bitler.length; i++)
+      if (KZ.sonuc(KZ.bitler[i], false, false) > KZ.sonuc(KZ.bitler[i-1], false, false) + 1e-12) ihlal++;
+    iddia('KZ - bit arttikca hata dusuyor', 0, ihlal, 0); }
+  /* bellek orani */
+  iddia('KZ - 8 bit bellek orani', 25.0, 100*KZ.bellek(8), 1);
+  iddia('KZ - 4 bit bellek orani', 12.5, 100*KZ.bellek(4), 1);
+  iddia('KZ - 2 bit bellek orani', 6.3, 100*KZ.bellek(2), 1);
+
+  /* 2. adim - aykiri agirlik */
+  iddia('KZ - aykirili kuantalanmamis hata', 0.11380, KZ.temelHata(true), 5);
+  iddia('KZ - aykiri kuantalanmamis hatayi cok az degistiriyor', 1,
+        Math.abs(KZ.temelHata(true) - KZ.temelHata(false)) < 0.01 ? 1 : 0, 0);
+  iddia('KZ - aykirili 3 bit tensor', 0.60637, KZ.sonuc(3, false, true), 5);
+  iddia('KZ - aykirisiz 3 bit tensor', 0.18720, KZ.sonuc(3, false, false), 5);
+  iddia('KZ - 3 bitte aykirinin cezasi (kat)', 3.2,
+        KZ.sonuc(3, false, true)/KZ.sonuc(3, false, false), 1);
+  iddia('KZ - aykirili 2 bit tensor', 0.70857, KZ.sonuc(2, false, true), 5);
+  /* aykiri her bit seviyesinde zarar veriyor (16 haric) */
+  { let ihlal = 0;
+    KZ.bitler.forEach(b => { if (b >= 16) return;
+      if (KZ.sonuc(b, false, true) <= KZ.sonuc(b, false, false)) ihlal++; });
+    iddia('KZ - aykiri her bit seviyesinde zarar veriyor', 0, ihlal, 0); }
+
+  /* 3. adim - kanal bazinda olcekleme */
+  iddia('KZ - aykirili 3 bit kanal', 0.14968, KZ.sonuc(3, true, true), 5);
+  iddia('KZ - kanal bazinin kazanci 3 bitte (kat)', 4.1,
+        KZ.sonuc(3, false, true)/KZ.sonuc(3, true, true), 1);
+  iddia('KZ - aykirili 2 bit kanal', 0.31181, KZ.sonuc(2, true, true), 5);
+  iddia('KZ - aykirisiz 4 bit kanal', 0.11811, KZ.sonuc(4, true, false), 5);
+  /* aykiri VARKEN kanal bazi her zaman daha iyi */
+  { let ihlal = 0;
+    KZ.bitler.forEach(b => { if (b >= 16) return;
+      if (KZ.sonuc(b, true, true) > KZ.sonuc(b, false, true)) ihlal++; });
+    iddia('KZ - aykiri varken kanal bazi hep daha iyi', 0, ihlal, 0); }
+  /* aykiri YOKKEN fark kucuk */
+  iddia('KZ - aykirisiz 8 bitte iki yontem neredeyse ayni', 1,
+        Math.abs(KZ.sonuc(8, true, false) - KZ.sonuc(8, false, false)) < 0.001 ? 1 : 0, 0);
+  iddia('KZ - 16 bitte iki yontem tam ayni', 0,
+        Math.abs(KZ.sonuc(16, true, true) - KZ.sonuc(16, false, true)), 9);
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;
