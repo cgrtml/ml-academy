@@ -794,3 +794,135 @@ DERSLER_EN['metrikler'] = {
   },
   ],
 };
+
+DERSLER_EN['bolme'] = {
+  ad:'Train / validation / test',
+  alt:'The only way to get an honest grade for a model. And why you may touch the test set only once.',
+  kaynaklar:[{"y":"Kohavi, R.","t":"1995","b":"A Study of Cross-Validation and Bootstrap for Accuracy Estimation and Model Selection","n":"IJCAI 1995"},
+             {"y":"Dietterich, T. G.","t":"1998","b":"Approximate Statistical Tests for Comparing Supervised Classification Learning Algorithms","n":"Neural Computation, 10(7)"}],
+  rota:0,
+  adimlar:[
+  {
+    t:'Three parts, three separate jobs',
+    goal:'You will learn why we cut the data into <b>three</b> pieces rather than two, and what each piece is for.',
+    todo:'Use NEXT to walk through the four stages.',
+    kind:'phases', viz:'bolme', h:700, xp:45,
+    learned:'<b>Training = learn · Validation = choose · Test = measure.</b><br><br>However many times you looked at the test set, your number is that much more optimistic. Professional teams keep the test set locked; some even check its hash in CI.',
+    quiz:{
+      q:'You scored 82% on the test set and did not like it. You changed the model, tried again, and got 85%. What is the problem?',
+      opts:[
+        {t:'No problem, the model got better',
+         why:'No. You made a decision by looking at the test set, and at that moment the test set <b>turned into a validation set</b>. 85% is no longer an honest estimate.'},
+        {t:'The test set has become a selection tool; 85% is an optimistic number and does not represent real performance',
+         why:'Correct. This is a subtle and very common form of leakage. Every time you look at the test set a little information leaks out; after a few attempts the number inflates systematically. The right behaviour: make your choices on the validation set, touch the test set once, and report the number that comes out whether you like it or not.'},
+        {t:'You should have used a larger test set',
+         why:'A larger test set reduces variance but does not fix the problem of looking again and again.'},
+        {t:'You should have changed the random seed',
+         why:'That hides the problem rather than solving it.'},
+      ], correct:1 },
+    phases:[
+      {state:{mod:'tek', adim:-1},
+       body:'<p>We have 1000 transactions. If we train on all of them we will <b>never</b> learn how good the model really is, the problem you saw in the "memorise or find the rule" lesson.</p>' +
+            '<p>So we split.</p>'},
+      {state:{mod:'tek', adim:0},
+       body:'<p><b style="color:#4cc4ff">TRAINING (60%).</b> The model sees this and tunes its weights on it. Its performance on this piece is <b>not</b> a measure of success, it already knows the answers.</p>'},
+      {state:{mod:'tek', adim:1},
+       body:'<p><b style="color:#fb923c">VALIDATION (20%).</b> This is where you decide: which model, which hyperparameters, how many layers, which threshold. You run dozens of experiments and pick the best.</p>' +
+            '<p>The model does not learn from this data directly, but <b>you</b> do, and you make your choices accordingly. Which is why the validation set also gets "dirty" after a while.</p>'},
+      {state:{mod:'tek', adim:2},
+       body:'<p><b style="color:#22d3a0">TEST (20%).</b> This piece is touched <b>only at the very end, only once</b>. After the model is chosen and the settings are locked.</p>' +
+            '<p>Why so strict? Because if you look at the test set and then change the model, that set becomes a selection tool too, and you no longer have an honest estimate. This is exactly why people on Kaggle end up "overfitting to the leaderboard".</p>'},
+    ],
+  },
+  {
+    t:'When one split is not enough: k-fold',
+    goal:'You will see why a single split is a matter of luck when data is scarce, and how cross-validation fixes it.',
+    todo:'Move the slider through to round 5. Watch which piece becomes the test set on each round.',
+    kind:'controls', viz:'bolme', h:700, xp:50, state:{mod:'kfold'},
+    body:'<p>With 1000 rows, a 20% test set is 200 rows. Depending on the luck of those 200 rows your score can swing by ±3%. You saw this with your own eyes in the <b>"how does a model learn"</b> lesson: change the seed and the ranking flips.</p>' +
+         '<p><b>k-fold cross-validation</b> is the fix: cut the data into k pieces, make a <b>different</b> piece the test set on each round, and train on the remaining k−1. At the end you have k scores.</p>' +
+         '<p>Two gains:</p>' +
+         '<p>· Every row gets tested once, so you use all of the data<br>' +
+         '· You get a <b>distribution</b> rather than one number: mean <b>0.894</b>, standard deviation <b>0.024</b></p>' +
+         '<p>That standard deviation is worth gold. Instead of saying "my model is 0.894" you can say "0.894 ± 0.024", and another model scoring 0.90 no longer excites you, because you can see the difference sits inside the noise.</p>' +
+         '<p><b>When to use it:</b> with little data (under roughly 10,000 rows) it is close to mandatory. With plenty of data a single split is enough and k-fold only costs you k times as much compute.</p>',
+    learned:'<b>k-fold cross-validation removes the luck of a single split and gives you a distribution.</b><br><br>But with <b>time series and grouped data</b> (several records from the same patient, say) a random split creates leakage. There you use TimeSeriesSplit or GroupKFold.',
+    controls:[{k:'kat', lb:'ROUND', min:0, max:4, step:1, val:0}],
+    quiz:{
+      q:'Why is standard k-fold cross-validation wrong for time series data (daily sales forecasting)?',
+      opts:[
+        {t:'Time series get too large',
+         why:'Size has nothing to do with it.'},
+        {t:'A random split lets the model <b>see the future and predict the past</b>',
+         why:'Correct. Random k-fold can train on March data and test on February. In real life you never know the future, so this score is fantasy and misleading. The right approach is a <b>time based split</b>: always train on the past, always test on the future (TimeSeriesSplit).'},
+        {t:'Time series have no labels',
+         why:'They do; tomorrow\'s sales are the label.'},
+        {t:'k-fold only works for classification',
+         why:'No, it works for regression as well.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['sizinti'] = {
+  ad:'Data leakage detective',
+  alt:'The most expensive mistake in machine learning, and the quietest. The model looks brilliant and then collapses in production. In this lesson you solve a case.',
+  kaynaklar:[{"y":"Kaufman, Rosset, Perlich","t":"2012","b":"Leakage in Data Mining: Formulation, Detection, and Avoidance","n":"ACM TKDD, 6(4) / KDD 2011"},
+             {"y":"Kapoor, S. & Narayanan, A.","t":"2023","b":"Leakage and the Reproducibility Crisis in ML-based Science","n":"Patterns, 4(9)","u":"https://arxiv.org/abs/2207.07048"}],
+  rota:0,
+  adimlar:[
+  {
+    t:'The case: 99.4% accuracy',
+    goal:'You will learn why a "very good" result is a <b>warning sign</b>, and how leakage gets caught.',
+    todo:'Use NEXT to walk through the four stages. You are doing detective work.',
+    kind:'phases', viz:'sizinti', h:800, xp:45,
+    learned:'<b>Data leakage means giving the model information it will not have at prediction time.</b><br><br>The classic forms: columns that are filled in after the event · features derived from the target · a scaler or PCA fitted on all of the data · a random split on time series · the same person appearing in both training and test.',
+    phases:[
+      {state:{faz:0},
+       body:'<p>Your team trained a fraud model. <b>99.4% accuracy on the test set.</b> Everybody is happy and a presentation is being prepared.</p>' +
+            '<p>But you learned in the previous lesson that high accuracy is easy on data that is 97% normal. Even so, 99.4% is too high to be explained by imbalance; the model really is catching frauds.</p>' +
+            '<p style="color:#facc15"><b>And that is exactly why you should be suspicious.</b> In the real world fraud detection is hard. When it looks easy, there is usually a trick somewhere.</p>'},
+      {state:{faz:1},
+       body:'<p><b>First check: the correlation of every feature with the label.</b></p>' +
+            '<p>The normal features sit between 0.10 and 0.45, which is reasonable. But <b>two columns are above 0.90</b>.</p>' +
+            '<p>That is almost never good news. If a feature predicts the label that well, the question you have to ask is: <b>will this information really be in my hands AT the moment I make the prediction?</b></p>'},
+      {state:{faz:2},
+       body:'<p><b>Caught.</b></p>' +
+            '<p><b style="color:#f87171">manual_review</b>: a transaction only goes to manual review after a <i>suspicion</i> of fraud has already been raised. So this column is derived from the answer itself. For a new transaction this field will be <b>empty</b>.</p>' +
+            '<p><b style="color:#f87171">refunded</b>: a refund happens <i>after</i> the fraud has been detected. That is looking into the future.</p>' +
+            '<p>The model was not predicting fraud. <b>It was reading the fact that the fraud had already been found.</b></p>'},
+      {state:{faz:3},
+       body:'<p>The two columns were dropped and the model retrained: <b>71.2%</b>.</p>' +
+            '<p>That is not a drop, it is a <b>correction</b>. The 99.4% never existed; had you shipped it, the model\'s real performance would have been around 71% anyway, but because you expected 99% you would have believed the system had broken.</p>' +
+            '<p><b>The cost of leakage is always the same:</b> you make decisions with false confidence. Budget gets allocated, a team gets hired, promises get made, and the model delivers half of what was expected in the field.</p>'},
+    ],
+  },
+  {
+    t:'The checklist',
+    goal:'You will walk away with a concrete procedure for catching leakage in your own project.',
+    todo:'Read the list, then solve the scenario.',
+    kind:'static', viz:'sizinti', h:800, xp:55, state:{faz:3},
+    body:'<p>Leakage is not cleverly hidden, it is simply <b>not looked for</b>. Look for it and you usually find it. The procedure:</p>' +
+         '<p><b>1 · If the result is too good, be suspicious.</b> Ask a domain expert: "is this problem really this easy?" If they say no, go hunting for leakage.</p>' +
+         '<p><b>2 · Put every feature through the time test.</b> One question: <i>"will this value be filled in at the moment I make the prediction?"</i> If you are not sure, drop it.</p>' +
+         '<p><b>3 · Scan the correlations.</b> A relationship above 0.9 is almost always leakage.</p>' +
+         '<p><b>4 · Build a model with a single feature.</b> If one column gets you 95%, that column is the answer itself.</p>' +
+         '<p><b>5 · Put preprocessing inside a pipeline.</b> Scalers, PCA, encoders, all of them must be fitted <b>on the training fold only</b>. Do not try to do this by hand, use a <code>Pipeline</code>:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px;font-size:12.5px">from sklearn.pipeline import make_pipeline<br>from sklearn.model_selection import cross_val_score<br><br>pipe = make_pipeline(StandardScaler(), PCA(10), LogisticRegression())<br>cross_val_score(pipe, X, y, cv=5)   <span style="color:#566674"># a separate fit per fold, no leakage</span></p>' +
+         '<p><b>6 · Keep groups together.</b> The same customer, patient or device must not appear in both training and test → <code>GroupKFold</code>.</p>',
+    learned:'<b>The only test for leakage is time:</b> "will this information be in my hands at the moment I make the prediction?"<br><br>If the answer is "I am not sure", treat the feature as leakage. The few points of accuracy you give up are far cheaper than a model that collapses in production.<br><br><b>Track 0 is done.</b> You now know data, learning, memorisation, measurement, splitting and leakage. The last lesson pulls all of it together: <i>how do you prove that one model is really better?</i>',
+    quiz:{
+      q:'A hospital wants a model that predicts whether a patient will be readmitted within 30 days. Which of these is <b>leakage</b>?',
+      opts:[
+        {t:'The patient\'s age',
+         why:'Not leakage; it is known at admission and does not change.'},
+        {t:'The diagnosis code from the first admission',
+         why:'Not leakage; this information is already available at prediction time.'},
+        {t:'The number of medications prescribed after discharge',
+         why:'Critically, this <b>depends</b>. If they were prescribed at the moment of discharge there is no problem. But if the data was collected as "all prescriptions in the last 30 days", prescriptions from the readmission are inside it too, which is leakage. This kind of ambiguity is exactly what you ask a domain expert about, but option D is a much clearer case of leakage.'},
+        {t:'The patient\'s total number of admissions, as it stands at the time the data was collected',
+         why:'Correct, this is open leakage. That count includes the readmission you are trying to predict. If the patient was readmitted, the counter has gone up, so you have put the answer inside the feature. The fix is a version frozen in time, such as "number of admissions UP TO the admission date".'},
+      ], correct:3 },
+  },
+  ],
+};
