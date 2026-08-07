@@ -7755,3 +7755,243 @@ DERSLER_EN['adillik'] = {
   },
   ],
 };
+
+DERSLER_EN['leaderboard'] = {
+  ad:'The competition illusion: how much can you trust a leaderboard',
+  alt:'The top of a leaderboard is almost always worse than it looks. That is not cheating but a side effect of the act of selection itself.',
+  kaynaklar:[{"y":"Dwork, C. et al.","t":"2015","b":"The Reusable Holdout: Preserving Validity in Adaptive Data Analysis","n":"Science 349(6248)","u":"https://www.science.org/doi/10.1126/science.aaa9375"},
+             {"y":"Recht, B. et al.","t":"2019","b":"Do ImageNet Classifiers Generalize to ImageNet?","n":"ICML 2019","u":"https://arxiv.org/abs/1902.10811"},
+             {"y":"Blum, A. & Hardt, M.","t":"2015","b":"The Ladder: A Reliable Leaderboard for Machine Learning Competitions","n":"ICML 2015","u":"https://arxiv.org/abs/1502.04585"},
+             {"y":"Demšar, J.","t":"2006","b":"Statistical Comparisons of Classifiers over Multiple Data Sets","n":"JMLR 7","u":"https://jmlr.org/papers/v7/demsar06a.html"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'The winner\'s score is inflated',
+    goal:'You will see why the score rises without anybody cheating.',
+    todo:'Raise the number of models. Where does the leader\'s score go?',
+    kind:'controls', viz:'skorTablosu', h:760, xp:50, state:{sahne:'sisme'},
+    body:'<p>A thought experiment: <b>every model on the leaderboard is really the same</b>, all of them at 80.0% accuracy. None is better than any other. The test set is 1000 examples.</p>' +
+         '<p>Every model\'s observed score comes from a binomial distribution and deviates a little up or down by chance. Then what do we do? <b>We pick the highest score.</b></p>' +
+         '<p>Picking the highest score is picking the luckiest measurement error. The result (an exact calculation with order statistics): with 100 models the leader appears to be at <b>83.11%</b>. The true value is 80.00%. An inflation of <b>3.11 points</b>.</p>' +
+         '<p>On a test set of 200 examples the leader in the same situation appears at <b>86.79%</b>: an inflation of 6.79 points.</p>' +
+         '<p>Nobody cheated here, no model was overfitted, there is no data leakage. The only source of the inflation is <b>the act of selection itself</b>. This is called the winner\'s curse and it is a well known side effect of multiple comparisons in statistics.</p>' +
+         '<p>The practical consequence: the number at the top of a leaderboard <b>is not an unbiased estimate</b> of that model\'s real performance. It is biased upwards and the bias grows with the number of models.</p>',
+    learned:'<b>The top of a leaderboard is biased upwards.</b><br><br>With 100 models that are really all at 80.0% and a test set of 1000 examples the leader appears at 83.11%. On a test set of 200 examples, 86.79%.<br><br>The source is not cheating or overfitting but <b>the act of picking the highest score</b>. The winner\'s curse is the unavoidable side effect of many comparisons.',
+    controls:[{k:'Ni', lb:'MODELS ON THE LEADERBOARD', min:0, max:5, step:1, val:4},
+              {k:'ni', lb:'TEST SET', min:0, max:3, step:1, val:2}],
+  },
+  {
+    t:'Is the winner really the best',
+    goal:'You will measure when a ranking carries information.',
+    todo:'Lower the true difference to zero. What does the probability of the winner being right become?',
+    kind:'controls', viz:'skorTablosu', h:760, xp:50, state:{sahne:'kazanan', ni:2},
+    body:'<p>Now let the models really differ: the best is at 80.0%, the second a little lower, the third lower still, and so on. The question: is the observed leader really the best model?</p>' +
+         '<p>If the true difference is zero the answer is exactly <b>1/N</b>. With 20 models that is 5.0%, no different from picking at random. That is a check: the calculation works.</p>' +
+         '<p>With a true difference of 0.5 points, 20 models and 1000 test examples, the probability of the winner being right is <b>43.4%</b>. So more than half the time the top of the leaderboard is not the best model.</p>' +
+         '<p>With a difference of 1 point it is 64.3%, with 2 points 85.7% and with 4 points 98.5%.</p>' +
+         '<p>The rule is clear: <b>if the true difference is smaller than the measurement noise, the ranking carries no information.</b> On a test set of 1000 examples the standard error of an accuracy around 80% is about 1.3 points. If the gap between first and second is below that, the ranking is essentially a coin flip.</p>' +
+         '<p>This is why serious comparisons report a confidence interval or a statistical test rather than a single score (Demšar, 2006).</p>',
+    learned:'<b>If the true difference is smaller than the measurement noise, the ranking carries no information.</b><br><br>With no true difference the probability of the winner being best is exactly 1/N. With 20 models it is 43.4% at a difference of 0.5 points, 64.3% at 1 point and 85.7% at 2 points.<br><br>On a test set of 1000 examples the standard error of an 80% accuracy is about 1.3 points. If the gap between first and second is below that, the ranking is a coin flip.',
+    controls:[{k:'Ni', lb:'NUMBER OF MODELS', min:2, max:4, step:1, val:3},
+              {k:'di', lb:'TRUE GAP BETWEEN NEIGHBOURS', min:0, max:4, step:1, val:1}],
+  },
+  {
+    t:'Growing the test set',
+    goal:'You will measure how much the best known remedy helps.',
+    todo:'Grow the test set. Does the inflation go to zero?',
+    kind:'controls', viz:'skorTablosu', h:760, xp:50, state:{sahne:'test', ni:2},
+    body:'<p>Since the source of the inflation is measurement noise, growing the test set should reduce the noise. It does, but more slowly than you would expect.</p>' +
+         '<p>With 100 models: the inflation is <b>6.79</b> points at 200 examples, 4.37 at 500, 3.11 at 1000 and <b>1.41</b> at 5000.</p>' +
+         '<p>Growing the test set by a factor of <b>25</b> only lowered the inflation by a factor of <b>4.8</b>. The reason is simple: the binomial standard error falls with 1/√n, so the inflation does roughly the same. A square root improvement is expensive.</p>' +
+         '<p>And it does not go to zero. Even on a test set of 5000 examples the score of the leader picked from among 100 models is inflated by 1.41 points.</p>' +
+         '<p>The second variable is even more annoying: <b>you do not control the number of models.</b> On a public leaderboard you cannot know how many people made how many attempts, and the inflation grows with that.</p>' +
+         '<p>The real danger is one step further. Submitting to a leaderboard again and again and changing the model according to the result each time slowly turns the test set into a training set. Dwork and colleagues\' (2015) work on adaptive data analysis addresses exactly this problem and proposes a noise added, limited access validation mechanism as the solution.</p>',
+    learned:'<b>Growing the test set lowers the inflation with 1/√n: a square root improvement and an expensive one.</b><br><br>With 100 models the inflation is 6.79 points at 200 examples and 1.41 at 5000. So a factor of 25 in size buys a factor of 4.8 in improvement.<br><br>And it does not go to zero, and you cannot control the number of models. Submitting to the same test set again and again slowly turns it into a training set.',
+    controls:[{k:'Ni', lb:'NUMBER OF MODELS', min:1, max:5, step:1, val:4}],
+  },
+  {
+    t:'How to read a leaderboard',
+    goal:'You will turn the measurements into a reading habit.',
+    todo:'Answer the question.',
+    kind:'controls', viz:'skorTablosu', h:760, xp:75, state:{sahne:'sisme', ni:1},
+    body:'<p>The reading rules that follow from the three measurements:</p>' +
+         '<p><b>1. Read the interval, not the leader.</b> A single score is not unbiased. If no confidence interval is given, compute it roughly: the standard error of an accuracy p on n examples is √(p(1−p)/n). For 80% on 1000 examples that is 1.3 points.</p>' +
+         '<p><b>2. Ask how many models competed.</b> The inflation grows with the number of models. On a table with hundreds of submissions the top places are indistinguishable from each other.</p>' +
+         '<p><b>3. Ask how many submissions were made.</b> Repeated submission to the same test set slowly turns the table into a training curve.</p>' +
+         '<p><b>4. A new test set is the strongest evidence.</b> Recht and colleagues (2019) collected a brand new test set for ImageNet and the accuracy of every model dropped noticeably. But they also found that the ranking was largely preserved: the absolute numbers were inflated while the relative ranking was more robust.</p>' +
+         '<p>That last finding strikes an important balance. Leaderboards are not worthless; <b>they exaggerate the absolute numbers but still carry information about distant rankings.</b> What is unreliable is comparing top places that are close to each other.</p>',
+    learned:'<b>Rules for reading a leaderboard.</b><br><br>Read the interval rather than the leader (the standard error of p on n examples is √(p(1−p)/n)); ask how many models competed and how many submissions were made.<br><br>The tables are not worthless: Recht and colleagues (2019) found with a new ImageNet test set that the absolute accuracies fell while the ranking was largely preserved. What is unreliable is comparing top places that are close together.',
+    controls:[{k:'Ni', lb:'NUMBER OF MODELS', min:0, max:5, step:1, val:4}],
+    quiz:{
+      q:'On a benchmark table the first model gets 91.4%, the second 91.1% and the third 90.9%. The test set is 2000 examples and there are 60 submissions on the table. Should you pick the first model?',
+      opts:[
+        {t:'You should treat these three as indistinguishable and leave the choice to other criteria (cost, latency, licence)',
+         why:'Correct. On 2000 examples the standard error of a 91% accuracy is about 0.64 points; the gaps of 0.3 and 0.5 points fall inside that. And there are 60 submissions, so the inflation you measured in the lesson is at work too: being first itself carries a selection side effect. In that situation the ranking does not give enough information for a decision and leaving the choice to other measurable criteria is the right move.'},
+        {t:'Yes, the highest score is the best model',
+         why:'What you measured in the lesson is exactly why that is wrong. When the true difference is smaller than the measurement noise the probability of the winner being best falls fast; with no true difference at all it is exactly 1/N.'},
+        {t:'No, you should pick the second because the first one\'s score is inflated',
+         why:'The inflation is real but moving to the second does not fix it: the second\'s score went through the same selection process and is inflated too. The right move is not to correct the ranking but to treat all three as indistinguishable.'},
+        {t:'You should grow the test set tenfold and look again',
+         why:'It helps, but as you measured in the lesson the improvement is a square root one: a factor of 10 in size lowers the noise only by a factor of 3.2 and is usually not enough to resolve a 0.3 point gap. And the test set is usually not under your control.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['aktif-ogrenme'] = {
+  ad:'Active learning: which example should we label',
+  alt:'If labelling is expensive, let the model choose which example to ask about. The gain is real, and so are its limits and traps.',
+  kaynaklar:[{"y":"Settles, B.","t":"2009","b":"Active Learning Literature Survey","n":"Univ. of Wisconsin-Madison TR 1648","u":"https://minds.wisconsin.edu/handle/1793/60660"},
+             {"y":"Lewis, D. D. & Gale, W. A.","t":"1994","b":"A Sequential Algorithm for Training Text Classifiers","n":"SIGIR 1994","u":"https://arxiv.org/abs/cmp-lg/9407020"},
+             {"y":"Gal, Y. et al.","t":"2017","b":"Deep Bayesian Active Learning with Image Data","n":"ICML 2017","u":"https://arxiv.org/abs/1703.02910"},
+             {"y":"Lowell, D. et al.","t":"2019","b":"Practical Obstacles to Deploying Active Learning","n":"EMNLP 2019","u":"https://arxiv.org/abs/1807.04801"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'Which example should we label',
+    goal:'You will measure what choosing the labels adds to the accuracy.',
+    todo:'Change the class balance. Where does the gap between the two curves grow?',
+    kind:'controls', viz:'aktifOgrenme', h:760, xp:50, state:{sahne:'egri'},
+    body:'<p>The setup: a pool of 400 unlabelled examples, a limited labelling budget, and a budget holder who will buy the labels. The question: which examples should be sent for labelling?</p>' +
+         '<p><b>Random:</b> pick at random from the pool. Simple and unbiased.<br>' +
+         '<b>Uncertainty sampling:</b> train the current model, pick the example nearest the decision boundary (that is where the model is most unsure), have it labelled, repeat. This is the oldest and most widespread active learning method (Lewis and Gale, 1994).</p>' +
+         '<p>Every point is the average of 15 independent runs; a single run is not meaningful at this scale.</p>' +
+         '<p>On balanced data (half and half): at 8 labels random gets 65.8% and uncertainty 70.5%. At 16 labels 73.0% against 76.0%. At 64 labels 80.9% against 81.7%.</p>' +
+         '<p>The gain is real but should not be exaggerated. Random reaches with about 24-32 labels what uncertainty sampling reaches with 16: a saving of <b>about a factor of two</b>, not a hundred.</p>' +
+         '<p>And there is a ceiling: because the data is noisy no method can go above 82.8%. Active learning gets you to that ceiling faster, it does not raise the ceiling.</p>',
+    learned:'<b>Uncertainty sampling reaches the same accuracy with about half as many labels.</b><br><br>On balanced data 73.0% against 76.0% at 16 labels; 80.9% against 81.7% at 64.<br><br>The gain is real but limited: the noise ceiling (82.8%) is the same for both methods. Active learning gets you to the ceiling faster, it does not raise the ceiling.',
+    controls:[{k:'di', lb:'POSITIVE SHARE IN THE POOL', min:0, max:2, step:1, val:0}],
+  },
+  {
+    t:'Where the gain actually comes from',
+    goal:'You will see the hidden effect of active learning.',
+    todo:'Break the balance and look at the composition of the labelled set.',
+    kind:'controls', viz:'aktifOgrenme', h:760, xp:50, state:{sahne:'bilesim'},
+    body:'<p>The gain of uncertainty sampling is not only "picking hard examples". The <b>composition</b> of the labelled set changes too.</p>' +
+         '<p>When the positive class is 20% of the pool, random sampling naturally collects about 20% positives. Uncertainty sampling collects <b>42%</b>.</p>' +
+         '<p>The reason is direct: the decision boundary is where the two classes meet. Picking points near the boundary brings in roughly equal numbers from both classes. So active learning also works, unintentionally, as a <b>class balancing</b> mechanism.</p>' +
+         '<p>That explains why the gain grows on imbalanced data. On balanced data the gain at 16 labels is 3.0 points; at a positive share of 20% it is 3.4 points.</p>' +
+         '<p>But the same mechanism carries an important warning: <b>the labelled set is no longer a representative sample of the pool.</b> If you use those labels for another purpose (say estimating the class ratio or training another model) you get a biased result. In Lowell and colleagues\' (2019) work on practical obstacles this appears as one of the least discussed costs of active learning.</p>',
+    learned:'<b>Uncertainty sampling is also a class balancer.</b><br><br>With 20% positives in the pool, uncertainty sampling collects 42% positives against random\'s 22%.<br><br>The price: the labels collected are no longer a representative sample of the pool. Using those labels for another purpose (estimating the class ratio, training another model) gives a biased result.',
+    controls:[{k:'di', lb:'POSITIVE SHARE IN THE POOL', min:0, max:2, step:1, val:1}],
+  },
+  {
+    t:'The cold start trap',
+    goal:'You will see the case where active learning is worse than random.',
+    todo:'Compare the two points at 8 labels.',
+    kind:'static', viz:'aktifOgrenme', h:760, xp:50, state:{sahne:'soguk'},
+    body:'<p>Now the hard case: the positive class is only 8% of the pool and the budget is very small.</p>' +
+         '<p>At 8 labels random gets <b>83.0%</b> and uncertainty sampling <b>80.6%</b>. Active learning is <b>worse</b>.</p>' +
+         '<p>The reason is hidden in the mechanism: the thing that measures the uncertainty is <b>the model itself</b>. If the model was trained on 4 examples its uncertainty estimate is nearly random too, and the selection locks onto the wrong region. The model follows its own error and collects the examples that feed that error.</p>' +
+         '<p>As the budget grows the situation reverses: at 64 labels random gets 89.8% and uncertainty <b>91.1%</b>.</p>' +
+         '<p>This is why in practice active learning is never started from scratch. The standard approach is to make the first round <b>random</b>, build a reasonable starting model, and only then switch to uncertainty.</p>' +
+         '<p>A second safeguard: use criteria that also consider <b>diversity</b> instead of pure uncertainty. Pure uncertainty can pick very similar examples from the same region one after another; if you are selecting in batches that is a serious waste.</p>',
+    learned:'<b>If the model measuring the uncertainty is bad, uncertainty sampling is bad too.</b><br><br>With a positive share of 8%, at 8 labels random gets 83.0% and uncertainty 80.6%. At 64 labels it reverses: 89.8% against 91.1%.<br><br>The safeguards: make the first round random to build a reasonable starting model, and use criteria that consider diversity rather than pure uncertainty.',
+  },
+  {
+    t:'When to use it',
+    goal:'You will recognise the situations where active learning really pays.',
+    todo:'Answer the question.',
+    kind:'controls', viz:'aktifOgrenme', h:760, xp:75, state:{sahne:'egri'},
+    body:'<p>The conditions that follow from the measurements:</p>' +
+         '<p><b>1. Labelling really has to be expensive.</b> The gain is about a factor of two. If the cost per label is low, that saving does not pay for the complexity of setup and maintenance.</p>' +
+         '<p><b>2. The pool has to be large and varied.</b> If there is nothing to choose from, a selection method gains nothing either.</p>' +
+         '<p><b>3. Class imbalance grows the gain.</b> You measured it: the gap is 3.4 points at a positive share of 20% against 3.0 points on balanced data.</p>' +
+         '<p><b>4. The starting model has to be reasonable.</b> On a cold start active learning does harm.</p>' +
+         '<p>And a hidden cost: <b>the collected label set is biased.</b> If you change the model (say you move from logistic regression to a neural network) those labels were selected according to the old model\'s uncertainty and may not be the most informative set for the new one. Lowell and colleagues (2019) showed that this is a serious obstacle in practice.</p>' +
+         '<p>In short: active learning is not magic but a saving of about a factor of two. If your cost per label is high it is worth it; if not, random sampling gives both a simpler and a more honest dataset.</p>',
+    learned:'<b>Active learning is a label saving of about a factor of two, not magic.</b><br><br>The conditions: labelling really has to be expensive, the pool has to be large, class imbalance grows the gain, and the starting model has to be reasonable.<br><br>The hidden cost: the collected label set is biased and when you change the model those labels may not be the most informative set for the new one.',
+    controls:[{k:'di', lb:'POSITIVE SHARE IN THE POOL', min:0, max:2, step:1, val:2}],
+    quiz:{
+      q:'You are building a model to detect a rare manufacturing defect. The defect rate is 2%, labelling requires an expert engineer, and you have millions of unlabelled images. Should you use active learning?',
+      opts:[
+        {t:'Yes, but only after making the first round random and building a reasonable starting model',
+         why:'Correct. All three conditions hold: labelling is expensive (an expert engineer), the pool is very large, and the class imbalance is high. You measured it in the lesson: as the imbalance grows, the positive share collected by uncertainty sampling rises far above that of the pool and the gain grows. But you also measured the cold start trap in the same lesson: at 8% imbalance with 8 labels uncertainty was worse than random (80.6% against 83.0%). This is why the first round has to be random.'},
+        {t:'No, active learning does not work on imbalanced data',
+         why:'The measurement says the opposite: the gain grew as the imbalance grew, because selecting near the boundary balances the labelled set. What does not work is not the imbalance but the cold start.'},
+        {t:'Yes, start directly with uncertainty sampling',
+         why:'Half right. Active learning suits this case, but starting directly is exactly the trap you measured. When the starting model is bad the uncertainty estimate is bad too and the selection locks onto the wrong region.'},
+        {t:'No, you should label all the data first',
+         why:'The question exists precisely because labelling millions of images with an expert engineer is impossible. And it is not necessary either: as you saw in the lesson, the accuracy approaches the noise ceiling after a certain number of labels.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['automl'] = {
+  ad:'AutoML: the model that picks your model',
+  alt:'Automated search really works. But most of the gain comes not from the search algorithm but from who defined the search space.',
+  kaynaklar:[{"y":"Bergstra, J. & Bengio, Y.","t":"2012","b":"Random Search for Hyper-Parameter Optimization","n":"JMLR 13","u":"https://jmlr.org/papers/v13/bergstra12a.html"},
+             {"y":"Feurer, M. et al.","t":"2015","b":"Efficient and Robust Automated Machine Learning (auto-sklearn)","n":"NeurIPS 2015","u":"https://papers.nips.cc/paper/5872-efficient-and-robust-automated-machine-learning"},
+             {"y":"Erickson, N. et al.","t":"2020","b":"AutoGluon-Tabular: Robust and Accurate AutoML for Structured Data","n":"arXiv:2003.06505","u":"https://arxiv.org/abs/2003.06505"},
+             {"y":"Yang, L. & Shami, A.","t":"2020","b":"On Hyperparameter Optimization of Machine Learning Algorithms: Theory and Practice","n":"Neurocomputing 415","u":"https://arxiv.org/abs/2007.15745"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'What is inside the search space',
+    goal:'You will see what the search is searching inside.',
+    todo:'Look at the number of red and green bars.',
+    kind:'static', viz:'autoML', h:760, xp:50, state:{sahne:'uzay'},
+    body:'<p>The setup: 12 different regression tasks, each a noisy third degree polynomial. The model family is ridge regression with two hyperparameters: the penalty coefficient λ (6 values) and the polynomial degree (5 values). <b>30 configurations</b> in total.</p>' +
+         '<p>Ridge is solved in closed form, so every number here is an exact calculation.</p>' +
+         '<p>The plot shows the average test error of the 30 configurations over the 12 tasks, sorted. The dashed blue line is a reasonable <b>default</b> configuration (λ = 0.1, degree 3).</p>' +
+         '<p>The result is striking: <b>27</b> of the 30 configurations (90 per cent) are worse than the default. Only three are better.</p>' +
+         '<p>The dynamic range between them is large too: the best is <b>0.8677</b> (λ = 0.01, degree 3) and the worst <b>27.0</b> (λ = 100, degree 1). About thirty times.</p>' +
+         '<p>What follows from this is not about the search itself: a random search will spend 90 per cent of its budget on options worse than the default. That is not an algorithm problem but a problem of <b>who defined the space</b>.</p>',
+    learned:'<b>Most of a search space is usually rubbish.</b><br><br>27 of the 30 configurations (90%) are worse than a reasonable default. The best is 0.8677 and the worst 27.0: a factor of thirty.<br><br>A random search spends 90% of its budget on options worse than the default. That is a problem of space definition, not of algorithm.',
+  },
+  {
+    t:'The search has to catch the default first',
+    goal:'You will measure when the search starts to pay off.',
+    todo:'Raise the number of trials. Where does the orange curve cross the blue line?',
+    kind:'controls', viz:'autoML', h:760, xp:50, state:{sahne:'arama'},
+    body:'<p>Now let us run a random search: draw N configurations from the space, pick the best on a validation set, report the test error. Every number is the average of 40 independent searches.</p>' +
+         '<p>A single trial: <b>7.92</b>. The default is 0.8988. So one random configuration is about <b>nine times</b> worse than the default. An expected result, since 90% of the space is bad anyway.</p>' +
+         '<p>At 5 trials it is 1.24, still behind. <b>At 10 trials it is 0.9022</b>: only here does the search catch the default.</p>' +
+         '<p>At 20 trials 0.8738 and at 30 trials 0.8703. The best average reachable is 0.8507.</p>' +
+         '<p>So a search of thirty trials takes you from 0.8988 to 0.8703 compared with not searching at all. The gain is real but small, and the first ten trials went only towards recovering the starting point.</p>' +
+         '<p>This explains why AutoML tools start with reasonable defaults and predefined "portfolios" (Feurer et al., 2015). Searching randomly from scratch wastes most of the budget.</p>',
+    learned:'<b>In a badly defined space, a search spends budget just catching the default.</b><br><br>A single trial gives 7.92 (the default is 0.8988). At 10 trials it only draws level at 0.9022. At 30 trials 0.8703.<br><br>The gain is real but small, and the first ten trials merely recover the starting point. This is why AutoML tools start with reasonable defaults.',
+    controls:[{k:'ni', lb:'NUMBER OF TRIALS', min:0, max:5, step:1, val:3}],
+  },
+  {
+    t:'Narrowing the space',
+    goal:'You will see the relative weight of the search space and the search algorithm.',
+    todo:'Compare the green curve with the orange one at the same number of trials.',
+    kind:'controls', viz:'autoML', h:760, xp:50, state:{sahne:'dar'},
+    body:'<p>Now we change one single thing: we restrict the search space to the good region according to the measurement in the first step. λ ∈ {0.001, 0.01, 0.1} and degree ∈ {3, 4}. <b>6 configurations</b> in total. The search algorithm is the same and the budget is the same.</p>' +
+         '<p>The result: in the narrow space <b>a single trial gives 0.8932</b>. That is, with no search at all, one random draw is already better than the default (0.8988).</p>' +
+         '<p>The wide space reaches that level only <b>at 10 trials</b> (0.9022).</p>' +
+         '<p>More striking: <b>5 trials</b> in the narrow space (0.8643) beat <b>30 trials</b> in the wide space (0.8703). A better result with six times less computation.</p>' +
+         '<p>The lesson here is the least discussed side of AutoML: <b>the search space matters more than the search algorithm.</b> Bergstra and Bengio (2012) showing that random search beats grid search was important, but both of them search inside the same space. Narrowing the space beats both.</p>' +
+         '<p>A note of honesty: we picked the narrow space by looking at the measurement in the first step, that is we narrowed it "by looking at the answer". In real life that information comes from domain knowledge, from previous work or from a small pilot run. Wherever it comes from, <b>it is the most valuable input</b>.</p>',
+    learned:'<b>The search space matters more than the search algorithm.</b><br><br>In the narrow space a single trial gives 0.8932: already better than the default. The wide space reaches that level at 10 trials. 5 trials in the narrow space (0.8643) beat 30 in the wide space (0.8703).<br><br>The information that narrows the space comes from domain knowledge, previous work or a small pilot run. Wherever it comes from, it is the most valuable input.',
+    controls:[{k:'ni', lb:'NUMBER OF TRIALS', min:0, max:5, step:1, val:0}],
+  },
+  {
+    t:'When to use AutoML',
+    goal:'You will put the tool in the right place.',
+    todo:'Answer the question.',
+    kind:'controls', viz:'autoML', h:760, xp:75, state:{sahne:'arama'},
+    body:'<p>Where the measurements place it:</p>' +
+         '<p><b>AutoML is a good baseline producer.</b> With no human expert around, a tool that starts with reasonable defaults and predefined portfolios quickly gives a usable model. The strength of tools like AutoGluon comes largely from this and from the ensembling they do at the end (Erickson et al., 2020).</p>' +
+         '<p><b>AutoML is no substitute for domain knowledge.</b> You measured it: the information that narrows the space gains more than the search itself. That information is not in the tool but in you.</p>' +
+         '<p><b>The validation set gets used up.</b> Trying hundreds of configurations on the same validation set is the same problem as the winner\'s curse you measured in the leaderboard lesson: the validation score of the chosen configuration is biased upwards. This is why an AutoML result must be verified on a separate test set.</p>' +
+         '<p><b>The real bottleneck is usually not model selection.</b> In most projects feature engineering, data quality and the definition of the problem are far more decisive than hyperparameter choice. AutoML does none of those.</p>',
+    learned:'<b>AutoML is a good baseline producer, not a substitute for domain knowledge.</b><br><br>The information that narrows the space gains more than the search itself, and that information is not in the tool but in you.<br><br>Two warnings: trying hundreds of configurations on the same validation set biases the chosen score upwards (a separate test set is essential); and in most projects the bottleneck is not model selection but data quality and problem definition.',
+    controls:[{k:'ni', lb:'NUMBER OF TRIALS', min:0, max:5, step:1, val:4}],
+    quiz:{
+      q:'You ran an AutoML tool with 500 trials and the best configuration gave 94.2% on the validation set. The simple default model you had gave 93.6%. What do you do?',
+      opts:[
+        {t:'I verify the difference on a separate test set; after a selection over 500 trials the validation score is biased upwards',
+         why:'Correct. Trying 500 configurations on the same validation set is exactly the winner\'s curse you measured in the leaderboard lesson: the validation score of the chosen configuration is biased upwards. The 0.6 point difference may fall inside that bias. A separate test set is the only honest answer to this problem.'},
+        {t:'I use the AutoML result, 94.2% > 93.6%',
+         why:'The validation score is the outcome of a selection over 500 trials and it is not unbiased. Accepting the difference without verifying it is exactly the mistake you measured in the leaderboard lesson.'},
+        {t:'I raise the number of trials to 5000',
+         why:'That makes the problem bigger: more trials increase the bias on the validation set. And as you measured in the lesson the gain saturates; the real gain comes from narrowing the space, not from raising the number of trials.'},
+        {t:'I use the default, AutoML\'s gain is negligible',
+         why:'Too strict. The gain may be real; the problem is that it has not been measured. The right move is not to reject it but to verify it on a separate test set.'},
+      ], correct:0 },
+  },
+  ],
+};
