@@ -2159,3 +2159,102 @@ DERSLER_EN['backprop'] = {
   },
   ],
 };
+
+DERSLER_EN['aktivasyon'] = {
+  ad:'Activation functions',
+  alt:'The thing that makes a network deep. And the reason for the biggest obstacle in front of deep learning until the 2010s.',
+  kaynaklar:[{"y":"Glorot, X. & Bengio, Y.","t":"2010","b":"Understanding the Difficulty of Training Deep Feedforward Neural Networks","n":"AISTATS 2010"},
+             {"y":"Nair, V. & Hinton, G.","t":"2010","b":"Rectified Linear Units Improve Restricted Boltzmann Machines","n":"ICML 2010"},
+             {"y":"He, K. et al.","t":"2015","b":"Delving Deep into Rectifiers (PReLU / He initialisation)","n":"ICCV 2015","u":"https://arxiv.org/abs/1502.01852"},
+             {"y":"Hendrycks, D. & Gimpel, K.","t":"2016","b":"Gaussian Error Linear Units (GELU)","n":"arXiv:1606.08415","u":"https://arxiv.org/abs/1606.08415"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'Why is an activation necessary?',
+    goal:'You will understand why, without an activation, however many layers you stack they collapse into a single line.',
+    todo:'Select the functions one at a time and look at the curve above and its derivative below.',
+    kind:'controls', viz:'aktivasyon', h:760, xp:15,
+    body:'<p>A layer does this: <b>z = Wx + b</b>. A linear operation.</p>' +
+         '<p>Stack two layers without an activation and you get:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">y = W₂(W₁x + b₁) + b₂  =  (W₂W₁)x + (W₂b₁ + b₂)  =  W\'x + b\'</p>' +
+         '<p><b>A single linear layer again.</b> Stack 100 of them and nothing changes; the composition of linear operations is linear.</p>' +
+         '<p>The activation is the non linear link that breaks that chain. <b>It is the one thing that makes deep learning possible.</b></p>' +
+         '<p>But the choice matters. Look at the derivative plot below:</p>' +
+         '<p>· <b style="color:#4cc4ff">Sigmoid:</b> its derivative is at most <b>0.25</b>. Its output is between 0 and 1, readable as a probability.<br>' +
+         '· <b style="color:#a78bfa">Tanh:</b> derivative at most 1.0, output between −1 and 1, centred on zero.<br>' +
+         '· <b style="color:#22d3a0">ReLU:</b> the derivative is exactly <b>1</b> in the positive region and 0 in the negative one. Free to compute.<br>' +
+         '· <b style="color:#fb923c">LeakyReLU:</b> 0.01 instead of 0 in the negative region, against the "dead neuron" problem.<br>' +
+         '· <b style="color:#f472b6">GELU:</b> smooth, the default in Transformers.</p>',
+    learned:'<b>Without an activation, depth means nothing.</b> W₂(W₁x + b₁) + b₂ simplifies back to W\'x + b\', a single linear layer. Stack 100 of them and nothing changes.<br><br>A non linear activation is the link that breaks that chain. It is the one thing that makes deep learning possible.',
+    controls:[{k:'ai', lb:'FUNCTION', min:0, max:4, step:1, val:0}],
+  },
+  {
+    t:'The vanishing gradient, in numbers',
+    goal:'You will see why sigmoid does not work in deep networks, through measured gradient magnitudes.',
+    todo:'Switch between sigmoid and ReLU. Compare the steepness of the curve on the right.',
+    kind:'controls', viz:'aktivasyon', h:760, xp:60,
+    body:'<p>We built a network with 10 layers of 12 neurons each and <b>measured the magnitude of the gradient at every layer</b>. The gradient flows from the output to the input, that is from layer 10 to layer 1.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">            layer 10       layer 1        shrinkage<br>sigmoid     6.83e-2   →   <b style="color:#f87171">7.24e-8</b>      ~9.4×10⁵ times<br>tanh        2.80e-1   →   6.83e-2         ~4 times<br>relu        2.04e-1   →   9.15e-3         ~22 times</p>' +
+         '<p><b>With sigmoid the first layer\'s gradient is a millionth of the last layer\'s.</b> In practice that means the early layers barely learn at all.</p>' +
+         '<p>The reason fits in one line. During backpropagation the gradient is <b>multiplied</b> by that layer\'s activation derivative at every layer crossing. Sigmoid\'s derivative is at most 0.25:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">0.25⁹  ≈  3.8 × 10⁻⁶</p>' +
+         '<p>The shrinkage we measured is 1.06 × 10⁻⁶, the same order. <b>Theory and measurement agree.</b></p>' +
+         '<p>ReLU\'s derivative in the positive region is exactly <b>1</b>. Any power of 1 is 1, so the gradient flows without shrinking. ReLU becoming widespread in 2010 was one of the biggest reasons deep networks became trainable (the others: good initialisation, batch norm, residual connections).</p>' +
+         '<p><b>And this is the same phenomenon you saw two lessons ago:</b> in a soft decision tree, when T got small the sigmoid saturated, the gradient vanished and the model could not learn. The same mathematics.</p>',
+    learned:'<b>The gradient is multiplied by the activation derivative at every layer.</b> If that derivative is below 1, it shrinks exponentially.<br><br>· sigmoid (max 0.25) → unusable in a deep network, only in the last layer<br>· tanh (max 1.0) → better, still common in RNNs<br>· ReLU (exactly 1 in the positive region) → the default for deep networks, but with a dead neuron risk<br>· GELU → smooth, the Transformer standard',
+    controls:[{k:'ai', lb:'FUNCTION', min:0, max:4, step:1, val:0}],
+    quiz:{
+      q:'ReLU solves the vanishing gradient. So what is ReLU\'s own problem?',
+      opts:[
+        {t:'It is expensive to compute',
+         why:'The opposite; ReLU is a <code>max(0, z)</code> comparison, far cheaper than sigmoid\'s exponential.'},
+        {t:'The derivative is exactly 0 in the negative region, so a neuron stuck there never updates again (a "dead ReLU")',
+         why:'Correct. A large gradient step can push a neuron permanently into the negative region; from then on the derivative is 0, it receives no gradient and it dies. A significant fraction of the neurons in a network can die this way. The fixes: LeakyReLU (a slope of 0.01 in the negative region), ELU, GELU, and a smaller learning rate.'},
+        {t:'Its output cannot be read as a probability',
+         why:'True but not a problem; hidden layers do not need probabilities, and the last layer uses softmax or sigmoid.'},
+        {t:'It only works in shallow networks',
+         why:'The opposite; ReLU is preferred precisely for deep networks.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['optimizer'] = {
+  ad:'SGD, Momentum, Adam',
+  alt:'The same loss surface, the same starting point. The only difference is how they take the step, and that difference turns into an 11 fold speedup.',
+  kaynaklar:[{"y":"Polyak, B. T.","t":"1964","b":"Some Methods of Speeding up the Convergence of Iteration Methods","n":"USSR Comp. Math. and Math. Physics, 4(5)"},
+             {"y":"Kingma, D. & Ba, J.","t":"2015","b":"Adam: A Method for Stochastic Optimization","n":"ICLR 2015","u":"https://arxiv.org/abs/1412.6980"},
+             {"y":"Ruder, S.","t":"2016","b":"An Overview of Gradient Descent Optimization Algorithms","n":"arXiv:1609.04747","u":"https://arxiv.org/abs/1609.04747"},
+             {"y":"Loshchilov, I. & Hutter, F.","t":"2019","b":"Decoupled Weight Decay Regularization (AdamW)","n":"ICLR 2019","u":"https://arxiv.org/abs/1711.05101"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'Three methods, the same race',
+    goal:'You will see, side by side on the same surface, what Momentum and Adam buy over plain gradient descent.',
+    todo:'Drag the step slider from 0 to 600. Watch how the three paths diverge.',
+    kind:'controls', viz:'optimizer', h:760, xp:55,
+    body:'<p>In the "how does a model learn" lesson you saw a problem: the first steps were fast and then the model <b>crawled along the floor of the valley</b>. The reason is that the surface is steep in one direction and almost flat in the other.</p>' +
+         '<p>Three methods start from the same point, w=12, b=42:</p>' +
+         '<p><b style="color:#4cc4ff">SGD</b>, θ ← θ − η·g. Nothing but the current slope.</p>' +
+         '<p><b style="color:#fb923c">Momentum</b>, v ← 0.9·v + g, θ ← θ − η·v. It carries part of the previous steps. <b>Speed builds up</b> along the valley and the sideways oscillation damps out. Like a ball rolling downhill.</p>' +
+         '<p><b style="color:#22d3a0">Adam</b> keeps a separate step size for every parameter. It tracks both the mean of the gradient (m) and the mean of its square (v), and divides the step by √v. A parameter that constantly receives large gradients slows down; one that receives small ones speeds up.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">steps needed to reach MSE ≤ 6:<br><br>SGD      (lr 0.01)  →  <b>557</b> steps<br>Momentum (lr 0.01)  →   <b>48</b> steps<br>Adam     (lr 1.0 )  →  <b>110</b> steps</p>' +
+         '<p><b>At the same learning rate, Momentum is 11.6 times faster than SGD.</b> The only difference is that it remembers previous steps.</p>' +
+         '<p>Note: Adam\'s learning rate is 1.0, a hundred times SGD\'s. That is not a mistake; because Adam normalises the step by <b>dividing</b> by the size of the gradient, the scale of its lr is completely different. Which is why when you move from one optimizer to another you <b>have to search for the learning rate again</b>.</p>',
+    learned:'<b>Momentum carries the past (damping oscillation), Adam scales the step per parameter.</b><br><br>When you change optimizer you <b>have to search for the learning rate again</b>; the scales are not comparable.<br><br>The practical default: <b>AdamW</b> at lr 1e-3 (1e-4 for a Transformer), with warmup plus cosine decay.',
+    controls:[{k:'adim', lb:'STEP', min:0, max:600, step:5, val:0}],
+    quiz:{
+      q:'On this surface Momentum came out faster than Adam. Is that always the case in practice?',
+      opts:[
+        {t:'Yes, Momentum is always better',
+         why:'No. What you saw here is a <b>2 parameter, well behaved, full batch</b> problem. The result is specific to those conditions.'},
+        {t:'No, this is a simple 2 parameter surface. In real networks sparse gradients, parameters at different scales and noisy mini batches bring Adam to the front',
+         why:'Correct. Adam\'s real gain is a per parameter adaptive step size, which becomes decisive when gradient scales differ a lot (embedding layers, sparse features, Transformers). On the other hand it has been shown repeatedly that a well tuned SGD with Momentum <b>generalises better</b> than Adam on image classification. Today\'s practice: Transformer and NLP → AdamW, CNN and vision → SGD with Momentum or AdamW, and a learning rate sweep in every case.'},
+        {t:'Adam must have been implemented wrong',
+         why:'The implementation is correct, standard Adam including the bias correction. The result comes from the structure of the problem.'},
+        {t:'The comparison is invalid because the learning rates are not equal',
+         why:'Each optimizer was run in its own appropriate range; the lr scales of Adam and SGD are not the same and cannot be.'},
+      ], correct:1 },
+  },
+  ],
+};
