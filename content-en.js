@@ -2258,3 +2258,214 @@ DERSLER_EN['optimizer'] = {
   },
   ],
 };
+
+DERSLER_EN['cnn'] = {
+  ad:'Convolution: how does it see an image?',
+  alt:'A neural network looking at an image does not look at individual pixels. It slides small filters across it. Those filters are what this lesson is about.',
+  kaynaklar:[{"y":"LeCun, Bottou, Bengio, Haffner","t":"1998","b":"Gradient-Based Learning Applied to Document Recognition","n":"Proc. IEEE, 86(11)"},
+             {"y":"Krizhevsky, Sutskever, Hinton","t":"2012","b":"ImageNet Classification with Deep CNNs (AlexNet)","n":"NeurIPS 2012"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'Why is a plain network not enough?',
+    goal:'You will understand why image data needs a special architecture.',
+    todo:'Read the text, then answer the question.',
+    kind:'static', viz:'evrisim', h:640, xp:35, state:{k:0},
+    body:'<p>The 12×12 grey square on screen is the digit "7". That is <b>144 pixels</b> in total.</p>' +
+         '<p>If we wanted to feed it to a plain neural network: 144 inputs × 100 neurons = <b>14,400 weights</b>, in the first layer alone. On a real photograph (224×224×3 colour) that number climbs to <b>15 million</b>. For one layer.</p>' +
+         '<p>Worse: for a plain network the <b>adjacency</b> between pixels means nothing. Pixel 5 and pixel 6 sit next to each other, but to the network they are two independent numbers. Shift the image one pixel to the right and the network has to learn everything again.</p>' +
+         '<p><b>The idea behind convolution:</b> do not learn a separate weight for every pixel. Learn a small filter and use it <b>everywhere</b> in the image.</p>',
+    learned:'<b>Convolution is sliding a small filter across the whole image.</b> 9 parameters, millions of pixels. And the pattern is found wherever it happens to be.',
+    quiz:{
+      q:'What is the biggest gain from convolution?',
+      opts:[
+        {t:'It runs faster',
+         why:'Speed is a side benefit but not the point. Convolution is actually a compute heavy operation.'},
+        {t:'The same filter is shared across the whole image, so the parameter count collapses and the pattern is found wherever it is',
+         why:'Correct. This is called <b>parameter sharing</b> and <b>translation invariance</b>. A 3×3 filter has 9 parameters and the same filter is used everywhere across a 224×224 image. Whether a cat\'s ear is in the top left or the bottom right, the same filter catches it, with no need to learn each case separately.'},
+        {t:'It can work with colour images',
+         why:'A plain network can too; colour is not an advantage specific to convolution.'},
+        {t:'It completely prevents overfitting',
+         why:'It reduces it (fewer parameters) but does not prevent it. CNNs overfit as well.'},
+      ], correct:1 },
+  },
+  {
+    t:'Watch the filter travel',
+    goal:'You will see a single step of convolution, multiply, add, write, repeated 100 times.',
+    todo:'The animation plays on its own. The orange window travels over the input and the map on the right fills up.',
+    kind:'play', viz:'evrisim', h:640, hiz:110, xp:30,
+    learned:'<b>Convolution is multiply, add, slide, repeat.</b> A loop as simple as bubble sort.<br><br>The magic is not in the filter itself but in the fact that it is <b>learned</b>, and that these layers are stacked on top of each other.',
+  },
+  ],
+};
+
+DERSLER_EN['regular'] = {
+  ad:'Stopping overfitting',
+  alt:'Dropout, weight decay, early stopping. All three do the same thing: stop the model from memorising. In this lesson we measure all of them.',
+  kaynaklar:[{"y":"Srivastava, N. et al.","t":"2014","b":"Dropout: A Simple Way to Prevent Neural Networks from Overfitting","n":"JMLR, 15, 1929–1958"},
+             {"y":"Krogh, A. & Hertz, J.","t":"1992","b":"A Simple Weight Decay Can Improve Generalization","n":"NeurIPS 1991"},
+             {"y":"Prechelt, L.","t":"1998","b":"Early Stopping, But When?","n":"Neural Networks: Tricks of the Trade"},
+             {"y":"Loshchilov, I. & Hutter, F.","t":"2019","b":"Decoupled Weight Decay Regularization (AdamW)","n":"ICLR 2019","u":"https://arxiv.org/abs/1711.05101"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'Catching overfitting live',
+    goal:'You will see the <b>exact moment</b> the validation loss starts climbing while the training loss keeps falling.',
+    todo:'Drag the frame all the way to the end. Notice where the blue and orange curves part company.',
+    kind:'controls', viz:'duzenli', h:760, xp:55, state:{wd:0},
+    body:'<p>The experiment was set up deliberately to produce overfitting:</p>' +
+         '<p>· training set: <b>60 points</b>, with <b>15% label noise</b><br>' +
+         '· validation set: 400 points, clean<br>' +
+         '· network: 2-16-16-1, <b>337 parameters</b></p>' +
+         '<p>337 parameters, 60 points. The model has more than enough capacity to memorise the data.</p>' +
+         '<p>The measured result:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">epoch      training   validation<br>   20      0.638      0.697<br>  220      0.430      0.257<br>  <b style="color:#22d3a0">520      0.365      0.211</b>   ← validation bottom<br> 1000      0.246      0.273<br> 1200      <b>0.220</b>      <b style="color:#f87171">0.318</b>   ← training falling, validation CLIMBING</p>' +
+         '<p><b>After epoch 520 the model is not learning, it is memorising.</b> The training loss keeps falling because it is learning the noisy labels too, but that knowledge does not help on the validation set, it hurts.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">stop at epoch  520  →  validation accuracy <b>95.3%</b><br>run to epoch  1200  →  validation accuracy <b>87.3%</b></p>' +
+         '<p><b>An 8 point difference, and all you did was stop early.</b> This is called <b>early stopping</b> and it is the cheapest form of regularisation: no extra parameters, no extra compute, just stopping at the right moment.</p>',
+    learned:'<b>This is the definition of overfitting:</b> the validation loss starting to climb while the training loss falls.<br><br>That point of divergence is where you should stop the model. In practice: <code>early_stopping(patience=10)</code>, keep the best weights and throw away the rest.',
+    controls:[{k:'kare', lb:'TRAINING PROGRESS', min:0, max:16, step:1, val:0}],
+  },
+  {
+    t:'Keeping the weights small',
+    goal:'You will see what weight decay does and why the dose is critical, through measured results.',
+    todo:'Try wd at 0 → 0.001 → 0.01 → 0.05 in order. Look at the weight norm and the validation accuracy each time.',
+    kind:'controls', viz:'duzenli', h:760, xp:60,
+    body:'<p><b>Weight decay</b> (L2 regularisation) adds the size of the weights to the loss function:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">L_total = L_data + λ · Σ w²<br><br>the gradient update:  w ← w − η(∂L/∂w + <b>λw</b>)</p>' +
+         '<p>So at every step the weights are pulled a little towards zero. If the model wants to grow a weight, it has to <b>lower the data loss enough</b> to pay for it.</p>' +
+         '<p>The measured results (at the end of 1200 epochs):</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">wd        ‖W‖     final val   best val<br>0        15.4      87.3%       95.3%<br>0.001    11.5      89.5%       <b style="color:#22d3a0">95.8%</b><br>0.01      3.3      69.0%       69.0%   ← underfitting<br>0.05      <b style="color:#f87171">0.0</b>      46.3%       38.8%   ← the model died</p>' +
+         '<p><b>The dose is critical.</b> Too little → no effect. The right amount → both the final and the best accuracy improve. Too much → the weights collapse to zero and the model learns nothing at all (‖W‖ = 0.0).</p>' +
+         '<p><b>The other two methods</b> reach the same goal by different routes:</p>' +
+         '<p>· <b>Dropout:</b> switches off a random subset of the neurons at every step. The network cannot depend on a single neuron and is forced to learn redundant representations. It effectively creates an implicit ensemble.<br>' +
+         '· <b>Data augmentation:</b> produces rotated, cropped and noisy versions of the same example. It is the most effective regularisation for images, because it adds genuinely new information.</p>' +
+         '<p style="color:#facc15"><b>Note:</b> classical L2 and Adam are not the same thing. Because Adam divides the step by the size of the gradient, the L2 penalty gets divided too and its effect is distorted. <b>AdamW</b> fixes this: the penalty is applied separately from the gradient. That is today\'s default for training Transformers.</p>',
+    learned:'<b>Three methods, one purpose: stop the model from learning the noise.</b><br><br>· <b>Early stopping</b>: free, the highest return, try it first<br>· <b>Data augmentation</b>: adds real information, the most effective one for images<br>· <b>Weight decay and dropout</b>: powerful but the <b>dose has to be tuned</b>; too much means underfitting<br><br>And if you use Adam, choose <b>AdamW</b>; classical L2 does not work properly with Adam.',
+    controls:[{k:'wd', lb:'WEIGHT DECAY', min:0, max:0.05, step:0.001, val:0},
+              {k:'kare', lb:'TRAINING PROGRESS', min:0, max:16, step:1, val:16}],
+    quiz:{
+      q:'Your model scores 99% on training and 71% on validation. You have 4 hours. In what order do you try things?',
+      opts:[
+        {t:'First a bigger model, then more epochs',
+         why:'Both make it <b>worse</b>. This is a clear picture of overfitting; raising capacity and training longer deepen the memorisation.'},
+        {t:'Early stopping first (it is free), then data augmentation, then tuning weight decay and dropout',
+         why:'The right order, by cost. <b>Early stopping</b> costs nothing and usually gives the single biggest gain (8 points here). <b>Data augmentation</b> comes second because it adds real information to the model. Tuning <b>weight decay and dropout</b> comes last because it requires a hyperparameter search and, at the wrong dose, drops you into underfitting, which is exactly what happened at wd=0.05 in this lesson.'},
+        {t:'I would add dropout 0.5 straight away',
+         why:'A reasonable move but arbitrary. Exhaust the free option (early stopping) first, then proceed by measuring. And a badly chosen dropout rate also leads to underfitting.'},
+        {t:'I would lower the learning rate',
+         why:'That does not solve overfitting, it just gets you to the same place more slowly.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['batchnorm'] = {
+  ad:'Batch normalization',
+  alt:'One of the biggest turning points in making deep networks trainable. The idea is one sentence, the effect is enormous.',
+  kaynaklar:[{"y":"Ioffe, S. & Szegedy, C.","t":"2015","b":"Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift","n":"ICML 2015","u":"https://arxiv.org/abs/1502.03167"},
+             {"y":"Santurkar, S. et al.","t":"2018","b":"How Does Batch Normalization Help Optimization?","n":"NeurIPS 2018","u":"https://arxiv.org/abs/1805.11604"},
+             {"y":"Ba, Kiros, Hinton","t":"2016","b":"Layer Normalization","n":"arXiv:1607.06450","u":"https://arxiv.org/abs/1607.06450"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'Why do the initial weights matter so much?',
+    goal:'You will see how a small change in the weight scale either destroys or saturates the signal after 12 layers.',
+    todo:'Pull the scale to <b>0.5</b> and then to <b>6.0</b>. Watch the red curve and the saturation bar.',
+    kind:'controls', viz:'batchnorm', h:760, xp:50,
+    body:'<p>A network with 12 layers of 24 neurons each. The input is standard normal. <b>The only variable:</b> the scale of the initial weights.</p>' +
+         '<p>The measured results (no BN, standard deviation of the activations in the last layer):</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">scale 0.5  →  L0 0.998 → L6 0.011 → L12 <b style="color:#f87171">0.000</b>   the signal disappeared<br>scale 1.2  →  L0 0.998 → L6 0.433 → L12 0.421   tolerable<br>scale 3.0  →  L12 0.830  ·  saturated neurons <b style="color:#fb923c">26.3%</b><br>scale 6.0  →  L12 0.926  ·  saturated neurons <b style="color:#f87171">62.4%</b></p>' +
+         '<p><b>Two different ways of dying:</b></p>' +
+         '<p>· <b>If the scale is small</b>, the signal shrinks a little at every layer. After 12 layers the standard deviation is 0.000 and the activations have collapsed to zero. No information on the way forward, no gradient on the way back.<br>' +
+         '· <b>If the scale is large</b>, tanh saturates. At a scale of 6, <b>62.4%</b> of the neurons sit in the |a| &gt; 0.99 region. Tanh is flat there, its derivative is about 0, and again there is no gradient.</p>' +
+         '<p>So the scale of the initial weights can <b>on its own</b> decide whether the network is trainable. Before 2015, training a deep network was largely the art of getting that scale right (Xavier and He initialisation were derived for exactly this problem).</p>',
+    learned:'<b>In a deep network the signal either fades or saturates layer by layer.</b> Both kill the gradient and both depend only on the initial scale.<br><br>Good initialisation (Xavier/He) softens this, but <b>as training proceeds the weights change</b> and the balance breaks again. The permanent fix is in the next step.',
+    controls:[{k:'olcek', lb:'WEIGHT SCALE', min:0.5, max:6, step:0.1, val:1.2}],
+  },
+  {
+    t:'The fix: normalise again at every layer',
+    goal:'You will see what batch normalization does and why it makes the initial scale irrelevant.',
+    todo:'Sweep the scale across its whole range. Notice that <b>the green curve never changes</b>.',
+    kind:'controls', viz:'batchnorm', h:760, xp:60,
+    body:'<p>Batch normalization does one thing: at every layer it normalises the activation <b>across the mini batch</b>.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">μ  = batch mean<br>σ² = batch variance<br><br>ẑ = (z − μ) / √(σ² + ε)<br>y = γ·ẑ + β        <span style="color:#566674">← γ and β are LEARNED</span></p>' +
+         '<p>Wherever you pull the scale, <b>the green curve stays fixed</b>: standard deviation about 0.65 at every layer, saturation 0.1%. The initial weights are now almost irrelevant.</p>' +
+         '<p>The reason γ and β exist is subtle: normalisation restricts the layer\'s expressive power (everything is forced to mean 0 and variance 1). Thanks to γ and β the network can <b>undo</b> the normalisation if it wants to, but now that is a <i>choice</i> rather than a constraint.</p>' +
+         '<p><b>The gains:</b> a higher learning rate becomes usable · sensitivity to initialisation drops · there is a mild regularising effect (noise from the batch) · training speeds up noticeably.</p>' +
+         '<p><b>The price:</b> it depends on the batch size (a small batch means noisy statistics), training and inference behave differently (inference uses a running average), and it is impractical for sequences and RNNs.</p>' +
+         '<p style="color:#facc15"><b>Note:</b> the original paper explained this as reducing "internal covariate shift". Santurkar et al. (2018) showed experimentally that this explanation is <b>wrong</b>: the real effect is smoothing the loss surface. The method is right, its first explanation was not, which is a common situation in science.</p>',
+    learned:'<b>BN normalises the activation across the batch at every layer, and γ and β let the network undo it.</b><br><br>The result: insensitivity to the initial scale, a higher learning rate, faster training.<br><br>Because it depends on the batch it does not work on sequences → <b>layer norm</b> (the Transformer standard).',
+    controls:[{k:'olcek', lb:'WEIGHT SCALE', min:0.5, max:6, step:0.1, val:0.5}],
+    quiz:{
+      q:'Why do Transformers use <b>layer norm</b> rather than batch norm?',
+      opts:[
+        {t:'Layer norm is faster',
+         why:'The speed difference is not decisive; both are cheap.'},
+        {t:'BN depends on the other examples in the batch; that dependency becomes a problem when sequence lengths vary and when a single example is processed at inference, while layer norm normalises each example within itself',
+         why:'Correct. Batch norm computes its statistics <b>across the batch</b>: the same example gives a different output in a different batch. In language models the sequences have variable length, the batches are heterogeneous, and during generation a single example is often processed at a time. Layer norm takes its statistics across the <b>feature dimension</b> of one example, completely independently of the batch, which is why it is the standard in the Transformer architecture.'},
+        {t:'Transformers do not need normalisation',
+         why:'The opposite; layer norm is a mandatory part of a Transformer block, and without it training becomes unstable.'},
+        {t:'Layer norm uses less memory',
+         why:'The memory difference is negligible.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['embed'] = {
+  ad:'Embedding spaces',
+  alt:'The way words turn into numbers. And those numbers start carrying meaning without anybody telling them to.',
+  kaynaklar:[{"y":"Mikolov, T. et al.","t":"2013","b":"Efficient Estimation of Word Representations in Vector Space (word2vec)","n":"ICLR Workshop 2013","u":"https://arxiv.org/abs/1301.3781"},
+             {"y":"Mikolov, T. et al.","t":"2013","b":"Distributed Representations of Words and Phrases and their Compositionality (negative sampling)","n":"NeurIPS 2013"},
+             {"y":"Pennington, Socher, Manning","t":"2014","b":"GloVe: Global Vectors for Word Representation","n":"EMNLP 2014"},
+             {"y":"Firth, J. R.","t":"1957","b":"A Synopsis of Linguistic Theory (\"You shall know a word by the company it keeps\")","n":"Studies in Linguistic Analysis"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'How do words turn into numbers?',
+    goal:'On this page you will examine an embedding space that was <b>really trained</b> and see how meaning emerges.',
+    todo:'Change the word. Look at the links drawn to words in the same category and at the cosine values.',
+    kind:'controls', viz:'gomme', h:760, xp:45,
+    body:'<p>The model does not understand the word. It turns it into a <b>vector of numbers</b>, 12 dimensional here.</p>' +
+         '<p>So where do those numbers come from? From a single principle: <b>"you shall know a word by the company it keeps."</b> (Firth, 1957, one of the most quoted sentences in linguistics)</p>' +
+         '<p><b>The embeddings on this page were really trained.</b> 20 words, 9000 (word, context) pairs, skip-gram with negative sampling, 12 epochs. No category label was ever given; the model only saw which word appeared in which context.</p>' +
+         '<p>The result:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">mean cosine WITHIN a category : <b style="color:#22d3a0">0.993</b><br>mean cosine ACROSS categories : 0.333<br>difference                    : 0.660<br><br><b>20 of the 20</b> words have their nearest neighbour inside their own category  (100%)</p>' +
+         '<p>A few examples:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">king      →  princess · prince · queen<br>cat       →  dog · bird · horse<br>Istanbul  →  Bursa · Izmir · Ankara<br>apple     →  cheese · milk · bread</p>' +
+         '<p>Nobody told the model that a king is a noble. <b>The categories fell out of the co-occurrence pattern on their own.</b></p>',
+    learned:'<b>An embedding is a vector of numbers learned for a word from its contexts.</b><br><br>Semantic closeness is measured with <b>cosine similarity</b>. Even in the tiny model trained for this lesson, within category similarity is 0.993 and across category similarity is 0.333. The structure appeared without a single label.',
+    controls:[{k:'ki', lb:'WORD', min:0, max:19, step:1, val:0}],
+  },
+  {
+    t:'Where it is used and where it misleads',
+    goal:'You will learn where embeddings sit in modern systems and what risk they carry.',
+    todo:'Read the text and solve the scenario.',
+    kind:'controls', viz:'gomme', h:760, xp:55,
+    body:'<p>Embeddings are everywhere today:</p>' +
+         '<p>· <b>Semantic search</b>: the query "how do I make a return" finds a document titled "sending a product back". No shared words, a shared <i>meaning</i>.<br>' +
+         '· <b>RAG</b>: documents are embedded, the question is embedded, and the nearest chunks are retrieved<br>' +
+         '· <b>Recommender systems</b>: products and users are embedded into the same space<br>' +
+         '· <b>Transformers</b>: every token is first turned into an embedding vector, and attention works on top of those</p>' +
+         '<p><b>But there are three serious traps:</b></p>' +
+         '<p><b>1 · Context independence.</b> In word2vec a word has <i>one</i> vector: is "bank" a riverbank or a financial institution? It cannot tell. BERT and what followed solved this with <b>context sensitive</b> embeddings that give the same word a different vector depending on the sentence.</p>' +
+         '<p><b>2 · Bias.</b> Embeddings learn from data, and if the data contains social bias so do the vectors. Bolukbasi et al. (2016) showed the classic example: "programmer − man + woman ≈ homemaker". The model is not malicious, it is <b>honestly reflecting the statistics of the text</b>.</p>' +
+         '<p><b>3 · Language mismatch.</b> Embed Turkish documents with a model trained on English and the scores look reasonable while the retrieval quality quietly collapses. For Turkish a multilingual model is essential (see the <code>multilingual-e5</code> note in the model catalogue).</p>',
+    learned:'<b>Embeddings turn meaning into geometry</b>, and all of modern search, recommendation and RAG stands on top of that.<br><br>Three traps: <b>context independence</b> (one vector per word in word2vec; solved after BERT), <b>bias</b> (it comes from the data and the model reflects it honestly), <b>language mismatch</b> (the wrong model gives quietly bad results).',
+    controls:[{k:'ki', lb:'WORD', min:0, max:19, step:1, val:8}],
+    quiz:{
+      q:'In a RAG system a user asks "where is my parcel" but the system retrieves irrelevant documents. What do you check first?',
+      opts:[
+        {t:'I would change the LLM',
+         why:'Too early a move. If the problem is in retrieval, changing the LLM fixes nothing; the model is already reading the wrong documents.'},
+        {t:'I would check whether the embedding model supports the language, and check the chunk size',
+         why:'Correct. The great majority of RAG failures are in <b>retrieval</b>, not in generation. The first two suspects: (1) does the embedding model support the language, because if it does not the cosine scores are meaningless; (2) the chunk size, since a chunk that is too large buries the relevant sentence in noise and one that is too small breaks the context. The way to measure it is to check whether the right chunk appears in the top k (recall@k).'},
+        {t:'I would improve the prompt',
+         why:'If the retrieved documents are wrong there is nothing a prompt can do.'},
+        {t:'I would retrieve more documents (raise k)',
+         why:'That usually does not help; more chunks means more noise. The fix is ranking quality (a reranker), not quantity.'},
+      ], correct:1 },
+  },
+  ],
+};
