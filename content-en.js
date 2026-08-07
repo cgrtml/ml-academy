@@ -5390,3 +5390,213 @@ DERSLER_EN['lojistik'] = {
   },
   ],
 };
+
+DERSLER_EN['agac'] = {
+  ad:'How a decision tree is built',
+  alt:'A tree grows by answering one question over and over: "which question gains me the most information?"',
+  kaynaklar:[{"y":"Breiman, Friedman, Olshen, Stone","t":"1984","b":"Classification and Regression Trees (CART)","n":"Wadsworth"},
+             {"y":"Quinlan, J. R.","t":"1986","b":"Induction of Decision Trees","n":"Machine Learning, 1(1)"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'Purity: what is Gini?',
+    goal:'You will see what a tree optimises when it chooses a split, and that it is a single number.',
+    todo:'Move the threshold and watch the calculation box below. Try to get it to <b>3.95 on the y axis</b>.',
+    kind:'controls', viz:'bolunmeAra', h:760, xp:50,
+    body:'<p>240 points, two classes. Right now they are all in one box and mixed up. The number that measures that mixing is called the <b>Gini impurity</b>:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">Gini = 1 − p₀² − p₁²<br><br>all one class →  Gini = 0     (perfectly pure)<br>half and half  →  Gini = 0.5   (maximally mixed)</p>' +
+         '<p>The starting Gini: <b>0.4965</b>, almost completely mixed.</p>' +
+         '<p>The only question the tree asks at every step: <b>"which threshold makes the children purer than the parent?"</b></p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">GAIN = Gini(parent) − weighted average Gini(children)</p>' +
+         '<p>The curve on the right shows that gain for <b>every candidate threshold</b>. The tree picks the peak of that curve: <b>y ≤ 3.95, gain 0.1107</b>.</p>' +
+         '<p>Note: this is a <b>greedy</b> choice. The tree does not ask "will this split help me later", it just takes the best one available now. So the tree it finds may not be globally optimal, but finding the optimal tree is NP-hard, which is why everybody is greedy.</p>',
+    learned:'<b>A tree picks the threshold that raises the Gini gain most, at every node, greedily.</b><br><br>Entropy can be used instead of Gini; in practice the results are almost identical. In regression, <b>variance reduction</b> is measured instead of purity.',
+    controls:[{k:'oz', lb:'AXIS', min:0, max:1, step:1, val:1},
+              {k:'t', lb:'THRESHOLD', min:0.3, max:9.7, step:0.05, val:8}],
+  },
+  {
+    t:'Depth: the staircase gets finer',
+    goal:'You will see why a tree can only cut <b>axis aligned</b> and what that means.',
+    todo:'Raise the depth from 1 to 6. Compare the true boundary (dashed yellow) with the model\'s staircase.',
+    kind:'controls', viz:'agacKur', h:760, xp:55,
+    body:'<p>The true boundary is a <b>diagonal</b> line: x + y = 10 (dashed yellow). But a tree cannot cut diagonally; every split of it is perpendicular to a single axis.</p>' +
+         '<p>So it approximates the diagonal boundary with a <b>staircase</b>. As the depth grows the steps get finer:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">depth 1 →  2 leaves → 72.5%<br>depth 2 →  4 leaves → 82.9%<br>depth 3 →  7 leaves → 88.3%<br>depth 4 →  9 leaves → 92.5%<br>depth 5 → 10 leaves → 92.5%<br>depth 6 → 10 leaves → 92.5%</p>' +
+         '<p><b>After depth 4 the improvement stops.</b> The reason is the 6% label noise in the data. If the tree tried to learn that noise too it would be memorising, and the <code>min_samples_leaf=5</code> constraint does not let it.</p>' +
+         '<p>The diagram on the right is the tree itself. Every blue box is a question and every coloured circle a leaf. <b>You can read that diagram out to a human as sentences</b>, which is the biggest advantage of trees.</p>',
+    learned:'<b>Trees only cut axis aligned.</b> They approximate diagonal boundaries with a staircase; as depth grows the steps get finer but never become a true diagonal.<br><br>The consequence: trees are insensitive to scaling (an advantage) but <b>sensitive to rotation</b> (a disadvantage).',
+    controls:[{k:'derinlik', lb:'MAX DEPTH', min:1, max:6, step:1, val:1}],
+    quiz:{
+      q:'What happens if you rotate the same data by 45° (so the diagonal boundary becomes vertical)?',
+      opts:[
+        {t:'Nothing changes, the tree gives the same accuracy',
+         why:'No. A tree cuts axis aligned; a rotation changes the problem completely as far as the tree is concerned.'},
+        {t:'A single depth 1 tree becomes almost perfect, because the boundary is now parallel to an axis',
+         why:'Correct. And this reveals a critical property of trees: they are <b>sensitive to rotation</b>. The same information in a different coordinate system leads to a completely different cost in tree terms. Linear models and SVMs do not have this problem. In practice this explains why feature engineering (adding a new column such as "x+y") works so well with trees.'},
+        {t:'The tree stops working',
+         why:'It works; it just has a much easier job in this example.'},
+        {t:'The accuracy falls',
+         why:'The opposite; a vertical boundary is the easiest case for a tree.'},
+      ], correct:1 },
+  },
+  {
+    t:'The weakness of a single tree',
+    goal:'You will understand why a single tree is unreliable and how that leads to the next model.',
+    todo:'Set the depth to 6 and look at the misclassified points with red rings. Then answer the question.',
+    kind:'controls', viz:'agacKur', h:760, xp:45,
+    body:'<p>At depth 6 the accuracy is 92.5%. Not bad. But a single tree has two fundamental weaknesses:</p>' +
+         '<p><b>1 · Instability (high variance).</b> Remove a few points from the data and retrain, and the tree can come out <b>completely</b> different. If the root split changes, everything below it changes. This is the tree version of the seed shake from the "how does a model learn" lesson.</p>' +
+         '<p><b>2 · The staircase artefact.</b> The decision regions have sharp corners. If the true boundary is smooth, the tree can never catch it smoothly.</p>' +
+         '<p>So what is the fix? There are two ideas and both rest on the same intuition: <b>do not trust one tree, use many.</b></p>' +
+         '<p>· <b>Bagging / Random Forest</b>: grow trees <i>in parallel</i> and independently of each other, then vote<br>' +
+         '· <b>Boosting</b>: grow trees <i>in sequence</i>, each one correcting the previous one\'s error</p>' +
+         '<p>The next two lessons are exactly those.</p>',
+    learned:'<b>A single tree: interpretable but unstable.</b> A small change in the data produces a completely different tree.<br><br>That weakness gave birth to the two most successful ideas in machine learning: <b>bagging</b> (parallel trees → lower variance) and <b>boosting</b> (sequential trees → lower bias).',
+    controls:[{k:'derinlik', lb:'MAX DEPTH', min:1, max:6, step:1, val:6}],
+    quiz:{
+      q:'What does the "high variance" problem of a single tree mean?',
+      opts:[
+        {t:'The tree\'s predictions spread over a very wide range',
+         why:'A confusion. The variance here is not in the prediction values but in how much <b>the model itself</b> changes with the training data.'},
+        {t:'If the training data changes a little, a completely different tree comes out',
+         why:'Correct. Variance is the model being overly sensitive to small changes in the training data. In trees this is particularly severe, because if the root split changes the whole structure below it changes. Averaging (bagging) is the mathematically proven way of reducing variance.'},
+        {t:'The tree gives a different accuracy every time',
+         why:'Close but incomplete; the point is not the fluctuation in accuracy but the change in <b>structure</b>.'},
+        {t:'The tree is too deep',
+         why:'Depth raises variance but that is not its definition.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['soft-split'] = {
+  ad:'Hard threshold vs soft threshold',
+  alt:'Why decision trees cannot be trained with gradient descent, and how a single change makes it possible. The idea the neural-trees library rests on.',
+  kaynaklar:[{"y":"İrsoy, Yıldız, Alpaydın","t":"2012","b":"Soft Decision Trees","n":"ICPR 2012, 1819–1822"},
+             {"y":"Frosst, N. & Hinton, G.","t":"2017","b":"Distilling a Neural Network Into a Soft Decision Tree","n":"arXiv:1711.09784","u":"https://arxiv.org/abs/1711.09784"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'What does a decision tree node do?',
+    goal:'You will meet the smallest piece of a decision tree: <b>a single threshold decision</b>. Everything is built on top of it.',
+    todo:'Use NEXT to walk through the three stages.',
+    kind:'phases', viz:'esik', h:660, xp:35,
+    learned:'<b>The derivative of a step function is zero.</b> This is why classical trees are built by greedy search rather than by gradient descent. The consequence: trees are interpretable but <b>not end to end learnable</b>, so they cannot be plugged into the same pipeline as neural networks.',
+    quiz:{
+      q:'If classical decision trees cannot use gradient descent, <b>how</b> do algorithms like CART build a tree?',
+      opts:[
+        {t:'By trying random thresholds and keeping the best one',
+         why:'Partly the right intuition but incomplete; there is no randomness, there is a <b>systematic</b> search.'},
+        {t:'By trying every possible threshold at every node and picking the immediate best (greedy search)',
+         why:'Correct. CART scans all the candidate thresholds at every node, computes for each one "how much does this split purify" (Gini or entropy) and picks the best one <b>available now</b>. That is called <b>greedy</b>: it does not consider the future, which is why the tree it finds may not be globally optimal.'},
+        {t:'By approximating the derivative numerically',
+         why:'No. Because the function is piecewise constant, a numerical derivative also comes out zero; approximation does not solve the problem.'},
+        {t:'By being pretrained with a neural network',
+         why:'No, CART dates from 1984 and is a completely independent algorithm.'},
+      ], correct:1 },
+    phases:[
+      {state:{mod:'hard', t:5},
+       body:'<p>Every node of a decision tree asks a single question: <b>"is x greater than the threshold t?"</b></p>' +
+            '<p>If the answer is <b>yes</b> the example goes to the right branch, if <b>no</b> to the left. The orange <b>step</b> on the plot is the rule itself: 0 to the left of the threshold (go left) and 1 to the right (go right).</p>' +
+            '<p>That simplicity is the superpower of decision trees: you can explain the decision to a human <b>as a sentence</b>. "If income is above 40 thousand and the debt ratio is below 30% → approve." Banks, hospitals and auditors love this.</p>'},
+      {state:{mod:'hard', t:5, noktalar:true},
+       body:'<p>The points in the bottom row are the examples and their colours show which branch they went to.</p>' +
+            '<p>Notice: <b>0% or 100%</b>. Nothing in between. An example 0.01 to the left of the threshold goes entirely left and one 0.01 to the right goes entirely right.</p>' +
+            '<p>That sharpness is both a strength and a weakness. The strength: interpretability. The weakness: for an example right at the threshold the decision is <b>brittle</b>, and there is a much bigger problem you are about to see.</p>'},
+      {state:{mod:'hard', t:5, noktalar:true, turev:true},
+       body:'<p><b style="color:#f87171">Here is the real problem.</b> The red strip at the bottom shows the derivative of the gate with respect to the threshold: <b>exactly zero everywhere</b> (and undefined at the threshold).</p>' +
+            '<p>You learned in an earlier lesson: gradient descent asks "which way should I move the parameter?" and takes the answer from the <b>derivative</b>. The answer it gets here: <i>no direction, it makes no difference</i>.</p>' +
+            '<p>So <b>classical decision trees cannot be trained with gradient descent.</b> That is not a preference but a mathematical obstacle.</p>'},
+    ],
+  },
+  {
+    t:'One change: soften the step',
+    goal:'You will see the idea that solves the problem and discover for yourself what the <b>temperature</b> parameter does.',
+    todo:'Drag the temperature T slider <b>all the way left and all the way right</b>. Notice what happens at the two extremes.',
+    kind:'controls', viz:'esik', h:660, xp:40, state:{mod:'both', t:5, noktalar:true},
+    body:'<p>The idea is very simple: replace the step with a <b>sigmoid</b>.</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:10px 14px;border-radius:8px">hard: &nbsp;gate(x) = 1 <b>if</b> x > t <b>else</b> 0<br>soft: gate(x) = σ( (x − t) / T )</p>' +
+         '<p>Now every example goes to both branches <b>with a weight</b>. An example at x = 5.4 can be "66% right, 34% left".</p>' +
+         '<p><b>T (the temperature) is a dial:</b><br>' +
+         '· <b>T → 0</b>: the sigmoid turns into a step. A classical decision tree. Maximum interpretability.<br>' +
+         '· <b>large T</b>: the gate softens right out. The model is more flexible, more like a neural network.<br>' +
+         '· <b>in between</b>: a mixture of the two, and <b>you</b> turn that dial.</p>',
+    learned:'<b>A soft threshold opens a continuous dial between interpretability and flexibility.</b> You do not have to choose between a classical tree and a neural network; you can stop at any point in between. That is the one sentence pitch for the neural-trees library.',
+    controls:[{k:'T', lb:'TEMPERATURE  T', min:0.05, max:2.5, step:0.05, val:0.6}],
+  },
+  {
+    t:'The derivative is back',
+    goal:'You will see, with its mathematical consequence, why softening is not merely a cosmetic change.',
+    todo:'Compare the two stages: the same screen for a hard and a soft gate.',
+    kind:'phases', viz:'esik', h:660, xp:35,
+    learned:'<b>Because σ is differentiable, all the tree\'s parameters can be learned together by gradient descent.</b> Instead of a structure built greedily node by node, a structure optimised end to end.',
+    phases:[
+      {state:{mod:'hard', t:5, turev:true},
+       body:'<p>A reminder, the <b>hard gate</b>: the derivative is zero everywhere. Gradient descent can learn nothing at this node.</p>'},
+      {state:{mod:'soft', t:5, T:0.6, turev:true},
+       body:'<p><b style="color:#22d3a0">The soft gate: the derivative is non zero everywhere.</b></p>' +
+            '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:10px 14px;border-radius:8px">∂σ/∂t = −σ(1−σ)/T</p>' +
+            '<p>It is largest near the threshold (where the decision is most delicate) and shrinks as you move away. But it is <b>never exactly zero</b>.</p>' +
+            '<p>So the question is meaningful now: "should I move the threshold left or right?" There is an answer. <b>The tree became trainable by backpropagation, like a neural network.</b></p>' +
+            '<p>And not only the threshold: which feature to look at, the leaf values, all of it can be learned at the same time. The whole tree is optimised <b>end to end</b>.</p>'},
+    ],
+  },
+  {
+    t:'What changes in the tree?',
+    goal:'You will see the answers the two approaches give to the same example, side by side on a real tree diagram.',
+    todo:'Move the incoming example\'s x value <b>around the threshold</b> with the slider (between 4.5 and 5.5). Compare the two predictions.',
+    kind:'controls', viz:'agac', h:620, xp:45, state:{t:5},
+    body:'<p>Two simple trees. The root node asks the same question (x > 5?) and the leaves hold the same values (32 and 78).</p>' +
+         '<p><b style="color:#fb923c">Hard on the left:</b> one of the edges is fully thick and the other is absent. The example goes to a single leaf and the prediction is either 32 or 78. No value in between can be produced.</p>' +
+         '<p><b style="color:#22d3a0">Soft on the right:</b> both edges flow with a weight. The prediction is the <b>weighted average</b> of the leaves. At x = 5.0 it is right in the middle (55) and moves towards one side as you move away.</p>' +
+         '<p>Take x from 4.9 to 5.1: in the hard tree the prediction <b>jumps from 32 to 78</b>, a 144% leap caused by a 4% change in the input. In the soft tree the transition is smooth. This is exactly the problem of "customers at the threshold" in fields like credit scoring.</p>',
+    learned:'A soft decision tree turns the dilemma of "interpretable <b>or</b> powerful" into "interpretable <b>and</b> as powerful as you want".',
+    controls:[{k:'x', lb:'INCOMING EXAMPLE  x', min:2, max:8, step:0.05, val:5.6},
+              {k:'T', lb:'TEMPERATURE  T', min:0.05, max:2.5, step:0.05, val:0.6}],
+    quiz:{
+      q:'A bank wants <b>both</b> to be able to show an auditor a justification for a credit decision <b>and</b> to avoid sharp jumps for customers at the threshold. What do you suggest?',
+      opts:[
+        {t:'A deep neural network, it gives the highest accuracy',
+         why:'The accuracy may be good but you cannot produce a <b>justification</b>. Under frameworks like SR 11-7 and the EU AI Act that is not enough on its own; when the auditor asks "why did you make this decision" there has to be an answer.'},
+        {t:'A classical decision tree, fully interpretable',
+         why:'It produces a justification but does <b>not</b> solve the jump at the threshold. You just saw it: a 4% change in the input can produce a 144% jump in the prediction.'},
+        {t:'A soft decision tree: a low T preserves the tree structure while the soft gate removes the jump',
+         why:'Correct. Because the tree structure remains, the decision path is still readable ("it passed through the x > 5 branch with a weight of 78%"); thanks to the soft gate the transition is smooth. Keep T low to favour interpretability, raise it a little to favour flexibility. <b>The dial is yours.</b>'},
+        {t:'I would train both models and average them',
+         why:'An ensemble can raise accuracy but it <b>destroys</b> interpretability; now there are two different justifications and it is unclear how much weight each carries.'},
+      ], correct:2 },
+  },
+  {
+    t:'Write the gate yourself',
+    goal:'Time to prove you understood it: complete the code for the soft gate and actually run it.',
+    todo:'Fill the three boxes and press RUN. If you write it correctly both trees on screen work properly.',
+    kind:'controls', viz:'agac', h:620, xp:60, state:{t:5, T:0.6},
+    body:'<p>Three boxes in the code below are empty. Fill them and run; the gate will be tested with 8 different values of x and the result will appear on screen.</p>' +
+         '<p>It runs even if you write it wrong: <b>you get to see what happens.</b> The fastest way to learn is to see the consequence of the wrong answer.</p>',
+    learned:'<b>Three lines of code, the basis of a library.</b> Thanks to the soft gate, the tree\'s thresholds, temperatures and leaf values can all be learned together by gradient descent.<br><br><b>Real usage:</b> <code>pip install neural-trees</code> · <code>from neural_trees import SoftDecisionTree</code>. In the next lesson we train this model on real data and compare it with a classical tree statistically (with the 5×2cv F-test you learned in the "is this model really better?" lesson of Track 0).',
+    controls:[{k:'x', lb:'INCOMING EXAMPLE  x', min:2, max:8, step:0.05, val:5.4}],
+    kodlab:{
+      q:'Turn the classical tree\'s hard gate into a trainable soft gate.',
+      satirlar:[
+        '<span class="cm"># a classical decision tree node</span>',
+        '<span class="kw">def</span> <span class="fn">hard_gate</span>(x, t):',
+        '    <span class="kw">return</span> <span class="st">1.0</span> <span class="kw">if</span> x > t <span class="kw">else</span> <span class="st">0.0</span>',
+        '',
+        '<span class="cm"># a soft decision tree node  ·  neural-trees</span>',
+        '<span class="kw">def</span> <span class="fn">soft_gate</span>(x, t, T):',
+        '    <span class="kw">return</span> <b1>( (x <b2> t) / <b3> )',
+        '',
+        '<span class="cm"># prediction = weighted average of the leaves</span>',
+        'w_right = <span class="fn">soft_gate</span>(x, t, T)',
+        'prediction = (<span class="st">1</span> - w_right) * left + w_right * right'
+      ],
+      bosluklar:{
+        b1:{ secenekler:['sigmoid','step','relu'], dogru:'sigmoid' },
+        b2:{ secenekler:['-','+'], dogru:'-' },
+        b3:{ secenekler:['T','x'], dogru:'T' },
+      },
+      ipucu:'The gate has to return a weight between 0 and 1, its derivative has to be non zero everywhere, and the temperature has to be the divisor.',
+    },
+  },
+  ],
+};
