@@ -2922,6 +2922,112 @@ console.log('═══ KONUŞMA HAFIZASI ═══');
       if (Math.abs(HF.pencereGenel(Wv) - Wv/HF.T) > 1e-15) ihlal++;
     iddia('HF · pencere hatırlaması taşınan turla doğru orantılı', 0, ihlal, 0); }
 }
+console.log('═══ ÇOK DİLLİ KÖR NOKTA ═══');
+{
+  iddia('CD · dil sayısı', 3, CD.diller.length, 0);
+  /* egitim/test ayrimi gercekten ayrik mi */
+  { let sizinti = 0;
+    for (let di = 0; di < 3; di++){ const b = CD.bol(di);
+      b.test.forEach(k => { if (b.egitim.indexOf(k) >= 0) sizinti++; }); }
+    iddia('CD · test kelimeleri eğitimde yok', 0, sizinti, 0); }
+  { let bos = 0;
+    for (let di = 0; di < 3; di++){ const b = CD.bol(di);
+      if (b.egitim.length < 5 || b.test.length < 5) bos++; }
+    iddia('CD · her dilde yeterli eğitim ve test kelimesi', 0, bos, 0); }
+  /* korpus paylari dogru kuruluyor mu */
+  { let enBuyuk = 0;
+    CD.paylar.forEach(pv => { const KOR = CD.korpus(pv);
+      const toplam = [0, 0, 0];
+      for (let di = 0; di < 3; di++)
+        CD.bol(di).egitim.forEach(k => toplam[di] += KOR[k]);
+      const t = toplam[0] + toplam[1] + toplam[2];
+      enBuyuk = Math.max(enBuyuk, Math.abs(toplam[0]/t - pv)); });
+    iddia('CD · korpusta baskın dilin payı istenen değerde', 0, enBuyuk, 9); }
+
+  /* 1. adim - birlesme butcesinin dagilimi */
+  { const q50 = CD.butcePayi(20, 0.50), q70 = CD.butcePayi(20, 0.70),
+          q85 = CD.butcePayi(20, 0.85), q95 = CD.butcePayi(20, 0.95);
+    iddia('CD · eşit korpus · ilk 20 · İngilizce', 40.8, 100*q50[0], 1);
+    iddia('CD · eşit korpus · ilk 20 · Türkçe', 40.8, 100*q50[1], 1);
+    iddia('CD · eşit korpus · ilk 20 · Svahili', 18.3, 100*q50[2], 1);
+    iddia('CD · %70 korpus · ilk 20 · İngilizce', 54.2, 100*q70[0], 1);
+    iddia('CD · %85 korpus · ilk 20 · İngilizce', 72.5, 100*q85[0], 1);
+    iddia('CD · %85 korpus · ilk 20 · Türkçe', 15.0, 100*q85[1], 1);
+    iddia('CD · %95 korpus · ilk 20 · İngilizce', 75.8, 100*q95[0], 1);
+    iddia('CD · %95 korpus · ilk 20 · Türkçe', 13.3, 100*q95[1], 1);
+    iddia('CD · %95 korpus · ilk 20 · Svahili', 10.8, 100*q95[2], 1);
+    /* paylar toplami 1 */
+    let enBuyuk = 0;
+    CD.paylar.forEach(pv => { const q = CD.butcePayi(20, pv);
+      enBuyuk = Math.max(enBuyuk, Math.abs(q[0] + q[1] + q[2] - 1)); });
+    iddia('CD · bütçe payları toplamı 1', 0, enBuyuk, 9);
+    /* baskin dilin payi korpus payiyla birlikte MONOTON artiyor */
+    let ihlal = 0;
+    for (let i = 1; i < CD.paylar.length; i++)
+      if (CD.butcePayi(20, CD.paylar[i])[0] < CD.butcePayi(20, CD.paylar[i-1])[0] - 1e-12) ihlal++;
+    iddia('CD · baskın dilin bütçe payı korpus payıyla artıyor', 0, ihlal, 0);
+    /* azinlik dillerin payi dusuyor */
+    let ihlal2 = 0;
+    for (let i = 1; i < CD.paylar.length; i++){
+      const a = CD.butcePayi(20, CD.paylar[i]), b = CD.butcePayi(20, CD.paylar[i-1]);
+      if (a[1] + a[2] > b[1] + b[2] + 1e-12) ihlal2++; }
+    iddia('CD · iki azınlık dilin toplam payı monoton düşüyor', 0, ihlal2, 0);
+    /* tek tek monoton DEGIL: iki azinlik dil birbiriyle de yarisiyor */
+    let tekTek = 0;
+    for (const di of [1, 2])
+      for (let i = 1; i < CD.paylar.length; i++)
+        if (CD.butcePayi(20, CD.paylar[i])[di] > CD.butcePayi(20, CD.paylar[i-1])[di] + 1e-12) tekTek++;
+    iddia('CD · tek tek bakınca monotonluk bozuluyor', 1, tekTek > 0 ? 1 : 0, 0);
+    iddia('CD · azınlıkların toplam payı %50 korpusta', 59.2,
+          100*(CD.butcePayi(20, 0.50)[1] + CD.butcePayi(20, 0.50)[2]), 1);
+    iddia('CD · azınlıkların toplam payı %95 korpusta', 24.2,
+          100*(CD.butcePayi(20, 0.95)[1] + CD.butcePayi(20, 0.95)[2]), 1);
+    /* esit korpusta bile pay esit degil: kelime listeleri farkli uzunlukta */
+    iddia('CD · eşit korpusta bile pay tam eşit değil', 1,
+          Math.abs(q50[0] - 1/3) > 0.02 ? 1 : 0, 0); }
+
+  /* 2. adim - parcalanma ornekleri */
+  { const B = CD.egit(0.85, 200);
+    let toplamTok = 0;
+    for (let di = 0; di < 3; di++)
+      toplamTok += CD.parcala(CD.bol(di).test[4], B).length;
+    iddia('CD · üç örnek kelimenin toplam token sayısı', 27, toplamTok, 0);
+    /* parcalarin birlestirilmesi orijinal kelimeyi veriyor mu */
+    let bozuk = 0;
+    for (let di = 0; di < 3; di++)
+      CD.bol(di).test.forEach(k => {
+        if (CD.parcala(k, B).join('') !== k + CD.SON) bozuk++; });
+    iddia('CD · parçalar birleştirilince kelimeyi veriyor', 0, bozuk, 0);
+    /* birlesme sayisi istenen kadar */
+    iddia('CD · 200 birleşme eğitildi', 200, B.length, 0); }
+  /* daha cok birlesme daha az token · her dilde monoton */
+  { let ihlal = 0;
+    for (let di = 0; di < 3; di++)
+      for (let i = 1; i < CD.sozlukler.length; i++)
+        if (CD.dogurganlik(di, 0.85, CD.sozlukler[i]) >
+            CD.dogurganlik(di, 0.85, CD.sozlukler[i-1]) + 1e-12) ihlal++;
+    iddia('CD · sözlük büyüdükçe token sayısı düşüyor', 0, ihlal, 0); }
+
+  /* 3. adim - sonuc aritmetigi TAM */
+  { const s2 = CD.sonuc(2.0);
+    iddia('CD · r=2 maliyet', 2.00, s2.maliyet, 2);
+    iddia('CD · r=2 sığan metin', 50.0, 100*s2.pencere, 1);
+    iddia('CD · r=2 kaybedilen pencere', 50.0, 100*s2.kayip, 1);
+    const s3 = CD.sonuc(3.0);
+    iddia('CD · r=3 sığan metin', 33.3, 100*s3.pencere, 1);
+    iddia('CD · r=1.5 sığan metin', 66.7, 100*CD.sonuc(1.5).pencere, 1);
+    iddia('CD · r=1 de ceza yok', 0.0, 100*CD.sonuc(1.0).kayip, 1);
+    /* kimlik: sigan + kaybedilen = 1 */
+    let enBuyuk = 0;
+    CD.oranlar.forEach(r => { const s4 = CD.sonuc(r);
+      enBuyuk = Math.max(enBuyuk, Math.abs(s4.pencere + s4.kayip - 1)); });
+    iddia('CD · sığan + kaybedilen = 1', 0, enBuyuk, 9);
+    /* maliyet ile pencere carpimi 1 */
+    let enBuyuk2 = 0;
+    CD.oranlar.forEach(r => { const s5 = CD.sonuc(r);
+      enBuyuk2 = Math.max(enBuyuk2, Math.abs(s5.maliyet*s5.pencere - 1)); });
+    iddia('CD · maliyet × sığan = 1', 0, enBuyuk2, 9); }
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

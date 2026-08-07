@@ -8150,6 +8150,250 @@ VIZ.konusmaHafizasi = s => {
   }
 };
 
+
+/* CHUNKED-CD
+   COK DILLI KOR NOKTA
+   BPE gercekten egitiliyor. Olcum EGITIMDE GORULMEYEN kelimeler
+   uzerinde yapiliyor, cunku tokenizer ezberledigi kelimede zaten 1 token verir. */
+const CD = {};
+CD.diller = [
+  { ad:'İngilizce', renk:'#3b82f6', kelimeler:[
+    'the','and','that','have','with','this','from','they','which','their',
+    'would','there','about','other','after','first','never','under','while','before',
+    'people','because','through','between','another','without','however','together',
+    'important','different','something','understand','information','development',
+    'government','experience','community','following','including','available',
+    'president','university','education','technology','environment','performance',
+    'management','production','discussion','particular','relationship','opportunity' ] },
+  { ad:'Türkçe', renk:'#22c55e', kelimeler:[
+    'bir','için','daha','sonra','kadar','olarak','çünkü','ancak','böyle','şimdi',
+    'evimizden','kitaplarımız','okulumuzdan','derslerimiz','arkadaşlarım','yollarımızda',
+    'gözlerinden','defterlerimiz','anlayabilirsin','yapabileceğimiz','düşüncelerimiz',
+    'çalışmalarımızda','geliştirebilmek','söyleyebilirdim','bilgisayarlarımız',
+    'öğrencilerimize','anlatabilirsiniz','değerlendirmeler','başlangıcından',
+    'görüşmelerimizde','konuşabileceğimiz','araştırmalarımız','uygulamalarından',
+    'bildirdiklerimiz','tanıştırabilirim','yazabileceklerimiz','düzenlemelerimizle',
+    'ulaşabileceğiniz','hatırlayabildiğim','sağlayabileceğimiz','beklentilerimizin' ] },
+  { ad:'Svahili', renk:'#f97316', kelimeler:[
+    'kwa','ndiyo','sasa','lakini','kwamba','hivyo','wakati','baada','kabla','ndani',
+    'tunaweza','anaweza','walikuwa','kitabu','vitabu','shuleni','nyumbani','rafiki',
+    'marafiki','kusoma','kuandika','kufundisha','mwalimu','walimu','maendeleo',
+    'kuelewana','tutakwenda','alisema','watoto','wanafunzi','kusaidia','tutaweza',
+    'nilikuwa','atakuja','wanasema','kufanya','maswali','majibu','habari','safari',
+    'barabara','serikali' ] },
+];
+CD.paylar = [0.50, 0.70, 0.85, 0.95];
+CD.sozlukler = [60, 120, 200, 300];
+CD.SON = '_';
+CD.AYRAC = String.fromCharCode(1);   /* cift anahtarinda ayrac · metinde gecmez */
+CD.EGITIM_ORANI = 0.6;   /* ilk %60 egitim, kalani olcum */
+const _cdC = {};
+CD.bol = di => { const k = CD.diller[di].kelimeler;
+  const n = Math.floor(k.length*CD.EGITIM_ORANI);
+  return { egitim: k.slice(0, n), test: k.slice(n) }; };
+CD.korpus = pay => {
+  const o = {}, digerPay = (1 - pay)/2;
+  CD.diller.forEach((d, i) => {
+    const p = i === 0 ? pay : digerPay, e = CD.bol(i).egitim;
+    e.forEach(k => { o[k] = (o[k] || 0) + p*1000/e.length; });
+  });
+  return o;
+};
+CD.egit = (pay, hedef) => {
+  const key = 'e' + pay + ':' + hedef;
+  if (_cdC[key]) return _cdC[key];
+  const KOR = CD.korpus(pay);
+  let kelimeler = Object.entries(KOR).map(([k, f]) => ({ parca: [...k, CD.SON], f }));
+  const birlesmeler = [];
+  for (let adim = 0; adim < hedef; adim++){
+    const say = {};
+    kelimeler.forEach(({ parca, f }) => {
+      for (let i = 0; i < parca.length - 1; i++){
+        const c = parca[i] + CD.AYRAC + parca[i+1];
+        say[c] = (say[c] || 0) + f; } });
+    let en = null;
+    Object.entries(say).forEach(([c, n]) => { if (!en || n > en.n) en = { c, n }; });
+    if (!en || en.n < 1e-9) break;
+    const ab = en.c.split(CD.AYRAC), a = ab[0], b = ab[1];
+    birlesmeler.push({ a, b, yeni: a + b });
+    kelimeler = kelimeler.map(({ parca, f }) => {
+      const yeni = []; let i = 0;
+      while (i < parca.length){
+        if (i < parca.length - 1 && parca[i] === a && parca[i+1] === b){ yeni.push(a + b); i += 2; }
+        else { yeni.push(parca[i]); i++; } }
+      return { parca: yeni, f }; });
+  }
+  return (_cdC[key] = birlesmeler);
+};
+CD.parcala = (kelime, birlesmeler) => {
+  let p = [...kelime, CD.SON];
+  birlesmeler.forEach(({ a, b }) => {
+    const yeni = []; let i = 0;
+    while (i < p.length){
+      if (i < p.length - 1 && p[i] === a && p[i+1] === b){ yeni.push(a + b); i += 2; }
+      else { yeni.push(p[i]); i++; } }
+    p = yeni; });
+  return p;
+};
+/* dogurganlik: TEST kelimelerinde kelime basina token */
+CD.dogurganlik = (di, pay, hedef) => {
+  const key = 'd' + di + ':' + pay + ':' + hedef;
+  if (_cdC[key] !== undefined) return _cdC[key];
+  const B = CD.egit(pay, hedef), t = CD.bol(di).test;
+  let top = 0;
+  t.forEach(k => top += CD.parcala(k, B).length);
+  return (_cdC[key] = top/t.length);
+};
+/* karakter basina token · kelime uzunlugu farkini disarida birakan olcu */
+CD.karakterBasina = (di, pay, hedef) => {
+  const key = 'c' + di + ':' + pay + ':' + hedef;
+  if (_cdC[key] !== undefined) return _cdC[key];
+  const B = CD.egit(pay, hedef), t = CD.bol(di).test;
+  let tok = 0, kar = 0;
+  t.forEach(k => { tok += CD.parcala(k, B).length; kar += k.length; });
+  return (_cdC[key] = tok/kar);
+};
+
+/* birlesme butcesinin dillere dagilimi · bir birlesme birden fazla dile
+   hizmet ediyorsa pay esit bolusuluyor */
+CD.butcePayi = (hedef, pay) => {
+  const key = 'b' + hedef + ':' + pay;
+  if (_cdC[key]) return _cdC[key];
+  const B = CD.egit(pay, hedef), say = [0, 0, 0];
+  B.forEach(b => {
+    const hizmet = [0, 1, 2].filter(di =>
+      CD.bol(di).egitim.some(k => (k + CD.SON).indexOf(b.yeni) >= 0));
+    if (hizmet.length) hizmet.forEach(di => say[di] += 1/hizmet.length); });
+  const t = say.reduce((a, z) => a + z, 0);
+  return (_cdC[key] = t > 0 ? say.map(z => z/t) : [0, 0, 0]);
+};
+CD.erkenler = [10, 20, 40, 80, 200];
+/* dogurganlik orani verildiginde sonuclar · TAM aritmetik */
+CD.oranlar = [1.0, 1.5, 2.0, 3.0];
+CD.sonuc = r => ({ maliyet: r, pencere: 1/r, gecikme: r, kayip: 1 - 1/r });
+
+VIZ.cokDilli = s => {
+  clear();
+  const sahne = s.sahne || 'butce';
+  const pi = Math.max(0, Math.min(3, s.pi === undefined ? 2 : Math.round(s.pi)));
+  const pay = CD.paylar[pi];
+  const oi = Math.max(0, Math.min(3, s.oi === undefined ? 2 : Math.round(s.oi)));
+  const oran = CD.oranlar[oi];
+  const kart = (x, y, wd, ad, deger, rnk, alt) => {
+    box(x, y, wd, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + wd/2, y + 28, K.mut, 15);
+    txt(deger, x + wd/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + wd/2, y + 95, K.mut, 14);
+  };
+
+  if (sahne === 'sonuc'){
+    const S = CD.sonuc(oran);
+    baslikSerit('ÇOK DİLLİ KÖR NOKTA · PARÇALANMANIN FATURASI',
+      'Doğurganlık oranı r verildiğinde sonuçlar tam aritmetik. Burada r = ' + oran.toFixed(1) + '.', []);
+    const P = plot(rect(140, 200, 640, 400), 0.9, 3.15, 0, 1.15);
+    frame(P, 'doğurganlık oranı r', 'baskın dile göre', [1, 1.5, 2, 3], [0, 0.25, 0.5, 0.75, 1]);
+    /* maliyet ve gecikme: r/3 olcekli · pencere: 1/r */
+    cx.strokeStyle = K.red; cx.lineWidth = 3.4; cx.beginPath();
+    for (let i = 0; i <= 100; i++){ const r2 = 0.9 + 2.25*i/100;
+      const y = P.sy(Math.min(r2/3, 1.15));
+      i ? cx.lineTo(P.sx(r2), y) : cx.moveTo(P.sx(r2), y); }
+    cx.stroke();
+    cx.strokeStyle = K.green; cx.lineWidth = 3.4; cx.beginPath();
+    for (let i = 0; i <= 100; i++){ const r2 = 0.9 + 2.25*i/100;
+      const y = P.sy(1/r2);
+      i ? cx.lineTo(P.sx(r2), y) : cx.moveTo(P.sx(r2), y); }
+    cx.stroke();
+    dot(P.sx(oran), P.sy(Math.min(oran/3, 1.15)), 8, K.red);
+    dot(P.sx(oran), P.sy(1/oran), 8, K.green);
+    txt('kırmızı: token maliyeti (3 e bölünmüş ölçek)', P.R.x + 16, P.sy(1.10), K.red, 16, 'left');
+    txt('yeşil: aynı pencereye sığan metin oranı', P.R.x + 16, P.sy(1.02), K.green, 16, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'DOĞURGANLIK ORANI', oran.toFixed(1) + '×', K.blue, 'token / kelime');
+    kart(bx + 280, 200, 260, 'TOKEN MALİYETİ', oran.toFixed(1) + '×', K.red, 'aynı metin için');
+    kart(bx, 330, 260, 'SIĞAN METİN', '%' + (100*S.pencere).toFixed(0), K.green,
+         'aynı bağlam penceresi');
+    kart(bx + 280, 330, 260, 'KAYBEDİLEN', '%' + (100*S.kayip).toFixed(0), K.orange,
+         'pencerenin');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('ÜÇ KATLI CEZA, HEPSİ AYNI SAYIDAN', bx + 270, 494, K.mut, 17);
+    txt('1. Fiyat: token başına ödenen her şey ' + oran.toFixed(1) + '×.', bx + 18, 534, K.txt, 18, 'left');
+    txt('2. Bağlam: aynı pencereye metnin %' + (100*S.pencere).toFixed(0) + ' i sığar.',
+        bx + 18, 572, K.txt, 18, 'left');
+    txt('3. Gecikme: üretim token başına ilerlediği için', bx + 18, 610, K.txt, 18, 'left');
+    txt('   aynı cevap ' + oran.toFixed(1) + '× sürer.', bx + 18, 638, K.txt, 18, 'left');
+    txt('Üçü de modelin dili bilmemesinden değil, sadece', bx + 18, 676, K.mut, 17, 'left');
+    txt('tokenizerin o dili tanımamasından geliyor.', bx + 18, 702, K.mut, 17, 'left');
+  }
+
+  else if (sahne === 'ornek'){
+    const B = CD.egit(pay, 200);
+    baslikSerit('ÇOK DİLLİ KÖR NOKTA · AYNI TOKENIZER, ÜÇ KELİME',
+      'Aynı eğitilmiş BPE. Kelimelerin hiçbiri eğitim listesinde yok.', []);
+    const ornek = [0, 1, 2].map(di => CD.bol(di).test[4]);
+    ornek.forEach((k, di) => {
+      const y = 250 + di*150, p = CD.parcala(k, B), d = CD.diller[di];
+      txt(d.ad, 160, y, d.renk, 19, 'left', 700);
+      txt(k, 160, y + 34, K.txt, 21, 'left');
+      txt(p.length + ' token', 160, y + 66, d.renk, 18, 'left');
+      let x = 460;
+      p.forEach(t => {
+        const gost = t === CD.SON ? 'son' : t;
+        const g = Math.max(44, 16*gost.length + 22);
+        box(x, y - 20, g, 44, 'rgba(7,10,15,.75)', t === CD.SON ? K.mut : d.renk, 2);
+        txt(gost, x + g/2, y + 8, t === CD.SON ? K.mut : K.txt, gost.length > 5 ? 15 : 18);
+        x += g + 8; });
+    });
+    txt('Aynı BPE, aynı sözlük, aynı bütçe. Parça sayısı dilden dile değişiyor.',
+        160, 690, K.mut, 18, 'left');
+    txt('Bu kurgusal bir korpus: mutlak sayıları değil, mekanizmayı gösteriyor.',
+        160, 722, K.mut, 17, 'left');
+  }
+
+  else {
+    baslikSerit('ÇOK DİLLİ KÖR NOKTA · BİRLEŞME BÜTÇESİ ÇOĞUNLUĞA GİDİYOR',
+      'BPE her adımda en sık geçen çifti birleştirir. Sıklığı korpus payı belirler.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 3.35, 0, 1.05);
+    frame(P, 'korpusta İngilizcenin payı', 'bütçe payı', [],
+          [0, 0.25, 0.5, 0.75, 1]);
+    CD.paylar.forEach((pv, i) => txt('%' + (100*pv).toFixed(0), P.sx(i), P.R.y + P.R.h + 28, K.mut, 16));
+    CD.diller.forEach((d, di) => {
+      cx.strokeStyle = d.renk; cx.lineWidth = 3.4; cx.beginPath();
+      CD.paylar.forEach((pv, i) => { const y = P.sy(CD.butcePayi(20, pv)[di]);
+        i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+      cx.stroke();
+      CD.paylar.forEach((pv, i) => dot(P.sx(i), P.sy(CD.butcePayi(20, pv)[di]), 5, d.renk)); });
+    cx.strokeStyle = K.mut; cx.lineWidth = 2; cx.setLineDash([6, 5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(1/3)); cx.lineTo(P.R.x + P.R.w, P.sy(1/3)); cx.stroke();
+    cx.setLineDash([]);
+    txt('eşit paylaşım %33.3', P.R.x + P.R.w - 14, P.sy(1/3) + 26, K.mut, 15, 'right');
+    CD.diller.forEach((d, di) => {
+      const yy = P.sy(1.0 - di*0.075);
+      cx.strokeStyle = d.renk; cx.lineWidth = 3.4;
+      cx.beginPath(); cx.moveTo(P.R.x + 16, yy - 5); cx.lineTo(P.R.x + 52, yy - 5); cx.stroke();
+      txt(d.ad, P.R.x + 62, yy, d.renk, 16, 'left'); });
+    const q = CD.butcePayi(20, pay);
+    const bx = 830;
+    kart(bx, 200, 260, 'İNGİLİZCE PAYI', '%' + (100*pay).toFixed(0), K.blue, 'korpusta');
+    kart(bx + 280, 200, 260, 'ALDIĞI BÜTÇE', '%' + (100*q[0]).toFixed(1), CD.diller[0].renk,
+         'ilk 20 birleşme');
+    kart(bx, 330, 260, 'TÜRKÇE', '%' + (100*q[1]).toFixed(1), CD.diller[1].renk);
+    kart(bx + 280, 330, 260, 'SVAHİLİ', '%' + (100*q[2]).toFixed(1), CD.diller[2].renk);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('ALGORİTMA SADIK DAVRANIYOR', bx + 270, 494, K.mut, 18);
+    txt('BPE açgözlüdür: her adımda en çok kazandıran', bx + 18, 534, K.txt, 18, 'left');
+    txt('birleşmeyi seçer. Kazanç sıklıkla ölçülür, sıklık', bx + 18, 564, K.txt, 18, 'left');
+    txt('da korpus payıyla gelir.', bx + 18, 594, K.txt, 18, 'left');
+    txt('Eşit korpusta ilk 20 birleşme %' + (100*CD.butcePayi(20, 0.5)[0]).toFixed(0) +
+        ' / %' + (100*CD.butcePayi(20, 0.5)[1]).toFixed(0) + ' / %' +
+        (100*CD.butcePayi(20, 0.5)[2]).toFixed(0) + ' bölüşüyor;', bx + 18, 636, K.green, 18, 'left');
+    txt('%95 lik korpusta %' + (100*CD.butcePayi(20, 0.95)[0]).toFixed(0) + ' / %' +
+        (100*CD.butcePayi(20, 0.95)[1]).toFixed(0) + ' / %' +
+        (100*CD.butcePayi(20, 0.95)[2]).toFixed(0) + '.', bx + 18, 666, K.orange, 18, 'left');
+    txt('Kimse azınlık dilini cezalandırmıyor; bu sadece', bx + 18, 700, K.mut, 17, 'left');
+    txt('sıklığa bakan bir sayacın doğal sonucu.', bx + 18, 724, K.mut, 17, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

@@ -116,7 +116,7 @@ const ROTALAR = [
     {id:'gramer',         ad:'Çıktıyı kalıba sıkıştırmak: gramer ve şema',     sure:16, durum:'hazir'},
     {id:'hafiza',         ad:'Konuşma hafızası: model neyi hatırlar',          sure:16, durum:'hazir'},
     {id:'tokenizer-fark',  ad:'Tokenizer\'lar neden farklı davranır',            sure:12, durum:'planli'},
-    {id:'cokdilli',       ad:'Çok dilli modellerin kör noktası',               sure:12, durum:'planli'},
+    {id:'cokdilli',       ad:'Çok dilli modellerin kör noktası',               sure:14, durum:'hazir'},
     {id:'alan-model',     ad:'Alana özel modeller: genelci mi, uzman mı',      sure:12, durum:'planli'},
     {id:'temel-model',    ad:'Temel modeller: tek modelden her şeye',          sure:12, durum:'planli'},
     {id:'llm-siniflandirici',  ad:'LLM\'i sınıflandırıcıya çevirmek',                sure:12, durum:'planli'},
@@ -10988,6 +10988,156 @@ DERSLER['hafiza'] = {
       'Gizli maliyetler: özet her turda fazladan bir çağrı, getirme bir dizin ve bakım ister. ' +
       'Ve tüm bu hesaplar "bağlamdaysa hatırlar" varsayımına dayanır; pencere büyüdükçe ' +
       'bu varsayım zayıflar.',
+    xp:75,
+  },
+]};
+
+/* --------------- COK DILLI KOR NOKTA --------------- */
+DERSLER['cokdilli'] = {
+  ad:'Çok dilli modellerin kör noktası',
+  alt:'Model bir dili "bilmiyor" değil; tokenizer o dili tanımıyor. Fark, faturanın üzerinde görünüyor.',
+  kaynaklar:[
+    {y:'Ahia, O. ve ark.', t:'2023', b:'Do All Languages Cost the Same? Tokenization in the Era of Commercial Language Models', n:'EMNLP 2023', u:'https://arxiv.org/abs/2305.13707'},
+    {y:'Petrov, A. ve ark.', t:'2023', b:'Language Model Tokenizers Introduce Unfairness Between Languages', n:'NeurIPS 2023', u:'https://arxiv.org/abs/2305.15425'},
+    {y:'Rust, P. ve ark.', t:'2021', b:'How Good is Your Tokenizer? On the Monolingual Performance of Multilingual Language Models', n:'ACL 2021', u:'https://arxiv.org/abs/2012.15613'},
+    {y:'Conneau, A. ve ark.', t:'2020', b:'Unsupervised Cross-lingual Representation Learning at Scale (XLM-R)', n:'ACL 2020', u:'https://arxiv.org/abs/1911.02116'},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'Birleşme bütçesi çoğunluğa gidiyor',
+    goal:'Tokenizerin neden bazı dilleri parçaladığını mekanizma düzeyinde göreceksin.',
+    todo:'Korpustaki İngilizce payını değiştir. İlk 20 birleşme nasıl bölüşülüyor?',
+    kind:'controls', viz:'cokDilli', h:760,
+    controls:[{k:'pi', lb:'KORPUSTA INGILIZCE PAYI', min:0, max:3, step:1, val:2,
+      fmt:v => '%' + (100*CD.paylar[Math.round(v)]).toFixed(0)}],
+    state:{sahne:'butce'},
+    derive:s => ({q: CD.butcePayi(20, CD.paylar[Math.round(s.pi)])}),
+    live:s => [['INGILIZCE', '%' + (100*s.q[0]).toFixed(1), CD.diller[0].renk],
+               ['TURKCE', '%' + (100*s.q[1]).toFixed(1), CD.diller[1].renk],
+               ['SVAHILI', '%' + (100*s.q[2]).toFixed(1), CD.diller[2].renk],
+               ['ESIT OLSA', '%33.3', K.mut]],
+    body:'<p>BPE dersinde tokenizerin nasıl eğitildiğini görmüştün: her adımda en sık geçen ' +
+      'karakter çifti birleştirilir. Burada aynı algoritmayı <b>üç dilli</b> bir korpusta ' +
+      'gerçekten eğitiyoruz.</p>' +
+      '<p>Kritik nokta şu: "en sık" ölçütü dilden habersizdir. Bir çiftin sıklığı, o çiftin ' +
+      'geçtiği dilin korpustaki payıyla gelir. Yani <b>birleşme bütçesi korpus payına göre ' +
+      'dağıtılır</b>.</p>' +
+      '<p>Ölçüm: korpus eşit bölüşüldüğünde ilk 20 birleşme %40.8 / %40.8 / %18.3 dağılıyor. ' +
+      'İngilizce payı %85 e çıkınca dağılım <b>%72.5 / %15.0 / %12.5</b>, %95 te ' +
+      '<b>%75.8 / %13.3 / %10.8</b> oluyor.</p>' +
+      '<p>Burada kimse azınlık dilini cezalandırmıyor. Algoritma hedefine sadık davranıyor: ' +
+      'toplam token sayısını en çok düşüren birleşmeyi seçiyor. O birleşmeler baskın dilde.</p>' +
+      '<p>Erken birleşmeler özellikle önemli, çünkü en sık geçen parçaları onlar kapatır. ' +
+      'Sonradan eklenen birleşmeler daha nadir parçalara düşer.</p>',
+    learned:'<b>Tokenizerin birleşme bütçesi, korpustaki dil paylarına göre dağıtılır.</b><br><br>' +
+      'Eşit korpusta ilk 20 birleşme %40.8 / %40.8 / %18.3; %95 lik korpusta %75.8 / %13.3 / %10.8.<br><br>' +
+      'Bu bir hata değil, BPE nin tanımı gereğidir: en sık geçen çift kazanır ve sıklık ' +
+      'korpus payıyla gelir. Sonuç, baskın dilin kelimeleri bütün kalırken diğerlerinin ' +
+      'parçalanmasıdır.',
+    xp:50,
+  },
+  {
+    t:'Aynı tokenizer, üç kelime',
+    goal:'Parçalanmayı somut olarak göreceksin.',
+    todo:'Korpus payını değiştirip parça sayılarına bak.',
+    kind:'controls', viz:'cokDilli', h:760,
+    controls:[{k:'pi', lb:'KORPUSTA INGILIZCE PAYI', min:0, max:3, step:1, val:2,
+      fmt:v => '%' + (100*CD.paylar[Math.round(v)]).toFixed(0)}],
+    state:{sahne:'ornek'},
+    body:'<p>Aynı eğitilmiş BPE ile üç dilden birer kelime. Önemli ayrıntı: bu kelimelerin ' +
+      'hiçbiri eğitim listesinde yok. Tokenizeri kendi ezberlediği kelimede ölçmek anlamsız ' +
+      'olurdu, çünkü orada zaten tek token verir.</p>' +
+      '<p>Ekranda gördüğün parçalanma farkı gerçek bir ölçümdür ama <b>kurgusal bir korpus ' +
+      'üzerinde</b>. Buradaki mutlak sayılar gerçek modellerin sayıları değildir; ' +
+      'gösterdiği şey mekanizmadır.</p>' +
+      '<p>Gerçek modellerdeki büyüklükler ölçülmüş durumda. Petrov ve arkadaşları (2023) ' +
+      'ticari tokenizerlerde diller arası parçalanma farkının bazı dil çiftlerinde ' +
+      '<b>15 katına</b> kadar çıktığını gösterdi. Ahia ve arkadaşları (2023) aynı içeriğin ' +
+      'API faturasının dile göre kat kat değiştiğini ölçtü.</p>' +
+      '<p>Türkçe bu tabloda özellikle dezavantajlı bir yerde: sondan eklemeli yapısı yüzünden ' +
+      'tek bir kelime birçok anlam birimi taşır ve tokenizer bu birimleri tanımıyorsa ' +
+      'kelimeyi harf harf söker.</p>',
+    learned:'<b>Aynı tokenizer aynı bütçeyle bazı dillerde bütün kelime, bazılarında harf ' +
+      'yığını üretir.</b><br><br>' +
+      'Buradaki korpus kurgusaldır ve mutlak sayılar gerçek modelleri temsil etmez; ' +
+      'mekanizmayı gösterir.<br><br>' +
+      'Gerçek ölçümler için: ticari tokenizerlerde diller arası parçalanma farkı bazı ' +
+      'dil çiftlerinde 15 katına kadar çıkıyor (Petrov ve ark., 2023).',
+    xp:50,
+  },
+  {
+    t:'Parçalanmanın faturası',
+    goal:'Doğurganlık oranının üç ayrı maliyete nasıl dönüştüğünü hesaplayacaksın.',
+    todo:'Oranı değiştir. Aynı bağlam penceresine metnin ne kadarı sığıyor?',
+    kind:'controls', viz:'cokDilli', h:760,
+    controls:[{k:'oi', lb:'DOGURGANLIK ORANI', min:0, max:3, step:1, val:2,
+      fmt:v => 'r = ' + CD.oranlar[Math.round(v)].toFixed(1) + 'x'}],
+    state:{sahne:'sonuc'},
+    derive:s => ({S: CD.sonuc(CD.oranlar[Math.round(s.oi)])}),
+    live:s => [['ORAN', CD.oranlar[Math.round(s.oi)].toFixed(1) + 'x'],
+               ['MALIYET', s.S.maliyet.toFixed(2) + 'x', K.red],
+               ['SIGAN METIN', '%' + (100*s.S.pencere).toFixed(0), K.green],
+               ['HEDEF', 'sigan < %40']],
+    unlock:s => s.S.pencere < 0.40,
+    unlockMsg:'Sigan metin oranini %40 in altina dusuren orani bul',
+    body:'<p>Doğurganlık oranı r, aynı içeriğin baskın dile göre kaç kat fazla token ettiği. ' +
+      'Buradan sonrası saf aritmetik, ölçüm değil:</p>' +
+      '<p><b>Fiyat.</b> Token başına ödeme yapıyorsan aynı metin r kat tutar. r = 2 de ' +
+      'iki katı.</p>' +
+      '<p><b>Bağlam.</b> Pencere token cinsinden sabit olduğu için aynı pencereye metnin ' +
+      'sadece <b>1/r</b> si sığar. r = 2 de yarısı, r = 3 te üçte biri. Yani "128 bin tokenlık ' +
+      'pencere" cümlesi dile göre farklı miktarda metin demektir.</p>' +
+      '<p><b>Gecikme.</b> Üretim token başına ilerlediği için aynı cevap r kat sürer.</p>' +
+      '<p>Üç ceza da aynı sayıdan geliyor ve hiçbiri modelin o dili "bilmemesi" değil. ' +
+      'Bu, düzeltilebilir bir mühendislik sorunudur: dengeli korpusla eğitilmiş bir tokenizer, ' +
+      'dile özel tokenizer, ya da bayt düzeyine düşen bir yedek mekanizma.</p>' +
+      '<p>Bir ek etki daha var: parçalanma arttıkça aynı cümle daha uzun bir token dizisine ' +
+      'yayılır ve model için gereken bağımlılık mesafesi uzar. Rust ve arkadaşlarının (2021) ' +
+      'gösterdiği gibi, tokenizer kalitesi tek başına dil başına başarımı belirgin biçimde ' +
+      'etkiliyor.</p>',
+    learned:'<b>Doğurganlık oranı r, üç maliyeti birden çarpar.</b><br><br>' +
+      'Fiyat r kat, aynı pencereye sığan metin 1/r, gecikme r kat. r = 2 de: iki kat fiyat, ' +
+      'yarım pencere, iki kat süre.<br><br>' +
+      '"128 bin tokenlık bağlam" ifadesi dilden bağımsız bir vaat değildir. Ve bu, modelin ' +
+      'dili bilmemesinden değil tokenizerin tanımamasından gelir, yani düzeltilebilir.',
+    xp:50,
+  },
+  {
+    t:'Ne yapılabilir',
+    goal:'Kör noktayı kapatmanın yollarını ve her birinin bedelini göreceksin.',
+    todo:'Soruyu cevapla.',
+    kind:'controls', viz:'cokDilli', h:760,
+    controls:[{k:'pi', lb:'KORPUSTA INGILIZCE PAYI', min:0, max:3, step:1, val:3,
+      fmt:v => '%' + (100*CD.paylar[Math.round(v)]).toFixed(0)}],
+    state:{sahne:'butce'},
+    body:'<p>Sorunun kaynağı korpus dengesi olduğuna göre çözümler de oradan başlıyor:</p>' +
+      '<p><b>Korpusu dengelemek.</b> Tokenizer eğitiminde dilleri örneklerken azınlık ' +
+      'dillerin payını yapay olarak yükseltmek. XLM-R bunu üstel bir yeniden örnekleme ile ' +
+      'yapar (Conneau ve ark., 2020). Bedeli: baskın dilde bir miktar verim kaybı.</p>' +
+      '<p><b>Sözlüğü büyütmek.</b> Daha çok birleşme, herkese daha çok parça demek. Bedeli ' +
+      'gömme tablosunun büyümesi ve son katman maliyeti. Ayrıca erken birleşmeler yine ' +
+      'baskın dile gider; bu bir yama, çözüm değil.</p>' +
+      '<p><b>Dile özel tokenizer.</b> Tek dilde çalışacak bir sistem için en verimlisi. ' +
+      'Bedeli: çok dilli aktarım kaybı ve ayrı model bakımı.</p>' +
+      '<p><b>Bayt düzeyi yedek.</b> Bilinmeyen her şeyi baytlara düşürmek çökmeyi önler ' +
+      'ama parçalanmayı çözmez, aksine en kötü hale getirir.</p>' +
+      '<p>Pratikte bir uygulama geliştiricisi olarak tokenizeri seçemezsin ama <b>ölçebilirsin</b>: ' +
+      'kendi metinlerinde kelime başına token sayısını saymak beş dakikalık bir iştir ve ' +
+      'maliyet, bağlam ve gecikme tahminlerini doğrudan düzeltir.</p>',
+    quiz:{ q:'Türkçe belgelerle çalışan bir asistan kuruyorsun. Aynı belgeler İngilizceye çevrildiğinde token sayısı yarıya iniyor. Elindeki modelin bağlam penceresi 32 bin token. Aşağıdakilerden hangisi bu ölçümün doğrudan sonucudur?',
+      opts:[
+        {t:'Aynı pencereye Türkçe belgenin yaklaşık yarısı kadar metin sığar; parçalama ve getirme tasarımını buna göre yapmalısın', why:'Doğru. Doğurganlık oranı r = 2 ise pencereye sığan metin 1/r = %50 dir. Bu saf aritmetik. Pratik sonucu şudur: belge parçalarını token cinsinden ölçmelisin, karakter ya da kelime cinsinden değil; ve getirme tasarımında Türkçe için daha fazla parça bütçesi ayırmalısın.'},
+        {t:'Model Türkçeyi İngilizceden daha kötü anlıyor', why:'Ölçüm bunu söylemiyor. Token sayısı tokenizerin özelliğidir, modelin dil anlama yeteneğinin değil. Parçalanmanın başarımı dolaylı olarak etkilediği doğru (Rust ve ark., 2021) ama bu ölçümün doğrudan söylediği şey maliyet, bağlam ve gecikmedir.'},
+        {t:'Belgeleri önce İngilizceye çevirip öyle işlemelisin', why:'Bazı durumlarda maliyeti düşürebilir ama çeviri kendi hatasını ekler, orijinal metnin nüansını kaybeder ve ek bir model çağrısı gerektirir. Ölçümün doğrudan sonucu değil, olası bir müdahaledir ve ayrıca değerlendirilmelidir.'},
+        {t:'Daha büyük bağlam penceresi olan bir modele geçmelisin', why:'Semptomu hafifletir ama ölçümün söylediği şey bu değil. Ayrıca pencereyi büyütmek fiyat ve gecikme cezalarını kaldırmaz; ikisi de token sayısıyla orantılı kalmaya devam eder.'},
+      ], correct:0 },
+    learned:'<b>Çözüm tokenizer katmanındadır, model katmanında değil.</b><br><br>' +
+      'Korpusu dengelemek (baskın dilde bir miktar verim kaybıyla), sözlüğü büyütmek ' +
+      '(gömme maliyetiyle, ve erken birleşmeler yine baskın dile gider), dile özel tokenizer ' +
+      '(aktarım kaybıyla).<br><br>' +
+      'Uygulama tarafında yapılacak en kısa iş: kendi metinlerinde kelime başına token ' +
+      'sayısını ölçmek. Maliyet, bağlam ve gecikme tahminlerinin üçü de bu sayıya bağlıdır.',
     xp:75,
   },
 ]};
