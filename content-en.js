@@ -6000,3 +6000,189 @@ DERSLER_EN['boyut'] = {
   },
   ],
 };
+
+DERSLER_EN['ridge'] = {
+  ad:'Ridge: shrinking the coefficients',
+  alt:'Deliberately making a model worse is sometimes the only right move. We will raise the training error sixfold and halve the test error.',
+  kaynaklar:[{"y":"Hoerl, A. E. & Kennard, R. W.","t":"1970","b":"Ridge Regression: Biased Estimation for Nonorthogonal Problems","n":"Technometrics, 12(1)"},
+             {"y":"Bishop, C. M.","t":"2006","b":"Pattern Recognition and Machine Learning, Section 3.1.4","n":"Springer"},
+             {"y":"Hastie, Tibshirani, Friedman","t":"2009","b":"The Elements of Statistical Learning, Section 3.4.1","n":"Springer"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'When two features say the same thing',
+    goal:'You will see why unpenalised regression is unreliable when two very similar features are present.',
+    todo:'With the slider left at λ=0, look at the coefficient bars on the right. x₀ and x₁ are almost the same column, but their coefficients are very different.',
+    kind:'controls', viz:'cezaYolu', h:760, xp:15, state:{yontem:'ridge'},
+    body:'<p>40 examples, 6 features. I generated the data, so <b>I know the true coefficients</b>: only x₀ (coefficient 3) and x₂ (coefficient −2) are meaningful. x₁, x₃, x₄ and x₅ say nothing; their true coefficients are zero.</p>' +
+         '<p>And there is a trap: <b>x₁ is almost a copy of x₀.</b> The correlation between them is 0.986. This happens a lot in real life; "monthly income" and "annual income" sit next to each other in the same table.</p>' +
+         '<p>At λ=0, that is with unpenalised least squares, the model says <b>x₀ = 3.87</b> where the true value is 3.0. For x₁ it says 0.15 where the true value is 0. The model distributes the weight arbitrarily between two columns it cannot tell apart, and that distribution changes completely if the data changes a little.</p>',
+    learned:'<b>Correlated features make unpenalised regression unstable.</b> The model splits the weight arbitrarily between two nearly identical columns; a small change in the data throws the coefficients around.<br><br>As the coefficients grow the model starts fitting the noise as well. The test error is currently <b>1.650</b>. We are going to lower it.',
+    controls:[{k:'lam', lb:'PENALTY STRENGTH λ', min:0, max:60, step:1, val:0}],
+  },
+  {
+    t:'Switch the penalty on',
+    goal:'You will see for yourself what adding the square of the coefficients to the loss function does.',
+    todo:'Raise λ slowly from 0 upwards. Watch the x₀ and x₁ bars: are they moving towards each other?',
+    kind:'controls', viz:'cezaYolu', h:760, xp:35, state:{yontem:'ridge'},
+    body:'<p>Ridge changes the objective of least squares:</p>' +
+         '<p style="text-align:center"><b>RSS + λ · (β₁² + β₂² + … + β₆²)</b></p>' +
+         '<p>The model no longer says only "make the error small", it says "make the error small <b>but do not grow the coefficients either</b>". λ is the bargaining power between those two wishes.</p>' +
+         '<p>The consequence: if two features carry the same information, loading all of the weight onto one of them makes its square large. <b>3.9² = 15.21</b>, but split the same total in two and you get <b>1.95² + 1.95² = 7.605</b>, exactly half. The penalty prefers to <b>share</b> the weight between the two.</p>',
+    learned:'<b>Ridge shares the weight between correlated features.</b> At λ=20 you get x₀ = 1.69 and x₁ = 1.59, almost equal.<br><br>The reason is algebra: splitting the same total across two numbers makes the sum of their squares smaller. The penalty rewards exactly that.',
+    controls:[{k:'lam', lb:'PENALTY STRENGTH λ', min:0, max:60, step:1, val:0}],
+  },
+  {
+    t:'Make the training worse, fix the test',
+    goal:'You will see in numbers why a model that deliberately fits worse predicts better.',
+    todo:'While moving λ, look at the pink test curve at the bottom right. Where does it bottom out?',
+    kind:'controls', viz:'cezaYolu', h:760, xp:40, state:{yontem:'ridge'},
+    body:'<p>The two curves go in opposite directions and that is not a coincidence.</p>' +
+         '<p><b>Training RSS:</b> 8.2 at λ=0. <b>50.3</b> at λ=20. Six times higher; the model deliberately fits the training data worse.</p>' +
+         '<p><b>Test MSE:</b> 1.650 at λ=0. <b>0.901</b> at λ=20. Nearly halved.</p>' +
+         '<p>Grow λ further and the test error rises again: 3.321 at λ=100, 6.042 at λ=200. Because now you are crushing the real signal too. There is a sweet spot in the middle.</p>',
+    learned:'<b>Ridge deliberately raises the training error to lower the test error.</b> While the training RSS goes from 8.2 to 50.3 the test MSE falls from 1.650 to <b>0.901</b>, a <b>45.4% improvement</b>.<br><br>This is the measured version of the idea that "success on the training data is not success". If λ grows too far it turns around: at λ=200 the test error is 6.042, worse even than the unpenalised model.',
+    controls:[{k:'lam', lb:'PENALTY STRENGTH λ', min:0, max:60, step:1, val:0}],
+  },
+  {
+    t:'How is λ chosen?',
+    goal:'You will learn the only legitimate way of finding the right value of λ.',
+    todo:'Answer the question.',
+    kind:'static', viz:'cezaYolu', h:760, xp:35, state:{yontem:'ridge', lam:20},
+    body:'<p>To be able to draw the test curve above I used the test data. <b>You cannot do that in real life</b>, because once you look at the test data it stops being test data.</p>' +
+         '<p>The right way: split the training data into k parts, measure every value of λ with <b>cross validation</b>, rebuild the model on all the training data with the winning λ, and look at the test set only once, right at the end.</p>',
+    learned:'<b>λ is a hyperparameter: it is not learned from the data, it is searched for with the data.</b> The instrument is cross validation.<br><br>There is one more condition: because the penalty is applied at the same magnitude to all the coefficients, the features must be <b>scaled first</b>. A feature measured in metres and one measured in kilometres cannot take the same penalty.',
+    quiz:{
+      q:'What should you choose the value of λ in ridge according to?',
+      opts:[
+        {t:'The λ that makes the training error smallest',
+         why:'No. The training error is always smallest at λ=0, because with no penalty the model fits the training data best. That criterion always takes you to the unpenalised model and erases the whole benefit of ridge.'},
+        {t:'The λ that makes the cross validation error smallest',
+         why:'Correct. You split the training data into folds and measure the error on the unseen folds for every λ. That way you choose λ without touching the test set at all.'},
+        {t:'The λ that makes the coefficients smallest',
+         why:'No. That criterion drives every coefficient to zero as λ grows and the model ends up predicting nothing. Here the test error rises to 6.042 at λ=200.'},
+        {t:'A fixed value for every dataset, for example λ=1',
+         why:'No. The right λ depends on the number of examples, the number of features, the noise level and the scale of the features. On this data the best λ came out at 20; on other data it could be 0.01.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['lasso'] = {
+  ad:'Lasso: squeezing a coefficient to zero',
+  alt:'Ridge shrinks coefficients but never kills any of them. Lasso does kill them, and while doing so it tells you which feature is unnecessary.',
+  kaynaklar:[{"y":"Tibshirani, R.","t":"1996","b":"Regression Shrinkage and Selection via the Lasso","n":"J. Royal Statistical Society B, 58(1)"},
+             {"y":"Hastie, Tibshirani, Friedman","t":"2009","b":"The Elements of Statistical Learning, Section 3.4.2","n":"Springer"},
+             {"y":"Zou, H. & Hastie, T.","t":"2005","b":"Regularization and Variable Selection via the Elastic Net","n":"J. Royal Statistical Society B, 67(2)"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'One thing changed: absolute value instead of square',
+    goal:'You will see how changing the shape of the penalty changes the result fundamentally.',
+    todo:'Raise λ and watch the coefficient path. In ridge the lines <b>approached</b> zero; what happens here?',
+    kind:'controls', viz:'cezaYolu', h:760, xp:35, state:{yontem:'lasso'},
+    body:'<p>The same data, the same problem. The only difference is the shape of the penalty:</p>' +
+         '<p style="text-align:center">Ridge: RSS + λ·Σ<b>β²</b> &nbsp;&nbsp;·&nbsp;&nbsp; Lasso: RSS + λ·Σ<b>|β|</b></p>' +
+         '<p>Absolute value instead of square. That small looking change completely changes the behaviour.</p>' +
+         '<p>In ridge a coefficient goes down to 0.01, then to 0.001, but <b>never becomes exactly zero</b>. In lasso the first coefficient snaps to zero at λ=1 and stays there.</p>',
+    learned:'<b>The L1 penalty slams coefficients to zero; L2 only pulls them towards zero.</b><br><br>That is not a coincidence, it comes from the derivative of the penalty. The derivative of β² is 0 at zero, so the penalty weakens as it approaches zero. The derivative of |β| is 1 at zero, so the penalty pushes with the same force right to the last moment.',
+    controls:[{k:'lam', lb:'PENALTY STRENGTH λ', min:0, max:120, step:1, val:0}],
+  },
+  {
+    t:'Watch it eliminate the noise',
+    goal:'You will check which features lasso really discards, knowing the right answer.',
+    todo:'Raise λ above 15. Note which four features are zeroed out.',
+    kind:'controls', viz:'cezaYolu', h:760, xp:40, state:{yontem:'lasso'},
+    body:'<p>A reminder: I generated this data. The true coefficients are <b>[3, 0, −2, 0, 0, 0]</b>. So <b>x₁, x₃, x₄ and x₅ are pure noise</b> and the model ought to throw them out.</p>' +
+         '<p>At λ=15 lasso zeroes out exactly four coefficients. Which ones? <b>x₁, x₃, x₄, x₅.</b> All four are noise. It did not discard a single one wrongly.</p>' +
+         '<p>Discarding x₁ is interesting on top of that: x₁ was a copy of x₀. Ridge shared the weight between the two; lasso <b>picks one and throws the other away</b>.</p>',
+    learned:'<b>Lasso is not only regularisation, it is also feature selection.</b> At λ=15 on this data it found all four noise features correctly and left x₀ and x₂ standing.<br><br>In a correlated pair ridge shares and lasso selects. Which one you want depends on the problem: lasso if you are asking "which variable matters", ridge most of the time if you are saying "give me the best prediction".',
+    controls:[{k:'lam', lb:'PENALTY STRENGTH λ', min:0, max:120, step:1, val:0}],
+  },
+  {
+    t:'So which one predicts better?',
+    goal:'You will see the price and the gain of a sparse model on the same scale.',
+    todo:'Move λ to where the test error bottoms out, then answer the question.',
+    kind:'controls', viz:'cezaYolu', h:760, xp:45, state:{yontem:'lasso'},
+    body:'<p>Let us compare three models on the same test data:</p>' +
+         '<p><b>Unpenalised:</b> 1.650 &nbsp;·&nbsp; <b>Lasso (λ=53):</b> 1.003 &nbsp;·&nbsp; <b>Ridge (λ=20):</b> 0.901</p>' +
+         '<p>Lasso is <b>39.2%</b> better than the unpenalised model. Ridge is <b>45.4%</b> better, so ridge wins the prediction race on this data.</p>' +
+         '<p>But lasso gives you something else in return: <b>a model with two features.</b> Its coefficients are [3.45, 0, −1.28, 0, 0, 0]. The true values are [3, 0, −2, 0, 0, 0]. Ridge\'s answer is [1.69, 1.59, −1.31, 0, −0.05, −0.01]: it predicts better but it does not tell you which variable really matters.</p>',
+    learned:'<b>Lasso gives up a little predictive power and buys interpretability.</b> On this data it achieves a 39.2% improvement over the unpenalised model against ridge\'s 45.4%; but lasso leaves 2 of the 6 features.<br><br>The decision depends on the criterion: ridge if you only want prediction, lasso if you also need the answer to "which variable". There is also elastic net, which combines the two: λ₁·Σ|β| + λ₂·Σβ².',
+    controls:[{k:'lam', lb:'PENALTY STRENGTH λ', min:0, max:120, step:1, val:0}],
+    quiz:{
+      q:'You are building a credit risk model with 200 features at a bank and the regulator says "explain which variables you based the decision on". Which one?',
+      opts:[
+        {t:'Ridge, because its test error is lower',
+         why:'Predictive power is not the only criterion here. Ridge gives a non-zero coefficient to all 200 features; you cannot answer "which variables did we look at" with a list of 200 items.'},
+        {t:'Lasso, because it zeroes out most of the coefficients and leaves a short, defensible list',
+         why:'Correct. This is where the real value of lasso lies. You give up a little predictive power (39.2% against 45.4% on this data) and get an explainable model. In front of a regulator a model with 12 variables is more defensible than one with 200.'},
+        {t:'Unpenalised least squares, because that is the most interpretable',
+         why:'No. The unpenalised model leaves every coefficient non-zero and is unstable with correlated variables. In terms of interpretability it is the worst option.'},
+        {t:'Neither, a decision tree should be used',
+         why:'A decision tree can be a good option but the question is about choosing between penalty methods. And a single tree is unstable with correlated variables too.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['norm-l1l2'] = {
+  ad:'L1 and L2: two penalties, two different worlds',
+  alt:'Why does lasso produce exact zeros while ridge does not? The answer is not in the algebra but in the geometry: a diamond has corners, a circle does not.',
+  kaynaklar:[{"y":"Tibshirani, R.","t":"1996","b":"Regression Shrinkage and Selection via the Lasso, Figure 2","n":"J. Royal Statistical Society B, 58(1)"},
+             {"y":"Hastie, Tibshirani, Friedman","t":"2009","b":"The Elements of Statistical Learning, Figure 3.11","n":"Springer"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'Think of the penalty as a budget',
+    goal:'You will learn to see the penalty term as a "constraint region". Everything after this is a single picture.',
+    todo:'Use NEXT to walk through the two stages and look at how the shape changes.',
+    kind:'phases', viz:'cezaGeo', h:660, xp:25,
+    learned:'<b>The penalty term and the budget constraint are two faces of the same problem.</b> Every value of λ has a corresponding budget t.<br><br>The L2 budget is a <b>circle</b> and the L1 budget is a <b>diamond</b>. The solution is the point where the constant error ellipses first touch that region.',
+    phases:[
+      {state:{yontem:'ridge', t:0.55},
+       body:'<p>Penalised regression has a second reading. Instead of saying "make RSS + λ·Σβ² small" you can also say:</p>' +
+            '<p style="text-align:center"><b>Make RSS small, subject to Σβ² ≤ t.</b></p>' +
+            '<p>So you are giving the coefficients a <b>budget</b>. The blue region is what that budget allows. The grey ellipses are the constant error curves, centred on the unpenalised solution.</p>'},
+      {state:{yontem:'lasso', t:0.55},
+       body:'<p>In lasso the budget rule changes: <b>|β₁| + |β₂| ≤ t.</b></p>' +
+            '<p>The same budget, a different shape. The moment you take the absolute value instead of the square, the circle turns into a <b>diamond</b>.</p>' +
+            '<p>The solution is in the same place in both cases: the point where the ellipses <b>first touch</b> the budget region. Grow or shrink the budget and that point travels.</p>'},
+    ],
+  },
+  {
+    t:'Touching a corner',
+    goal:'You will see for yourself why the corner of the diamond produces a zero and why the circle does not.',
+    todo:'Shrink and grow the budget. Where does the touch point sit on the diamond? Then switch the method to ridge and try the same thing.',
+    kind:'controls', viz:'cezaGeo', h:660, xp:40,
+    body:'<p>The corners of the diamond sit on the axes. Being on an axis means <b>the other coefficient is exactly zero</b>.</p>' +
+         '<p>As an ellipse shrinks towards the diamond it most probably hits a <b>corner</b> rather than an edge. Because the corner is pointed it is much easier for the ellipse to touch it.</p>' +
+         '<p>A circle has no corner. Wherever the ellipse touches the circle, that point is almost never on an axis. This is why ridge\'s coefficients shrink but never become zero.</p>',
+    learned:'<b>What produces a zero is a corner.</b> The corners of the L1 budget are on the axes, so the solution frequently makes one coefficient exactly zero.<br><br>The L2 budget is smooth and pointed nowhere, so its solution never lands exactly on an axis. The difference grows with dimension: in 200 dimensions the L1 budget has 400 corners and every one of them is on an axis.',
+    controls:[{k:'t', lb:'BUDGET', min:0, max:1, step:0.02, val:0.55},
+              {k:'y2', lb:'METHOD', min:0, max:1, step:1, val:1}],
+  },
+  {
+    t:'Which penalty when?',
+    goal:'You will turn the difference into a decision rule.',
+    todo:'Answer the question.',
+    kind:'static', viz:'cezaGeo', h:660, xp:40, state:{yontem:'lasso', t:0.35},
+    body:'<p>In summary:</p>' +
+         '<p><b>L2 (ridge):</b> shrinks all the coefficients and discards none. Shares the weight across correlated features. It has a closed form solution and is fast. It works even when there are more features than examples.</p>' +
+         '<p><b>L1 (lasso):</b> zeroes coefficients out and selects features. Picks one member of a correlated group and discards the rest. It has no closed form solution and needs an algorithm such as coordinate descent.</p>',
+    learned:'<b>L1 if you expect sparsity, L2 if you do not.</b><br><br>Lasso if p ≫ n, that is if there are far more features than examples and the assumption "there are only a few real drivers" holds. Ridge if all the features contribute a little and your only concern is prediction.<br><br>If you need both there is elastic net: λ₁·Σ|β| + λ₂·Σβ². It selects a correlated group together and discards the noise as well.',
+    quiz:{
+      q:'You are working with genetic data: 20,000 gene expressions and only 80 patients. You believe a handful of those 20,000 genes are related to the disease. Which penalty?',
+      opts:[
+        {t:'L2, because ridge is more stable when there are few examples',
+         why:'Ridge really is stable, but it gives a non-zero coefficient to all 20,000 genes. You get no answer to "which genes?", and that is the whole problem.'},
+        {t:'L1, because it zeroes out most of the coefficients and leaves a small number of genes',
+         why:'Correct. This scenario is called p ≫ n with a sparsity assumption: many variables, few examples, few real drivers. Lasso was designed for exactly this situation. One caveat: lasso can select at most n non-zero coefficients, so 80 of them here.'},
+        {t:'Use no penalty, plain least squares',
+         why:'With 20,000 variables and 80 examples unpenalised least squares does not even have a single solution; infinitely many solutions fit the training data perfectly. A penalty here is not an option but a necessity.'},
+        {t:'Testing each gene\'s coefficient one at a time with a t-test',
+         why:'If you run 20,000 tests, hundreds of "significant" results come out by chance alone. Also the genes are correlated with each other, and looking at them one at a time misses the joint effect.'},
+      ], correct:1 },
+  },
+  ],
+};
