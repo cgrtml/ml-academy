@@ -7060,3 +7060,230 @@ DERSLER_EN['a-yildiz'] = {
   },
   ],
 };
+
+DERSLER_EN['taylor'] = {
+  ad:'Taylor series: simplifying the complicated locally',
+  alt:'Gradient descent actually assumes "it is flat from here on". We are going to measure exactly where that assumption breaks.',
+  kaynaklar:[{"y":"Nocedal, J. & Wright, S. J.","t":"2006","b":"Numerical Optimization, 2nd edition, Chapters 2 and 3","n":"Springer"},
+             {"y":"Goodfellow, Bengio, Courville","t":"2016","b":"Deep Learning, Section 4.3","n":"MIT Press","u":"https://www.deeplearningbook.org/"},
+             {"y":"Boyd, S. & Vandenberghe, L.","t":"2004","b":"Convex Optimization, Section 9.5","n":"Cambridge University Press"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'Gradient descent makes a hidden assumption',
+    goal:'You will see what a model actually relies on when it takes a step.',
+    todo:'Keep the step size small. How closely do the orange tangent line and the blue curve overlap?',
+    kind:'controls', viz:'taylorAdim', h:720, xp:25, state:{derece:1},
+    body:'<p>A gradient descent step is this: <b>x ← x − η·f\'(x)</b>. There is a silent assumption behind that rule.</p>' +
+         '<p>The first order form of the Taylor expansion says:</p>' +
+         '<p style="text-align:center"><b>f(x + d) ≈ f(x) + f\'(x)·d</b></p>' +
+         '<p>That is, "for a small enough d the function can be treated as flat". Gradient descent looks at the slope of that line and takes a step downhill.</p>' +
+         '<p>The dashed orange line is exactly that line. With a small step (0.02) the prediction is −0.0670 and the truth −0.0601. The error is only <b>0.0069</b>. The assumption holds.</p>',
+    learned:'<b>Gradient descent assumes the function is locally flat.</b><br><br>That assumption works very well for small steps: with a step of 0.02 the error of the linear prediction is 0.0069.<br><br>What we call the learning rate is really a <b>trust radius</b>: how far out do you trust this approximation?',
+    controls:[{k:'lr', lb:'STEP SIZE', min:0.01, max:0.5, step:0.01, val:0.05}],
+  },
+  {
+    t:'The approximation collapses as the step grows',
+    goal:'You will see in numbers why the learning rate has an upper bound.',
+    todo:'Open the step size up to 0.5. Where does the gap between the prediction and the truth go?',
+    kind:'controls', viz:'taylorAdim', h:720, xp:45, state:{derece:1},
+    body:'<p>As the step grows the tangent line breaks away from the curve:</p>' +
+         '<p><b>0.02:</b> error 0.0069 &nbsp;·&nbsp; <b>0.1:</b> 0.1574 &nbsp;·&nbsp; <b>0.3:</b> 1.1180 &nbsp;·&nbsp; <b>0.5:</b> <b>2.4153</b></p>' +
+         '<p>Here is the really dangerous part: at a step of 0.5 the linear prediction says f will fall to <b>−2.5974</b>. In reality f is <b>−0.1821</b>. So the model thinks "I took a great step" when it actually climbed out of the well and up the hill.</p>' +
+         '<p>This is exactly why training blows up when the learning rate is too large: a step is taken into a region where the linear approximation is no longer valid.</p>',
+    learned:'<b>What sets the upper bound of the learning rate is the radius of validity of the linear approximation.</b><br><br>At a step of 0.02 the error is 0.0069 and at 0.5 it is <b>2.4153</b>. The prediction says −2.5974 and the truth is −0.1821.<br><br>The error grows roughly with the <b>square</b> of the step, because the first discarded term of the Taylor series is ½·f\'\'(x)·d². Double the step and the error quadruples.',
+    controls:[{k:'lr', lb:'STEP SIZE', min:0.01, max:0.5, step:0.01, val:0.05}],
+  },
+  {
+    t:'Add one more term: curvature',
+    goal:'You will see why a second order approximation stays valid much further out.',
+    todo:'Set the DEGREE to 2 and try the same step sizes again. What happened to the error?',
+    kind:'controls', viz:'taylorAdim', h:720, xp:45,
+    body:'<p>If we add one more term to the Taylor series:</p>' +
+         '<p style="text-align:center"><b>f(x + d) ≈ f(x) + f\'(x)·d + ½·f\'\'(x)·d²</b></p>' +
+         '<p>Now we are fitting a <b>parabola</b> rather than a line. The second derivative f\'\'(x) tells you the curvature: how fast the surface bends.</p>' +
+         '<p>At a step of 0.1: the linear error is 0.1574 and the second order error only <b>0.0187</b>. More than eight times better.</p>' +
+         '<p>At a step of 0.02: linear 0.0069, second order <b>0.0002</b>.</p>' +
+         '<p>But the parabola is not valid forever either. At a step of 0.5 the second order prediction is 1.8044 and the truth −0.1821. It collapses too, just later.</p>',
+    learned:'<b>Taking the curvature into account widens the region where the approximation is valid.</b><br><br>At a step of 0.1 the linear error is 0.1574 and the second order error 0.0187.<br><br>The reason is Taylor again: the error of the linear approximation grows with d² and that of the second order approximation with d³. For small d, d³ is far smaller.',
+    controls:[{k:'lr', lb:'STEP SIZE', min:0.01, max:0.5, step:0.01, val:0.1},
+              {k:'derece', lb:'APPROXIMATION DEGREE', min:1, max:2, step:1, val:1}],
+  },
+  {
+    t:'Newton: compute the size of the step too',
+    goal:'You will see why a method that knows the curvature converges in far fewer steps.',
+    todo:'Raise the number of steps. At which step does Newton settle on the target, and at which does the gradient?',
+    kind:'controls', viz:'newtonKarsi', h:720, xp:55, state:{lr:0.1},
+    body:'<p>If the parabola approximation is good, we can <b>jump straight to the vertex of that parabola</b>. The minimum of a parabola is where its derivative is zero, and the algebra is a single line:</p>' +
+         '<p style="text-align:center"><b>d = − f\'(x) / f\'\'(x)</b></p>' +
+         '<p>That is the Newton step. Note: there is <b>no</b> learning rate. The size of the step is set by the curvature itself.</p>' +
+         '<p>The result is striking. To get within 10⁻⁶ of the target:</p>' +
+         '<p><b>gradient descent (η=0.1):</b> 43 steps &nbsp;·&nbsp; <b>Newton:</b> <b>5 steps</b></p>' +
+         '<p>Newton\'s error shrinks quadratically at every step: 9.05e-4 → 1.05e-6 → <b>1.40e-12</b>. The number of correct digits doubles at every step.</p>',
+    learned:'<b>The Newton step is the step set by the curvature: d = −f\'(x)/f\'\'(x).</b><br><br>On this problem gradient descent gets within 10⁻⁶ of the target in 43 steps and Newton in 5. Newton converges quadratically: the error goes 9.05e-4 → 1.05e-6 → 1.40e-12.<br><br>Its cost explodes with dimension. This is why deep learning uses methods that approximate the curvature information cheaply (Adam, L-BFGS) instead of full Newton.',
+    controls:[{k:'adim', lb:'NUMBER OF STEPS', min:1, max:60, step:1, val:1}],
+    quiz:{
+      q:'If Newton is this fast, why is gradient descent used in deep learning?',
+      opts:[
+        {t:'Newton only works on functions of one variable',
+         why:'It works in many variables too; the Hessian matrix is used instead of f\'\'(x). The problem is not that it fails to work but what it costs.'},
+        {t:'The Hessian matrix is p×p and inverting it takes p³ operations; with billions of parameters that is impossible',
+         why:'Correct. In a network with 10 million parameters the Hessian holds 10¹⁴ entries and simply does not fit in memory. This is why in practice diagonal approximations (such as Adam), limited memory quasi-Newton methods (L-BFGS), or techniques that compute a product with the Hessian without ever forming the matrix are used.'},
+        {t:'Newton gets stuck in local minima and gradient descent does not',
+         why:'On the contrary, Newton depends on the local structure more than gradient descent does and can be attracted to saddle points. But that is not the main obstacle; the computational cost is.'},
+        {t:'Newton is hard to tune because it needs a learning rate',
+         why:'The appeal of Newton is precisely that it needs no learning rate. The size of the step is set by the curvature itself.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['hessian'] = {
+  ad:'The Hessian: measuring the curvature of the curve',
+  alt:'The same loss, the same learning rate rule. When the valley is round it finishes in one step; turn it into a narrow canyon and it takes 363.',
+  kaynaklar:[{"y":"Nocedal, J. & Wright, S. J.","t":"2006","b":"Numerical Optimization, Section 3.3","n":"Springer"},
+             {"y":"LeCun, Y. et al.","t":"1998","b":"Efficient BackProp","n":"Neural Networks: Tricks of the Trade, Springer"},
+             {"y":"Goodfellow, Bengio, Courville","t":"2016","b":"Deep Learning, Sections 4.3.1 and 8.2","n":"MIT Press","u":"https://www.deeplearningbook.org/"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'Two directions, two different curvatures',
+    goal:'You will see that in a multivariable loss the curvature is not a single number.',
+    todo:'Raise the condition number. How do the contour lines and the yellow trace change?',
+    kind:'controls', viz:'hessianVadi', h:720, xp:30, state:{carpan:1},
+    body:'<p>In the Taylor lesson the curvature was a single number: f\'\'(x). In two variables it becomes a <b>matrix</b>: the Hessian. The numbers on its diagonal give the curvature in each direction.</p>' +
+         '<p>Here f(x,y) = ½(a·x² + y²). So the curvature is a in the x direction and 1 in the y direction. The ratio of the two is called the <b>condition number</b>: κ = a / 1.</p>' +
+         '<p>At κ = 1 the contour lines are <b>circles</b>. Every direction is equal and the gradient points straight at the target.</p>' +
+         '<p>As κ grows the circles turn into <b>ellipses</b> and then into a narrow canyon. The gradient no longer points at the target: it looks towards the steep wall while the target is far away along the canyon.</p>',
+    learned:'<b>Multivariable curvature is a matrix: the Hessian.</b> The condition number κ is the ratio of the largest curvature to the smallest.<br><br>κ = 1 means a circle and a large κ a narrow canyon. The gradient always points in the steepest direction, but in a canyon the steepest direction is not the direction of the target.',
+    controls:[{k:'ki', lb:'CONDITION NUMBER κ', min:0, max:5, step:1, val:0}],
+  },
+  {
+    t:'Zigzag: as κ grows so does the number of steps',
+    goal:'You will measure that the speed of convergence depends directly on the condition number.',
+    todo:'Raise κ to 100. Look at the number of steps.',
+    kind:'controls', viz:'hessianVadi', h:720, xp:45, state:{carpan:1},
+    body:'<p>We use the best learning rate for each κ (η = 2/(a+b)), that is the best this setting can do. Even so:</p>' +
+         '<p><b>κ=1:</b> 1 step &nbsp;·&nbsp; <b>κ=2:</b> 7 &nbsp;·&nbsp; <b>κ=5:</b> 18 &nbsp;·&nbsp; <b>κ=20:</b> 73 &nbsp;·&nbsp; <b>κ=50:</b> 182 &nbsp;·&nbsp; <b>κ=100:</b> <b>363</b></p>' +
+         '<p>The number of steps grows <b>in direct proportion</b> to κ. At κ=1 it finishes in a single step, because on a circle the gradient points straight at the centre and the right step size takes you exactly there.</p>' +
+         '<p>Look at the yellow trace: when κ is large the path is not straight but zigzags between the walls of the canyon. Most of every step is wasted.</p>',
+    learned:'<b>The number of steps for gradient descent is directly proportional to the condition number.</b><br><br>1 step at κ=1 and <b>363</b> at κ=100. The difference comes not from the difficulty of the model but from the <b>shape</b> of the loss surface.<br><br>This is the real reason features have to be scaled: if one feature is in metres and another in kilometres the Hessian is distorted and κ explodes.',
+    controls:[{k:'ki', lb:'CONDITION NUMBER κ', min:0, max:5, step:1, val:0}],
+  },
+  {
+    t:'The stability limit: η = 2/a',
+    goal:'You will see exactly where the upper bound of the learning rate is.',
+    todo:'At κ=20 raise the learning rate multiplier above 1.0. What happens?',
+    kind:'controls', viz:'hessianVadi', h:720, xp:50,
+    body:'<p>On this loss the gradient descent update in the x direction is: <b>x ← (1 − η·a)·x</b>.</p>' +
+         '<p>So at every step x shrinks by a factor of (1 − η·a). To converge, the absolute value of that factor must be less than 1, which gives a single condition:</p>' +
+         '<p style="text-align:center"><b>η &lt; 2 / a</b></p>' +
+         '<p>For κ=20, that is a=20, the limit is exactly 0.1000. By experiment:</p>' +
+         '<p><b>η = 0.0950:</b> after 60 steps |x| = 1.80e-3, converging<br>' +
+         '<b>η = 0.1000:</b> |x| = 1.00, oscillating at the same amplitude forever<br>' +
+         '<b>η = 0.1050:</b> |x| = 3.04e+2, blowing up</p>' +
+         '<p>Note: what sets the limit is the <b>largest</b> curvature. So the narrowest direction puts a ceiling on the speed of the entire training.</p>',
+    learned:'<b>The upper bound of the learning rate depends on the largest curvature: η &lt; 2/a.</b><br><br>For κ=20 the limit is 0.1000. At 0.0950 it converges, at 0.1000 it oscillates at constant amplitude, at 0.1050 it diverges.<br><br>The bitter part is here: the narrowest direction bounds η from above while the widest direction slows the convergence down. If κ is large you are squeezed from both sides.',
+    controls:[{k:'ki', lb:'CONDITION NUMBER κ', min:0, max:5, step:1, val:3},
+              {k:'carpan', lb:'η MULTIPLIER', min:0.2, max:2.2, step:0.05, val:1}],
+  },
+  {
+    t:'So what is done?',
+    goal:'You will tell apart the ways of coping with an ill-conditioned surface.',
+    todo:'Answer the question.',
+    kind:'static', viz:'hessianVadi', h:720, xp:50, state:{ki:5, carpan:1},
+    body:'<p>There are three main routes:</p>' +
+         '<p><b>1 · Fix the surface.</b> Scale the features (mean 0, standard deviation 1). That equalises the diagonal of the Hessian and lowers κ. Batch norm does a similar job inside the layers.</p>' +
+         '<p><b>2 · Add momentum.</b> The movements in the zigzag directions cancel each other out while the movement along the canyon accumulates. The number of steps needed grows with <b>√κ</b> instead of κ.</p>' +
+         '<p><b>3 · Give every direction its own step size.</b> Adam and RMSProp do exactly that: they keep an average of the squared gradient and divide every parameter by its own scale. That is a cheap approximation to the diagonal of the Hessian.</p>',
+    learned:'<b>An ill-conditioned surface is handled in three ways: fix the surface, add momentum, give directions separate steps.</b><br><br>Scaling lowers κ directly, and in this lesson convergence at κ=1 takes a <b>single step</b>.<br><br>Momentum makes the number of steps grow with √κ instead of κ; for κ=100 that means roughly 36 instead of 363. Adam does the same job by building a cheap approximation to the diagonal of the Hessian.',
+    quiz:{
+      q:'A model has two features: "age" (18-80) and "income" (20,000-500,000). You train without scaling and the loss falls very slowly. What is the real reason?',
+      opts:[
+        {t:'Numerical overflow, because the income values are large',
+         why:'A magnitude of 500,000 is nothing large for floating point numbers. The problem is not overflow but the shape of the surface.'},
+        {t:'Because the scales of the two features are so different the Hessian is ill-conditioned; the largest curvature caps the learning rate while the smallest slows the convergence',
+         why:'Correct. Because the income axis is thousands of times wider than the age axis, the loss surface turns into a narrow canyon. In this lesson you measured the number of steps rising to 363 at κ=100; on real data κ can be far larger. The fix is not to change the model but to scale the features.'},
+        {t:'The model is overfitting the income feature',
+         why:'Overfitting shows up as a gap between the training and the test error. What is described here is slowness of training, a different problem.'},
+        {t:'The learning rate was chosen too small, raising it is enough',
+         why:'You cannot raise it, because the limit is set by the largest curvature: η < 2/a. Raise it without scaling and you diverge instead of converging.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['gauss-surec'] = {
+  ad:'Gaussian Processes: a model that states its uncertainty',
+  alt:'Every model so far gave a single number. This one gives a distribution, and where the data runs out it can say "I do not know".',
+  kaynaklar:[{"y":"Rasmussen, C. E. & Williams, C. K. I.","t":"2006","b":"Gaussian Processes for Machine Learning, Chapter 2","n":"MIT Press","u":"https://gaussianprocess.org/gpml/"},
+             {"y":"Bishop, C. M.","t":"2006","b":"Pattern Recognition and Machine Learning, Section 6.4","n":"Springer"},
+             {"y":"Snoek, J., Larochelle, H. & Adams, R. P.","t":"2012","b":"Practical Bayesian Optimization of Machine Learning Algorithms","n":"NeurIPS 2012"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'Not a single number but a distribution',
+    goal:'You will see why a model\'s output does not have to be just a prediction.',
+    todo:'Raise the number of observations from 1 to 6. Where does the purple band narrow?',
+    kind:'controls', viz:'gaussSurec', h:720, xp:25, state:{l:1},
+    body:'<p>Ridge, lasso, a decision tree, a neural network. Given an x they all said a single y. But saying "0.7" and saying "around 0.7, but I am not sure" are not the same thing.</p>' +
+         '<p>A Gaussian Process returns a <b>normal distribution</b> for every x: a mean and a standard deviation. The purple line is the mean and the purple band is ±2 standard deviations.</p>' +
+         '<p>Watch what the band does as you add observations: it <b>narrows around the new point</b> while the distant regions stay the same. Information is local.</p>',
+    learned:'<b>A Gaussian Process gives a distribution for every point rather than a prediction.</b><br><br>Information spreads locally: when you add an observation the uncertainty falls only around that point. At x=1.8 the standard deviation is 1.000 with 2 observations and <b>0.301</b> with 6.',
+    controls:[{k:'kn', lb:'NUMBER OF OBSERVATIONS', min:1, max:6, step:1, val:1}],
+  },
+  {
+    t:'When the data runs out the model admits it',
+    goal:'You will see how the model behaves in a region it knows nothing about.',
+    todo:'Look with 6 observations. What does the band do to the right of the orange line?',
+    kind:'controls', viz:'gaussSurec', h:720, xp:50, state:{l:1},
+    body:'<p>The data ends at x = 2.6. To the right of it the model has seen nothing.</p>' +
+         '<p>At a data point (x = 0.4) the standard deviation is <b>0.0497</b>, almost exactly the measurement noise (0.05). The model is confident there.</p>' +
+         '<p>At x = 5 the standard deviation is <b>0.9982</b>. A ratio of <b>20</b>.</p>' +
+         '<p>The instructive part is this: at x = 5 the GP\'s prediction is <b>−0.022</b> while the true value is <b>2.739</b>. The model is badly wrong. But it also announces that it is wrong: inside the data the uncertainty is 0.05 and here it has risen to 1.00.</p>' +
+         '<p>Honesty is needed here: the band does <b>not</b> always cover the truth. At x = 4 the deviation is 1.80 standard deviations, inside the ±2σ band. But at x = 5 the deviation is <b>2.77 standard deviations</b>, outside the band.</p>' +
+         '<p>The reason: when the data runs out the GP returns to its own <b>prior</b>, and the prior here is "the mean is zero". The true function meanwhile keeps rising. So an uncertainty estimate is in the end also a model; if the prior is wrong it is wrong too.</p>' +
+         '<p>Still the difference is large. Had you fitted a polynomial you would have got a confident and wrong number there without even a narrow band. The GP at least tells you <b>not to trust it as you move away</b>.</p>',
+    learned:'<b>When the data runs out the GP returns to the prior and its uncertainty opens up.</b><br><br>The standard deviation is 0.0497 at x = 0.4 and <b>0.9982</b> at x = 5. Twenty times.<br><br>The prediction at x = 5 is −0.022 and the truth is 2.739. The model is wrong and its band does not cover that deviation (2.77σ). But it declares its own unreliability as you move away, which the polynomial in the overfitting lesson could not even do.<br><br>The lesson: a wide band means "I do not know", not a guarantee that "the truth is in here".',
+    controls:[{k:'kn', lb:'NUMBER OF OBSERVATIONS', min:1, max:6, step:1, val:6}],
+  },
+  {
+    t:'The length scale: what does "near" mean?',
+    goal:'You will see how the kernel\'s single parameter changes the model completely.',
+    todo:'Move the length scale from 0.3 to 2.0. How do the shapes of the band and the curve change?',
+    kind:'controls', viz:'gaussSurec', h:720, xp:50, state:{kn:6},
+    body:'<p>The heart of a GP is the <b>kernel</b>: the function that says how "similar" two points are. The RBF kernel has a single setting, the length scale l.</p>' +
+         '<p>x = 1.8 is a point that falls between two observations. Depending on the length scale:</p>' +
+         '<p><b>l = 0.3:</b> mean 0.038, std 0.999 · the model thinks the neighbours say nothing<br>' +
+         '<b>l = 1.0:</b> mean <b>0.891</b>, std 0.301 · the true value is 0.889, almost exact<br>' +
+         '<b>l = 2.0:</b> mean 1.269, std <b>0.073</b> · very confident but far from the truth</p>' +
+         '<p>l = 2.0 is dangerous: the model has lowered its uncertainty to 0.073 while its prediction is off by 0.38. That is <b>confident and wrong</b>. If the length scale is too large a GP falls into this trap too.</p>',
+    learned:'<b>The length scale is the answer to "what distance counts as near".</b><br><br>A small l: every point is alone, the model generalises nothing, the uncertainty is always high.<br>A large l: everything depends on everything, the model is too smooth and too confident.<br><br>At l = 2.0 the prediction at x = 1.8 is 1.269 (the truth is 0.889) while the standard deviation is only 0.073. An uncertainty estimate is in the end also a model, and if it is badly tuned it is wrong too.',
+    controls:[{k:'l', lb:'LENGTH SCALE', min:0.3, max:2, step:0.1, val:1}],
+  },
+  {
+    t:'What is uncertainty good for?',
+    goal:'You will see which problems an uncertainty estimate solves.',
+    todo:'Answer the question.',
+    kind:'static', viz:'gaussSurec', h:720, xp:50, state:{l:1, kn:6},
+    body:'<p>Uncertainty is not just a nice extra but the only solution to some problems:</p>' +
+         '<p><b>Bayesian optimisation.</b> In the hyperparameter search lesson you saw random search and successive halving. The third route is to build a GP and say "try where the uncertainty is high". If every trial is expensive (like training a model from scratch) that pays off greatly.</p>' +
+         '<p><b>Active learning.</b> If labelling is expensive, you have labelled whichever example the model is most unsure about.</p>' +
+         '<p><b>Detecting distribution shift.</b> If the uncertainty on an incoming example is abnormally high, the model is telling you that the example does not belong to the world it was trained on.</p>' +
+         '<p>There is a price: a GP\'s cost grows with n³, because it needs the inverse of an n×n matrix. Past a few thousand examples it cannot be used directly.</p>',
+    learned:'<b>Uncertainty is the answer to "where should I look".</b><br><br>Bayesian optimisation, active learning and shift detection all use the same signal: the model knowing where it does not know.<br><br>The price is the n³ cost and the choice of kernel. Past a few thousand examples, sparse GP approximations or ensemble/dropout based uncertainty estimates with deep networks are preferred.',
+    quiz:{
+      q:'You are searching for a new alloy in a materials laboratory. Every experiment takes 3 days and is expensive. You have run eight experiments. Where do you run the ninth?',
+      opts:[
+        {t:'Right next to the best result so far',
+         why:'That is pure exploitation. The uncertainty around the best point is already low, so there is little to learn there. It is the same as the ε=0 case from the reinforcement learning lesson: repeating what you know and discovering nothing.'},
+        {t:'Build a GP and go to a point that balances a high prediction with high uncertainty',
+         why:'Correct. That is exactly what Bayesian optimisation does. Eight points are quite enough for a GP, and because the experiment is expensive the information value of every trial is critical. A criterion such as expected improvement combines "it might be good" and "I do not know" into a single number.'},
+        {t:'Divide the search space into a grid and go to the next grid point',
+         why:'As you saw in the grid search lesson it wastes the budget, and here the budget is measured in 3 day units. It also learns nothing from the previous eight experiments.'},
+        {t:'A random point',
+         why:'You measured in the hyperparameter lesson that random search beats a grid, but there the trials were cheap. At 3 days per experiment, not using the previous results is a very expensive choice.'},
+      ], correct:1 },
+  },
+  ],
+};
