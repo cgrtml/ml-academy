@@ -6994,6 +6994,263 @@ VIZ.dusunmeZinciri = s => {
   }
 };
 
+
+/* ═══════════ ÖZ-TUTARLILIK (SELF-CONSISTENCY) ═══════════
+   Aynı soruyu K kez sorup oy çokluğunu almak. Kazandığı yer ve
+   tersine döndüğü yer, tek bir büyüklükle belirleniyor. */
+const OT = {};
+OT.KS = [1, 3, 5, 11, 21, 41, 101, 201];
+OT.D = 8000; OT.SEED = 11; OT.N = 8;
+OT.epsler = [0.10, 0.15, 0.20, 0.30];
+OT.bozuklar = [0, 1];   /* 12 girdilik f tablosunda kaç yanlış inanç */
+const _otTablo = {};
+/* TEK ADIMIN TAM DAĞILIMI · Monte Carlo yok
+   Modelin f tablosu bozuk olabilir: y adet girdide G[x] ≠ F[x].
+   Bu bir YANLIS INANC, gurultu degil · her zincir ayni sapmayi yapiyor.
+   1−ε      → G[x]            modelin inandigi adim
+   ε/11     → her diger durum  rastgele gurultu */
+OT.bozukTablo = y => {
+  const k = 'b' + y;
+  if (_otTablo[k]) return _otTablo[k];
+  const sira = CT.karistir([...Array(CT.M).keys()], 5), G = [...CT.F];
+  for (let i = 0; i < y; i++){ const x = sira[i]; G[x] = (CT.F[x] + 1) % CT.M; }
+  return (_otTablo[k] = G);
+};
+OT.adimDagilimi = (x, eps, y) => {
+  const d = new Array(CT.M).fill(0), G = OT.bozukTablo(y), inanc = G[x];
+  d[inanc] += 1 - eps;
+  const u = eps/(CT.M - 1);
+  for (let z = 0; z < CT.M; z++) if (z !== inanc) d[z] += u;
+  return d;
+};
+OT.cevapDagilimi = (s0, n, eps, y) => {
+  let p = new Array(CT.M).fill(0); p[s0] = 1;
+  for (let t = 0; t < n; t++){ const q = new Array(CT.M).fill(0);
+    for (let x = 0; x < CT.M; x++){ if (p[x] === 0) continue;
+      const d = OT.adimDagilimi(x, eps, y);
+      for (let z = 0; z < CT.M; z++) q[z] += p[x]*d[z]; }
+    p = q; }
+  return p;
+};
+const _otC = {};
+/* doğru cevabın payı p, en büyük yanlışın payı q · ikisi de TAM */
+OT.paylar = (n, eps, b) => {
+  const k = 'p' + n + ':' + eps + ':' + b;
+  if (_otC[k]) return _otC[k];
+  let P = 0, Q = 0;
+  for (let s0 = 0; s0 < CT.M; s0++){
+    const d = OT.cevapDagilimi(s0, n, eps, b), h = CT.uygula(s0, n);
+    P += d[h];
+    let mx = 0; for (let y = 0; y < CT.M; y++) if (y !== h && d[y] > mx) mx = d[y];
+    Q += mx; }
+  return (_otC[k] = { p: P/CT.M, q: Q/CT.M });
+};
+/* sıraya dizilmiş ortalama paylar: [doğru, 1. yanlış, 2. yanlış, ...] */
+OT.siraliPaylar = (n, eps, b) => {
+  const k = 's' + n + ':' + eps + ':' + b;
+  if (_otC[k]) return _otC[k];
+  const top = new Array(CT.M).fill(0);
+  for (let s0 = 0; s0 < CT.M; s0++){
+    const d = OT.cevapDagilimi(s0, n, eps, b), h = CT.uygula(s0, n), yanlis = [];
+    for (let y = 0; y < CT.M; y++) if (y !== h) yanlis.push(d[y]);
+    yanlis.sort((a, c) => c - a);
+    top[0] += d[h];
+    for (let i = 0; i < yanlis.length; i++) top[i+1] += yanlis[i]; }
+  return (_otC[k] = top.map(z => z/CT.M));
+};
+/* K oy · dağılımdan çok terimli örnekleme · zincir simülasyonu yok */
+OT.oy = (n, eps, b, K) => {
+  const key = 'o' + n + ':' + eps + ':' + b + ':' + K;
+  if (_otC[key] !== undefined) return _otC[key];
+  const r = rng(OT.SEED), dl = [], hd = [];
+  for (let s0 = 0; s0 < CT.M; s0++){ const d = OT.cevapDagilimi(s0, n, eps, b);
+    const c = []; let acc = 0;
+    for (let y = 0; y < CT.M; y++){ acc += d[y]; c.push(acc); }
+    dl.push(c); hd.push(CT.uygula(s0, n)); }
+  let dg = 0;
+  for (let t = 0; t < OT.D; t++){
+    const s0 = t % CT.M, c = dl[s0], say = new Array(CT.M).fill(0);
+    for (let j = 0; j < K; j++){ const u = r(); let y = 0;
+      while (y < CT.M - 1 && u > c[y]) y++; say[y]++; }
+    let en = -1, ad = [];
+    for (let y = 0; y < CT.M; y++){ if (say[y] > en){ en = say[y]; ad = [y]; }
+      else if (say[y] === en) ad.push(y); }
+    if (ad[Math.floor(ad.length*r())] === hd[s0]) dg++; }
+  return (_otC[key] = dg/OT.D);
+};
+/* K → ∞ sınırı · TAM: oy çokluğu her soruda dağılımın moduna yakınsar,
+   yani sonsuz oydaki doğruluk = doğru cevabın mod olduğu soruların oranı */
+OT.sinir = (n, eps, y) => {
+  const k = 'l' + n + ':' + eps + ':' + y;
+  if (_otC[k] !== undefined) return _otC[k];
+  let mod = 0;
+  for (let s0 = 0; s0 < CT.M; s0++){
+    const d = OT.cevapDagilimi(s0, n, eps, y), h = CT.uygula(s0, n);
+    let mx = -1, arg = -1;
+    for (let z = 0; z < CT.M; z++) if (d[z] > mx){ mx = d[z]; arg = z; }
+    if (arg === h) mod++; }
+  return (_otC[k] = mod/CT.M);
+};
+
+VIZ.ozTutarlilik = s => {
+  clear();
+  const sahne = s.sahne || 'oy';
+  const epsi = Math.max(0, Math.min(3, s.epsi === undefined ? 2 : Math.round(s.epsi)));
+  const eps = OT.epsler[epsi];
+  const y = Math.max(0, Math.min(1, s.y === undefined ? 0 : Math.round(s.y)));
+  const kart = (x, y, w, ad, deger, rnk, alt) => {
+    box(x, y, w, 106, 'rgba(7,10,15,.7)', rnk, 2);
+    txt(ad, x + w/2, y + 28, K.mut, 15);
+    txt(deger, x + w/2, y + 72, rnk, 24);
+    if (alt) txt(alt, x + w/2, y + 95, K.mut, 14);
+  };
+  /* K ekseni: eşit aralıklı indeks, etiket gerçek K */
+  const kEkseni = (P) => OT.KS.forEach((Kv, i) =>
+    txt(String(Kv), P.sx(i), P.R.y + P.R.h + 28, K.mut, 15));
+  const egri = (P, f, renk, kalin) => {
+    cx.strokeStyle = renk; cx.lineWidth = kalin ? 3.8 : 1.8;
+    cx.globalAlpha = kalin ? 1 : 0.35; cx.beginPath();
+    OT.KS.forEach((Kv, i) => { const y = P.sy(f(Kv));
+      i ? cx.lineTo(P.sx(i), y) : cx.moveTo(P.sx(i), y); });
+    cx.stroke();
+    if (kalin) OT.KS.forEach((Kv, i) => dot(P.sx(i), P.sy(f(Kv)), 5, renk));
+    cx.globalAlpha = 1;
+  };
+
+  if (sahne === 'pay'){
+    const sr = OT.siraliPaylar(OT.N, eps, y), pq = OT.paylar(OT.N, eps, y);
+    baslikSerit('ÖZ-TUTARLILIK · CEVAPLARIN DAĞILIMI',
+      'Oy çokluğu, en çok tekrarlanan cevabı seçer. O yüzden tek soru şu: en çok tekrarlanan hangisi?',
+      []);
+    const P = plot(rect(140, 200, 640, 400), -0.6, 11.6, 0, 0.42);
+    frame(P, 'doğru cevap  ·  11 yanlış cevap (paya göre sıralı)', 'pay', [], [0, 0.1, 0.2, 0.3, 0.4]);
+    const gen = (P.R.w/12)*0.62;
+    sr.forEach((val, i) => {
+      const x = P.sx(i), y0 = P.sy(0), y1 = P.sy(Math.min(val, 0.42));
+      box(x - gen/2, y1, gen, y0 - y1, i === 0 ? 'rgba(34,197,94,.30)' : 'rgba(239,68,68,.22)',
+          i === 0 ? K.green : K.red, 2);
+      if (i <= 1) txt(val.toFixed(3), x, y1 - 12, i === 0 ? K.green : K.red, 16); });
+    const bx = 830;
+    kart(bx, 200, 260, 'ADIM HATASI ε', eps.toFixed(2), K.blue, 'rastgele gürültü');
+    kart(bx + 280, 200, 260, 'DOĞRU PAYI  p', pq.p.toFixed(4), K.green);
+    kart(bx, 330, 260, 'EN BÜYÜK YANLIŞ  q', pq.q.toFixed(4), K.red);
+    kart(bx + 280, 330, 260, 'ORAN  p / q', (pq.p/pq.q).toFixed(2) + '×',
+         pq.p > pq.q ? K.green : K.red);
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('OYLAMANIN TEK KOŞULU', bx + 270, 494, K.mut, 18);
+    txt('K büyüdükçe oy çokluğu dağılımın en yüksek', bx + 18, 534, K.txt, 18, 'left');
+    txt('çubuğuna yakınsıyor. Doğru cevap o çubuk mu?', bx + 18, 564, K.txt, 18, 'left');
+    txt('Burada evet: p = ' + pq.p.toFixed(3) + ' > q = ' + pq.q.toFixed(3) + '.',
+        bx + 18, 606, K.green, 19, 'left');
+    txt('Doğru cevabın payı %' + (100*pq.p).toFixed(1) + ', yani tek zincir', bx + 18, 640, K.txt, 18, 'left');
+    txt('çoğu zaman yanılıyor. Ama yanlışlar 11 çubuğa', bx + 18, 668, K.txt, 18, 'left');
+    txt('bölündüğü için hiçbiri doğruyu geçemiyor.', bx + 18, 696, K.txt, 18, 'left');
+  }
+
+  else if (sahne === 'yanli'){
+    baslikSerit('ÖZ-TUTARLILIK · YANLIŞ İNANÇ OYLAMAYLA TEMİZLENMİYOR',
+      'ε = 0.20 sabit. Tek fark: modelin 12 girdilik f tablosunda bir girdi yanlış.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 7.35, 0, 1.05);
+    frame(P, 'oy sayısı K', 'doğruluk', [], [0, 0.25, 0.5, 0.75, 1]);
+    kEkseni(P);
+    OT.bozuklar.forEach((yv, i) => {
+      const renk = i === 0 ? K.green : K.red;
+      egri(P, Kv => OT.oy(OT.N, 0.20, yv, Kv), renk, true);
+      /* TAM K→∞ siniri */
+      cx.strokeStyle = renk; cx.lineWidth = 2; cx.globalAlpha = 0.75; cx.setLineDash([7, 6]);
+      cx.beginPath(); cx.moveTo(P.R.x, P.sy(OT.sinir(OT.N, 0.20, yv)));
+      cx.lineTo(P.R.x + P.R.w, P.sy(OT.sinir(OT.N, 0.20, yv))); cx.stroke();
+      cx.setLineDash([]); cx.globalAlpha = 1; });
+    txt('tablo doğru', P.R.x + 16, P.sy(0.86), K.green, 17, 'left');
+    txt('bir girdi yanlış', P.R.x + 16, P.sy(0.42), K.red, 17, 'left');
+    txt('kesikli: sonsuz oydaki sınır (tam hesap)', P.R.x + P.R.w - 14, P.sy(0.15), K.mut, 16, 'right');
+    const tepe = OT.KS.reduce((a, Kv) => OT.oy(OT.N, 0.20, 1, Kv) > OT.oy(OT.N, 0.20, 1, a) ? Kv : a, 1);
+    const bx = 830;
+    kart(bx, 200, 260, 'TEK ZİNCİR', '%' + (100*OT.oy(OT.N, 0.20, 1, 1)).toFixed(1), K.mut,
+         'bir girdi yanlış');
+    kart(bx + 280, 200, 260, 'EN İYİ K', String(tepe), K.purple,
+         '%' + (100*OT.oy(OT.N, 0.20, 1, tepe)).toFixed(1));
+    kart(bx, 330, 260, 'K = 201 DE', '%' + (100*OT.oy(OT.N, 0.20, 1, 201)).toFixed(1), K.orange,
+         'tepeden düşmüş');
+    kart(bx + 280, 330, 260, 'SONSUZ OYDA', '%' + (100*OT.sinir(OT.N, 0.20, 1)).toFixed(1), K.red,
+         '12 sorudan 1 i');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.red, 2);
+    txt('OYLAMA GÜRÜLTÜYÜ SİLER, HATAYI DEĞİL', bx + 270, 494, K.mut, 18);
+    txt('Yanlış inanç her zincirde aynı: zincirler', bx + 18, 534, K.txt, 18, 'left');
+    txt('birbirini düzeltmiyor, aynı hatada birleşiyor.', bx + 18, 564, K.txt, 18, 'left');
+    txt('Eğri önce yükseliyor (gürültü temizleniyor),', bx + 18, 606, K.orange, 18, 'left');
+    txt('sonra düşüyor: model kendi inancına yakınsıyor.', bx + 18, 636, K.orange, 18, 'left');
+    txt('Sonsuz oyda %' + (100*OT.sinir(OT.N, 0.20, 1)).toFixed(1) + ', tek zincirden (%' +
+        (100*OT.oy(OT.N, 0.20, 1, 1)).toFixed(1) + ') bile kötü.', bx + 18, 678, K.red, 18, 'left');
+  }
+
+  else if (sahne === 'maliyet'){
+    baslikSerit('ÖZ-TUTARLILIK · KAÇ OY, KAÇ PARA',
+      'Oylama doğruluğu satın alıyor ve fiyatı doğrusal: K oy, K kat hesap.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 7.35, 0, 4.2);
+    frame(P, 'oy sayısı K', 'eklenen zincir başına kazanç (puan)', [], [0, 1, 2, 3, 4]);
+    kEkseni(P);
+    const gen = (P.R.w/9)*0.6;
+    for (let i = 1; i < OT.KS.length; i++){
+      const kaz = 100*(OT.oy(OT.N, 0.20, 0, OT.KS[i]) - OT.oy(OT.N, 0.20, 0, OT.KS[i-1]))
+                  / (OT.KS[i] - OT.KS[i-1]);
+      const x = P.sx(i), y0 = P.sy(0), y1 = P.sy(Math.max(0, kaz));
+      box(x - gen/2, y1, gen, y0 - y1, 'rgba(139,92,246,.28)', K.purple, 2);
+      txt(kaz.toFixed(2), x, y1 - 12, K.purple, 15); }
+    txt('ε = 0.20 · tablo doğru', P.R.x + 16, P.R.y + 28, K.mut, 17, 'left');
+    const bx = 830;
+    kart(bx, 200, 260, 'ε = 0.20 · K = 11', '%' + (100*OT.oy(OT.N, 0.20, 0, 11)).toFixed(1), K.orange,
+         '11 kat hesap');
+    kart(bx + 280, 200, 260, 'ε = 0.10 · K = 11', '%' + (100*OT.oy(OT.N, 0.10, 0, 11)).toFixed(1), K.green,
+         'aynı 11 kat hesap');
+    kart(bx, 330, 260, 'ε = 0.20 · K = 101', '%' + (100*OT.oy(OT.N, 0.20, 0, 101)).toFixed(1), K.orange,
+         '101 kat hesap');
+    kart(bx + 280, 330, 260, 'ε = 0.10 · K = 21', '%' + (100*OT.oy(OT.N, 0.10, 0, 21)).toFixed(1), K.green,
+         '21 kat hesap');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('MODELİ DÜZELTMEK, OY SATIN ALMAKTAN UCUZ', bx + 270, 494, K.mut, 17);
+    txt('Adım hatası yarıya inince (ε: 0.20 → 0.10) aynı', bx + 18, 534, K.txt, 18, 'left');
+    txt('11 oyla doğruluk %' + (100*OT.oy(OT.N, 0.20, 0, 11)).toFixed(1) + ' ten %' +
+        (100*OT.oy(OT.N, 0.10, 0, 11)).toFixed(1) + ' ye çıkıyor.', bx + 18, 564, K.green, 18, 'left');
+    txt('Kötü model bunu ancak 101 oyla (%' + (100*OT.oy(OT.N, 0.20, 0, 101)).toFixed(1) + ')', bx + 18, 606, K.orange, 18, 'left');
+    txt('yakalıyor: yaklaşık 9 kat hesap farkı.', bx + 18, 636, K.orange, 18, 'left');
+    txt('Kazanç eğrisi de düşüyor: son 100 oy zincir başına', bx + 18, 676, K.mut, 17, 'left');
+    txt('sadece ' + (100*(OT.oy(OT.N,0.20,0,201) - OT.oy(OT.N,0.20,0,101))/100).toFixed(2) +
+        ' puan getiriyor.', bx + 18, 702, K.mut, 17, 'left');
+  }
+
+  else {
+    baslikSerit('ÖZ-TUTARLILIK · AYNI SORUYU K KEZ SOR, OY ÇOKLUĞUNU AL',
+      'Zincirler bağımsız. Hatalar dağılıyor, doğru cevap tek noktada toplanıyor.', []);
+    const P = plot(rect(140, 200, 640, 400), -0.35, 7.35, 0, 1.05);
+    frame(P, 'oy sayısı K', 'doğruluk', [], [0, 0.25, 0.5, 0.75, 1]);
+    kEkseni(P);
+    OT.epsler.forEach((ev, i) =>
+      egri(P, Kv => OT.oy(OT.N, ev, 0, Kv), [K.green, K.blue, K.orange, K.red][i], ev === eps));
+    /* efsane solda: egriler K=1..3 te 0.45 in altinda, ust sol bos */
+    OT.epsler.forEach((ev, i) => {
+      const yy = P.sy(0.98 - i*0.075);
+      cx.strokeStyle = [K.green, K.blue, K.orange, K.red][i];
+      cx.lineWidth = ev === eps ? 3.8 : 1.8;
+      cx.beginPath(); cx.moveTo(P.R.x + 16, yy - 5); cx.lineTo(P.R.x + 52, yy - 5); cx.stroke();
+      txt('ε = ' + ev.toFixed(2), P.R.x + 62, yy,
+          [K.green, K.blue, K.orange, K.red][i], 16, 'left', ev === eps ? 700 : 400); });
+    const t1 = OT.oy(OT.N, eps, 0, 1), t41 = OT.oy(OT.N, eps, 0, 41);
+    const bx = 830;
+    kart(bx, 200, 260, 'ADIM HATASI ε', eps.toFixed(2), K.blue, '8 adımlık zincir');
+    kart(bx + 280, 200, 260, 'TEK ZİNCİR', '%' + (100*t1).toFixed(1), K.mut, 'K = 1');
+    kart(bx, 330, 260, '41 OY', '%' + (100*t41).toFixed(1), K.green);
+    kart(bx + 280, 330, 260, 'KAT', (t41/t1).toFixed(1) + '×', K.purple, 'K=41 / K=1');
+    box(bx, 460, 540, 250, 'rgba(7,10,15,.55)', K.axis, 2);
+    txt('YARIDAN AZ DOĞRULUK YETİYOR', bx + 270, 494, K.mut, 18);
+    txt('Tek zincir %' + (100*t1).toFixed(1) + ' doğru, yani çoğu zaman', bx + 18, 534, K.txt, 18, 'left');
+    txt('yanılıyor. Buna rağmen 41 oy %' + (100*t41).toFixed(1) + ' veriyor.', bx + 18, 564, K.txt, 18, 'left');
+    txt('Sebep: yanlışlar 11 farklı cevaba bölünüyor,', bx + 18, 606, K.green, 18, 'left');
+    txt('doğru cevap ise tek bir yerde toplanıyor.', bx + 18, 636, K.green, 18, 'left');
+    txt('Oy çokluğu için birinci olmak yeter, çoğunluk gerekmez.', bx + 18, 678, K.mut, 17, 'left');
+  }
+};
+
 /* ── ezber vs kural ── */
 VIZ.ezberKural = s => {
   clear();

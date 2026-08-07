@@ -2384,6 +2384,130 @@ console.log('═══ CHAIN-OF-THOUGHT ═══');
   iddia('CoT · ayrışmayan · zincir rastgelenin üstünde ama yakın', 1,
         (CT.cot(96, true) > 1/CT.M && CT.cot(96, true) < 0.15) ? 1 : 0, 0);
 }
+console.log('═══ ÖZ-TUTARLILIK ═══');
+{
+  /* dagilim TAM hesap: her baslangicta paylar toplami 1 */
+  { let enKotu = 0;
+    for (let s0 = 0; s0 < CT.M; s0++){ const dd = OT.cevapDagilimi(s0, 8, 0.20, 0);
+      enKotu = Math.max(enKotu, Math.abs(dd.reduce((a, z) => a + z, 0) - 1)); }
+    iddia('ÖT · dağılım toplamı 1 (en büyük sapma × 1e15)', 0, Math.round(enKotu*1e15)/1000, 2); }
+  /* TAM dagilim, dogrudan zincir simulasyonuyla uyusuyor mu */
+  { const r = rng(77), D2 = 240000, G = OT.bozukTablo(0);
+    const say = []; for (let s = 0; s < CT.M; s++) say.push(new Array(CT.M).fill(0));
+    for (let t = 0; t < D2; t++){ const s0 = t % CT.M; let x = s0;
+      for (let j = 0; j < 8; j++){
+        if (r() < 0.20){ const w = Math.floor((CT.M - 1)*r()); x = (G[x] + 1 + w) % CT.M; }
+        else x = G[x]; }
+      say[s0][x]++; }
+    let P = 0; for (let s0 = 0; s0 < CT.M; s0++) P += say[s0][CT.uygula(s0, 8)]/(D2/CT.M);
+    iddia('ÖT · TAM dağılım ile simülasyon farkı (yüzde puan)', 0,
+          100*Math.abs(P/CT.M - OT.paylar(8, 0.20, 0).p), 1); }
+
+  /* 1. adım · oylama kazanci */
+  iddia('ÖT · ε=0.20 · tek zincir', 21.3, 100*OT.oy(8, 0.20, 0, 1), 1);
+  iddia('ÖT · ε=0.20 · K=5', 30.5, 100*OT.oy(8, 0.20, 0, 5), 1);
+  iddia('ÖT · ε=0.20 · K=41', 79.9, 100*OT.oy(8, 0.20, 0, 41), 1);
+  iddia('ÖT · ε=0.20 · K=101', 97.6, 100*OT.oy(8, 0.20, 0, 101), 1);
+  iddia('ÖT · ε=0.20 · K=201', 99.9, 100*OT.oy(8, 0.20, 0, 201), 1);
+  iddia('ÖT · ε=0.10 · tek zincir', 44.8, 100*OT.oy(8, 0.10, 0, 1), 1);
+  iddia('ÖT · ε=0.10 · K=41', 100.0, 100*OT.oy(8, 0.10, 0, 41), 1);
+  iddia('ÖT · ε=0.30 · tek zincir', 12.7, 100*OT.oy(8, 0.30, 0, 1), 1);
+  iddia('ÖT · ε=0.30 · K=201', 62.2, 100*OT.oy(8, 0.30, 0, 201), 1);
+  /* tek zincir dogrulugu = dogru cevabin payi (oylama K=1 de dagilimin ta kendisi) */
+  /* K=1 örneklemesi, TAM p yi 0.5 puan icinde buluyor (8000 denemenin gurultusu) */
+  iddia('ÖT · K=1 ölçümü p ye 0.5 puan içinde', 1,
+        100*Math.abs(OT.oy(8, 0.20, 0, 1) - OT.paylar(8, 0.20, 0).p) < 0.5 ? 1 : 0, 0);
+  iddia('ÖT · K=1 ölçümü ile p farkı (yüzde puan)', 0.2,
+        100*Math.abs(OT.oy(8, 0.20, 0, 1) - OT.paylar(8, 0.20, 0).p), 1);
+  /* tablo dogruyken oylama K de monoton (orneklem gurultusu payi 1 puan) */
+  { let ihlal = 0;
+    for (const ev of [0.10, 0.15, 0.20])
+      for (let i = 1; i < OT.KS.length; i++)
+        if (OT.oy(8, ev, 0, OT.KS[i]) < OT.oy(8, ev, 0, OT.KS[i-1]) - 0.01) ihlal++;
+    iddia('ÖT · tablo doğruyken oylama K de artıyor', 0, ihlal, 0); }
+
+  /* 2. adım · dagilimin yapisi */
+  { const pq = OT.paylar(8, 0.20, 0), sr = OT.siraliPaylar(8, 0.20, 0);
+    iddia('ÖT · ε=0.20 · doğru payı p', 0.2113, pq.p, 4);
+    iddia('ÖT · ε=0.20 · en büyük yanlış q', 0.0717, pq.q, 4);
+    iddia('ÖT · ε=0.20 · p / q', 2.95, pq.p/pq.q, 2);
+    /* yanlislar esit bolunmus: 11 yanlisin hepsi ayni pay */
+    let fark = 0;
+    for (let i = 2; i <= 11; i++) fark = Math.max(fark, Math.abs(sr[i] - sr[1]));
+    iddia('ÖT · 11 yanlış eşit bölünmüş (en büyük fark)', 0, fark, 6);
+    /* 11 esit yanlis + dogru = 1 */
+    iddia('ÖT · p + 11q = 1', 1, pq.p + 11*pq.q, 6); }
+  { const pq = OT.paylar(8, 0.10, 0);
+    iddia('ÖT · ε=0.10 · doğru payı p', 0.4471, pq.p, 4);
+    iddia('ÖT · ε=0.10 · en büyük yanlış q', 0.0503, pq.q, 4);
+    iddia('ÖT · ε=0.10 · p / q', 8.90, pq.p/pq.q, 2); }
+  /* p = (1-eps)^8 · dogru cevap sadece hic sapmayan zincirden gelmiyor,
+     rastgele sapma tesadufen dogruya da donebilir → p bundan buyuk olmali */
+  iddia('ÖT · p > (1−ε)⁸ (tesadüfi dönüş payı)', 1,
+        OT.paylar(8, 0.20, 0).p > Math.pow(0.8, 8) ? 1 : 0, 0);
+
+  /* 3. adım · yanlis inanc */
+  { const G = OT.bozukTablo(1);
+    let bozukSayisi = 0, bozukDurum = -1;
+    for (let x = 0; x < CT.M; x++) if (G[x] !== CT.F[x]){ bozukSayisi++; bozukDurum = x; }
+    iddia('ÖT · bozuk tabloda yanlış girdi sayısı', 1, bozukSayisi, 0);
+    iddia('ÖT · yanlış girdi hangi durumda', 10, bozukDurum, 0);
+    iddia('ÖT · o durumun doğru hedefi', 3, CT.F[10], 0);
+    iddia('ÖT · modelin inandığı hedef', 4, G[10], 0); }
+  iddia('ÖT · yanlış inanç · tek zincir', 15.3, 100*OT.oy(8, 0.20, 1, 1), 1);
+  iddia('ÖT · yanlış inanç · K=21', 27.7, 100*OT.oy(8, 0.20, 1, 21), 1);
+  iddia('ÖT · yanlış inanç · K=101 (tepe)', 29.6, 100*OT.oy(8, 0.20, 1, 101), 1);
+  iddia('ÖT · yanlış inanç · K=201', 27.7, 100*OT.oy(8, 0.20, 1, 201), 1);
+  { const tepe = OT.KS.reduce((a, Kv) => OT.oy(8, 0.20, 1, Kv) > OT.oy(8, 0.20, 1, a) ? Kv : a, 1);
+    iddia('ÖT · yanlış inanç · en iyi K', 101, tepe, 0); }
+  /* egri tumsek: once yukseliyor, sonra dususe geciyor */
+  iddia('ÖT · tümsek · K=101 > K=1', 1, OT.oy(8,0.20,1,101) > OT.oy(8,0.20,1,1) ? 1 : 0, 0);
+  iddia('ÖT · tümsek · K=201 < K=101', 1, OT.oy(8,0.20,1,201) < OT.oy(8,0.20,1,101) ? 1 : 0, 0);
+  /* sonsuz oy siniri TAM */
+  iddia('ÖT · sınır · tablo doğru', 100.0, 100*OT.sinir(8, 0.20, 0), 1);
+  iddia('ÖT · sınır · bir girdi yanlış', 8.3, 100*OT.sinir(8, 0.20, 1), 1);
+  iddia('ÖT · yanlış inançta sınır tek zincirin altında', 1,
+        OT.sinir(8, 0.20, 1) < OT.oy(8, 0.20, 1, 1) ? 1 : 0, 0);
+  { const pq = OT.paylar(8, 0.20, 1);
+    iddia('ÖT · yanlış inanç · q > p (mod yanlış)', 1, pq.q > pq.p ? 1 : 0, 0);
+    iddia('ÖT · yanlış inanç · p', 0.1531, pq.p, 4);
+    iddia('ÖT · yanlış inanç · q', 0.2703, pq.q, 4); }
+  /* cok buyuk K de inis sinira dogru devam ediyor */
+  { const buyukOy = Kb => { const r = rng(OT.SEED), dl = [], hd = [];
+      for (let s0 = 0; s0 < CT.M; s0++){ const dd = OT.cevapDagilimi(s0, 8, 0.20, 1);
+        const cc = []; let acc = 0;
+        for (let z = 0; z < CT.M; z++){ acc += dd[z]; cc.push(acc); }
+        dl.push(cc); hd.push(CT.uygula(s0, 8)); }
+      let dg = 0;
+      for (let t = 0; t < 4000; t++){ const s0 = t % CT.M, cc = dl[s0], say = new Array(CT.M).fill(0);
+        for (let j = 0; j < Kb; j++){ const u = r(); let z = 0;
+          while (z < CT.M - 1 && u > cc[z]) z++; say[z]++; }
+        let en = -1, ad = [];
+        for (let z = 0; z < CT.M; z++){ if (say[z] > en){ en = say[z]; ad = [z]; }
+          else if (say[z] === en) ad.push(z); }
+        if (ad[Math.floor(ad.length*r())] === hd[s0]) dg++; }
+      return 100*dg/4000; };
+    iddia('ÖT · yanlış inanç · K=1001', 20.9, buyukOy(1001), 1);
+    iddia('ÖT · yanlış inanç · K=4001', 12.3, buyukOy(4001), 1); }
+
+  /* 4. adım · maliyet */
+  { const kaz = (a, b2) => 100*(OT.oy(8,0.20,0,b2) - OT.oy(8,0.20,0,a))/(b2 - a);
+    iddia('ÖT · zincir başına kazanç · 3→5', 3.12, kaz(3, 5), 2);
+    iddia('ÖT · zincir başına kazanç · 21→41', 0.96, kaz(21, 41), 2);
+    iddia('ÖT · zincir başına kazanç · 41→101', 0.30, kaz(41, 101), 2);
+    iddia('ÖT · zincir başına kazanç · 101→201', 0.02, kaz(101, 201), 2);
+    /* tepeden sonra marjinal kazanc monoton dusuyor */
+    let ihlal = 0;
+    for (let i = 3; i < OT.KS.length; i++)
+      if (kaz(OT.KS[i-1], OT.KS[i]) > kaz(OT.KS[i-2], OT.KS[i-1])) ihlal++;
+    iddia('ÖT · K=5 ten sonra marjinal kazanç azalıyor', 0, ihlal, 0); }
+  iddia('ÖT · ε=0.20 · K=11', 43.7, 100*OT.oy(8, 0.20, 0, 11), 1);
+  iddia('ÖT · ε=0.10 · K=11', 91.2, 100*OT.oy(8, 0.10, 0, 11), 1);
+  iddia('ÖT · iyi model 11 oyla, kötü model 101 oyu geçemiyor', 1,
+        OT.oy(8, 0.10, 0, 11) < OT.oy(8, 0.20, 0, 101) ? 1 : 0, 0);
+  iddia('ÖT · iyi model 11 oyla kötü modelin 41 oyunu geçiyor', 1,
+        OT.oy(8, 0.10, 0, 11) > OT.oy(8, 0.20, 0, 41) ? 1 : 0, 0);
+}
 console.log('═══ MÜFREDAT + YAPI ═══');
 let hz=0,tp=0;
 ROTALAR.forEach(r=>{const h=r.dersler.filter(d=>d.durum==='hazir').length;hz+=h;tp+=r.dersler.length;

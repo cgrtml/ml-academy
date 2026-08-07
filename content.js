@@ -106,7 +106,7 @@ const ROTALAR = [
     {id:'rag',       ad:'RAG boru hattı',                         sure:16, durum:'hazir'},
     {id:'kvcache',   ad:'Bağlam penceresi ve KV cache',           sure:14, durum:'hazir'},
     {id:'cot',            ad:'Chain-of-Thought: cevaptan önce düşünmek',       sure:16, durum:'hazir'},
-    {id:'self-cons',      ad:'Self-consistency: çoğunluğa güvenmek',           sure:10, durum:'planli'},
+    {id:'self-cons',      ad:'Self-consistency: çoğunluğa güvenmek',           sure:16, durum:'hazir'},
     {id:'oz-gozetim',     ad:'Kendi kendine gözetim: etiketi veriden üretmek',  sure:17, durum:'hazir'},
     {id:'olcek-yasalari',  ad:'Ölçek yasaları: büyütmenin getirisi ve bedeli',  sure:16, durum:'hazir'},
     {id:'perplexity',     ad:'Perplexity: bir modelin şaşkınlığını ölçmek',    sure:16, durum:'hazir'},
@@ -10186,6 +10186,153 @@ DERSLER['cot'] = {
       'Karar kuralı: görev ara adımlara gerçekten ayrışıyor mu? Ayrışıyorsa CoT hem az veriyle ' +
       'öğrenir hem her zincir uzunluğunda çalışır. Ayrışmıyorsa kazanç sıfır, ' +
       'hata birikimi maliyeti ise yerinde durur.',
+    xp:75,
+  },
+]};
+
+/* ─────────────── ÖZ-TUTARLILIK ─────────────── */
+DERSLER['self-cons'] = {
+  ad:'Self-consistency: çoğunluğa güvenmek',
+  alt:'Aynı soruyu K kez sorup oy çokluğunu almak, çoğu zaman yanılan bir modeli neredeyse hatasız hale getirebiliyor. Bir şartla.',
+  kaynaklar:[
+    {y:'Wang, X. ve ark.', t:'2023', b:'Self-Consistency Improves Chain of Thought Reasoning in Language Models', n:'ICLR 2023', u:'https://arxiv.org/abs/2203.11171'},
+    {y:'Cobbe, K. ve ark.', t:'2021', b:'Training Verifiers to Solve Math Word Problems', n:'arXiv:2110.14168', u:'https://arxiv.org/abs/2110.14168'},
+    {y:'Snell, C. ve ark.', t:'2024', b:'Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters', n:'arXiv:2408.03314', u:'https://arxiv.org/abs/2408.03314'},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'Çoğu zaman yanılan modelden doğru cevap çıkarmak',
+    goal:'Bağımsız denemelerin oyunun neyi düzelttiğini göreceksin.',
+    todo:'Adım hatasını değiştir. ε = 0.20 de tek zincir ile 41 oy arasındaki farka bak.',
+    kind:'controls', viz:'ozTutarlilik', h:760,
+    controls:[{k:'epsi', lb:'ADIM BAŞINA HATA', min:0, max:3, step:1, val:2,
+      fmt:v => 'ε = ' + OT.epsler[Math.round(v)].toFixed(2)}],
+    state:{sahne:'oy'},
+    derive:s => ({t1: OT.oy(OT.N, OT.epsler[Math.round(s.epsi)], 0, 1),
+                  t41: OT.oy(OT.N, OT.epsler[Math.round(s.epsi)], 0, 41)}),
+    live:s => [['ε', OT.epsler[Math.round(s.epsi)].toFixed(2)],
+               ['TEK ZİNCİR', '%' + (100*s.t1).toFixed(1), K.mut],
+               ['41 OY', '%' + (100*s.t41).toFixed(1), K.green],
+               ['HEDEF', '41 oy > %95']],
+    unlock:s => s.t41 > 0.95,
+    unlockMsg:'41 oyla doğruluğu %95 in üstüne çıkaracak ε yi bul',
+    body:'<p>Bir önceki derste zincirin uzadıkça hatanın biriktiğini ölçtün. Aynı görev, ' +
+      'aynı 8 adımlık zincir, adım başına ε hata. Yeni olan tek şey: aynı soruyu ' +
+      '<b>K kez bağımsız olarak</b> soruyoruz ve en çok tekrarlanan cevabı alıyoruz.</p>' +
+      '<p>ε = 0.20 de tek zincir <b>%21.3</b> doğru. Yani model soruların beşte dördünde yanılıyor. ' +
+      'Aynı modelden 41 bağımsız cevap alıp oy çokluğuna bakınca doğruluk <b>%79.9</b>, ' +
+      '101 oyda <b>%97.6</b>.</p>' +
+      '<p>Bu ilk bakışta imkânsız görünüyor: çoğunluk oyu, çoğunluk zaten yanılıyorken nasıl ' +
+      'doğruyu bulsun? Cevap bir sonraki adımda ve şaşırtıcı derecede basit.</p>' +
+      '<p>ε = 0.30 da aynı hile çok daha zayıf çalışıyor: tek zincir %12.7, 201 oy ancak %62.2. ' +
+      'ε = 0.10 da ise 41 oy <b>%100.0</b> veriyor. Oylamanın gücü modelin ham kalitesine ' +
+      'çok duyarlı.</p>',
+    learned:'<b>Bağımsız denemelerin oy çokluğu, tek başına çoğu zaman yanılan bir modeli ' +
+      'doğru cevaba taşıyabilir.</b><br><br>' +
+      'ε = 0.20 de tek zincir %21.3, 41 oy %79.9, 101 oy %97.6.<br><br>' +
+      'Kazanç modelin kalitesine çok bağlı: ε = 0.10 da 41 oy %100.0 verirken, ' +
+      'ε = 0.30 da 201 oy bile ancak %62.2 e ulaşıyor.',
+    xp:50,
+  },
+  {
+    t:'Neden işe yarıyor: yanlışlar bölünüyor',
+    goal:'Oylamanın tek koşulunu göreceksin.',
+    todo:'ε yi değiştirip yeşil çubuk ile en yüksek kırmızı çubuğun arasına bak.',
+    kind:'controls', viz:'ozTutarlilik', h:760,
+    controls:[{k:'epsi', lb:'ADIM BAŞINA HATA', min:0, max:3, step:1, val:2,
+      fmt:v => 'ε = ' + OT.epsler[Math.round(v)].toFixed(2)}],
+    state:{sahne:'pay'},
+    derive:s => { const pq = OT.paylar(OT.N, OT.epsler[Math.round(s.epsi)], 0);
+      return {p: pq.p, q: pq.q}; },
+    live:s => [['DOĞRU p', s.p.toFixed(4), K.green],
+               ['EN BÜYÜK YANLIŞ q', s.q.toFixed(4), K.red],
+               ['p / q', (s.p/s.q).toFixed(2) + '×', K.purple]],
+    body:'<p>Modelin bir soruya verdiği cevapların dağılımını çıkaralım. Bu dağılım ' +
+      '<b>örnekleme değil, tam hesap</b>: 12 durumlu zincirin adım dağılımını 8 kez ' +
+      'çarpmak yeterli.</p>' +
+      '<p>ε = 0.20 de doğru cevabın payı <b>p = 0.2113</b>. Geriye kalan 11 yanlış cevabın ' +
+      'her biri <b>0.0717</b> alıyor ve 0.2113 + 11 × 0.0717 = 1. Yanlışlar tam olarak eşit ' +
+      'bölünmüş, çünkü sapma rastgele.</p>' +
+      '<p>Önceki adımdaki "tek zincir %21.3" bu p nin ölçümüydü: 8000 denemelik örneklem, ' +
+      'gerçek değer olan %21.13 ü 0.2 puan yanılgıyla buluyor.</p>' +
+      '<p>İşte cevap: oy çokluğu için <b>çoğunluk gerekmiyor, birinci olmak yetiyor</b>. ' +
+      'Doğru cevap %21 lik payıyla yarının çok altında ama 11 rakibinin her biri %7 de kaldığı ' +
+      'için birinci sırada. K büyüdükçe oy oranları gerçek paylara yakınsıyor ve birinci ' +
+      'olan kazanıyor.</p>' +
+      '<p>ε = 0.10 da fark daha da açık: p = 0.4471, en büyük yanlış 0.0503. Aradaki oran ' +
+      '<b>8.9 kat</b>, o yüzden 41 oy yetip artıyor.</p>' +
+      '<p>Bu, "kalabalığın bilgeliği"nin çalışma şartıyla aynı şart: <b>hatalar bağımsız ve ' +
+      'dağınık olmalı</b>. Bir sonraki adımda bu şartı bozacağız.</p>',
+    learned:'<b>Oylamanın tek koşulu: doğru cevap, modelin en olası cevabı olmalı.</b><br><br>' +
+      'ε = 0.20 de doğru cevabın payı 0.2113, en büyük yanlışınki 0.0717. Doğru cevap ' +
+      'mutlak çoğunluğa sahip değil ama birinci, ve oy çokluğu için gereken tam olarak bu.<br><br>' +
+      'Yanlışlar 11 ayrı cevaba bölündüğü için hiçbiri doğruyu geçemiyor. ' +
+      'Oylamanın gücü modelin iyiliğinden değil, <b>hatalarının dağınıklığından</b> geliyor.',
+    xp:50,
+  },
+  {
+    t:'Oylama gürültüyü siler, hatayı değil',
+    goal:'Öz-tutarlılığın nerede tersine döndüğünü göreceksin.',
+    todo:'İki eğriyi ve kesikli sınır çizgilerini karşılaştır. Kırmızı eğri nerede tepe yapıyor?',
+    kind:'static', viz:'ozTutarlilik', h:760,
+    state:{sahne:'yanli'},
+    body:'<p>Şimdi tek bir şeyi değiştiriyoruz: modelin 12 girdilik f tablosunda <b>bir girdi ' +
+      'yanlış</b>. 10 durumundan 3 e gitmesi gerekirken 4 e gittiğine inanıyor. Adım gürültüsü ' +
+      'aynı (ε = 0.20), değişen tek şey bu.</p>' +
+      '<p>Kritik fark şu: gürültü her zincirde <b>farklı</b>, yanlış inanç her zincirde <b>aynı</b>. ' +
+      'Zincirler birbirini düzeltmiyor, aynı hatada birleşiyor.</p>' +
+      '<p>Sonuç bir tümsek. Tek zincir %15.3. Oy sayısı arttıkça önce yükseliyor, K = 101 de ' +
+      '<b>%29.6</b> ile tepe yapıyor, sonra düşüyor: K = 201 de %27.7, K = 1001 de %20.9, ' +
+      'K = 4001 de %12.3.</p>' +
+      '<p>Kesikli çizgi sonsuz oydaki sınır ve bu bir tahmin değil, <b>tam hesap</b>: oy çokluğu ' +
+      'her soruda dağılımın en yüksek çubuğuna yakınsar, o yüzden sınır "doğru cevabın en olası ' +
+      'cevap olduğu soruların oranı"dır. Tablo doğruyken bu 12/12, yani <b>%100</b>. Tek girdi ' +
+      'yanlışken <b>1/12 = %8.3</b>: tek zincirin %15.3 ünün bile altında.</p>' +
+      '<p>Yani yeterince oy verirsen öz-tutarlılık <b>zarar veriyor</b>. Erken durmak seni ' +
+      'kurtarıyor, ama nerede duracağını bilmek için modelin yanlış inancını bilmen gerekir ki ' +
+      'bilseydin zaten düzeltirdin.</p>',
+    learned:'<b>Öz-tutarlılık rastgele hatayı temizler, sistematik hatayı büyütür.</b><br><br>' +
+      'Tek yanlış tablo girdisiyle eğri tümsek yapıyor: %15.3 → K=101 de %29.6 → K=4001 de %12.3, ' +
+      'sonsuz oyda %8.3.<br><br>' +
+      'Sonsuz oydaki sınır tam olarak hesaplanabiliyor: doğru cevabın modelin en olası cevabı ' +
+      'olduğu soruların oranı. Tablo doğruyken 12/12, bir girdi yanlışken 1/12.<br><br>' +
+      'Oylama modelin ne bildiğini değiştirmiyor, sadece <b>ne bildiğini daha net duyuruyor</b>.',
+    xp:50,
+  },
+  {
+    t:'Fiyat etiketi',
+    goal:'Oy satın almakla model düzeltmek arasındaki takası göreceksin.',
+    todo:'Mor çubuklara bak, sonra soruyu cevapla.',
+    kind:'static', viz:'ozTutarlilik', h:760,
+    state:{sahne:'maliyet'},
+    body:'<p>K oy, K kat hesap demek. Grafikteki mor çubuklar <b>eklenen zincir başına kaç puan ' +
+      'kazanıldığını</b> gösteriyor (ε = 0.20, tablo doğru).</p>' +
+      '<p>Kazanç önce artıyor (K = 5 te zincir başına 3.12 puan), sonra sürekli düşüyor: ' +
+      'K = 41 de 0.96, K = 101 de 0.30, K = 201 de <b>0.02</b>. Son 100 zincir toplamda ' +
+      '2 puandan az getiriyor.</p>' +
+      '<p>Asıl karşılaştırma şu. Adım hatası yarıya inince (ε: 0.20 → 0.10) <b>aynı 11 oyla</b> ' +
+      'doğruluk %43.7 den <b>%91.2</b> ye çıkıyor. Kötü model bu seviyeyi ancak 101 oyla ' +
+      '(%97.6) geçiyor, yani kabaca <b>9 kat hesap</b> ödeyerek.</p>' +
+      '<p>Pratikte oylamanın yeri şurası: modeli iyileştirmek uzun ve pahalıysa, elindeki modelden ' +
+      'test anında biraz daha doğruluk çıkarmanın basit bir yolu. Ama sınırsız bir kaldıraç değil, ' +
+      've bir önceki adımda gördüğün gibi yanlış yönde de çalışabilir.</p>' +
+      '<p>Not: burada oy çokluğunu ölçtük. Cevapları bir <b>doğrulayıcıya</b> puanlatmak ' +
+      '(cevabı yerine koyup kontrol etmek gibi) genelde daha iyidir, çünkü doğrulayıcı ' +
+      '"en sık" değil "doğru" olana bakar ve modelin yanlış inancını paylaşmak zorunda değildir.</p>',
+    quiz:{ q:'Bir modeli çok adımlı bir görevde çalıştırıyorsun. Tek denemede %30 doğruluk alıyorsun. 20 bağımsız deneme alıp oy çokluğuna bakınca doğruluk %31 e çıkıyor, 100 denemede %29 a düşüyor. Bu ne anlama gelir?',
+      opts:[
+        {t:'Modelin hataları sistematik: en sık verdiği cevap çoğu soruda yanlış', why:'Doğru. Oylama, oy sayısı büyüdükçe modelin en olası cevabına yakınsar. Doğruluk artmıyor, hatta düşüyorsa, o en olası cevap çoğu soruda yanlış demektir. Derste bunu tam olarak ölçtün: tek yanlış tablo girdisiyle eğri %29.6 da tepe yapıp %8.3 e iniyordu. Daha çok deneme almak bu durumda para yakmaktır; yapılacak iş modelin yanlış inancını bulmak ya da bir doğrulayıcı kullanmaktır.'},
+        {t:'Yeterince deneme almamışsın, 1000 denemede düzelir', why:'Tersi. Eğri zaten 20 den 100 e giderken düşmüş. Oylama K büyüdükçe modelin modunu daha net seçer, o yüzden yanlış bir mod daha çok denemeyle daha kesin seçilir. Derste K = 4001 de doğruluk %12.3 e inmişti.'},
+        {t:'Denemeler yeterince bağımsız değil', why:'Bağımsızlık gerçek bir şart ama gözlemi açıklamıyor. Tamamen bağımlı denemeler oylamayı etkisiz kılar, yani doğruluk %30 da sabit kalırdı. Burada doğruluğun önce artıp sonra düşmesi, bağımsız denemelerin ortak bir yanlışta birleşmesinin imzasıdır.'},
+        {t:'Öz-tutarlılık bu görev için fazla basit, chain-of-thought gerekir', why:'Görev zaten çok adımlı ve bunlar birbirini dışlayan yöntemler değil: öz-tutarlılık zincirlerin üstüne kurulur. Ayrıca sorun zincirin yokluğu değil, oylamanın yakınsadığı cevabın yanlış olması.'},
+      ], correct:0 },
+    learned:'<b>Oylamanın fiyatı doğrusal, getirisi azalan.</b><br><br>' +
+      'ε = 0.20 de zincir başına kazanç K = 5 te 3.12 puan, K = 101 de 0.30, K = 201 de 0.02.<br><br>' +
+      'Aynı 11 oyla ε = 0.10 modeli %91.2, ε = 0.20 modeli %43.7 veriyor. Kötü modelin bunu ' +
+      'yakalaması yaklaşık 9 kat hesap tutuyor: <b>modeli düzeltmek, oy satın almaktan ucuz</b>.<br><br>' +
+      'Oy çokluğu yerine bir doğrulayıcıyla puanlamak genelde daha iyidir, çünkü doğrulayıcı ' +
+      '"en sık" olana değil doğru olana bakar.',
     xp:75,
   },
 ]};
