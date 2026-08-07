@@ -3889,3 +3889,120 @@ DERSLER_EN['multihead'] = {
   },
   ],
 };
+
+DERSLER_EN['egitim-llm'] = {
+  ad:'Pretrain / fine-tune / RLHF',
+  alt:'The difference between a raw language model and an assistant you can talk to. And how thin that difference is.',
+  kaynaklar:[{"y":"Ouyang, L. et al.","t":"2022","b":"Training Language Models to Follow Instructions with Human Feedback (InstructGPT)","n":"NeurIPS 2022","u":"https://arxiv.org/abs/2203.02155"},
+             {"y":"Rafailov, R. et al.","t":"2023","b":"Direct Preference Optimization (DPO)","n":"NeurIPS 2023","u":"https://arxiv.org/abs/2305.18290"},
+             {"y":"Zhou, C. et al.","t":"2023","b":"LIMA: Less Is More for Alignment","n":"NeurIPS 2023","u":"https://arxiv.org/abs/2305.11206"},
+             {"y":"Bai, Y. et al.","t":"2022","b":"Constitutional AI: Harmlessness from AI Feedback","n":"arXiv:2212.08073","u":"https://arxiv.org/abs/2212.08073"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'Three stages, very different scales',
+    goal:'You will separate where a language model\'s knowledge comes from and where its behaviour comes from.',
+    todo:'Move the stage from 1 to 3. Pay attention to the data and compute shares below.',
+    kind:'controls', viz:'llmEgitim', h:760, xp:50,
+    body:'<p>When you talk to ChatGPT you are not talking to the result of one training run but to the product of <b>three separate stages</b>.</p>' +
+         '<p><b style="color:#4cc4ff">1 · PRETRAINING.</b> About 15 trillion tokens. One objective: <b>predict the next token</b>. No labels, no humans; the text itself is both the input and the answer. It takes months and costs millions.</p>' +
+         '<p>At the end of this stage you do <b>not have an assistant</b>. Ask "what is the capital of Turkey?" and the model will probably continue with "what is the capital of France? what is the capital of Spain?", because on the internet that sentence is usually part of a list of questions. The model is <b>completing text</b>, not answering.</p>' +
+         '<p><b style="color:#22d3a0">2 · SUPERVISED FINE-TUNING (SFT).</b> 10 to 100 thousand human written (instruction, ideal answer) pairs. The model does not learn knowledge here, it learns <b>format</b>: when asked a question, give an answer.</p>' +
+         '<p><b style="color:#fb923c">3 · HUMAN FEEDBACK (RLHF / DPO).</b> Two answers are produced for the same question and a human marks which one they prefer. The model optimises those preferences.</p>' +
+         '<p>Look at the scales:</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">            data share   compute share<br>pretraining   <b>99.90%</b>        <b>99.0%</b><br>SFT            0.10%         0.9%<br>RLHF           0.02%         0.1%</p>' +
+         '<p><b>All of the knowledge is in the first stage and all of the behaviour is in the last two.</b> And most of the difference a user feels comes from a stage that consumes a thousandth of the compute.</p>',
+    learned:'<b>Pretraining gives knowledge, SFT gives format, RLHF gives tone and preference.</b><br><br>A raw pretrained model is not an assistant, it is a text completer. What turns it into an assistant is the last two stages, which make up a thousandth of the data.',
+    controls:[{k:'asama', lb:'STAGE', min:0, max:2, step:1, val:0}],
+  },
+  {
+    t:'What does alignment solve, and what does it not?',
+    goal:'You will get clear on what RLHF actually does, and on a common misconception.',
+    todo:'Walk through the stages, then solve the scenario.',
+    kind:'controls', viz:'llmEgitim', h:760, xp:60,
+    body:'<p>The LIMA study (Zhou et al., 2023) reported a striking result: <b>with only 1000 carefully chosen SFT examples</b> you can get performance close to models aligned with far more data.</p>' +
+         '<p>The authors\' interpretation is the <b>"Superficial Alignment Hypothesis"</b>: almost all of the knowledge is acquired in pretraining, and alignment only teaches the model <i>in what form</i> to respond.</p>' +
+         '<p>That clarifies what alignment can and cannot do:</p>' +
+         '<p><b style="color:#22d3a0">RLHF does:</b> a helpful tone · following instructions · refusing harmful requests · a consistent format · asking for clarification when uncertain</p>' +
+         '<p><b style="color:#f87171">RLHF does NOT:</b> teach the model new knowledge · eliminate hallucination · grant reasoning ability</p>' +
+         '<p style="color:#facc15"><b>And a side effect:</b> RLHF optimises the answers people <i>like</i>. People like confident, fluent answers. The result: the model <b>can learn to look confident on subjects it does not know</b>. So alignment, rather than reducing hallucination, can make it <b>more convincing</b>. The next lesson is about that.</p>' +
+         '<p><b>DPO</b> (2023) has largely replaced RLHF today: instead of setting up a separate reward model and a reinforcement learning loop, it turns preference pairs directly into a classification loss. Far simpler, far more stable, similar results.</p>',
+    learned:'<b>Alignment is superficial:</b> knowledge is acquired in pretraining and RLHF only adjusts the form (the LIMA hypothesis).<br><br><b>If you want to add knowledge, use RAG</b>; if you want to change the style, use fine-tuning.<br><br>And be careful: because RLHF optimises what people like, it can push the model to <b>look more confident</b>. It does not reduce hallucination, it makes it more convincing.',
+    controls:[{k:'asama', lb:'STAGE', min:0, max:2, step:1, val:2}],
+    quiz:{
+      q:'You want to teach the model your company\'s product catalogue. Which is the right approach?',
+      opts:[
+        {t:'I align it with RLHF, people will prefer the right answers',
+         why:'No. RLHF shapes <b>behaviour</b>, it does not inject knowledge. And collecting preference data is expensive, and you would have to redo it every time the catalogue changes.'},
+        {t:'I build a RAG system, keep the catalogue as documents, and let the model read the relevant chunk when asked',
+         why:'Correct. Changeable, factual information like a catalogue does not get embedded into the model weights. RAG gives three advantages: (1) when the catalogue is updated you do not have to retrain the model, (2) the model\'s answer rests on a source you can show, (3) it is far cheaper. Fine-tuning is appropriate for style and format, not for "teaching knowledge".'},
+        {t:'I fine tune so the catalogue is written into the weights',
+         why:'A common but mistaken reflex. Fine-tuning teaches style and format; it does not reliably memorise facts, and the model can forget what it knew (catastrophic forgetting, which you saw in the transfer learning lesson). And you would have to retrain every time the catalogue changed.'},
+        {t:'I paste the whole catalogue into the prompt',
+         why:'That works for small catalogues but does not scale; the context window and the KV cache cost hit a wall (you saw the arithmetic in the KV cache lesson).'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['rag'] = {
+  ad:'The RAG pipeline',
+  alt:'The way to make a model answer with knowledge it does not have. And why bad RAG is usually the fault of retrieval rather than of the LLM.',
+  kaynaklar:[{"y":"Lewis, P. et al.","t":"2020","b":"Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks","n":"NeurIPS 2020","u":"https://arxiv.org/abs/2005.11401"},
+             {"y":"Gao, Y. et al.","t":"2024","b":"Retrieval-Augmented Generation for Large Language Models: A Survey","n":"arXiv:2312.10997","u":"https://arxiv.org/abs/2312.10997"},
+             {"y":"Liu, N. et al.","t":"2024","b":"Lost in the Middle: How Language Models Use Long Contexts","n":"TACL 2024","u":"https://arxiv.org/abs/2307.03172"},
+             {"y":"Nogueira, R. & Cho, K.","t":"2019","b":"Passage Re-ranking with BERT","n":"arXiv:1901.04085","u":"https://arxiv.org/abs/1901.04085"}],
+  rota:3,
+  adimlar:[
+  {
+    t:'Six steps',
+    goal:'You will see every step of RAG and what can break at each one.',
+    todo:'Move the step from 1 to 6. Read the warning on each one.',
+    kind:'controls', viz:'rag', h:760, xp:50,
+    body:'<p>A language model has two fundamental limits: <b>it knows nothing after its training data</b> and <b>it has never seen your private documents</b>. RAG solves both, by having the model read the right documents before answering.</p>' +
+         '<p>The pipeline has six steps and <b>every step is its own source of error</b>:</p>' +
+         '<p>· <b>Chunking</b>: 500 characters with 80 of overlap is a typical starting point. The overlap is critical: without it a sentence can be split across two chunks and lose its meaning.<br>' +
+         '· <b>Embedding</b>: using an English model on Turkish documents is the most common and the quietest mistake.<br>' +
+         '· <b>Indexing</b>: approximate nearest neighbour structures such as HNSW. The solution to the O(n) cost problem from the k-NN lesson.<br>' +
+         '· <b>Retrieval</b>: cast a wide net (50 candidates). The metric to measure here is <b>recall@k</b>: is the right chunk in the list?<br>' +
+         '· <b>Reranking</b>: go from 50 down to 5 with a cross-encoder. The single addition that improves RAG quality most.<br>' +
+         '· <b>Asking</b>: the instruction "use only the context, and say you do not know if it is not there" is essential.</p>' +
+         '<p style="color:#facc15"><b>One more trap:</b> Liu et al. (2024) demonstrated the "Lost in the Middle" phenomenon: models use information at the <b>beginning and the end</b> of a long context far better than in the middle. So if you put the most relevant chunk in 7th place the model may miss it. Which is why reranking answers not only "which 5" but also <b>in what order</b>.</p>',
+    learned:'<b>RAG is chunk → embed → index → retrieve → rerank → ask.</b><br><br>Each of the six steps is its own source of error. And models tend to miss information in the middle of a long context, so ordering matters as much as selection.',
+    controls:[{k:'adim', lb:'STEP', min:0, max:5, step:1, val:0}],
+  },
+  {
+    t:'Whose fault is bad RAG?',
+    goal:'You will learn to look for and measure RAG failures in the right place.',
+    todo:'Walk the steps, then solve the scenario.',
+    kind:'controls', viz:'rag', h:760, xp:60,
+    body:'<p>When RAG breaks the first reflex is to blame the LLM: "the model made it up", "the model did not understand". But the great majority of failures happen at <b>earlier steps</b>.</p>' +
+         '<p><b>The right order of diagnosis:</b></p>' +
+         '<p><b>1 · Measure retrieval first.</b> Prepare a set of questions and mark by hand which chunk contains the right answer for each. Then ask: <b>did the right chunk arrive in the top k?</b> (recall@k)</p>' +
+         '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:12px 16px;border-radius:9px">recall@5 low    → the problem is in RETRIEVAL, do not look at the LLM<br>recall@5 high but the answer is bad → the problem is in the prompt or the LLM</p>' +
+         '<p>That one measurement splits the problem in two and saves wasted days.</p>' +
+         '<p><b>2 · If retrieval is bad, try these in order:</b></p>' +
+         '<p>· Check the embedding model, does it support the language?<br>' +
+         '· Change the chunk size (try 250 / 500 / 1000 and measure)<br>' +
+         '· <b>Add a reranker</b>, usually the single biggest win<br>' +
+         '· Hybrid search (semantic plus BM25 keyword), critical for proper nouns and codes<br>' +
+         '· Query expansion (HyDE: generate a hypothetical answer to the question and embed that)</p>' +
+         '<p><b>3 · If retrieval is good:</b> does the prompt contain "use only the context"? Is the chunk order right (most relevant at the start or the end)? Is the context too long?</p>' +
+         '<p style="color:#f87171"><b>A common mistake:</b> raising k. The thought "let me retrieve more chunks, one of them will hit" usually <b>lowers quality</b>: noise rises, the model gets distracted, and cost and latency grow. The fix is not quantity but <b>ranking quality</b>.</p>',
+    learned:'<b>Most RAG failures are in retrieval, not in generation.</b><br><br>The single key to diagnosis is <b>recall@k</b>: if it is low look at retrieval, if it is high look at the prompt and the ordering.<br><br>And raising k is not the fix; a <b>reranker</b> and hybrid search give the real gain.',
+    controls:[{k:'adim', lb:'STEP', min:0, max:5, step:1, val:3}],
+    quiz:{
+      q:'You measured recall@5 = 92% in your RAG system but users say the answers are wrong. Where do you look?',
+      opts:[
+        {t:'I change the embedding model',
+         why:'No. recall@5 = 92% shows that embedding and retrieval are <b>working well</b>: the right chunk arrives in the top 5 for 92 out of 100 questions. The problem is not at this stage.'},
+        {t:'I look at the prompt, the chunk order and the context length; the right information is arriving but the model is not using it',
+         why:'The right diagnosis. When recall is high and the answer is bad, the problem is at the <b>generation stage</b>. The checklist: (1) does the prompt say "use only the context, say you do not know if it is not there"; (2) is the most relevant chunk stuck in the middle ("Lost in the Middle"); (3) is the context needlessly long; (4) are contradictory chunks arriving. That distinction is the basic discipline of RAG debugging.'},
+        {t:'I retrieve more chunks',
+         why:'Retrieval is already good; more chunks only add noise and cost.'},
+        {t:'I use a bigger LLM',
+         why:'Worth trying, but do the cheap and certain things first: check the prompt and the ordering. Growing the model is the most expensive and the last resort.'},
+      ], correct:1 },
+  },
+  ],
+};
