@@ -6186,3 +6186,222 @@ DERSLER_EN['norm-l1l2'] = {
   },
   ],
 };
+
+DERSLER_EN['yanlilik'] = {
+  ad:'Bias and variance: a model\'s two kinds of error',
+  alt:'A model goes wrong for two separate reasons, and those two reasons are enemies. Lower one and you raise the other.',
+  kaynaklar:[{"y":"Geman, S., Bienenstock, E. & Doursat, R.","t":"1992","b":"Neural Networks and the Bias/Variance Dilemma","n":"Neural Computation, 4(1)"},
+             {"y":"Hastie, Tibshirani, Friedman","t":"2009","b":"The Elements of Statistical Learning, Section 7.3","n":"Springer"},
+             {"y":"Bishop, C. M.","t":"2006","b":"Pattern Recognition and Machine Learning, Section 3.2","n":"Springer"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'200 different training sets from the same process',
+    goal:'You will see that a model\'s error has a side you cannot see by looking at a single training set.',
+    todo:'Leave the degree at 0 and look at the thin blue lines on the left. Those are 30 models from 200 different training sets.',
+    kind:'controls', viz:'yanlilikVaryans', h:700, xp:20,
+    body:'<p>Until now you always had a single training set. But that set was a random sample; if 20 different students had turned up on another day you would have had different data.</p>' +
+         '<p>Here I drew <b>200 separate training sets</b> from the same process and fitted a separate model to each. The question to ask: how similar are these 200 models to each other, and how close is their average to the truth?</p>' +
+         '<p>At degree 0 the model can only draw a horizontal line. The 200 lines lie almost on top of each other, so the models are very similar to each other. But none of them looks like the true curve.</p>',
+    learned:'<b>Error has two sources and they answer different questions.</b><br><br><b>Bias:</b> how far is the AVERAGE of the models from the truth? That is, is the model family flexible enough to do this job?<br><b>Variance:</b> how different are the models FROM EACH OTHER? That is, how much does the result depend on which data you happened to get?<br><br>At degree 0 the bias² is <b>0.4878</b> and the variance only <b>0.0281</b>. Stable but wrong.',
+    controls:[{k:'derece', lb:'POLYNOMIAL DEGREE', min:0, max:9, step:1, val:0}],
+  },
+  {
+    t:'Raise the flexibility and watch the two numbers move in opposite directions',
+    goal:'You will see for yourself that as model complexity grows the bias falls and the variance explodes.',
+    todo:'Raise the degree to 9. Look at the orange and purple layers on the right: which is growing and which is shrinking?',
+    kind:'controls', viz:'yanlilikVaryans', h:700, xp:40,
+    body:'<p>As the degree grows the model family widens. It can now imitate the true curve, so the <b>bias falls</b>: 0.4878 at degree 0, 0.0070 at degree 3.</p>' +
+         '<p>But there is a price. A flexible model also fits the noise in the 20 points it happened to get. If another 20 points arrived it would draw a completely different curve. Look at how the thin lines spread out on the left.</p>' +
+         '<p>The <b>variance</b> is 0.0491 at degree 3 and <b>5.8916</b> at degree 9. More than a hundredfold.</p>',
+    learned:'<b>Flexibility lowers bias and raises variance.</b> That is not a preference but a mathematical trade-off.<br><br>Degree 0 → 3: bias² falls from 0.4878 to 0.0070.<br>Degree 3 → 9: variance rises from 0.0491 to 5.8916.<br><br>You cannot shrink both at once. The only thing you can do is find the point where the sum is smallest.',
+    controls:[{k:'derece', lb:'POLYNOMIAL DEGREE', min:0, max:9, step:1, val:0}],
+  },
+  {
+    t:'Total error and the floor you cannot go below',
+    goal:'You will see why the sum of the three components draws a U and why it cannot fall to zero.',
+    todo:'Find the degree that makes the total error smallest.',
+    kind:'controls', viz:'yanlilikVaryans', h:700, xp:40,
+    body:'<p>The expected test error consists of exactly three parts:</p>' +
+         '<p style="text-align:center"><b>error = bias² + variance + noise</b></p>' +
+         '<p>The first two are under your control and the third is not. In this data the standard deviation of the noise is 0.35, so the noise term is <b>0.35² = 0.1225</b>. Whatever model you build, you cannot go below that floor.</p>' +
+         '<p>The best degree is <b>3</b>: total error <b>0.1786</b>. Of that, <b>0.1225</b>, that is <b>68.6%</b>, is noise. The remaining 0.0561 is your model\'s share.</p>',
+    learned:'<b>The error does not go to zero, it stops at the noise floor.</b> Here the floor is 0.1225 and the best total reachable is 0.1786.<br><br>This answers the question "can I make my model better" on a project: if your error is already near the noise floor, what you need is not a better model but <b>better measurement</b> or <b>more data</b>.',
+    controls:[{k:'derece', lb:'POLYNOMIAL DEGREE', min:0, max:9, step:1, val:9}],
+  },
+  {
+    t:'So how will you know this on real data?',
+    goal:'You will understand why this decomposition is a diagnostic tool but cannot be measured directly.',
+    todo:'Answer the question.',
+    kind:'static', viz:'yanlilikVaryans', h:700, xp:40, state:{derece:3},
+    body:'<p>I could do the decomposition above because <b>I knew the true function</b> and could draw as many training sets from the same process as I wanted. In real life you have neither.</p>' +
+         '<p>But you can diagnose from the symptoms:</p>' +
+         '<p><b>High bias:</b> the training error and the test error are both high and close to each other. The model cannot even learn the data.<br>' +
+         '<b>High variance:</b> the training error is low and the test error is high. There is a big gap between them.</p>',
+    learned:'<b>The gap between the training and the test error is the measurable trace of variance.</b><br><br>Both high and close to each other → a bias problem: a more flexible model, better features.<br>Training low, test high → a variance problem: more data, a penalty term, a simpler model.<br><br>The ridge and lasso lessons were exactly the cure for this second illness: they add a little bias and erase a lot of variance.',
+    quiz:{
+      q:'A model has a training error of 2% and a test error of 23%. Which is the right diagnosis and the right treatment?',
+      opts:[
+        {t:'High bias, the model should be more complex',
+         why:'No. With high bias the training error would be high too; here the model knows the training data at 98% accuracy. A more complex model would widen the gap.'},
+        {t:'High variance, more data or regularisation is needed',
+         why:'Correct. The gap between training and test is the signature of variance. Three treatments work: more training data, a penalty term (ridge or lasso), or a simpler model.'},
+        {t:'The noise floor has been reached, there is nothing to do',
+         why:'No. When the noise floor is reached the training and test errors converge to each other. The difference between 2% and 23% cannot be explained by noise.'},
+        {t:'There is data leakage',
+         why:'Leakage usually gives the opposite symptom: the test error comes out suspiciously LOW. Here the test error is high, which is the classic picture of overfitting.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['boyut-laneti'] = {
+  ad:'The curse of dimensionality: why neighbours move away',
+  alt:'In the k-NN lesson we said "ask the nearest neighbour". In 100 dimensions the nearest neighbour is only 40% closer than the furthest one. So who are you going to ask?',
+  kaynaklar:[{"y":"Bellman, R.","t":"1961","b":"Adaptive Control Processes: A Guided Tour","n":"Princeton University Press"},
+             {"y":"Beyer, K. et al.","t":"1999","b":"When Is Nearest Neighbor Meaningful?","n":"ICDT 1999, 217-235"},
+             {"y":"Hastie, Tibshirani, Friedman","t":"2009","b":"The Elements of Statistical Learning, Section 2.5","n":"Springer"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'The distances all pile up in one place',
+    goal:'You will see that as the dimension grows all the points start to look equally far from each other.',
+    todo:'Raise the dimension from 1 towards 100. Look at the width of the blue histogram and at the distance between the green and orange lines.',
+    kind:'controls', viz:'boyutLaneti', h:700, xp:35,
+    body:'<p>I scattered 500 random points in a unit cube and picked a random query point. The histogram shows the distances from the query point to all 500 points.</p>' +
+         '<p><b>In 1 dimension</b> the nearest neighbour is at a distance of 0.001 and the furthest at 0.735. There is a factor of 780 between them. "Nearest" really is near.</p>' +
+         '<p><b>In 100 dimensions</b> the nearest is 3.373 and the furthest 4.731. Only a factor of <b>1.40</b>. The histogram squeezes into a narrow peak: all the points are at almost the same distance from the query point.</p>',
+    learned:'<b>In high dimensions distances converge to each other.</b> The ratio of the furthest neighbour to the nearest is 780× in 1 dimension, 3.34× in 10 and <b>1.40×</b> in 100.<br><br>This is a direct threat to k-NN: if everybody is at the same distance, "the nearest k neighbours" means almost k random points. Beyer and colleagues proved this in 1999.',
+    controls:[{k:'bi', lb:'DIMENSION', min:0, max:10, step:1, val:0}],
+  },
+  {
+    t:'A "local" neighbourhood stops being local',
+    goal:'You will see how wide a region you have to scan to capture a small part of the data.',
+    todo:'Raise the dimension and look at the box at the top right: how much of the cube\'s edge is needed to cover 10% of the data?',
+    kind:'controls', viz:'boyutLaneti', h:700, xp:40,
+    body:'<p>Methods like k-NN work on the logic of "look at the nearby points". So how big does a "nearby" region have to be to contain 10% of the data?</p>' +
+         '<p>The answer is a simple formula: edge length = 0.1<sup>1/d</sup>.</p>' +
+         '<p><b>In 1 dimension</b> it is 0.100, only 10% of the axis. Genuinely local.<br>' +
+         '<b>In 10 dimensions</b> it is 0.794, that is 79.4% of every axis.<br>' +
+         '<b>In 100 dimensions</b> it is 0.977. Almost the whole of every axis.</p>' +
+         '<p>So in 100 dimensions "the nearest 10%" actually means scanning almost the entire space. Nothing called locality is left.</p>',
+    learned:'<b>In high dimensions there is no such thing as a local neighbourhood.</b> The edge needed to capture 10% of the data is 0.100 in 1 dimension and <b>0.977</b> in 100.<br><br>The practical consequence: local methods (k-NN, kernel smoothing, the deep branches of a decision tree) lose their locality as the dimension grows and their bias increases.',
+    controls:[{k:'bi', lb:'DIMENSION', min:0, max:10, step:1, val:0}],
+  },
+  {
+    t:'Everybody is sitting at the edge',
+    goal:'You will see that almost the whole of a high dimensional volume is near its surface.',
+    todo:'Raise the dimension and look at the middle box: how much of the volume is in the outer 1% shell?',
+    kind:'controls', viz:'boyutLaneti', h:700, xp:40,
+    body:'<p>Let us go 1% inwards from every edge of the cube and define an "inner core". The volume of the core is 0.98<sup>d</sup> and the volume of the shell is 1 − 0.98<sup>d</sup>.</p>' +
+         '<p><b>In 1 dimension</b> the shell is 2% of the volume. <b>In 10 dimensions</b> 18.3%. <b>In 100 dimensions</b> <b>86.7%</b>. <b>In 200 dimensions</b> 98.2%.</p>' +
+         '<p>So in a high dimensional dataset almost every point is at an extreme value on at least one axis. In practice there is no such thing as "an average example".</p>',
+    learned:'<b>In high dimensions the volume escapes to the surface.</b> The outer 1% shell holds <b>86.7%</b> of the volume in 100 dimensions.<br><br>The consequence: every new example most probably falls outside the training data, so the model constantly has to <b>extrapolate rather than interpolate</b>. Extrapolation is always riskier.',
+    controls:[{k:'bi', lb:'DIMENSION', min:0, max:10, step:1, val:0}],
+  },
+  {
+    t:'So what are we going to do?',
+    goal:'You will learn why the curse is not always a disaster and how it is broken in practice.',
+    todo:'Answer the question.',
+    kind:'static', viz:'boyutLaneti', h:700, xp:45, state:{bi:10},
+    body:'<p>All of this is true, and yet machine learning still works with 1000 dimensional data. How?</p>' +
+         '<p>Because real data is <b>not spread uniformly</b> through the cube. Images of handwritten digits with 784 pixels are not everywhere in a 784 dimensional space; they gather on a much lower dimensional surface. That is called the <b>manifold assumption</b>.</p>' +
+         '<p>In the experiment above I deliberately spread the points uniformly, that is I showed the curse in its heaviest form.</p>',
+    learned:'<b>The curse is a curse of the true dimension, not the measured one.</b><br><br>Real data usually lives on a low dimensional manifold. The job is to find that manifold: PCA, t-SNE, UMAP, an autoencoder, or feature selection with lasso.<br><br>And do not forget: collecting more data is no remedy here, because the number of examples needed for the same density grows exponentially with the dimension.',
+    quiz:{
+      q:'k-NN gives poor results on data with 1000 features. Which approach gets to the root of this problem?',
+      opts:[
+        {t:'Increasing the value of k',
+         why:'No. The problem is not how many neighbours you look at but that the notion of neighbourhood has lost its meaning. If the distances have converged, 5 neighbours are just as random as 50.'},
+        {t:'Lowering the true dimension with dimensionality reduction (PCA, an embedding) or feature selection',
+         why:'Correct. The curse comes not from the measured dimension but from the dimension the data REALLY spreads over. PCA, an autoencoder or sparsification with lasso brings the data down to the low dimensional surface it actually lives on, and distances become meaningful again.'},
+        {t:'Using the Manhattan distance instead of the Euclidean distance',
+         why:'It gives a partial improvement, since Manhattan separates slightly better than Euclidean in high dimensions, but it does not solve the problem. The shell effect and the growth of volume are independent of the metric.'},
+        {t:'Collecting more data',
+         why:'It works in theory but the scale is impossible. The number of examples needed to keep the same density grows exponentially with the dimension: the 1000 examples that suffice in 10 dimensions demand 1000² in 20.'},
+      ], correct:1 },
+  },
+  ],
+};
+
+DERSLER_EN['hiper-arama'] = {
+  ad:'Hyperparameter search: grid, random, elimination',
+  alt:'With the same budget a grid search finds 0.33 while a random search finds 0.83. The reason is not luck but geometry.',
+  kaynaklar:[{"y":"Bergstra, J. & Bengio, Y.","t":"2012","b":"Random Search for Hyper-Parameter Optimization","n":"JMLR, 13, 281-305"},
+             {"y":"Li, L. et al.","t":"2018","b":"Hyperband: A Novel Bandit-Based Approach to Hyperparameter Optimization","n":"JMLR, 18(185)"},
+             {"y":"Hutter, F., Kotthoff, L. & Vanschoren, J.","t":"2019","b":"Automated Machine Learning: Methods, Systems, Challenges","n":"Springer"}],
+  rota:1,
+  adimlar:[
+  {
+    t:'There are two settings but one of them does not matter at all',
+    goal:'You will see what hyperparameter surfaces look like in real life.',
+    todo:'Grow and shrink the grid. The blue dots are the setting pairs tried and the yellow dot is the best one.',
+    kind:'controls', viz:'hiperArama', h:700, xp:30, state:{rast:0},
+    body:'<p>A model has two hyperparameters. But the truth is that <b>the first one determines the result almost entirely.</b> The green strip is the narrow region where the first setting is good. The second setting moves the score by about 6%, and that is all.</p>' +
+         '<p>This is not an invented setup. Bergstra and Bengio showed exactly this in 2012: in neural networks the learning rate determines the result while the effect of many other settings is negligible.</p>' +
+         '<p>A grid search places k×k points evenly. But note: <b>even though it runs k² trials, it only tries k different values of the setting that matters.</b> The remaining trials are repeats of the same value.</p>',
+    learned:'<b>A grid search wastes its budget.</b> You run k×k = k² trials but see only <b>k</b> different values of the setting that matters.<br><br>A 3×3 grid trains 9 models and tries 3 values of the important setting. An 8×8 grid trains 64 models and tries only 8. The rest is trying the unimportant setting over and over.',
+    controls:[{k:'k', lb:'GRID', min:2, max:8, step:1, val:3}],
+  },
+  {
+    t:'Same budget, scattered at random',
+    goal:'You will see why a random search gives a better result with the same budget.',
+    todo:'Drag the METHOD slider to RANDOM. Look at the "distinct values" count at the bottom right.',
+    kind:'controls', viz:'hiperArama', h:700, xp:45,
+    body:'<p>A random search trains the same number of models but does not trap the points in a grid. The result: <b>n trials, n different values of the setting that matters.</b></p>' +
+         '<p>With a budget of 9 trials the difference is striking:</p>' +
+         '<p><b>Grid 3×3:</b> score <b>0.3271</b>. The three values it tries on the important setting (0.167, 0.5, 0.833) pass near the good region (0.32) but do not land on it.<br>' +
+         '<b>Random 9:</b> average score <b>0.8261</b>. Because it tries nine different values, its chance of landing in the good region is far higher.</p>' +
+         '<p>The same computation, a two and a half times better result.</p>',
+    learned:'<b>With the same budget a random search tries k times as many values of the important setting as a grid does.</b><br><br>In 9 trials the grid finds 0.3271 and the random search averages 0.8261.<br><br>The core of the idea: you <b>do not know in advance</b> which setting matters. A grid allocates equal resolution to every setting despite not knowing. A random search never has to make that decision.',
+    controls:[{k:'k', lb:'BUDGET', min:2, max:8, step:1, val:3},
+              {k:'rast', lb:'METHOD', min:0, max:1, step:1, val:0}],
+  },
+  {
+    t:'In a grid, more budget does not mean a better result',
+    goal:'You will see why a grid search is unreliable rather than merely slow.',
+    todo:'In grid mode raise the budget from 25 to 36. What happens to the score?',
+    kind:'controls', viz:'hiperArama', h:700, xp:50,
+    body:'<p>Look at the plot on the right. The purple line (random) rises smoothly: 0.6297 → 0.8261 → 0.9342 → 0.9822 → 1.0033 → 1.0196 → 1.0277.</p>' +
+         '<p>The blue line (grid) jumps around. <b>1.0372 at 25 trials, but 0.8260 at 36.</b> You spent more computation and got a worse result.</p>' +
+         '<p>The reason: in a 5×5 grid one of the values tried on the important setting is 0.3, very close to the good region at 0.32. In a 6×6 grid the values tried are 0.083, 0.25, 0.417 ... and none of them is near 0.32. A grid\'s performance depends on <b>the luck of alignment</b>.</p>',
+    learned:'<b>A grid search\'s performance depends on the luck of alignment, not on the budget.</b> This is why 25 trials can give 1.0372 and 36 trials 0.8260.<br><br>A random search does not depend on that kind of luck, which is why its curve rises smoothly. That is exactly the practical advice of Bergstra and Bengio 2012: <b>random instead of grid.</b>',
+    controls:[{k:'k', lb:'BUDGET', min:2, max:8, step:1, val:5},
+              {k:'rast', lb:'METHOD', min:0, max:1, step:1, val:0}],
+    quiz:{
+      q:'Your team says "let us go from a 4×4 grid search to 6×6, we will get a better result". Which is the most accurate objection?',
+      opts:[
+        {t:'The thinking is right, more trials always give a better result',
+         why:'On this data the opposite happened: 1.0372 at 25 trials, 0.8260 at 36. In a grid, raising the budget does not guarantee the result, because the new grid may not contain the good points of the old one.'},
+        {t:'The budget goes from 16 to 36 but the number of values tried on the important setting only goes from 4 to 6; scattering the same budget at random tries 36 different values',
+         why:'Correct. The real issue is not the number of trials but how many different values are seen on the setting that MATTERS. In a grid that number grows with √n, in a random search with n.'},
+        {t:'A grid search cannot be parallelised',
+         why:'Wrong. A grid search parallelises perfectly, every point is independent. So does a random search. Parallelism is not the distinguishing factor here.'},
+        {t:'A 6×6 grid leads to overfitting',
+         why:'The risk of overfitting rises with the number of trials but that is not specific to a grid; a random search carries the same risk. The right protection is to choose the hyperparameters by cross validation and look at the test set only once.'},
+      ], correct:1 },
+  },
+  {
+    t:'Spending the budget even more cleverly',
+    goal:'You will learn that giving every trial equal resources is also a waste, and how that is broken.',
+    todo:'Answer the question.',
+    kind:'static', viz:'hiperArama', h:700, xp:45, state:{k:5, rast:1},
+    body:'<p>A random search picks the points well but still has one waste in it: <b>it gives every trial equal resources.</b> Training a bad learning rate for 100 epochs is pointless; it is already obvious at 5 epochs.</p>' +
+         '<p><b>Successive halving:</b> train 64 candidates for 1 epoch, keep the best half, train the remaining 32 for 2 epochs, keep the best half, and so on. That way the total budget stays the same while far more resources go to the good candidates.</p>' +
+         '<p><b>Hyperband</b> generalises the idea by also searching for the answer to "how early should I eliminate". <b>Bayesian optimisation</b> takes a different route: it builds a surface model from the points tried and puts the next trial where it is most informative.</p>',
+    learned:'<b>There are three stages: choose where to look, choose how long to look, and use what you learned.</b><br><br><b>A random search</b> solves where to look.<br><b>Successive halving and Hyperband</b> solve how many resources to give each candidate. Their assumption: early performance predicts late performance correctly.<br><b>Bayesian optimisation</b> builds a model from the previous trials and picks the next point.<br><br>They all share the same condition: the choice must be made by cross validation and the test set looked at only at the very end.',
+    quiz:{
+      q:'In which situation does successive halving give a poor result?',
+      opts:[
+        {t:'When there are many candidates',
+         why:'The opposite. Successive halving shows its real benefit with many candidates, because it eliminates the bad ones early and transfers the budget to the good ones.'},
+        {t:'When early performance predicts late performance wrongly',
+         why:'Correct. That is the method\'s only assumption: whatever looks good at 1 epoch will be good at 100 too. If that assumption breaks, for example if a low learning rate starts slowly and wins in the end, the right candidate is eliminated early.'},
+        {t:'When there are many hyperparameters',
+         why:'The number of dimensions is not directly a problem for successive halving but for the candidate selection strategy. Successive halving works independently of how the candidates were chosen.'},
+        {t:'When model training is fast',
+         why:'If training is fast the gain from successive halving falls, because you can train every candidate to the end anyway. But that means it becomes unnecessary, not that it gives a poor result.'},
+      ], correct:1 },
+  },
+  ],
+};
