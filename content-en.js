@@ -3116,3 +3116,169 @@ DERSLER_EN['otokodlayici'] = {
   },
   ],
 };
+
+DERSLER_EN['hesap-cizge'] = {
+  ad:'The computation graph: how the derivative flows',
+  alt:'Backpropagation is not magic, it is applying the chain rule backwards over a graph. We compute the derivatives on this page three separate ways and compare them.',
+  kaynaklar:[{"y":"Griewank, A. & Walther, A.","t":"2008","b":"Evaluating Derivatives: Principles and Techniques of Algorithmic Differentiation, 2nd edition","n":"SIAM"},
+             {"y":"Baydin, A. G. et al.","t":"2018","b":"Automatic Differentiation in Machine Learning: A Survey","n":"JMLR 18(153)"},
+             {"y":"Chen, T. et al.","t":"2016","b":"Training Deep Nets with Sublinear Memory Cost","n":"arXiv:1604.06174"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'Every operation is a node',
+    goal:'You will see how a formula turns into a graph.',
+    todo:'Look at the graph. How many arrows leave the x₂ node?',
+    kind:'static', viz:'hesapCizge', h:770, xp:25, state:{sahne:'cizge'},
+    body:'<p>Take this formula:</p>' +
+         '<p style="text-align:center;font-size:1.15em">f = sin(x₁·x₂) + exp(x₂/x₃) &minus; log(1 + x₁²)</p>' +
+         '<p>A computer does not see it as one piece. It makes every elementary operation a <b>node</b> and draws arrows between them showing the flow of data. The picture on the left is exactly that graph.</p>' +
+         '<p>There are <b>9 operation nodes</b> in total. Counting the inputs, <b>13</b> nodes are traversed.</p>' +
+         '<p>The thing to notice: <b>two arrows leave the x₂ node</b>. One goes to the multiplication and one to the division. So f depends on x₂ along two separate paths.</p>' +
+         '<p>The chain rule on a graph handles this naturally: if gradient arrives at a node along more than one path, the arrivals are <b>added</b>. In code that means <b>adding to</b> the gradient rather than assigning it. This is why every operation in the engine is written in the form g += ...</p>' +
+         '<p>At the point x₁ = 0.7, x₂ = 1.3, x₃ = 2.1, f = <b>2.247886</b>.</p>',
+    learned:'<b>A formula is a graph in which every elementary operation is a node.</b><br><br>This expression has <b>9 operation nodes</b>, or <b>13</b> counting the inputs.<br><br>If more than one arrow leaves a node, the gradients arriving back are <b>added</b>. Because x₂ goes to both the multiplication and the division, its derivative is the sum of two contributions.',
+  },
+  {
+    t:'The derivative comes out the same three ways',
+    goal:'You will test the correctness of automatic differentiation by two independent routes.',
+    todo:'Compare the three lines on the right. Which two are exactly identical?',
+    kind:'static', viz:'hesapCizge', h:770, xp:50, state:{sahne:'cizge'},
+    body:'<p>Backpropagation walks the graph from the end to the beginning. The final node is given a derivative of 1 (f with respect to itself), and then every node passes its own share back to its inputs.</p>' +
+         '<p>The engine on this page really does that. We test the result two independent ways.</p>' +
+         '<p><b>First test: a hand derived formula.</b> We took the derivative on paper and wrote it out directly: &part;f/&part;x₁ = cos(x₁x₂)·x₂ &minus; 2x₁/(1+x₁²) and so on. The difference from automatic differentiation is <b>exactly 0</b>. The same number down to the last bit.</p>' +
+         '<p><b>Second test: a numerical derivative.</b> By central differences, that is nudging the point back and forth and measuring the slope. The difference is <b>2.4 × 10⁻¹¹</b>.</p>' +
+         '<p>Where that remaining difference comes from matters: the error is not in the automatic differentiation, it is in the <b>numerical method</b>. Central differences is an approximation, and as the step shrinks the rounding error grows. Automatic differentiation is not an approximation, it is a literal application of the chain rule.</p>' +
+         '<p>And all of it in <b>a single backward pass</b>: three derivatives at once.</p>',
+    learned:'<b>Automatic differentiation is exact, not approximate.</b><br><br>The difference from a hand derived formula is <b>exactly 0</b>. The difference from a numerical derivative is <b>2.4 × 10⁻¹¹</b>, and that difference is the numerical method\'s own error.<br><br>All three derivatives are computed in <b>a single backward pass</b>. In the next step we measure why that matters.',
+  },
+  {
+    t:'Why reverse mode',
+    goal:'You will measure the cost difference between the two directions of differentiation.',
+    todo:'Look at the angle of the two curves on the plot. Why does the gap grow?',
+    kind:'static', viz:'hesapCizge', h:770, xp:50, state:{sahne:'maliyet'},
+    body:'<p>A derivative can be carried through a graph in two directions.</p>' +
+         '<p><b>Forward mode</b> goes from the beginning to the end. Each pass carries the derivative with respect to a single <b>input</b>. With P parameters you need P passes.</p>' +
+         '<p><b>Reverse mode</b> goes from the end to the beginning. Each pass carries the derivative of a single <b>output</b>. Because the loss is a single number, <b>one pass</b> is enough.</p>' +
+         '<p>Here is the difference: in neural networks the number of inputs (parameters) is in the millions and the number of outputs (the loss) is one.</p>' +
+         '<p>Let us measure. Total operations for an MLP:</p>' +
+         '<p>36 parameters &rarr; ratio <b>24×</b><br>' +
+         '8,256 parameters &rarr; <b>5,504×</b><br>' +
+         '664,064 parameters &rarr; <b>442,709×</b></p>' +
+         '<p>The ratio comes out to exactly <b>2P/3</b>: directly proportional to the parameter count. So as the model grows, forward mode gets proportionally worse.</p>' +
+         '<p>This is one of the quiet answers to why deep learning is possible at all. Training with forward mode would mean doing the same work at millions of times the cost.</p>' +
+         '<p>Do not assume reverse mode always wins: if there are more outputs than inputs, forward mode wins. The rule is to <b>travel in the direction of whichever side is smaller</b>.</p>',
+    learned:'<b>Reverse mode wins when there are fewer outputs than inputs.</b><br><br>Forward mode needs one pass per parameter, reverse mode one pass per output. Because the loss is a single number, reverse mode needs <b>one pass</b>.<br><br>The measured ratio is exactly <b>2P/3</b>: <b>5,504 times</b> at 8,256 parameters and <b>442,709 times</b> at 664,064.',
+  },
+  {
+    t:'The price of reverse mode: memory',
+    goal:'You will see the trade between computation and memory.',
+    todo:'Answer the question.',
+    kind:'controls', viz:'hesapCizge', h:770, xp:50, state:{sahne:'bellek'},
+    body:'<p>Reverse mode has a price. The backward pass needs the intermediate values computed on the forward pass: to differentiate a multiplication, for example, you need the values of both factors.</p>' +
+         '<p>So all the intermediate values from the forward pass <b>have to be stored</b>. Forward mode does not have this problem, because it carries the derivative along with the forward pass.</p>' +
+         '<p>In a network of width 512 with a batch size of 32:</p>' +
+         '<p>4 layers &rarr; <b>65,536</b> values<br>64 layers &rarr; <b>1,048,576</b> values</p>' +
+         '<p>It grows linearly with the number of layers. In very deep networks this is the main reason a model does not fit in memory.</p>' +
+         '<p><b>Gradient checkpointing</b> is the fix: instead of storing every intermediate value, store only the ones at certain intervals and <b>recompute</b> the rest during the backward pass.</p>' +
+         '<p>Storing at intervals of &radic;L reduces memory by a factor of &radic;L. That is <b>8 times</b> at 64 layers. In return the computation grows by roughly <b>1.3 times</b>.</p>' +
+         '<p>The same pattern as in the combinatorics lesson: the class of the problem does not change, what changes is which resource you spend. When memory is tight you pay with computation.</p>',
+    learned:'<b>Reverse mode makes computation cheap and memory expensive.</b><br><br>Every intermediate value has to be stored: <b>1,048,576</b> values for 64 layers at width 512 and batch 32.<br><br><b>Checkpointing</b> stores them at intervals of √L and recomputes the rest: memory falls <b>8 times</b> at 64 layers while computation grows by roughly <b>1.3 times</b>.',
+    controls:[{k:'L', lb:'NUMBER OF LAYERS', min:4, max:64, step:4, val:4}],
+    quiz:{
+      q:'While training a model you run out of memory and have to drop the batch size from 32 to 4, which slowed training down and made the gradients noisy. You have a 48 layer network. What do you do?',
+      opts:[
+        {t:'I turn on checkpointing: memory falls by about 7 times and I can raise the batch size back up',
+         why:'Correct. As you measured in this lesson, storing at intervals of √L saves about 7 times the memory at 48 layers, in return for roughly 1.3 times the computation. Being able to take the batch size back from 4 to 32 both reduces gradient noise and uses the hardware more efficiently, so the 1.3 times increase in computation is more than recovered. Made knowingly, this is the right trade.'},
+        {t:'I switch to forward mode, it does not store intermediate values',
+         why:'Forward mode genuinely stores no memory, but as you measured in this lesson its cost is 2P/3 times higher: 442 thousand times in a network with 664 thousand parameters. Raising the computation by millions of times to save memory is not a trade, it is a surrender.'},
+        {t:'I cut the number of layers from 48 to 24',
+         why:'That halves the memory but shrinks the model. Checkpointing saves the same memory without giving up anything from the model, and in fact saves more: about 7 times at 48 layers.'},
+        {t:'I add gradient clipping',
+         why:'Clipping is about the size of the gradient, not about memory. The symptoms point to insufficient memory, and clipping does not change the number of intermediate values stored.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['kuantizasyon'] = {
+  ad:'Quantisation: the price of shrinking a model',
+  alt:'Storing weights with fewer bits cuts memory several fold. You will measure when that price is acceptable and when it is a disaster.',
+  kaynaklar:[{"y":"Jacob, B. et al.","t":"2018","b":"Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference","n":"CVPR 2018","u":"https://arxiv.org/abs/1712.05877"},
+             {"y":"Dettmers, T. et al.","t":"2022","b":"LLM.int8(): 8-bit Matrix Multiplication for Transformers at Scale","n":"NeurIPS 2022","u":"https://arxiv.org/abs/2208.07339"},
+             {"y":"Frantar, E. et al.","t":"2023","b":"GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers","n":"ICLR 2023","u":"https://arxiv.org/abs/2210.17323"},
+             {"y":"Dettmers, T. et al.","t":"2023","b":"QLoRA: Efficient Finetuning of Quantized LLMs","n":"NeurIPS 2023","u":"https://arxiv.org/abs/2305.14314"}],
+  rota:2,
+  adimlar:[
+  {
+    t:'How many bits are enough',
+    goal:'You will measure the effect of lowering the bit count on the error and on memory.',
+    todo:'Lower the number of bits. At what point does the error blow up?',
+    kind:'controls', viz:'kuantizasyon', h:760, xp:50, state:{sahne:'egri', kanal:false},
+    body:'<p>There is a real network here: 12 inputs, 24 hidden units, tanh activation, trained for 400 rounds on 600 examples. After training, the weights are <b>rewritten with n bits</b> and the network is not retrained. That is exactly what post training quantisation is.</p>' +
+         '<p>The method is uniform: the range between the smallest and largest weight is divided into 2ⁿ levels and every weight is rounded to the nearest level.</p>' +
+         '<p>The measurement (unquantised error 0.10892):</p>' +
+         '<p><b>8 bits:</b> 0.10910. A difference of two in a thousand, a quarter of the memory. Practically free.<br>' +
+         '<b>6 bits:</b> 0.11013. Still under 1% loss.<br>' +
+         '<b>4 bits:</b> 0.13043. 20% worse, but an eighth of the memory.<br>' +
+         '<b>2 bits:</b> 0.45500. <b>4.2 times</b> worse.</p>' +
+         '<p>The curve is not flat, it has a threshold. 8 and 6 bits are free in practice; 4 bits is measurable but usually an acceptable price; at 2 bits it is no longer quantisation but <b>changing the model</b>.</p>' +
+         '<p>This is the shape observed in real language models too. 8 bits has been standard for a long time (Jacob et al., 2018), 4 bits became widespread with GPTQ and QLoRA, and 2 bits is still an active research topic.</p>',
+    learned:'<b>As the bit count falls the error rises with a threshold rather than linearly.</b><br><br>Unquantised 0.10892. 8 bits: 0.10910 (two in a thousand lost, a quarter of the memory). 4 bits: 0.13043 (20% lost, an eighth of the memory). 2 bits: 0.45500 (4.2 times).<br><br>The decision is yours: a 20% loss at 4 bits is acceptable in most applications, the collapse at 2 bits in almost none.',
+    controls:[{k:'bi', lb:'BITS PER WEIGHT', min:0, max:5, step:1, val:2}],
+  },
+  {
+    t:'A single outlier weight',
+    goal:'You will see the most common cause of disaster in quantisation.',
+    todo:'Change the bit count. Where do the two curves separate?',
+    kind:'controls', viz:'kuantizasyon', h:760, xp:50, state:{sahne:'aykiri'},
+    body:'<p>Now we set a single weight of the network to 8.0. Every other weight stays the same. The unquantised error barely changes: from 0.10892 to 0.11380.</p>' +
+         '<p>But once quantised the result is completely different. At 3 bits the error goes from <b>0.18720</b> to <b>0.60637</b>: <b>3.2 times</b>.</p>' +
+         '<p>The mechanism is simple and entirely arithmetic. Tensor wise quantisation uses a single [minimum, maximum] range and divides it into 2ⁿ levels. Because a single outlier stretches the range, the <b>step grows</b> and every other weight loses precision.</p>' +
+         '<p>So the one who pays the penalty is not the outlier itself, it is <b>everybody in the same tensor as it</b>.</p>' +
+         '<p>This is a known and important problem in large language models. As Dettmers et al. (2022) showed, beyond a certain scale systematic outliers appear in transformer activations, and naive 8 bit quantisation collapses because of them. Their solutions were precisely to handle the outliers separately.</p>',
+    learned:'<b>A single outlier weight ruins the precision of everybody in the same tensor.</b><br><br>Setting one weight to 8.0 barely changes the unquantised error (0.10892 → 0.11380), but at 3 bits the error goes from 0.18720 to 0.60637: 3.2 times.<br><br>The cause is arithmetic: the outlier stretches the [minimum, maximum] range, the step grows, and every other weight is rounded coarsely.',
+    controls:[{k:'bi', lb:'BITS PER WEIGHT', min:0, max:5, step:1, val:1}],
+  },
+  {
+    t:'Where you define the scale',
+    goal:'You will measure the standard solution to the outlier problem.',
+    todo:'Change the bit count. How much does per channel scaling buy?',
+    kind:'controls', viz:'kuantizasyon', h:760, xp:50, state:{sahne:'kanal'},
+    body:'<p>The outlier is still there. The only thing we changed is <b>where we define the scale</b>. Instead of one range for the whole tensor, we use a separate range for each row of the weight matrix.</p>' +
+         '<p>The result: at 3 bits the error falls from <b>0.60637</b> to <b>0.14968</b>. A <b>4.1 times</b> improvement, without adding a single bit.</p>' +
+         '<p>The logic is direct: the outlier now only stretches the range of its own row. The other rows keep using their own narrow ranges and keep their precision. The damage from the outlier is <b>confined to one row</b>.</p>' +
+         '<p>The price is almost nothing: storing two more numbers per row. In a 24 row matrix that is 48 numbers, nothing next to thousands of weights.</p>' +
+         '<p>A notable detail: <b>without</b> an outlier the difference between the two methods is small (0.13043 against 0.11811 at 4 bits) and almost nothing at 8 bits. So per channel scaling is not always a large gain; <b>when there is an outlier</b> it saves your life.</p>',
+    learned:'<b>The quality of quantisation is set as much by where the scale is defined as by the bit count.</b><br><br>With an outlier weight at 3 bits: 0.60637 tensor wise, 0.14968 row wise. A 4.1 times improvement without a single extra bit.<br><br>Without an outlier the difference is small. So per channel scaling is not a cure all; it is critical where outliers exist.',
+    controls:[{k:'bi', lb:'BITS PER WEIGHT', min:0, max:5, step:1, val:1}],
+  },
+  {
+    t:'Memory or accuracy',
+    goal:'You will turn the trade into a decision.',
+    todo:'Answer the question.',
+    kind:'controls', viz:'kuantizasyon', h:760, xp:75, state:{sahne:'egri', kanal:true},
+    body:'<p>Let us put the three measurements together. The memory ratio is directly proportional to the bit count: against 32 bits, 8 bits is a quarter, 4 bits an eighth, 2 bits a sixteenth.</p>' +
+         '<p>The error is not linear. Two in a thousand at 8 bits, 20% at 4 bits (8% per channel), several fold at 2 bits.</p>' +
+         '<p>The practical rule: <b>8 bits should be the default</b>, because the price is too small to measure and the gain is fourfold. 4 bits is a serious option but it requires measurement: do not decide without checking how much the error grows on your own task.</p>' +
+         '<p>Three further notes:</p>' +
+         '<p><b>Quantisation aware training.</b> Here we quantised after training finished. Simulating quantisation during training (Jacob et al., 2018) gives noticeably better results at low bit counts, but it requires retraining.</p>' +
+         '<p><b>Memory is not the only gain.</b> Fewer bits also means memory bandwidth, and in large models generation speed is usually set by memory traffic rather than by computation.</p>' +
+         '<p><b>Do not believe without measuring.</b> The effect of quantisation depends on the task, the model and the data distribution. The numbers here belong to this network; on yours the threshold may sit somewhere else.</p>',
+    learned:'<b>8 bits should be the default and 4 bits should be chosen by measurement.</b><br><br>Memory is directly proportional to the bit count (a quarter at 8 bits, an eighth at 4) but the error is not linear: two in a thousand at 8 bits, 20% at 4, several fold at 2.<br><br>A collapse after quantisation is usually the signature of outlier weights, and the fix is not more bits but defining the scale more narrowly.',
+    controls:[{k:'bi', lb:'BITS PER WEIGHT', min:0, max:5, step:1, val:2}],
+    quiz:{
+      q:'You took a model down to 4 bits and the accuracy stayed acceptable. Then you fine tuned the same model and when you quantised it to 4 bits again the accuracy collapsed. What is the most likely cause?',
+      opts:[
+        {t:'The fine tuning created outliers in the weight distribution; you need to switch to per channel scaling',
+         why:'Correct. This is exactly the mechanism you measured in the lesson: even a single outlier weight stretched the range in tensor wise quantisation and forced every other weight to be rounded coarsely (a 3.2 times increase in error at 3 bits). Fine tuning, especially at a high learning rate, can grow a few weights considerably. The fix is to define the scale more narrowly: per channel scaling lowered the error 4.1 times in the same situation.'},
+        {t:'4 bits is always unstable, you should go back to 8',
+         why:'The measurement does not support that: the first quantisation was already acceptable at 4 bits. What changed is not the bit count but the weight distribution. Going back to 8 bits hides the problem rather than diagnosing it, and gives back four times the memory.'},
+        {t:'The fine tuning overfitted the model',
+         why:'Overfitting would lower the accuracy of the unquantised model too. The observation here is specific: the model is fine unquantised and collapses once quantised. That is the signature of the weight distribution, not of overfitting.'},
+        {t:'Quantisation is random, you should try again',
+         why:'Uniform quantisation is completely deterministic: the same weights always round to the same levels. Trying again gives the same result.'},
+      ], correct:0 },
+  },
+  ],
+};
