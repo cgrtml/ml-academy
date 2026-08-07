@@ -1737,3 +1737,151 @@ DERSLER_EN['acik-kapali'] = {
   },
   ],
 };
+
+DERSLER_EN['yigin'] = {
+  ad:'The AI application stack: who builds what',
+  alt:'The layers of an AI product are not equal. You can choose where to invest with arithmetic rather than feeling.',
+  kaynaklar:[{"y":"Amdahl, G. M.","t":"1967","b":"Validity of the Single Processor Approach to Achieving Large Scale Computing Capabilities","n":"AFIPS 1967","u":"https://doi.org/10.1145/1465482.1465560"},
+             {"y":"Dean, J. & Barroso, L. A.","t":"2013","b":"The Tail at Scale","n":"CACM 56(2)","u":"https://doi.org/10.1145/2408776.2408794"},
+             {"y":"Kwon, W. et al.","t":"2023","b":"Efficient Memory Management for Large Language Model Serving with PagedAttention (vLLM)","n":"SOSP 2023","u":"https://arxiv.org/abs/2309.06180"},
+             {"y":"Sculley, D. et al.","t":"2015","b":"Hidden Technical Debt in Machine Learning Systems","n":"NeurIPS 2015","u":"https://papers.nips.cc/paper/5656-hidden-technical-debt-in-machine-learning-systems"}],
+  rota:4,
+  adimlar:[
+  {
+    t:'Where does the latency go',
+    goal:'You will see the real weights of the layers in the stack.',
+    todo:'Examine the layers and their shares.',
+    kind:'controls', viz:'aiYigini', h:800, xp:50, state:{sahne:'dagilim'},
+    body:'<p>A typical retrieval augmented request passes through six layers: entry and authorisation, retrieval by vector search, context assembly, the model call, output validation, logging and monitoring. Total <b>900 ms</b>.</p>' +
+         '<p>But the distribution is far from even. The model call alone is <b>780 ms</b>, which is <b>86.7%</b> of the budget. The other five layers add up to 13.3%.</p>' +
+         '<p>This shape is very common in AI products and it runs against engineering intuition. Work like choosing a vector database, tuning the embedding dimension or improving the retrieval algorithm feels large mentally but touches <b>5%</b> of the budget.</p>' +
+         '<p>The "limit" column on the right shows the end to end gain you would get even if you reduced that layer <b>to zero</b>. For retrieval it is <b>1.05×</b>: making vector search infinitely fast shortens the request by 5%.</p>' +
+         '<p>In the next step we will see where that limit comes from.</p>',
+    learned:'<b>In an AI stack the latency is almost entirely in the model call.</b><br><br>780 ms of the 900 ms budget (86.7%) is the model call. Retrieval is 5.0%, context assembly 1.3%, validation 3.9%.<br><br>Even reducing the retrieval layer to zero gives an end to end gain of 1.05×, that is 5%. Work that feels large mentally can be small budgetarily.',
+    controls:[{k:'ki', lb:'LAYER', min:0, max:5, step:1, val:3}],
+  },
+  {
+    t:'What speeding up a layer buys you',
+    goal:'You will apply Amdahl\'s law to your own stack.',
+    todo:'Change the layer and the speedup factor. Which layer has the high limit?',
+    kind:'controls', viz:'aiYigini', h:760, xp:50, state:{sahne:'amdahl'},
+    body:'<p>Amdahl\'s law has said the same thing since 1967: if you speed up a part with share p by a factor of s, the total gain is</p>' +
+         '<p style="font-family:monospace">1 / [(1 − p) + p/s]</p>' +
+         '<p>and as s goes to infinity the limit becomes <b>1/(1 − p)</b>.</p>' +
+         '<p>The numbers in the stack:</p>' +
+         '<p><b>Retrieval</b> (5.0% share): speed it up 2 times and the gain is <b>1.03×</b>, speed it up 100 times and the gain is <b>1.05×</b>. Its limit is 1.05.<br>' +
+         '<b>The model call</b> (86.7% share): 2 times gives <b>1.76×</b>, 4 times gives <b>2.86×</b>, 10 times gives <b>4.55×</b>. Its limit is <b>7.50×</b>.</p>' +
+         '<p>So making vector search 100 times faster gives you the same thing as making the model call 1.06 times faster. Where the engineering energy should go becomes obvious here.</p>' +
+         '<p>One warning: this arithmetic is for <b>average</b> latency. Tail latency (p99) behaves differently, and there even small layers can dominate the budget on their bad days. As Dean and Barroso (2013) describe, improving the average does not improve the tail.</p>',
+    learned:'<b>Amdahl: the limit of speeding up a layer with share p infinitely is 1/(1−p).</b><br><br>Retrieval (5.0%): even a 100 times speedup gives 1.05×. The model call (86.7%): 2 times gives 1.76×, 10 times gives 4.55×, and the limit is 7.50×.<br><br>Making vector search 100 times faster gives the same result as making the model call 1.06 times faster. Warning: this arithmetic is for the average; tail latency is a separate topic.',
+    controls:[{k:'ki', lb:'LAYER', min:0, max:5, step:1, val:1},
+              {k:'si', lb:'SPEEDUP', min:0, max:4, step:1, val:2}],
+  },
+  {
+    t:'Skipping instead of speeding up',
+    goal:'You will see the only way to get past the Amdahl limit.',
+    todo:'Raise the cache hit rate. At what point does it beat making the model 2 times faster?',
+    kind:'controls', viz:'aiYigini', h:760, xp:50, state:{sahne:'onbellek'},
+    body:'<p>The Amdahl limit applies to <b>speeding up</b> a layer. If you <b>skip</b> the layer entirely that limit disappears, because the layer\'s share drops too.</p>' +
+         '<p>A cache does exactly that: on a hit, the model call and the context assembly never happen.</p>' +
+         '<p>The measurement: with a 50% hit rate the average latency is <b>506 ms</b>. Making the model 2 times faster gives <b>510 ms</b>. So two interventions produce almost the same result, but one is a dictionary and the other is an infrastructure project.</p>' +
+         '<p>At an 80% hit rate it is 270 ms (a 3.33× gain), at 95% it is 152 ms (5.91×). Even making the model call 100 times faster stopped at 128 ms.</p>' +
+         '<p>The design rule that follows: <b>the fastest call is the one you do not make.</b> Caching, early exit (routing easy requests to a small model) and precondition checks that eliminate unnecessary calls are far cheaper than speeding up the model and are usually more effective.</p>' +
+         '<p>Of course a cache does not work everywhere: requests have to repeat. But the repeat rate in most products is higher than people assume, and measuring it takes an afternoon.</p>',
+    learned:'<b>The Amdahl limit applies to speeding up; skipping removes the limit.</b><br><br>With a 50% cache hit rate the average latency is 506 ms; making the model 2 times faster gives 510 ms. One is a dictionary, the other is an infrastructure project.<br><br>At a 95% hit rate it is 152 ms, not far from making the model 100 times faster (128 ms). The fastest call is the one you do not make.',
+    controls:[{k:'oi', lb:'CACHE HIT RATE', min:0, max:4, step:1, val:0}],
+  },
+  {
+    t:'Who builds what',
+    goal:'You will place the layers of the stack in terms of ownership and cost.',
+    todo:'Answer the question.',
+    kind:'controls', viz:'aiYigini', h:800, xp:75, state:{sahne:'dagilim'},
+    body:'<p>Latency is only one axis of the stack. On the other axes the weight moves elsewhere:</p>' +
+         '<p><b>Cost.</b> The model call dominates here too, because you pay per token. The retrieval and validation layers are cheap.</p>' +
+         '<p><b>Quality.</b> Here the table turns over. What determines answer quality is usually the <b>retrieval</b> layer: retrieve the wrong document and even the best model cannot give the right answer. So the layer that is 5% of the latency carries a far larger share of the quality.</p>' +
+         '<p><b>Maintenance.</b> As Sculley et al. (2015) describe, most of the long term cost sits not in the model code but in the pipelines around it: refreshing data, recomputing embeddings, monitoring, version management.</p>' +
+         '<p><b>Ownership.</b> The model layer is usually bought or downloaded. The retrieval, validation and monitoring layers <b>belong to you</b>, and that is where the product\'s distinctiveness lives. In a world where everybody uses the same model, competition happens in the layers around it.</p>' +
+         '<p>In short: look at the model layer for latency, the retrieval layer for quality, and the monitoring layer for sustainability. All three are in different places.</p>',
+    learned:'<b>Latency, quality and maintenance burden sit in different layers of the stack.</b><br><br>Latency and cost are in the model call (86.7%). Quality is largely in the retrieval layer, which is only 5% of the latency. The maintenance burden is in the surrounding pipelines.<br><br>The model layer is usually bought; retrieval, validation and monitoring belong to you, and that is where the product\'s distinctiveness lives.',
+    controls:[{k:'ki', lb:'LAYER', min:0, max:5, step:1, val:1}],
+    quiz:{
+      q:'Your product\'s average latency is 900 ms and users find it slow. The team proposes replacing the vector database with a faster alternative; the change would take retrieval from 45 ms to 10 ms. What do you say?',
+      opts:[
+        {t:'The end to end gain would be about 4%; look at the cache or the model layer first',
+         why:'Correct. Retrieval is 5.0% of the budget, and going from 45 ms to 10 ms saves 35 ms, taking 900 down to 865: about 4%. As you measured in the lesson, even reducing that layer to zero has a limit of 1.05×. The same effort spent on a 50% cache hit rate would have given 506 ms. Note: if the change improves quality that is a separate justification, but the latency justification is weak.'},
+        {t:'Makes sense, 35 ms is a serious gain',
+         why:'35 ms out of 900 ms is about 4% and users are unlikely to notice it. The Amdahl calculation exists precisely to correct this kind of intuition.'},
+        {t:'The vector database does not matter at all, leave it alone',
+         why:'Too rigid. The retrieval layer is unimportant for latency but decisive for quality: retrieve the wrong document and even the best model cannot answer correctly. The justification for the decision should not be latency, but it could be quality.'},
+        {t:'Parallelise the model call',
+         why:'The model call for a single request generally cannot be parallelised (generation is sequential). And the suggestion does not solve the latency problem, it moves it elsewhere. The first measurement driven step would be caching.'},
+      ], correct:0 },
+  },
+  ],
+};
+
+DERSLER_EN['ai-vs-ml'] = {
+  ad:'How AI engineering differs from classical ML',
+  alt:'The two ways of working stand at different points of the same problem. We will build the difference out of results you measured in this curriculum.',
+  kaynaklar:[{"y":"Sculley, D. et al.","t":"2015","b":"Hidden Technical Debt in Machine Learning Systems","n":"NeurIPS 2015","u":"https://papers.nips.cc/paper/5656-hidden-technical-debt-in-machine-learning-systems"},
+             {"y":"Bommasani, R. et al.","t":"2021","b":"On the Opportunities and Risks of Foundation Models","n":"arXiv:2108.07258","u":"https://arxiv.org/abs/2108.07258"},
+             {"y":"Shankar, S. et al.","t":"2024","b":"Who Validates the Validators? Aligning LLM-Assisted Evaluation of LLM Outputs with Human Preferences","n":"UIST 2024","u":"https://arxiv.org/abs/2404.12272"},
+             {"y":"Paleyes, A. et al.","t":"2022","b":"Challenges in Deploying Machine Learning: a Survey of Case Studies","n":"ACM Computing Surveys 55(6)","u":"https://arxiv.org/abs/2011.09926"}],
+  rota:4,
+  adimlar:[
+  {
+    t:'Where does the effort go',
+    goal:'You will see where each way of working spends its time.',
+    todo:'Walk through the stages. At which stage do the two columns diverge most?',
+    kind:'controls', viz:'aiVsMl', h:800, xp:50, state:{sahne:'emek'},
+    body:'<p>In classical ML a project flows like this: collect data, label it, engineer features, train a model, evaluate, deploy. More than half the effort is in the first three steps.</p>' +
+         '<p>In AI engineering the model arrives ready made. Data collection and feature engineering nearly disappear, and model training shrinks to writing a prompt.</p>' +
+         '<p>But the effort does not vanish, it <b>moves</b>. It goes to three places: prompt and context design, evaluation, and deployment with monitoring.</p>' +
+         '<p>The last two are particularly surprising. In AI engineering <b>evaluation is harder</b>, because the output is free text: there is no single right answer and building an automatic measure is a problem in itself. The work of Shankar et al. (2024) shows that even evaluating LLM outputs with an LLM is a separate job that has to be aligned with human preferences.</p>' +
+         '<p>Deployment and monitoring get heavier too, because the model is not yours: its version can change, its latency can swing, and its cost flows per call.</p>' +
+         '<p>The shares here are not precise measurements, they are a sketch reflecting the distribution of the lessons you have seen across this curriculum. The point is not to memorise the numbers but to see that <b>the effort does not disappear, it relocates</b>.</p>',
+    learned:'<b>In AI engineering the effort does not disappear, it relocates.</b><br><br>Data collection, feature engineering and model training shrink; prompt and context design, evaluation, deployment and monitoring grow.<br><br>The most surprising part is evaluation: because the output is free text there is no single right answer, and building an automatic measure is a problem in itself.',
+    controls:[{k:'ai2', lb:'STAGE', min:0, max:6, step:1, val:4}],
+  },
+  {
+    t:'A comparison on six axes',
+    goal:'You will connect the difference to results you measured yourself.',
+    todo:'Look at the evidence to the right of each row.',
+    kind:'static', viz:'aiVsMl', h:800, xp:50, state:{sahne:'tablo'},
+    body:'<p>To the right of every row in the table is a result you actually measured in this curriculum. The difference is not an opinion, it is the sum of the measurements:</p>' +
+         '<p><b>Data requirement.</b> You measured it in the LLM classifier lesson: a small model with 128 labels overtook a zero shot LLM. Reaching the same accuracy in classical ML takes far more, and the labels are needed from the start.</p>' +
+         '<p><b>First working version.</b> In the instruction tuning lesson you measured 50 examples taking five tasks to 100%. On the AI side that is an afternoon\'s work.</p>' +
+         '<p><b>Unit cost.</b> In the open or closed lesson you computed the break even at 728 million tokens a month. In classical ML the inference cost is close to zero; on the AI side every call costs money.</p>' +
+         '<p><b>The decisive layer.</b> You measured it in the stack lesson: 86.7% of the latency is in the model call, but quality is determined by the retrieval layer.</p>' +
+         '<p><b>The shape of failure.</b> In the chain of thought lesson you saw the model stuck at 10.4% on a task that does not decompose, while producing fluent and convincing text. Classical ML quietly loses accuracy; AI is fluently wrong, which is more dangerous.</p>' +
+         '<p><b>Evaluation.</b> In the leaderboard lesson you computed that the winner picked from 100 models was inflated by 3.11 points. On the AI side evaluation does not end with a fixed test set; it has to be continuous and sampled.</p>',
+    learned:'<b>The difference is not an opinion, it is the sum of the measurements.</b><br><br>Data requirement, time to a first version, unit cost, the decisive layer, the shape of failure and the form of evaluation: on each of these six axes there is a result you measured in this curriculum.<br><br>The most critical difference is the shape of failure: classical ML quietly loses accuracy, AI is fluently wrong.',
+  },
+  {
+    t:'Which way should you work',
+    goal:'You will turn the choice between the two approaches into a rule.',
+    todo:'Answer the question.',
+    kind:'controls', viz:'aiVsMl', h:800, xp:75, state:{sahne:'emek'},
+    body:'<p>The two are not rivals. The rule for choosing is simple as well:</p>' +
+         '<p><b>If the input and output are structured, the volume is high and the definition is stable, use classical ML.</b> Credit scoring, fault detection, demand forecasting. The unit cost is close to zero, the model is frozen, and the evaluation is clear.</p>' +
+         '<p><b>If the input or output is free text, the definition shifts, or there is no data, use AI engineering.</b> Document summarisation, a support assistant, content classification. You start from nothing and get something working on day one.</p>' +
+         '<p>And in most real systems <b>both</b> are present: you start with an LLM, label with an LLM, and hand the parts that stabilise over to small models. That is exactly the pattern you measured in the LLM classifier lesson.</p>' +
+         '<p>There are things that do not change, and they are the backbone of this curriculum: base rates, overfitting, distribution shift, the honesty of evaluation, the tradeoffs between fairness criteria. These do not depend on the model family; most of the difficulties in the case studies of Paleyes et al. (2022) appear in the same places regardless of the type of model.</p>' +
+         '<p>In short: the tool changed, the questions did not. <b>Not believing without measuring</b> means the same thing in both.</p>',
+    learned:'<b>The tool changed, the questions did not.</b><br><br>Structured input and output, high volume and a stable definition mean classical ML; free text, a shifting definition and no data mean AI engineering. Most real systems contain both.<br><br>What does not change is the backbone of this curriculum: base rates, overfitting, distribution shift, the honesty of evaluation, fairness tradeoffs. None of them depends on the model family.',
+    controls:[{k:'ai2', lb:'STAGE', min:0, max:6, step:1, val:1}],
+    quiz:{
+      q:'A company has both a job that "splits incoming invoices into 12 line items" and a job that "drafts replies to customer emails". What architecture do you build?',
+      opts:[
+        {t:'A small trained model for the invoice line items, an LLM for the draft replies, with both wired into the same monitoring and evaluation frame',
+         why:'Correct. Invoice line items are structured, high volume and stable in definition: exactly the territory of classical ML, with a unit cost close to zero. Drafting a reply is free text output: the territory of an LLM. Building them separately is right, but keeping the monitoring and evaluation shared is essential, because as you measured in the lesson that is where the real effort accumulates, and both systems share the same problems of distribution shift, base rates and honest evaluation.'},
+        {t:'I would use an LLM for both, one architecture is simpler',
+         why:'For invoice line items the volume is high and the definition is stable; the LLM\'s per call cost becomes a permanent burden there. You measured it in the lesson: a small model overtakes the LLM with a few hundred labels, and the break even volume is passed quickly in most products.'},
+        {t:'I would use classical ML for both',
+         why:'Drafting a reply is free text generation and classical ML cannot do it. The right tool for structured classification is not the right tool for generation.'},
+        {t:'I would first measure which one is more profitable and only do that one',
+         why:'The calculation from the project decision lesson should be done separately for each job, and the two do not exclude each other. Besides, the question asks about architecture, not prioritisation.'},
+      ], correct:0 },
+  },
+  ],
+};
