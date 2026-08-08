@@ -10,10 +10,14 @@ const HESAP = (() => {
 
   const M = {
     tr: {
-      giris:'Giriş yap', kayit:'Kayıt ol', cikis:'Çıkış',
+      giris:'Giriş yap', kayit:'Ücretsiz hesap aç', cikis:'Çıkış',
       eposta:'e-posta', sifre:'şifre', sifreAz:'en az 8 karakter',
-      girisBas:'Giriş yap', kayitBas:'Hesap aç',
-      gecis1:'Hesabın yok mu?', gecis2:'Zaten hesabın var mı?',
+      girisBas:'Tekrar hoş geldin', girisAlt:'Kaldığın yerden devam et.',
+      kayitBas:'Ücretsiz hesap aç', kayitAlt:'113 dersin tamamı açılır. Kart istenmez.',
+      gecis1:'Hesabın yok mu?  Kayıt ol', gecis2:'Zaten hesabın var mı?  Giriş yap',
+      goster:'göster', gizle:'gizle',
+      artiBas:'Hesapla birlikte',
+      arti:['113 dersin tamamı', 'İlerlemen cihazlar arası saklanır', 'Ücretsiz, istediğin an sil'],
       dogrula:'E-postana bir doğrulama bağlantısı gönderdik. Onayladıktan sonra giriş yapabilirsin.',
       hata:'Bir şey ters gitti',
       yorumBas:'Deneyimini yaz',
@@ -36,10 +40,14 @@ const HESAP = (() => {
       onayla:'Onayla', reddet:'Reddet',
     },
     en: {
-      giris:'Sign in', kayit:'Sign up', cikis:'Sign out',
+      giris:'Sign in', kayit:'Create free account', cikis:'Sign out',
       eposta:'email', sifre:'password', sifreAz:'at least 8 characters',
-      girisBas:'Sign in', kayitBas:'Create account',
-      gecis1:'No account yet?', gecis2:'Already have an account?',
+      girisBas:'Welcome back', girisAlt:'Pick up where you left off.',
+      kayitBas:'Create a free account', kayitAlt:'All 113 lessons unlock. No card needed.',
+      gecis1:'No account yet?  Sign up', gecis2:'Already have an account?  Sign in',
+      goster:'show', gizle:'hide',
+      artiBas:'With an account',
+      arti:['All 113 lessons', 'Progress kept across devices', 'Free, delete it any time'],
       dogrula:'We sent a confirmation link to your email. You can sign in once you confirm it.',
       hata:'Something went wrong',
       yorumBas:'Write about your experience',
@@ -80,11 +88,22 @@ const HESAP = (() => {
       .hArka{position:fixed;inset:0;background:rgba(4,7,12,.86);z-index:9100;
         display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
       .hKart{background:var(--panel,#0f151e);border:1px solid var(--line,#1e2a3a);
-        border-radius:18px;max-width:440px;width:100%;padding:28px;margin:auto;
-        color:var(--txt,#e6edf3);font-size:15px}
+        border-radius:20px;max-width:428px;width:100%;padding:34px 32px 28px;margin:auto;
+        color:var(--txt,#e6edf3);font-size:15px;
+        box-shadow:0 24px 60px rgba(0,0,0,.5)}
+      .hKart .marka{font-family:var(--mono,monospace);font-size:10px;letter-spacing:.26em;
+        text-transform:uppercase;color:var(--mut,#8494a8);text-align:center;margin-bottom:18px}
+      .hArti{margin:18px 0 0;padding:0;list-style:none}
+      .hArti li{display:flex;gap:10px;align-items:flex-start;color:var(--mut,#8494a8);
+        font-size:13.5px;line-height:1.6;margin-top:8px}
+      .hArti li::before{content:'✓';color:var(--green,#22d3a0);font-weight:800;flex:none}
+      .hSifreSar{position:relative}
+      .hSifreSar button{position:absolute;right:10px;top:50%;transform:translateY(-50%);
+        background:none;border:0;color:var(--mut,#8494a8);font-family:var(--mono,monospace);
+        font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;padding:4px 6px}
       .hKart.genis{max-width:680px}
-      .hKart h3{margin:0 0 6px;font-size:21px;font-weight:800;letter-spacing:-.02em}
-      .hKart .alt{color:var(--mut,#8494a8);font-size:13.5px;margin:0 0 20px}
+      .hKart h3{margin:0 0 7px;font-size:25px;font-weight:850;letter-spacing:-.03em;text-align:center}
+      .hKart .alt{color:var(--mut,#8494a8);font-size:14px;margin:0 0 22px;text-align:center;line-height:1.6}
       .hKart label{display:block;font-family:var(--mono,monospace);font-size:10.5px;
         letter-spacing:.16em;text-transform:uppercase;color:var(--mut,#8494a8);margin:14px 0 6px}
       .hKart input,.hKart textarea{width:100%;background:var(--bg,#080b11);
@@ -97,6 +116,8 @@ const HESAP = (() => {
         cursor:pointer;border:1px solid var(--line,#1e2a3a);background:var(--panel2,#141c28);
         color:var(--txt,#e6edf3);font-family:inherit}
       .hDug button.ana{background:var(--green,#22d3a0);border-color:var(--green,#22d3a0);color:#04120d}
+      .hDug button.ana:hover{filter:brightness(1.08)}
+      .hDug.tek button{flex:1}
       .hDug button.teh{color:var(--red,#f87171);border-color:rgba(248,113,113,.4)}
       .hDug button:hover{border-color:var(--mut,#8494a8)}
       .hGecis{display:block;text-align:center;margin-top:15px;font-size:13px;
@@ -105,10 +126,11 @@ const HESAP = (() => {
         color:var(--mut,#8494a8);font-size:12px}
       .hAyrac::before,.hAyrac::after{content:'';flex:1;height:1px;background:var(--line,#1e2a3a)}
       .hSos{display:flex;flex-direction:column;gap:9px;margin-top:12px}
-      .hSos button{display:flex;align-items:center;justify-content:center;gap:9px;
-        padding:11px 16px;border-radius:11px;font-size:14.5px;font-weight:600;cursor:pointer;
+      .hSos button{display:flex;align-items:center;justify-content:center;gap:10px;
+        padding:12px 16px;border-radius:12px;font-size:14.5px;font-weight:600;cursor:pointer;
         border:1px solid var(--line,#1e2a3a);background:var(--panel2,#141c28);
         color:var(--txt,#e6edf3);font-family:inherit}
+      .hSos svg{width:18px;height:18px;flex:none}
       .hSos button:hover{border-color:var(--mut,#8494a8)}
       .hKilitMad{margin:14px 0 0;padding-left:18px;color:var(--mut,#8494a8);
         font-size:13.5px;line-height:1.9}
@@ -154,6 +176,11 @@ const HESAP = (() => {
     arka.querySelector('.hKart').appendChild(d);
   };
 
+  const IKON = {
+    google:'<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.6 12.2c0-.8-.1-1.4-.2-2H12v3.8h6c-.1 1-.8 2.5-2.2 3.5l3.4 2.6c2-1.8 3.4-4.6 3.4-7.9z"/><path fill="#34A853" d="M12 23c2.9 0 5.4-1 7.2-2.6l-3.4-2.6c-.9.6-2.1 1-3.8 1-2.9 0-5.4-1.9-6.3-4.6l-3.5 2.7C4 20.5 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.7 14.2c-.2-.7-.4-1.4-.4-2.2s.1-1.5.4-2.2L2.2 7.1C1.4 8.6 1 10.2 1 12s.4 3.4 1.2 4.9l3.5-2.7z"/><path fill="#EA4335" d="M12 4.8c1.6 0 2.7.7 3.4 1.3l2.9-2.9C16.5 1.6 14 .6 12 .6 7.7.6 4 3.1 2.2 7.1l3.5 2.7C6.6 6.9 9.1 4.8 12 4.8z"/></svg>',
+    github:'<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 .5C5.7.5.6 5.6.6 12c0 5 3.3 9.3 7.8 10.8.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.1.1 1.7 1.2 1.7 1.2 1 1.8 2.7 1.3 3.4 1 .1-.7.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.8 0-1.3.5-2.3 1.2-3.2-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0C17.1 4.5 18 4.8 18 4.8c.7 1.6.3 2.8.1 3.1.8.9 1.2 1.9 1.2 3.2 0 4.5-2.7 5.5-5.3 5.8.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6 4.6-1.5 7.8-5.8 7.8-10.8C23.4 5.6 18.3.5 12 .5z"/></svg>',
+  };
+
   /* ── sosyal giriş ──
      Yalnızca yapılandırmada açık olan sağlayıcılar gösterilir. Panelde
      etkinleştirilmemiş bir sağlayıcı için düğme çıkarmak, tıklanınca hata
@@ -162,8 +189,9 @@ const HESAP = (() => {
     const v = saglayicilar.filter(p => p !== 'email');
     if (!v.length) return '';
     const ad = { google:t.ileGoogle, github:t.ileGithub };
-    return `<div class="hAyrac">${t.ya}</div><div class="hSos">` +
-      v.map(p => `<button data-sag="${p}">${ad[p] || p}</button>`).join('') + '</div>';
+    return `<div class="hSos">` +
+      v.map(p => `<button data-sag="${p}">${IKON[p] || ''}${ad[p] || p}</button>`).join('') +
+      `</div><div class="hAyrac">${t.ya}</div>`;
   }
   function sosyalBagla(arka){
     arka.querySelectorAll('[data-sag]').forEach(d => {
@@ -199,19 +227,35 @@ const HESAP = (() => {
   /* ── giriş / kayıt ── */
   function girisEkrani(kayitMi){
     const arka = kart(`
+      <div class="marka">ML Academy</div>
       <h3>${kayitMi ? t.kayitBas : t.girisBas}</h3>
-      <p class="alt">${kayitMi ? t.sifreAz : ''}</p>
-      <label>${t.eposta}</label><input type="email" id="hE" autocomplete="email">
-      <label>${t.sifre}</label><input type="password" id="hS" autocomplete="current-password">
-      <div class="hDug">
-        <button id="hIptal">${t.iptal}</button>
+      <p class="alt">${kayitMi ? t.kayitAlt : t.girisAlt}</p>
+      ${sosyalHTML()}
+      <label>${t.eposta}</label>
+      <input type="email" id="hE" autocomplete="email" placeholder="ad@ornek.com">
+      <label>${t.sifre}${kayitMi ? ' · ' + t.sifreAz : ''}</label>
+      <div class="hSifreSar">
+        <input type="password" id="hS" autocomplete="${kayitMi?'new-password':'current-password'}">
+        <button type="button" id="hGoz">${t.goster}</button>
+      </div>
+      <div class="hDug tek">
         <button id="hTamam" class="ana">${kayitMi ? t.kayit : t.giris}</button>
       </div>
-      ${sosyalHTML()}
+      ${kayitMi ? `<div style="margin-top:20px"><div class="marka" style="text-align:left;margin-bottom:0">${t.artiBas}</div>
+        <ul class="hArti">${t.arti.map(x => '<li>'+x+'</li>').join('')}</ul></div>` : ''}
       <span class="hGecis" id="hGecis">${kayitMi ? t.gecis2 : t.gecis1}</span>`);
 
     sosyalBagla(arka);
-    arka.querySelector('#hIptal').onclick = kapat;
+    const gz = arka.querySelector('#hGoz');
+    gz.onclick = () => { const i = arka.querySelector('#hS');
+      const gizli = i.type === 'password';
+      i.type = gizli ? 'text' : 'password';
+      gz.textContent = gizli ? t.gizle : t.goster; };
+    arka.querySelector('#hE').addEventListener('keydown', e => {
+      if (e.key === 'Enter') arka.querySelector('#hS').focus(); });
+    arka.querySelector('#hS').addEventListener('keydown', e => {
+      if (e.key === 'Enter') arka.querySelector('#hTamam').click(); });
+    setTimeout(() => arka.querySelector('#hE').focus(), 30);
     arka.querySelector('#hGecis').onclick = () => girisEkrani(!kayitMi);
     arka.querySelector('#hTamam').onclick = async () => {
       const eposta = arka.querySelector('#hE').value.trim();
@@ -373,7 +417,10 @@ const HESAP = (() => {
     sb.auth.onAuthStateChange((_, oturum) => uygula(oturum));
   }
 
-  return { kur, dinle, girisEkrani, kilitEkrani, yorumEkrani, modEkrani,
+  /* Dil çubuğundan değişince giriş/yorum ekranlarının dili de değişsin. */
+  function dil(d){ t = M[d === 'en' ? 'en' : 'tr']; cubukCiz(); }
+
+  return { kur, dinle, dil, girisEkrani, kilitEkrani, yorumEkrani, modEkrani,
            get girisli(){ return !!kullanici; },
            get kullanici(){ return kullanici; }, get moderator(){ return moderator; } };
 })();

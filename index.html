@@ -249,10 +249,14 @@ document.querySelector('.dilbar').onclick = e => {
   DIL = e.target.dataset.dil;
   localStorage.setItem('mlacad_dil', DIL);
   dilUygula();
+  if (typeof HESAP !== 'undefined') HESAP.dil(DIL);   // giriş/yorum ekranları da çevrilsin
 };
 
 const TAG = {hazir:['HAZIR','t-hazir'], yapim:['YAPIM AŞAMASINDA','t-yapim'], planli:['PLANLI','t-planli']};
 
+/* Kilit bayrağı GLOBAL: dinleyici ayrı bir script bloğunda ve ciz() içinden
+   erişemiyordu. İlk sürümde tam bu yüzden hiçbir ders kilitlenmiyordu. */
+let KILIT_ACIK = false;
 function ciz(){
 let nHazir = 0, nToplam = 0, nBitti = 0, xpTop = 0;
 const en = DIL === 'en';
@@ -267,10 +271,7 @@ const adEN = d => {
 };
 if (en) document.title = EN.baslik;
 
-let KILIT_ACIK = false;                      // giriş yapılınca false olur
 const UCRETSIZ = (typeof SUPA !== 'undefined' && SUPA.ucretsizDers) || 3;
-function rotalariCiz(){
-nHazir = 0; nToplam = 0; nBitti = 0; xpTop = 0;
 $('rotalar').innerHTML = ROTALAR.map(r => {
   const hazir = r.dersler.filter(d => d.durum === 'hazir').length;
   nToplam += r.dersler.length; nHazir += hazir;
@@ -325,8 +326,6 @@ $('sBitti').textContent = nBitti;
 $('rotalar').querySelectorAll('[data-kilit]').forEach(k => {
   k.onclick = () => { if (typeof HESAP !== 'undefined') HESAP.kilitEkrani(); };
 });
-}
-rotalariCiz();
 
 /* kaldığın yerden devam */
 const sirali = ROTALAR.flatMap(r => r.dersler).filter(d => d.durum === 'hazir' && !d.dis);
@@ -372,7 +371,7 @@ dilUygula();
     /* Kilit yalnızca Supabase yapılandırılmışken ve giriş yokken açık.
        Arka uç yoksa hiçbir ders kilitlenmez, site eskisi gibi çalışır. */
     KILIT_ACIK = SUPA.hazir && !HESAP.girisli;
-    rotalariCiz();
+    ciz();                              // ciz() global, rotalariCiz() değildi
   });
   HESAP.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL,
               saglayicilar:SUPA.saglayicilar });

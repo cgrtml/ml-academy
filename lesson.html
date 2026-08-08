@@ -776,6 +776,10 @@ if (KILITLI_DERS && typeof HESAP !== 'undefined'){
   document.getElementById('kpGiris').onclick = () => HESAP.girisEkrani(false);
 
   HESAP.dinle(() => { if (HESAP.girisli) perde.remove(); });
+  /* dil çubuğu ders sayfasında da var; giriş ekranı onu takip etsin */
+  const db = document.querySelector('.dilbar');
+  if (db) db.addEventListener('click', e => {
+    if (e.target.dataset && e.target.dataset.dil) HESAP.dil(e.target.dataset.dil); });
   HESAP.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL,
               saglayicilar:SUPA.saglayicilar });
 }
