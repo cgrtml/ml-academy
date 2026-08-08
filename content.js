@@ -48,6 +48,7 @@ const ROTALAR = [
     {id:'boyut-laneti',   ad:'Boyut laneti: komşular neden uzaklaşır',         sure:16, durum:'hazir'},
     {id:'softmax',        ad:'Softmax ve çapraz entropi',                      sure:15, durum:'hazir'},
     {id:'dagilim-kaymasi',  ad:'Zemin kayınca: dağılım kayması',                 sure:15, durum:'hazir'},
+    {id:'zaman-serisi',     ad:'Zaman serisi: rastgele bölmenin yalanı',         sure:14, durum:'hazir'},
     {id:'hiper-arama',    ad:'Hiperparametre arama: ızgara, rastgele, eleme',  sure:16, durum:'hazir'},
     {id:'gauss-surec',    ad:'Gaussian Process: belirsizliğini söyleyen model',  sure:16, durum:'hazir'},
     {id:'bayes-reg',      ad:'Bayesçi bakış: Occam\'ın usturası hesaplanabilir mi',  sure:17, durum:'hazir'},
@@ -13269,5 +13270,159 @@ DERSLER['ai-vs-ml'] = {
       'Değişmeyenler bu müfredatın omurgasıdır: taban oranı, aşırı uyum, dağılım kayması, ' +
       'değerlendirmenin dürüstlüğü, adillik takasları. Hepsi model ailesinden bağımsızdır.',
     xp:75,
+  },
+]};
+
+/* ────────── R1 · Zaman serisi ────────── */
+DERSLER['zaman-serisi'] = {
+  ad:'Zaman serisi: rastgele bölmenin yalanı',
+  alt:'Aynı veri, aynı model, iki farklı bölme. Biri "neredeyse kusursuz" diyor, diğeri "ortalamadan kötü". Hangisi doğru?',
+  kaynaklar:[
+    {"y":"Bergmeir, C. & Benítez, J.", "t":"2012", "b":"On the Use of Cross-Validation for Time Series Predictor Evaluation", "n":"Information Sciences, 191"},
+    {"y":"Hyndman, R. & Athanasopoulos, G.", "t":"2021", "b":"Forecasting: Principles and Practice (3. baskı)", "n":"OTexts", "u":"https://otexts.com/fpp3/"},
+    {"y":"Kapoor, S. & Narayanan, A.", "t":"2023", "b":"Leakage and the Reproducibility Crisis in ML-based Science", "n":"Patterns, 4(9)", "u":"https://arxiv.org/abs/2207.07048"},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Seri kendini hatırlıyor',
+    goal:'Zaman serisini diğer bütün veri türlerinden ayıran tek özelliği ölçeceksin.',
+    todo:'Gecikme kaydırıcısını gezdir. Mavi çubuklar seriyi, turuncular karıştırılmış hâlini gösteriyor.',
+    kind:'controls', viz:'zsSeri', h:760,
+    controls:[{k:'gecikme', lb:'GECİKME k', min:1, max:24, step:1, val:1, fmt:v=>'k = '+Math.round(v)}],
+    live:s => { const k = Math.round(s.gecikme);
+      return [['GECİKME', k], ['SERİ', ZS.acf(k).toFixed(3), Math.abs(ZS.acf(k))>0.5?K.green:K.mut],
+              ['KARIŞTIRILMIŞ', ZS.acfKarisik(k).toFixed(3), K.orange]]; },
+    body:'<p>Şimdiye kadarki bütün derslerde bir varsayım vardı ve hiç dile getirilmedi: ' +
+      '<b>satırların sırası önemsiz.</b> Veriyi karıştırsan hiçbir şey kaybolmaz.</p>' +
+      '<p>Zaman serisinde bu varsayım çöker. Bir noktanın değeri kendi geçmişine bağlıdır ve ' +
+      'bunu ölçebiliriz: <b>otokorelasyon</b>, y(t) ile y(t−k) arasındaki korelasyondur.</p>' +
+      '<p>Ölçüm: <b>k = 1 için 0.988.</b> Yani bir adım öncesini biliyorsan bugünü neredeyse biliyorsun. ' +
+      'k = 12 için 0.991, k = 24 için 0.990.</p>' +
+      '<p>Şimdi kontrol: aynı seriyi karıştırıp aynı hesabı yapıyoruz. ' +
+      '<b>k = 1 için 0.110.</b> Neredeyse sıfır.</p>' +
+      '<p>Bu karşılaştırma önemli, çünkü bilginin nerede durduğunu kesinleştiriyor. ' +
+      'Sayılar aynı sayılar; değişen tek şey <b>sıra</b>. Karıştırınca bilgi yok oluyor, ' +
+      'demek ki bilgi değerlerin kendisinde değil, <b>dizilişlerinde</b>.</p>' +
+      '<p style="color:#facc15">Dürüst bir not: buradaki otokorelasyonların hepsi yüksek çünkü seride ' +
+      'bir <b>sürüklenme</b> var. Trend, bütün gecikmelerde korelasyonu şişirir. Mevsimselliği trendden ' +
+      'ayırmak için önce seriyi trendden arındırmak gerekir; bu ders o adımı atmıyor.</p>',
+    learned:'<b>Zaman serisi = satır sırasının bilgi taşıdığı veri.</b><br><br>' +
+      'Otokorelasyon bunu ölçer: seride k = 1 için 0.988, aynı seri karıştırılınca 0.110.<br><br>' +
+      'Sırayı bozan her işlem bu bilgiyi yok eder. Bir sonraki adımda, bunu farkında olmadan yapan ' +
+      'çok yaygın bir alışkanlığı ölçeceğiz.',
+    xp:40,
+  },
+  {
+    t:'Aynı model, iki bölme',
+    goal:'Rastgele bölmenin zaman serisinde ürettiği sahte başarıyı ölçeceksin.',
+    todo:'İLERİ ile üç aşamayı geç.',
+    kind:'phases', viz:'zsBolme', h:760,
+    phases:[0,1,2].map(f => ({state:{faz:f}, body:[
+      '<p>Aynı seriyi bir tahmin problemine çeviriyoruz: son <b>4 gecikmeye</b> bakıp bir sonraki değeri ' +
+      'tahmin et. Model, gecikme uzayında <b>k-NN (k = 3)</b>. Toplam 236 örnek.</p>' +
+      '<p>Alışkanlık gereği yaptığımız şey: satırları karıştır, %30\'unu teste ayır. ' +
+      'Tam olarak <i>Eğitim / doğrulama / test</i> dersinde öğrendiğin şey.</p>' +
+      '<p>Sonuç: <b>R² = 0.959.</b> Model varyansın neredeyse tamamını açıklıyor.</p>' +
+      '<p>Sunuma koyulacak bir sayı. Peki gerçek mi?</p>',
+
+      '<p>Şimdi tek bir şeyi değiştiriyoruz. Model aynı, veri aynı, test oranı aynı. ' +
+      'Değişen: <b>test, serinin sonundaki blok.</b> Yani model geçmişle eğitiliyor ve gelecekte sınanıyor. ' +
+      'Gerçek kullanımda olan da budur.</p>' +
+      '<p>Sonuç: <b>R² = −1.089.</b></p>' +
+      '<p>Negatif R², "ortalamayı söylemekten daha kötü" demektir. Model her örnek için ' +
+      'serinin ortalamasını söyleseydi daha az hata yapacaktı.</p>' +
+      '<p>Aradaki fark <b>2.048 puan</b>. Bu bir gürültü farkı değil, iki ayrı dünya.</p>',
+
+      '<p>Üçüncü bir sayı daha ekleyelim: <b>naif taban.</b> Kural tek satır, ' +
+      '<b>ŷ(t) = y(t−1)</b>, yani "yarın bugünle aynı olacak".</p>' +
+      '<p>Aynı ileri bölmede naif tabanın R²\'si <b>0.861</b>.</p>' +
+      '<p>Tablo şöyle:</p>' +
+      '<p style="font-family:var(--mono)">rastgele bölme, model &nbsp;&nbsp;→ &nbsp;0.959<br>' +
+      'ileri bölme, model &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ −1.089<br>' +
+      'ileri bölme, naif kural &nbsp;→ &nbsp;0.861</p>' +
+      '<p>Yani model yalnızca şişik değil; dürüst ölçüldüğünde <b>tek satırlık bir kuralın da altında.</b> ' +
+      'Rastgele bölmeye baksaydın bunu asla göremezdin.</p>',
+    ][f]})),
+    learned:'<b>Zaman serisinde rastgele bölme sızıntıdır.</b><br><br>' +
+      'Aynı veri, aynı model: rastgele bölmede R² = 0.959, ileri bölmede R² = −1.089. Fark 2.048 puan.<br><br>' +
+      'Ve naif kural (ŷ = y(t−1)) aynı testte 0.861 alıyor. Model, dürüst ölçümde tek satırlık kuralın altında.',
+    xp:55,
+  },
+  {
+    t:'Neden yalan söylüyor',
+    goal:'Şişmenin mekanizmasını tek bir sayıyla göreceksin.',
+    todo:'Bölme anahtarını çevir ve ortalama mesafenin nasıl değiştiğine bak.',
+    kind:'controls', viz:'zsMekanizma', h:760,
+    controls:[{k:'bolme', lb:'BÖLME', min:0, max:1, step:1, val:0,
+               fmt:v=>v>=0.5?'ileri':'rastgele'}],
+    live:s => { const o = ZS.ozet(), ileri = s.bolme >= 0.5;
+      const B = ileri ? o.IB : o.RB, m = ZS.zamanMesafesi(B.test, B.egt);
+      return [['BÖLME', ileri?'ileri':'rastgele', ileri?K.green:K.red],
+              ['ORT. MESAFE', m.ort.toFixed(2)],
+              ['EN UZAK', m.enBuyuk]]; },
+    body:'<p>Şişmenin sebebi tek bir soruyla ortaya çıkıyor: <b>bir test noktasının en yakın eğitim komşusu, ' +
+      'zamanda kaç adım uzakta?</b></p>' +
+      '<p>Rastgele bölmede ortalama <b>1.07 adım</b>. Yani neredeyse her test noktasının hemen yanında ' +
+      'bir eğitim noktası duruyor.</p>' +
+      '<p>Bir önceki adımda otokorelasyonun k = 1 için 0.988 olduğunu ölçmüştük. İkisini birleştir: ' +
+      'model bir test noktasını tahmin ederken, cevabı <b>%98.8 oranında aynı olan</b> bir komşunun ' +
+      'değerine bakıyor. Bu tahmin etmek değil, <b>kopyalamak</b>.</p>' +
+      '<p>İleri bölmede aynı ölçüm <b>36.00 adım</b>, en uzak test noktası <b>71 adım</b> ötede. ' +
+      'Komşuluk kestirmesi yok; model gerçekten dışdeğerleme yapmak zorunda. ' +
+      'Ve k-NN dışdeğerleme yapamaz, gördüğü en yüksek değerin ötesine geçemez. Negatif R² buradan geliyor.</p>' +
+      '<p>Genel kural: <b>test kümesi eğitim kümesinden zamanda ayrılmıyorsa, ölçtüğün şey performans değil ' +
+      'komşuluktur.</b></p>',
+    quiz:{ q:'Bir ekip, günlük satış verisiyle yarınki satışı tahmin ediyor. Rastgele 5 katlı çapraz doğrulama ile <b>R² = 0.94</b> raporluyorlar. Bu sayı hakkında en doğru yorum hangisi?',
+      opts:[
+        {t:'Model iyi, çünkü çapraz doğrulama tek bir bölmeden daha güvenilirdir', why:'Çapraz doğrulama <b>varyansı</b> düşürür, yanlılığı değil. Beş katın hepsi aynı sızıntıyı içeriyorsa, beş kez şişik bir sayı ölçmüş olursun. Ölçümün kararlılığı, doğruluğunun kanıtı değildir.'},
+        {t:'Sayı muhtemelen şişik, çünkü her kat kendi test noktalarının komşularıyla eğitilmiş', why:'Doğru. Rastgele katlarda t−1 ve t+1 eğitimde, t testte olur. Otokorelasyon yüksekse model komşunun cevabını kopyalar. Doğru kurulum: ileri doğru (walk-forward) bölme, ve mümkünse eğitim ile test arasına boşluk (embargo) koymak.'},
+        {t:'Sayı doğru ama modelin üretimde de 0.94 vereceği garanti değil', why:'Doğru yönde ama yetersiz. Buradaki sorun genel bir belirsizlik değil, <b>ölçümün yönteminden kaynaklanan sistematik bir şişme</b>. "Garanti değil" demek, hatanın büyüklüğünü ve yönünü gizler.'},
+        {t:'R² zaman serisinde kullanılamaz, MAPE kullanılmalıydı', why:'Metrik seçimi ayrı bir tartışma ve MAPE\'nin kendi sorunları var. Ama buradaki hata metrikte değil, <b>bölmede</b>. Aynı yanlış bölmeyle MAPE de aynı şekilde şişerdi.'},
+      ], correct:1 },
+    learned:'<b>Rastgele bölme, test noktasını kendi zaman komşusuyla eğitir.</b><br><br>' +
+      'Ortalama zaman mesafesi: rastgele bölmede 1.07 adım, ileri bölmede 36.00 adım.<br><br>' +
+      'Otokorelasyon k = 1 için 0.988 iken, 1 adım ötedeki komşuya bakmak cevabı görmekle aynı şeydir.',
+    xp:55,
+  },
+  {
+    t:'Doğru kurulum',
+    goal:'Zaman serisinde dürüst bir değerlendirmenin nasıl kurulduğunu ve neyi ortaya çıkardığını göreceksin.',
+    todo:'Kat sayısını değiştir. Yeşil kat modelin naifi geçtiği, kırmızı geçemediği kattır.',
+    kind:'controls', viz:'zsIleri', h:760,
+    controls:[{k:'kat', lb:'KAT SAYISI', min:2, max:6, step:1, val:4, fmt:v=>String(Math.round(v))}],
+    live:s => { const n = Math.max(2, Math.min(6, Math.round(s.kat))), K_ = ZS.katlar(n);
+      const oM = K_.reduce((a,k)=>a+k.model,0)/n, oN = K_.reduce((a,k)=>a+k.naif,0)/n;
+      return [['KAT', n], ['MODEL R²', oM.toFixed(3), oM>oN?K.green:K.red],
+              ['NAİF R²', oN.toFixed(3), K.yellow],
+              ['MODEL ÖNDE', K_.filter(k=>k.model>k.naif).length+' / '+n]]; },
+    body:'<p>Doğru kurulumun adı <b>genişleyen pencere</b> (walk-forward). Kural tek: ' +
+      '<b>her kat yalnızca kendinden önceki veriyle eğitilir.</b> Eğitim penceresi her katta büyür, ' +
+      'test hep bir sonraki bloktur.</p>' +
+      '<p>Bu, tek bir ileri bölmeden daha iyidir çünkü modeli birden çok dönemde sınar. ' +
+      'Tek bölme, sadece o son dönemin kolay ya da zor olmasına bağlı kalır.</p>' +
+      '<p>4 katta ölçülen sonuç:</p>' +
+      '<p style="font-family:var(--mono)">kat 1 &nbsp;model −0.351 &nbsp;naif 0.698<br>' +
+      'kat 2 &nbsp;model −1.691 &nbsp;naif 0.729<br>' +
+      'kat 3 &nbsp;model −0.196 &nbsp;naif 0.703<br>' +
+      'kat 4 &nbsp;model −1.548 &nbsp;naif 0.730</p>' +
+      '<p>Model ortalaması <b>−0.946</b>, naif ortalaması <b>0.715</b>. Model <b>4 katın 0\'ında</b> öne geçiyor.</p>' +
+      '<p>Bu ders boyunca model hiç değişmedi. Değişen tek şey <b>nasıl ölçtüğümüz</b>. ' +
+      'Ve doğru ölçüm, rastgele bölmenin 0.959 ile gizlediği şeyi söylüyor: ' +
+      'bu model bu iş için uygun değil.</p>' +
+      '<p><b>Kontrol listesi:</b></p>' +
+      '<p><b>1 ·</b> Test her zaman eğitimden <b>sonra</b> gelsin. Rastgele karıştırma yok.</p>' +
+      '<p><b>2 ·</b> Naif tabanı her zaman ölç. ŷ(t) = y(t−1) ya da mevsimsel naif ŷ(t) = y(t−12). ' +
+      'Geçemeyen model kullanılmaz.</p>' +
+      '<p><b>3 ·</b> Eğitim ile test arasına <b>boşluk</b> koy. Tahmin ufkun 7 günse, son 7 günü eğitimden çıkar; ' +
+      'yoksa üretimde sahip olmayacağın bilgiyle eğitmiş olursun. Finans literatüründe buna purging ve embargo denir.</p>' +
+      '<p><b>4 ·</b> Ölçekleyici, doldurma ve özellik üretimini <b>yalnızca eğitim penceresinde</b> fit et. ' +
+      'Tüm seriye fit edilmiş bir standartlaştırıcı, geleceğin ortalamasını geçmişe taşır.</p>',
+    learned:'<b>Zaman serisinde değerlendirme, modelden daha önemlidir.</b><br><br>' +
+      'Genişleyen pencerede 4 kat: model ortalaması −0.946, naif taban 0.715. Model 4 katın 0\'ında önde.<br><br>' +
+      'Aynı model rastgele bölmede 0.959 alıyordu. Model hiç değişmedi; yalnızca ölçüm dürüstleşti.<br><br>' +
+      'Kural: test eğitimden sonra gelsin · naif tabanı her zaman ölç · araya boşluk koy · ' +
+      'ön işlemeyi yalnızca eğitim penceresinde fit et.',
+    xp:60,
   },
 ]};

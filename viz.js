@@ -15289,3 +15289,422 @@ VIZ.kirmizi = s => {
       ? '⚠ '+ad+' savunması zor, model, veriyi talimattan güvenilir biçimde ayıramıyor'
       : ad+' bilinen desenlerle büyük ölçüde yakalanabiliyor', basari>0.3?K.red:K.orange);
 };
+
+/* ═══════════════ ZAMAN SERİSİ ═══════════════
+   Rastgele bölmenin zaman serisinde neden yalan söylediğini ölçen motor.
+   Bütün sayılar burada gerçekten hesaplanır, ders metnine elle yazılmaz.
+
+   Seri bilerek DURAĞAN DEĞİL: belirgin bir sürüklenme var. Gerçek zaman
+   serilerinin çoğu böyledir ve rastgele bölmenin şişmesinin sebebi tam olarak
+   budur. Tamamen durağan bir seride iki bölme birbirine yakın çıkardı. */
+const ZS = (() => {
+  const N = 240;            // seri uzunluğu
+  const P = 4;              // gecikme özelliği sayısı
+  const KOM = 3;            // k-NN komşu sayısı
+  const TEST_ORAN = 0.30;
+
+  /* ── seri: sürüklenme + mevsimsellik + AR(1) artık ── */
+  const y = (() => {
+    const R = rng(707), out = [];
+    let e = 0;
+    for (let t = 0; t < N; t++){
+      e = 0.70*e + (R()*2 - 1)*1.05;             // AR(1): kendi geçmişine bağlı
+      const surukle = 0.135*t;                    // seri boyunca ~32 birim yükseliş
+      const mevsim  = 3.4*Math.sin(2*Math.PI*t/12);
+      out.push(20 + surukle + mevsim + e);
+    }
+    return out;
+  })();
+
+  /* ── otokorelasyon ── */
+  function korelasyon(a, b){
+    const n = a.length;
+    const ma = a.reduce((s,v)=>s+v,0)/n, mb = b.reduce((s,v)=>s+v,0)/n;
+    let sab=0, sa=0, sb=0;
+    for (let i=0;i<n;i++){ const da=a[i]-ma, db=b[i]-mb; sab+=da*db; sa+=da*da; sb+=db*db; }
+    return sab / Math.sqrt(sa*sb || 1);
+  }
+  function acf(k){
+    const a = [], b = [];
+    for (let t = k; t < N; t++){ a.push(y[t]); b.push(y[t-k]); }
+    return korelasyon(a, b);
+  }
+  /* Karıştırılmış seride otokorelasyon kalmaz. Bilginin gerçekten
+     SIRADA durduğunun kontrolü budur. */
+  const yKarisik = (() => {
+    const R = rng(31), p = y.slice();
+    for (let i=p.length-1;i>0;i--){ const j = Math.floor(R()*(i+1)); [p[i],p[j]] = [p[j],p[i]]; }
+    return p;
+  })();
+  function acfKarisik(k){
+    const a = [], b = [];
+    for (let t = k; t < N; t++){ a.push(yKarisik[t]); b.push(yKarisik[t-k]); }
+    return korelasyon(a, b);
+  }
+
+  /* ── gecikme matrisi: X(t) = [y(t−1) … y(t−P)],  Y(t) = y(t) ── */
+  const M = (() => {
+    const X = [], Y = [], T = [];
+    for (let t = P; t < N; t++){
+      const satir = [];
+      for (let g = 1; g <= P; g++) satir.push(y[t-g]);
+      X.push(satir); Y.push(y[t]); T.push(t);
+    }
+    return { X, Y, T, n:X.length };
+  })();
+
+  /* ── model: gecikme uzayında k-NN ──
+     Esnek bir model bilerek seçildi: mekanizma burada çıplak görünüyor,
+     model komşusunu bulup cevabını kopyalıyor. Ve k-NN dışdeğerleme
+     yapamaz, bu yüzden sürüklenen bir seride geleceğe uzanamaz. */
+  function enYakinlar(egtIdx, i){
+    const x = M.X[i], en = [];
+    for (const j of egtIdx){
+      let d = 0;
+      for (let p = 0; p < P; p++){ const f = x[p] - M.X[j][p]; d += f*f; }
+      en.push([d, j]);
+    }
+    en.sort((a,b) => a[0]-b[0]);
+    return en.slice(0, Math.min(KOM, en.length));
+  }
+  function tahmin(egtIdx, i){
+    const en = enYakinlar(egtIdx, i);
+    let s = 0; for (const [,j] of en) s += M.Y[j];
+    return s / en.length;
+  }
+  function r2(test, egt){
+    const ger = test.map(i => M.Y[i]);
+    const ort = ger.reduce((s,v)=>s+v,0)/ger.length;
+    let ss = 0, st = 0;
+    test.forEach((i,q) => { const f = ger[q] - tahmin(egt, i); ss += f*f;
+                            const d = ger[q] - ort; st += d*d; });
+    return 1 - ss/(st || 1);
+  }
+  /* naif taban: ŷ(t) = y(t−1). Her zaman serisi modelinin geçmesi gereken eşik. */
+  function naifR2(test){
+    const ger = test.map(i => M.Y[i]);
+    const ort = ger.reduce((s,v)=>s+v,0)/ger.length;
+    let ss = 0, st = 0;
+    test.forEach((i,q) => { const f = ger[q] - M.X[i][0]; ss += f*f;
+                            const d = ger[q] - ort; st += d*d; });
+    return 1 - ss/(st || 1);
+  }
+
+  /* ── iki bölme ── */
+  function rastgeleBolme(){
+    const R = rng(4242);
+    const sira = M.X.map((_,i) => i);
+    for (let i = sira.length-1; i > 0; i--){ const j = Math.floor(R()*(i+1)); [sira[i],sira[j]] = [sira[j],sira[i]]; }
+    const nt = Math.round(M.n * TEST_ORAN);
+    const test = sira.slice(0, nt).sort((a,b)=>a-b);
+    const tk = new Set(test);
+    const egt = [];
+    for (let i = 0; i < M.n; i++) if (!tk.has(i)) egt.push(i);
+    return { egt, test };
+  }
+  function ileriBolme(){
+    const kes = Math.round(M.n * (1 - TEST_ORAN));
+    const egt = [], test = [];
+    for (let i = 0; i < M.n; i++) (i < kes ? egt : test).push(i);
+    return { egt, test };
+  }
+
+  /* ── mekanizma: test noktasının en yakın eğitim komşusu ZAMANDA ne kadar uzakta? ──
+     Rastgele bölmede bu mesafe 1-2 adımdır, yani model neredeyse
+     "yan taraftaki cevaba" bakar. İleri bölmede mesafe testin içine
+     doğru büyür ve model gerçekten dışdeğerleme yapmak zorunda kalır. */
+  function zamanMesafesi(test, egt){
+    const d = test.map(i => {
+      let en = Infinity;
+      for (const j of egt) en = Math.min(en, Math.abs(M.T[i] - M.T[j]));
+      return en;
+    });
+    return { hepsi:d, ort:d.reduce((s,v)=>s+v,0)/d.length,
+             enKucuk:Math.min(...d), enBuyuk:Math.max(...d) };
+  }
+
+  /* ── genişleyen pencere: birden çok kat ── */
+  function katlar(kSay){
+    const bas = Math.round(M.n * 0.40);
+    const kalan = M.n - bas, boy = Math.floor(kalan / kSay);
+    const out = [];
+    for (let f = 0; f < kSay; f++){
+      const t0 = bas + f*boy, t1 = (f === kSay-1) ? M.n : t0 + boy;
+      const egt = []; for (let i = 0; i < t0; i++) egt.push(i);
+      const test = []; for (let i = t0; i < t1; i++) test.push(i);
+      out.push({ egt, test, model:r2(test, egt), naif:naifR2(test) });
+    }
+    return out;
+  }
+
+  /* ── özet (tembel, bir kez hesaplanır) ── */
+  let _oz = null;
+  function ozet(){
+    if (_oz) return _oz;
+    const RB = rastgeleBolme(), IB = ileriBolme();
+    const mR = zamanMesafesi(RB.test, RB.egt), mI = zamanMesafesi(IB.test, IB.egt);
+    const o = {
+      rastgele:  r2(RB.test, RB.egt),
+      ileri:     r2(IB.test, IB.egt),
+      naifIleri: naifR2(IB.test),
+      naifRast:  naifR2(RB.test),
+      mesRast:   mR.ort,  mesIleri: mI.ort,
+      mesIleriMax: mI.enBuyuk,
+      egtSay:    RB.egt.length,
+      testSay:   RB.test.length,
+      RB, IB,
+    };
+    o.sisme = o.rastgele - o.ileri;
+    return (_oz = o);
+  }
+
+  return { N, P, KOM, TEST_ORAN, y, yKarisik, M, acf, acfKarisik, korelasyon,
+           rastgeleBolme, ileriBolme, zamanMesafesi, enYakinlar, tahmin,
+           r2, naifR2, katlar, ozet };
+})();
+
+/* ── zaman serisi · ortak çizim yardımcıları ── */
+function zsSeriCiz(P, renkli){
+  /* renkli: i -> renk|null  (gecikme matrisi indeksine göre) */
+  cx.strokeStyle = 'rgba(132,148,168,.45)'; cx.lineWidth = 2;
+  cx.beginPath();
+  ZS.y.forEach((v,t) => t ? cx.lineTo(P.sx(t), P.sy(v)) : cx.moveTo(P.sx(t), P.sy(v)));
+  cx.stroke();
+  if (renkli) ZS.M.T.forEach((t,i) => { const c = renkli(i); if (c) dot(P.sx(t), P.sy(ZS.y[t]), 4, c); });
+}
+function zsPlot(x, y, w, h){
+  const lo = Math.min(...ZS.y), hi = Math.max(...ZS.y), pay = (hi-lo)*0.08;
+  return plot(rect(x,y,w,h), 0, ZS.N-1, lo-pay, hi+pay);
+}
+
+/* ── 1 · seri kendini hatırlıyor: otokorelasyon ── */
+VIZ.zsSeri = s => {
+  clear();
+  const k = Math.max(1, Math.round(s.gecikme === undefined ? 1 : s.gecikme));
+  const r  = ZS.acf(k), rk = ZS.acfKarisik(k);
+  baslikSerit('ZAMAN SERİSİ · SERİ KENDİNİ HATIRLIYOR',
+    'Bir noktanın değeri, kendi geçmişine bağlı. Bu tek gerçek her şeyi değiştiriyor.',
+    [['GECİKME', 'k = '+k, K.blue],
+     ['OTOKORELASYON', r.toFixed(3), Math.abs(r)>0.5?K.green:K.mut],
+     ['KARIŞTIRILMIŞ', rk.toFixed(3), Math.abs(rk)>0.3?K.orange:K.mut]]);
+
+  const P = zsPlot(110, 200, 800, 210);
+  txt('SERİ', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, 'zaman t', 'değer', [0,60,120,180,239], []);
+  zsSeriCiz(P, null);
+
+  /* y(t) ile y(t−k) saçılımı */
+  const lo = Math.min(...ZS.y), hi = Math.max(...ZS.y), pay = (hi-lo)*0.06;
+  const Q = plot(rect(110, 520, 340, 120), lo-pay, hi+pay, lo-pay, hi+pay);
+  txt('y(t) — y(t−k)', Q.R.x+Q.R.w/2, Q.R.y-14, K.mut, 19);
+  frame(Q, 'y(t−k)', 'y(t)', [], []);
+  for (let t = k; t < ZS.N; t++) dot(Q.sx(ZS.y[t-k]), Q.sy(ZS.y[t]), 3.4, K.blue+'cc');
+
+  /* aynı saçılım, karıştırılmış seride */
+  const R2 = plot(rect(530, 520, 340, 120), lo-pay, hi+pay, lo-pay, hi+pay);
+  txt('KARIŞTIRILMIŞ SERİ', R2.R.x+R2.R.w/2, R2.R.y-14, K.mut, 19);
+  frame(R2, 'y(t−k)', 'y(t)', [], []);
+  for (let t = k; t < ZS.N; t++) dot(R2.sx(ZS.yKarisik[t-k]), R2.sy(ZS.yKarisik[t]), 3.4, K.orange+'99');
+
+  /* ACF çubukları */
+  const A = plot(rect(1000, 200, 390, 440), 0.4, 24.6, -0.25, 1.05);
+  txt('OTOKORELASYON  k = 1…24', A.R.x+A.R.w/2, A.R.y-14, K.mut, 19);
+  frame(A, 'gecikme k', 'korelasyon', [1,6,12,18,24], [0,0.5,1]);
+  cx.strokeStyle = 'rgba(255,255,255,.22)'; cx.lineWidth = 1.5;
+  cx.beginPath(); cx.moveTo(A.R.x, A.sy(0)); cx.lineTo(A.R.x+A.R.w, A.sy(0)); cx.stroke();
+  const gen = (A.R.w/24)*0.34;
+  for (let q = 1; q <= 24; q++){
+    const v = ZS.acf(q), vk = ZS.acfKarisik(q), x = A.sx(q);
+    box(x-gen, Math.min(A.sy(v), A.sy(0)), gen, Math.abs(A.sy(v)-A.sy(0)),
+        (q === k ? K.yellow : K.blue)+'cc', null);
+    box(x, Math.min(A.sy(vk), A.sy(0)), gen, Math.abs(A.sy(vk)-A.sy(0)), K.orange+'77', null);
+  }
+  txt('■ seri', A.R.x+16, A.R.y+30, K.blue, 17, 'left');
+  txt('■ karıştırılmış', A.R.x+16, A.R.y+54, K.orange, 17, 'left');
+
+  durum('k = '+k+' için korelasyon '+r.toFixed(3)+', karıştırılmış seride '+rk.toFixed(3)+
+        '  ·  bilgi değerlerde değil, SIRADA', Math.abs(r)>0.5?K.green:K.blue);
+};
+
+/* ── 2 · aynı model, iki bölme ── */
+VIZ.zsBolme = s => {
+  clear();
+  const faz = Math.round(s.faz === undefined ? 0 : s.faz);
+  const o = ZS.ozet();
+  baslikSerit('AYNI VERİ, AYNI MODEL, İKİ BÖLME',
+    'Tek değişen şey testin nereden seçildiği. Sonuç aynı olmak zorunda değil.',
+    [['MODEL', 'k-NN  k='+ZS.KOM, K.blue],
+     ['RASTGELE BÖLME', faz>=0 ? o.rastgele.toFixed(3) : '–', K.red],
+     ['İLERİ BÖLME', faz>=1 ? o.ileri.toFixed(3) : '–', faz>=1?K.green:K.mut]]);
+
+  const P = zsPlot(110, 210, 1280, 250);
+  txt(faz === 0 ? 'RASTGELE BÖLME  ·  test noktaları seriye serpiştirildi'
+                : 'İLERİ BÖLME  ·  test, serinin sonundaki blok',
+      P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, 'zaman t', 'değer', [0,60,120,180,239], []);
+  const B = faz === 0 ? o.RB : o.IB;
+  const tk = new Set(B.test);
+  zsSeriCiz(P, i => tk.has(i) ? K.red : K.blue);
+  txt('● eğitim', P.R.x+P.R.w-16, P.R.y+30, K.blue, 17, 'right');
+  txt('● test',   P.R.x+P.R.w-16, P.R.y+54, K.red, 17, 'right');
+
+  /* R² karşılaştırma çubukları */
+  const A = plot(rect(110, 530, 620, 110), -0.2, 2.2, -1.3, 1.15);
+  txt('AÇIKLANAN ORAN  R²', A.R.x+A.R.w/2, A.R.y-14, K.mut, 19);
+  frame(A, '', 'R²', [], [-1, 0, 0.5, 1]);
+  cx.strokeStyle = 'rgba(255,255,255,.3)'; cx.lineWidth = 2;
+  cx.beginPath(); cx.moveTo(A.R.x, A.sy(0)); cx.lineTo(A.R.x+A.R.w, A.sy(0)); cx.stroke();
+  const cizi = (i, v, ad, renk, goster) => {
+    if (!goster) return;
+    const x = A.sx(i), g = 96;
+    box(x-g/2, Math.min(A.sy(v), A.sy(0)), g, Math.abs(A.sy(v)-A.sy(0)), renk+'cc', renk, 2);
+    txt(v.toFixed(3), x, v >= 0 ? A.sy(v)-14 : (A.sy(0)+A.sy(v))/2+8, v >= 0 ? renk : '#0b1119', 21);
+    txt(ad, x, A.R.y+A.R.h+28, K.mut, 17);
+  };
+  cizi(0, o.rastgele, 'rastgele', K.red, true);
+  cizi(1, o.ileri, 'ileri', K.green, faz >= 1);
+  cizi(2, o.naifIleri, 'naif taban', K.yellow, faz >= 2);
+
+  const bx = 790;
+  box(bx, 500, 600, 200, 'rgba(7,10,15,.6)', K.axis, 2);
+  if (faz === 0){
+    txt('Rastgele bölme ne diyor', bx+300, 546, K.mut, 19);
+    txt('R² = '+o.rastgele.toFixed(3), bx+300, 606, K.red, 40);
+    txt('"model neredeyse kusursuz"', bx+300, 660, K.mut, 18);
+  } else if (faz === 1){
+    txt('İleri bölme ne diyor', bx+300, 546, K.mut, 19);
+    txt('R² = '+o.ileri.toFixed(3), bx+300, 606, K.red, 40);
+    txt('negatif: ortalamayı söylemekten kötü', bx+300, 660, K.orange, 18);
+  } else {
+    txt('ÜÇÜNÜ YAN YANA KOY', bx+300, 540, K.mut, 19);
+    txt('rastgele '+o.rastgele.toFixed(3)+'   ·   ileri '+o.ileri.toFixed(3),
+        bx+300, 590, K.txt, 22);
+    txt('naif kural (ŷ = y(t−1)):  '+o.naifIleri.toFixed(3), bx+300, 632, K.yellow, 22);
+    txt('model, tek satırlık kuralın altında', bx+300, 676, K.red, 18);
+  }
+
+  durum(faz === 0 ? 'rastgele bölme R² = '+o.rastgele.toFixed(3)+'  ·  peki bu sayı gerçek mi'
+      : faz === 1 ? 'aynı model, ileri bölme R² = '+o.ileri.toFixed(3)+'  ·  fark '+o.sisme.toFixed(3)
+      : 'şişme '+o.sisme.toFixed(3)+' puan  ·  ve naif taban ikisini de anlamlı kılıyor',
+      faz === 0 ? K.blue : K.red);
+};
+
+/* ── 3 · neden yalan söylüyor: komşu zamanda ne kadar uzakta ── */
+VIZ.zsMekanizma = s => {
+  clear();
+  const ileri = (s.bolme || 0) >= 0.5;
+  const o = ZS.ozet();
+  const B = ileri ? o.IB : o.RB;
+  const m = ZS.zamanMesafesi(B.test, B.egt);
+  baslikSerit('NEDEN YALAN SÖYLÜYOR',
+    'Test noktasının en yakın eğitim komşusu, ZAMANDA kaç adım uzakta?',
+    [['BÖLME', ileri ? 'ileri' : 'rastgele', ileri?K.green:K.red],
+     ['ORTALAMA MESAFE', m.ort.toFixed(2)+' adım', m.ort<3?K.red:K.green],
+     ['EN YAKIN', m.enKucuk+' adım', K.mut]]);
+
+  const P = zsPlot(110, 210, 1280, 200);
+  txt('EN YAKIN EĞİTİM KOMŞUSUNA ÇİZGİ', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, 'zaman t', 'değer', [0,60,120,180,239], []);
+  const tk = new Set(B.test);
+  zsSeriCiz(P, i => tk.has(i) ? K.red : K.blue);
+  /* her 4 test noktasından biri için komşusuna çizgi çiz, kalabalık olmasın */
+  cx.strokeStyle = 'rgba(250,204,21,.55)'; cx.lineWidth = 1.6;
+  B.test.forEach((i,q) => {
+    if (q % 4) return;
+    let en = -1, ed = Infinity;
+    for (const j of B.egt){ const d = Math.abs(ZS.M.T[i]-ZS.M.T[j]); if (d < ed){ ed = d; en = j; } }
+    if (en < 0) return;
+    cx.beginPath();
+    cx.moveTo(P.sx(ZS.M.T[i]), P.sy(ZS.M.Y[i]));
+    cx.lineTo(P.sx(ZS.M.T[en]), P.sy(ZS.M.Y[en]));
+    cx.stroke();
+  });
+
+  /* mesafe dağılımı */
+  const enB = Math.max(8, m.enBuyuk);
+  const A = plot(rect(110, 520, 620, 120), -0.5, enB+0.5, 0, 1.05);
+  txt('MESAFE DAĞILIMI', A.R.x+A.R.w/2, A.R.y-14, K.mut, 19);
+  const kova = new Array(enB+1).fill(0);
+  m.hepsi.forEach(d => kova[Math.min(enB, d)]++);
+  const enY = Math.max(...kova) || 1;
+  frame(A, 'en yakın eğitim komşusuna zaman mesafesi', 'pay', [], []);
+  const gen = (A.R.w/(enB+1))*0.7;
+  kova.forEach((c,d) => { if (!c) return;
+    const x = A.sx(d), h = (c/enY)*A.R.h;
+    box(x-gen/2, A.R.y+A.R.h-h, gen, h, (ileri?K.green:K.red)+'cc', null); });
+
+  const bx = 790;
+  box(bx, 500, 600, 200, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt(ileri ? 'İLERİ BÖLME' : 'RASTGELE BÖLME', bx+300, 540, K.mut, 19);
+  txt(m.ort.toFixed(2)+' adım', bx+300, 598, ileri?K.green:K.red, 42);
+  txt('ortalama zaman mesafesi', bx+300, 632, K.mut, 18);
+  /* canvas fillText satır atlamaz; iki satır ayrı çiziliyor */
+  const s1 = ileri ? 'Model gerçekten dışdeğerleme yapmak zorunda:'
+                   : 'Model neredeyse yan taraftaki cevaba bakıyor.';
+  const s2 = ileri ? 'en uzak test noktası '+m.enBuyuk+' adım ötede.'
+                   : 'Otokorelasyon yüksekken bu, cevabı görmek demek.';
+  txt(s1, bx+300, 666, K.txt, 17);
+  txt(s2, bx+300, 690, K.txt, 17);
+
+  durum(ileri
+    ? 'ileri bölmede ortalama mesafe '+m.ort.toFixed(2)+' adım  ·  komşuluk kestirmesi yok'
+    : 'rastgele bölmede ortalama mesafe '+m.ort.toFixed(2)+' adım  ·  sızıntı buradan geliyor',
+    ileri?K.green:K.red);
+};
+
+/* ── 4 · doğru kurulum: genişleyen pencere + naif taban ── */
+VIZ.zsIleri = s => {
+  clear();
+  const kSay = Math.max(2, Math.min(6, Math.round(s.kat === undefined ? 4 : s.kat)));
+  const K_ = ZS.katlar(kSay);
+  const ortM = K_.reduce((a,k)=>a+k.model,0)/kSay;
+  const ortN = K_.reduce((a,k)=>a+k.naif,0)/kSay;
+  const kazanan = K_.filter(k => k.model > k.naif).length;
+  baslikSerit('DOĞRU KURULUM · GENİŞLEYEN PENCERE',
+    'Her kat, yalnızca kendinden önceki veriyle eğitilir. Ve her katta naif taban da ölçülür.',
+    [['KAT', String(kSay), K.blue],
+     ['MODEL ORT. R²', ortM.toFixed(3), ortM>ortN?K.green:K.red],
+     ['NAİF ORT. R²', ortN.toFixed(3), K.yellow]]);
+
+  const P = zsPlot(110, 210, 1280, 200);
+  txt('KATLARIN ZAMANDA YERİ', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, 'zaman t', 'değer', [0,60,120,180,239], []);
+  zsSeriCiz(P, null);
+  K_.forEach((k,f) => {
+    const t0 = ZS.M.T[k.test[0]], t1 = ZS.M.T[k.test[k.test.length-1]];
+    const renk = k.model > k.naif ? K.green : K.red;
+    box(P.sx(t0), P.R.y+6, P.sx(t1)-P.sx(t0), P.R.h-12, renk+'1e', renk+'88', 2);
+    txt('kat '+(f+1), (P.sx(t0)+P.sx(t1))/2, P.R.y+30, renk, 17);
+  });
+
+  /* kat kat R² */
+  const A = plot(rect(110, 515, 760, 125), -0.6, kSay-0.4, Math.min(-1.2, ortM-0.4), 1.15);
+  txt('KAT KAT  ·  model karşı naif', A.R.x+A.R.w/2, A.R.y-14, K.mut, 19);
+  frame(A, '', 'R²', [], [-1, 0, 1]);
+  cx.strokeStyle = 'rgba(255,255,255,.3)'; cx.lineWidth = 2;
+  cx.beginPath(); cx.moveTo(A.R.x, A.sy(0)); cx.lineTo(A.R.x+A.R.w, A.sy(0)); cx.stroke();
+  const gen = (A.R.w/kSay)*0.3;
+  K_.forEach((k,f) => {
+    const x = A.sx(f);
+    [[k.model, -gen*0.55, K.blue], [k.naif, gen*0.55, K.yellow]].forEach(([v,dx,renk]) => {
+      const yv = Math.max(v, A.y0 !== undefined ? v : v);
+      box(x+dx-gen/2, Math.min(A.sy(yv), A.sy(0)), gen, Math.abs(A.sy(yv)-A.sy(0)), renk+'cc', null);
+    });
+    txt('kat '+(f+1), x, A.R.y+A.R.h+28, K.mut, 16);
+  });
+  txt('■ model', A.R.x+16, A.R.y+30, K.blue, 17, 'left');
+  txt('■ naif',  A.R.x+16, A.R.y+54, K.yellow, 17, 'left');
+
+  const bx = 920;
+  box(bx, 500, 470, 200, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('MODEL KAÇ KATTA NAİFİ GEÇTİ', bx+235, 538, K.mut, 18);
+  txt(kazanan+' / '+kSay, bx+235, 596, kazanan > kSay/2 ? K.green : K.red, 44);
+  txt(kazanan === 0 ? 'hiçbirinde' : (kazanan === kSay ? 'hepsinde' : 'bir kısmında'),
+      bx+235, 630, K.mut, 18);
+  txt('Naif tabanı geçemeyen bir model,', bx+235, 664, K.txt, 17);
+  txt('ne kadar karmaşık olursa olsun kullanılmaz.', bx+235, 688, K.txt, 17);
+
+  durum('model ortalama R² '+ortM.toFixed(3)+'  ·  naif taban '+ortN.toFixed(3)+
+        '  ·  '+kSay+' katın '+kazanan+' inde model önde',
+        kazanan > kSay/2 ? K.green : K.red);
+};

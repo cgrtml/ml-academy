@@ -160,6 +160,7 @@ const DERS_ADI_EN = {
   'boyut-laneti':'The curse of dimensionality: why neighbours drift apart',
   'softmax':'Softmax and cross-entropy',
   'dagilim-kaymasi':'When the ground moves: distribution shift',
+  'zaman-serisi':'Time series: the lie of the random split',
   'hiper-arama':'Hyperparameter search: grid, random, halving',
   'gauss-surec':'Gaussian Process: a model that tells you its uncertainty',
   'bayes-reg':'The Bayesian view: can Occam’s razor be computed?',
@@ -7992,6 +7993,147 @@ DERSLER_EN['automl'] = {
         {t:'I use the default, AutoML\'s gain is negligible',
          why:'Too strict. The gain may be real; the problem is that it has not been measured. The right move is not to reject it but to verify it on a separate test set.'},
       ], correct:0 },
+  },
+  ],
+};
+
+/* ────────── R1 · time series ────────── */
+DERSLER_EN['zaman-serisi'] = {
+  ad:'Time series: the lie of the random split',
+  alt:'Same data, same model, two different splits. One says "almost perfect", the other says "worse than the mean". Which one is true?',
+  kaynaklar:[
+    {"y":"Bergmeir, C. & Benítez, J.", "t":"2012", "b":"On the Use of Cross-Validation for Time Series Predictor Evaluation", "n":"Information Sciences, 191"},
+    {"y":"Hyndman, R. & Athanasopoulos, G.", "t":"2021", "b":"Forecasting: Principles and Practice (3rd ed.)", "n":"OTexts", "u":"https://otexts.com/fpp3/"},
+    {"y":"Kapoor, S. & Narayanan, A.", "t":"2023", "b":"Leakage and the Reproducibility Crisis in ML-based Science", "n":"Patterns, 4(9)", "u":"https://arxiv.org/abs/2207.07048"},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'The series remembers itself',
+    goal:'You will measure the one property that separates a time series from every other kind of data.',
+    todo:'Move the lag slider. Blue bars are the series, orange bars are the shuffled version.',
+    kind:'controls', viz:'zsSeri', h:760, xp:40,
+    controls:[{k:'gecikme', lb:'LAG k', min:1, max:24, step:1, val:1, fmt:v=>'k = '+Math.round(v)}],
+    body:'<p>Every lesson so far carried an assumption that was never stated out loud: ' +
+      '<b>the order of the rows does not matter.</b> Shuffle the data and nothing is lost.</p>' +
+      '<p>In a time series that assumption collapses. A point\'s value depends on its own past, ' +
+      'and we can measure that: <b>autocorrelation</b> is the correlation between y(t) and y(t−k).</p>' +
+      '<p>The measurement: <b>0.988 at k = 1.</b> So if you know one step back you almost know today. ' +
+      'At k = 12 it is 0.991, at k = 24 it is 0.990.</p>' +
+      '<p>Now the control: we shuffle the same series and repeat the calculation. ' +
+      '<b>0.110 at k = 1.</b> Almost zero.</p>' +
+      '<p>That comparison matters because it pins down where the information lives. ' +
+      'The numbers are the same numbers; the only thing that changed is the <b>order</b>. ' +
+      'Shuffling destroys the information, so the information is not in the values but in ' +
+      'the way they are <b>arranged</b>.</p>' +
+      '<p style="color:#facc15">An honest note: all these autocorrelations are high because the series has ' +
+      'a <b>drift</b>. A trend inflates the correlation at every lag. Separating seasonality from trend ' +
+      'requires detrending the series first; this lesson does not take that step.</p>',
+    learned:'<b>A time series is data where the order of rows carries information.</b><br><br>' +
+      'Autocorrelation measures it: 0.988 at k = 1 for this series, 0.110 once the same series is shuffled.<br><br>' +
+      'Any operation that breaks the order destroys that information. In the next step we measure a very ' +
+      'common habit that does exactly that without anyone noticing.',
+  },
+  {
+    t:'Same model, two splits',
+    goal:'You will measure the false success a random split produces on a time series.',
+    todo:'Step through the three stages with NEXT.',
+    kind:'phases', viz:'zsBolme', h:760, xp:55,
+    phases:[0,1,2].map(f => ({body:[
+      '<p>We turn the same series into a prediction problem: look at the last <b>4 lags</b> and predict the ' +
+      'next value. The model is <b>k-NN (k = 3)</b> in lag space. 236 examples in total.</p>' +
+      '<p>What we do out of habit: shuffle the rows and hold out 30% as a test set. ' +
+      'Exactly what you learned in the <i>Train / validation / test</i> lesson.</p>' +
+      '<p>The result: <b>R² = 0.959.</b> The model explains nearly all of the variance.</p>' +
+      '<p>A number you would put in a presentation. But is it real?</p>',
+
+      '<p>Now we change one single thing. Same model, same data, same test fraction. ' +
+      'What changes: <b>the test set is the block at the end of the series.</b> So the model is trained on ' +
+      'the past and tested on the future. That is also what happens in real use.</p>' +
+      '<p>The result: <b>R² = −1.089.</b></p>' +
+      '<p>A negative R² means "worse than saying the mean". The model would have made less error if it had ' +
+      'simply output the average of the series for every example.</p>' +
+      '<p>The gap is <b>2.048 points</b>. That is not a noise difference, it is two separate worlds.</p>',
+
+      '<p>Let us add a third number: the <b>naive baseline</b>. The rule is one line, ' +
+      '<b>ŷ(t) = y(t−1)</b>, that is "tomorrow will be the same as today".</p>' +
+      '<p>On the same forward split the naive baseline scores <b>0.861</b>.</p>' +
+      '<p>The table looks like this:</p>' +
+      '<p style="font-family:var(--mono)">random split, model &nbsp;&nbsp;&nbsp;→ &nbsp;0.959<br>' +
+      'forward split, model &nbsp;&nbsp;→ −1.089<br>' +
+      'forward split, naive &nbsp;&nbsp;→ &nbsp;0.861</p>' +
+      '<p>So the model is not merely inflated; measured honestly it is <b>below a one-line rule</b>. ' +
+      'Looking at the random split you would never have seen that.</p>',
+    ][f]})),
+    learned:'<b>On a time series, a random split is leakage.</b><br><br>' +
+      'Same data, same model: R² = 0.959 on the random split, R² = −1.089 on the forward split. A gap of 2.048 points.<br><br>' +
+      'And the naive rule (ŷ = y(t−1)) scores 0.861 on the same test. Measured honestly, the model is below a one-line rule.',
+  },
+  {
+    t:'Why it lies',
+    goal:'You will see the mechanism behind the inflation in a single number.',
+    todo:'Flip the split switch and watch how the average distance changes.',
+    kind:'controls', viz:'zsMekanizma', h:760, xp:55,
+    controls:[{k:'bolme', lb:'SPLIT', min:0, max:1, step:1, val:0,
+               fmt:v=>v>=0.5?'forward':'random'}],
+    body:'<p>The cause of the inflation comes out with one question: <b>how many steps away in time is a test ' +
+      'point\'s nearest training neighbour?</b></p>' +
+      '<p>On the random split the average is <b>1.07 steps</b>. So almost every test point has a training ' +
+      'point sitting right next to it.</p>' +
+      '<p>In the previous step we measured the autocorrelation at k = 1 as 0.988. Put the two together: ' +
+      'while predicting a test point, the model is looking at the value of a neighbour whose answer is ' +
+      '<b>98.8% the same</b>. That is not predicting, it is <b>copying</b>.</p>' +
+      '<p>On the forward split the same measurement is <b>36.00 steps</b>, and the furthest test point is ' +
+      '<b>71 steps</b> away. There is no neighbourhood shortcut; the model genuinely has to extrapolate. ' +
+      'And k-NN cannot extrapolate, it cannot go beyond the highest value it has seen. That is where the ' +
+      'negative R² comes from.</p>' +
+      '<p>The general rule: <b>if the test set is not separated from the training set in time, what you are ' +
+      'measuring is not performance but adjacency.</b></p>',
+    quiz:{ q:'A team predicts tomorrow\'s sales from daily sales data. They report <b>R² = 0.94</b> using random 5-fold cross-validation. Which comment on that number is most accurate?',
+      opts:[
+        {t:'The model is good, because cross-validation is more reliable than a single split', why:'Cross-validation reduces <b>variance</b>, not bias. If all five folds contain the same leakage you have measured an inflated number five times. The stability of a measurement is not evidence of its correctness.'},
+        {t:'The number is probably inflated, because each fold trains on the neighbours of its own test points', why:'Correct. With random folds, t−1 and t+1 are in training while t is in test. If autocorrelation is high the model copies the neighbour\'s answer. The right setup: a forward (walk-forward) split, and where possible a gap (embargo) between train and test.'},
+        {t:'The number is right but there is no guarantee the model will also give 0.94 in production', why:'Right direction but not enough. The problem here is not general uncertainty but <b>a systematic inflation caused by the evaluation method</b>. Saying "no guarantee" hides both the size and the direction of the error.'},
+        {t:'R² cannot be used on time series, they should have used MAPE', why:'Metric choice is a separate debate and MAPE has problems of its own. But the error here is not in the metric, it is in the <b>split</b>. With the same wrong split, MAPE would be inflated in exactly the same way.'},
+      ], correct:1 },
+    learned:'<b>A random split trains a test point on its own neighbour in time.</b><br><br>' +
+      'Average distance in time: 1.07 steps on the random split, 36.00 steps on the forward split.<br><br>' +
+      'When the autocorrelation at k = 1 is 0.988, looking at a neighbour one step away is the same thing as seeing the answer.',
+  },
+  {
+    t:'The right setup',
+    goal:'You will see how an honest evaluation is built on a time series, and what it reveals.',
+    todo:'Change the number of folds. A green fold is one where the model beat the naive baseline, a red one where it did not.',
+    kind:'controls', viz:'zsIleri', h:760, xp:60,
+    controls:[{k:'kat', lb:'FOLDS', min:2, max:6, step:1, val:4, fmt:v=>String(Math.round(v))}],
+    body:'<p>The right setup is called an <b>expanding window</b> (walk-forward). One rule: ' +
+      '<b>each fold is trained only on the data that came before it.</b> The training window grows at every ' +
+      'fold and the test is always the next block.</p>' +
+      '<p>This is better than a single forward split because it tests the model over several periods. ' +
+      'A single split depends entirely on whether that one final period happened to be easy or hard.</p>' +
+      '<p>Measured over 4 folds:</p>' +
+      '<p style="font-family:var(--mono)">fold 1 &nbsp;model −0.351 &nbsp;naive 0.698<br>' +
+      'fold 2 &nbsp;model −1.691 &nbsp;naive 0.729<br>' +
+      'fold 3 &nbsp;model −0.196 &nbsp;naive 0.703<br>' +
+      'fold 4 &nbsp;model −1.548 &nbsp;naive 0.730</p>' +
+      '<p>The model averages <b>−0.946</b> and the naive baseline <b>0.715</b>. The model comes out ahead in ' +
+      '<b>0 of 4</b> folds.</p>' +
+      '<p>The model never changed throughout this lesson. The only thing that changed is <b>how we measured</b>. ' +
+      'And the correct measurement says what the random split hid behind 0.959: ' +
+      'this model is not fit for this job.</p>' +
+      '<p><b>Checklist:</b></p>' +
+      '<p><b>1 ·</b> The test must always come <b>after</b> the training. No random shuffling.</p>' +
+      '<p><b>2 ·</b> Always measure the naive baseline. ŷ(t) = y(t−1), or the seasonal naive ŷ(t) = y(t−12). ' +
+      'A model that cannot beat it does not get used.</p>' +
+      '<p><b>3 ·</b> Put a <b>gap</b> between training and test. If your forecast horizon is 7 days, drop the ' +
+      'last 7 days from training; otherwise you train with information you will not have in production. ' +
+      'In the finance literature this is called purging and embargo.</p>' +
+      '<p><b>4 ·</b> Fit scalers, imputation and feature generation <b>only on the training window</b>. ' +
+      'A standardiser fitted on the whole series carries the future\'s mean back into the past.</p>',
+    learned:'<b>On a time series, the evaluation matters more than the model.</b><br><br>' +
+      '4 folds of an expanding window: the model averages −0.946, the naive baseline 0.715. The model leads in 0 of 4 folds.<br><br>' +
+      'The same model scored 0.959 on the random split. The model never changed; only the measurement became honest.<br><br>' +
+      'The rules: test comes after training · always measure the naive baseline · leave a gap · fit preprocessing only on the training window.',
   },
   ],
 };

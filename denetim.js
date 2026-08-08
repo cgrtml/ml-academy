@@ -3990,6 +3990,36 @@ Object.entries(DERSLER_EN).forEach(([id,e])=>{
 });
 
 console.log('');
+console.log('═══ ZAMAN SERİSİ ═══');
+{
+  const o = ZS.ozet();
+  iddia('seri uzunluğu',240,ZS.N);
+  iddia('gecikme sayısı',4,ZS.P);
+  iddia('k-NN komşu',3,ZS.KOM);
+  iddia('örnek sayısı',236,ZS.M.n);
+  iddia('eğitim örneği',165,o.egtSay);
+  iddia('test örneği',71,o.testSay);
+  iddia('otokorelasyon k=1',0.988,ZS.acf(1),3);
+  iddia('otokorelasyon k=12',0.991,ZS.acf(12),3);
+  iddia('otokorelasyon k=24',0.990,ZS.acf(24),3);
+  iddia('karıştırılmış k=1',0.110,ZS.acfKarisik(1),3);
+  iddia('rastgele bölme R²',0.959,o.rastgele,3);
+  iddia('ileri bölme R²',-1.089,o.ileri,3);
+  iddia('şişme',2.048,o.sisme,3);
+  iddia('naif taban R² (ileri)',0.861,o.naifIleri,3);
+  iddia('zaman mesafesi rastgele',1.07,o.mesRast,2);
+  iddia('zaman mesafesi ileri',36.00,o.mesIleri,2);
+  iddia('en uzak test noktası',71,o.mesIleriMax);
+  const K4 = ZS.katlar(4);
+  [[-0.351,0.698],[-1.691,0.729],[-0.196,0.703],[-1.548,0.730]].forEach(([m,n],i)=>{
+    iddia('kat '+(i+1)+' model R²',m,K4[i].model,3);
+    iddia('kat '+(i+1)+' naif R²',n,K4[i].naif,3);});
+  iddia('4 kat model ort.',-0.946,K4.reduce((a,k)=>a+k.model,0)/4,3);
+  iddia('4 kat naif ort.',0.715,K4.reduce((a,k)=>a+k.naif,0)/4,3);
+  iddia('model kaç katta önde',0,K4.filter(k=>k.model>k.naif).length);
+}
+
+console.log('');
 console.log('  '+hz+' hazır / '+tp+' ders · '+ad+' adım · '+xp+' XP · '+q+' soru · '+unl+' kilit · '+kn+' kaynak · '+Object.keys(VIZ).length+' görsel');
 console.log('  İngilizce çevrilmiş ders: '+nEn+' / '+Object.keys(DERSLER).length);
 console.log('');

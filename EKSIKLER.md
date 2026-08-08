@@ -73,11 +73,13 @@ Tarama sonucu: müfredatta tek bir kez bile geçmiyor.
       12 ayrı derste hesaplanıyor (`agac` Gini, `sampling` entropi, `perplexity`,
       `mdn` KL, `icl` sonsal entropi) ama kavramın kendisi hiçbir yerde anlatılmıyor.
 
-- [ ] **Zaman serisi** · otokorelasyon, mevsimsellik, walk-forward doğrulama
-      Yalnızca `bolme[2]` ve `sizinti[1]` içinde sızıntı örneği olarak anılıyor.
-      **En büyük pratik boşluk.** Mevcut `sizinti` ve `bolme` derslerine doğrudan bağlanır.
-      Widget: rastgele bölme ile walk-forward bölmeyi yan yana koyup
-      aradaki sahte başarıyı ölçtürmek.
+- [x] **Zaman serisi** · otokorelasyon, walk-forward doğrulama  ✔ 8 Ağustos 2026
+      `DERSLER['zaman-serisi']`, Rota 1, 4 adım, 210 XP.
+      Ölçülen: rastgele bölmede R² 0.959, ileri bölmede −1.089, naif taban 0.861.
+      Mekanizma: test noktasının en yakın eğitim komşusu rastgele bölmede
+      1.07 adım, ileri bölmede 36.00 adım uzakta.
+      Kapsanmayan: mevsimsellik ayrıştırma (trendden arındırma), ARIMA/ETS
+      gibi klasik yöntemler, çok değişkenli seriler.
 
 - [ ] **Nedensellik** · korelasyon-nedensellik, karıştırıcı, Simpson paradoksu
       Yalnızca `ozellik-onemi[4]` içinde bir cümle.
@@ -96,7 +98,7 @@ başlanmamalı.
 
 ## Öncelik sırası
 
-1. Zaman serisi
+1. ~~Zaman serisi~~ ✔ tamamlandı
 2. Kalibrasyon
 3. Dengesiz veri
 4. A/B testi

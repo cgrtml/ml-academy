@@ -599,6 +599,14 @@ var ARAYUZ_EN = {
   "gönderim (zamir→isim)": "reference (pronoun→noun)",
   "kötü (üçü aynı köşede)": "bad (all three in the same corner)",
   "iyi (köşelere dağılmış)": "good (spread to the corners)",
+  "GECİKME": "LAG",
+  "KARIŞTIRILMIŞ": "SHUFFLED",
+  "BÖLME": "SPLIT",
+  "ORT. MESAFE": "AVG. DISTANCE",
+  "EN UZAK": "FURTHEST",
+  "MODEL R²": "MODEL R²",
+  "NAİF R²": "NAIVE R²",
+  "MODEL ÖNDE": "MODEL AHEAD",
 /*SON*/
 };
 
