@@ -5480,7 +5480,7 @@ DERSLER_EN['soft-split'] = {
     t:'What does a decision tree node do?',
     goal:'You will meet the smallest piece of a decision tree: <b>a single threshold decision</b>. Everything is built on top of it.',
     todo:'Use NEXT to walk through the three stages.',
-    kind:'phases', viz:'esik', h:660, xp:35,
+    kind:'phases', viz:'esik', h:800, xp:35,
     learned:'<b>The derivative of a step function is zero.</b> This is why classical trees are built by greedy search rather than by gradient descent. The consequence: trees are interpretable but <b>not end to end learnable</b>, so they cannot be plugged into the same pipeline as neural networks.',
     quiz:{
       q:'If classical decision trees cannot use gradient descent, <b>how</b> do algorithms like CART build a tree?',
@@ -5513,7 +5513,7 @@ DERSLER_EN['soft-split'] = {
     t:'One change: soften the step',
     goal:'You will see the idea that solves the problem and discover for yourself what the <b>temperature</b> parameter does.',
     todo:'Drag the temperature T slider <b>all the way left and all the way right</b>. Notice what happens at the two extremes.',
-    kind:'controls', viz:'esik', h:660, xp:40, state:{mod:'both', t:5, noktalar:true},
+    kind:'controls', viz:'esik', h:800, xp:40, state:{mod:'both', t:5, noktalar:true},
     body:'<p>The idea is very simple: replace the step with a <b>sigmoid</b>.</p>' +
          '<p style="font-family:var(--mono);background:rgba(255,255,255,.05);padding:10px 14px;border-radius:8px">hard: &nbsp;gate(x) = 1 <b>if</b> x > t <b>else</b> 0<br>soft: gate(x) = σ( (x − t) / T )</p>' +
          '<p>Now every example goes to both branches <b>with a weight</b>. An example at x = 5.4 can be "66% right, 34% left".</p>' +
@@ -5528,7 +5528,7 @@ DERSLER_EN['soft-split'] = {
     t:'The derivative is back',
     goal:'You will see, with its mathematical consequence, why softening is not merely a cosmetic change.',
     todo:'Compare the two stages: the same screen for a hard and a soft gate.',
-    kind:'phases', viz:'esik', h:660, xp:35,
+    kind:'phases', viz:'esik', h:800, xp:35,
     learned:'<b>Because σ is differentiable, all the tree\'s parameters can be learned together by gradient descent.</b> Instead of a structure built greedily node by node, a structure optimised end to end.',
     phases:[
       {state:{mod:'hard', t:5, turev:true},

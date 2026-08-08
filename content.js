@@ -761,7 +761,7 @@ DERSLER['soft-split'] = {
     t:'Bir karar ağacı düğümü ne yapar?',
     goal:'Karar ağacının en küçük parçasını tanıyacaksın: <b>tek bir eşik kararı</b>. Her şey bunun üstüne kuruluyor.',
     todo:'İLERİ ile üç aşamayı geç.',
-    kind:'phases', viz:'esik', h:660,
+    kind:'phases', viz:'esik', h:800,
     phases:[
       {state:{mod:'hard', t:5}, body:'<p>Bir karar ağacının her düğümü tek bir soru sorar: <b>"x, t eşiğinden büyük mü?"</b></p>' +
         '<p>Cevap <b>evet</b> ise örnek sağ dala, <b>hayır</b> ise sol dala gider. Grafikteki turuncu <b>basamak</b> bu kuralın kendisi: ' +
@@ -794,7 +794,7 @@ DERSLER['soft-split'] = {
     t:'Tek değişiklik: basamağı yumuşat',
     goal:'Sorunu çözen fikri göreceksin ve <b>sıcaklık</b> parametresinin ne işe yaradığını kendi elinle keşfedeceksin.',
     todo:'Sıcaklık T kaydırıcısını <b>en sola ve en sağa</b> kadar çek. İki uçta ne olduğuna dikkat et.',
-    kind:'controls', viz:'esik', h:660,
+    kind:'controls', viz:'esik', h:800,
     controls:[{k:'T', lb:'SICAKLIK  T', min:0.05, max:2.5, step:0.05, val:0.6, fmt:v => v.toFixed(2)}],
     state:{mod:'both', t:5, noktalar:true},
     live:s => [['t (eşik)','5.0'], ['T (sıcaklık)', s.T.toFixed(2)],
@@ -821,7 +821,7 @@ DERSLER['soft-split'] = {
     t:'Türev geri geldi',
     goal:'Yumuşatmanın neden sadece estetik bir değişiklik olmadığını, matematiksel sonucuyla göreceksin.',
     todo:'İki aşamayı karşılaştır: aynı ekran, sert ve yumuşak kapı için.',
-    kind:'phases', viz:'esik', h:660,
+    kind:'phases', viz:'esik', h:800,
     phases:[
       {state:{mod:'hard', t:5, turev:true}, body:'<p>Hatırlatma, <b>sert kapı</b>: türev her yerde sıfır. ' +
         'Gradient descent bu düğümde hiçbir şey öğrenemez.</p>'},
