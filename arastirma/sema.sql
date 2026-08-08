@@ -118,6 +118,28 @@ create trigger riza_geri_alma_tetik after insert on riza
 for each row execute function riza_geri_alindi();
 
 -- ═══════════════════════════════════════════════════════════
+-- 4b · DATA API ERİŞİMİ
+-- ═══════════════════════════════════════════════════════════
+-- Proje "Automatically expose new tables" KAPALI kurulduğu için tablolar
+-- Data API'ye kendiliğinden açılmaz. Aşağıdaki grant'ler olmadan istemci
+-- hiçbir satır göremez. Asıl koruma yine RLS'te: grant "tabloya bakabilir",
+-- RLS "hangi satırları" sorusunu cevaplar. İkisi birlikte çalışır.
+
+grant usage on schema public to anon, authenticated;
+
+grant select, insert, update on profil    to authenticated;
+grant select, insert, update on ilerleme  to authenticated;
+grant select, insert          on riza     to authenticated;   -- güncelleme/silme YOK
+grant select, insert          on olay     to authenticated;   -- güncelleme/silme YOK
+
+grant usage on sequence riza_id_seq to authenticated;
+grant usage on sequence olay_id_seq to authenticated;
+
+-- Anonim ziyaretçinin bu tabloların hiçbirinde işi yok.
+-- yonetici tablosuna kimseye grant verilmiyor; yalnızca yonetici_mi()
+-- fonksiyonu (security definer) içinden okunuyor.
+
+-- ═══════════════════════════════════════════════════════════
 -- 5 · ARAŞTIRMA GÖRÜNÜMÜ  (kimliksiz)
 -- ═══════════════════════════════════════════════════════════
 -- Analiz bu görünüm üzerinden yapılır, ham tablo üzerinden değil.

@@ -92,6 +92,21 @@ create policy yorum_sil on yorum for delete using (auth.uid() = kullanici or yon
 create policy yorum_moderasyon on yorum for update using (yonetici_mi()) with check (yonetici_mi());
 
 -- ═══════════════════════════════════════════════════════════
+-- 3b · DATA API ERİŞİMİ
+-- ═══════════════════════════════════════════════════════════
+-- Proje "Automatically expose new tables" KAPALI kurulduğu için gerekli.
+
+grant usage on schema public to anon, authenticated;
+
+-- Giriş yapmış kullanıcı kendi yorumunu yazar, düzenler, siler.
+grant select, insert, update, delete on yorum to authenticated;
+grant usage on sequence yorum_id_seq to authenticated;
+
+-- Anonim ziyaretçi ham tabloyu GÖRMEZ. Onaylı yorumlara yalnızca
+-- yorum_acik görünümü üzerinden erişir (aşağıda grant'i var).
+-- yonetici tablosuna kimseye grant verilmiyor.
+
+-- ═══════════════════════════════════════════════════════════
 -- 4 · GENEL SAYAÇLAR
 -- ═══════════════════════════════════════════════════════════
 -- Ana sayfada gösterilecek sayılar. Tek bir fonksiyondan gelir ki
