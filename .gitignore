@@ -2,3 +2,4 @@
 *.log
 node_modules/
 .tuval-envanter.json
+.arayuz-envanter.json

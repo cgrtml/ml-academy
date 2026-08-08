@@ -98,36 +98,38 @@ enIds.filter(id => trIds.includes(id)).forEach(id => {
 if (!yapiHata && !alanHata) console.log('  ✓ çevrilmiş derslerde sorun yok');
 else console.log('  toplam: ' + yapiHata + ' yapı uyuşmazlığı, ' + alanHata + ' alan sorunu');
 
-/* ── 3 · viz.js tuval etiketleri ── */
-console.log('\n── 3 · TUVAL ETİKETLERİ (viz.js) ──');
-/* Tuval metinleri artık viz-sozluk.js'teki TUVAL_EN üzerinden çevriliyor.
-   Envanter .tuval-envanter.json'da; üretmek için: node tuval-metin.js  */
-let TUVAL_EN = {}, env = null;
-try { TUVAL_EN = new Function(fs.readFileSync('./viz-sozluk.js','utf8') + ';return TUVAL_EN;')(); } catch(e){}
-try { env = JSON.parse(fs.readFileSync('./.tuval-envanter.json','utf8')); } catch(e){}
-let tuvalEksik = 0;
-if (!env){
-  console.log('  envanter yok · önce: node tuval-metin.js');
-} else {
-  const tumu = [...env.sabit.map(x => x[0]), ...env.sablon];
-  const eksikTuval = tumu.filter(s => TUVAL_EN[s] === undefined);
-  tuvalEksik = eksikTuval.length;
-  console.log('  sözlükteki kayıt          : ' + Object.keys(TUVAL_EN).length);
-  console.log('  çizilen benzersiz metin   : ' + tumu.length + '  (sabit ' + env.sabit.length +
-              ' + sayı şablonu ' + env.sablon.length + ')');
-  console.log('  karşılığı olmayan         : ' + tuvalEksik);
-  eksikTuval.slice(0, 20).forEach(s => console.log('    ' + JSON.stringify(s).slice(0,90)));
-  if (tuvalEksik > 20) console.log('    ... ve ' + (tuvalEksik-20) + ' tane daha');
-  const uyumsuz = Object.entries(TUVAL_EN).filter(([k,v]) =>
+/* ── 3 · tuval ve arayüz sözlükleri ── */
+console.log('\n── 3 · SÖZLÜK KAPSAMI ──');
+/* Tuval metinleri viz-sozluk.js (TUVAL_EN), ders sayfasının dinamik metinleri
+   arayuz-sozluk.js (ARAYUZ_EN) üzerinden çevrilir. Envanterleri üretmek için:
+   node tuval-metin.js  ·  node arayuz-metin.js  */
+let sozlukEksik = 0;
+function katman(ad, sozDosya, envDosya, enAd, ayniAd){
+  let SOZ = { EN:{}, AYNI:[] }, env = null;
+  try { SOZ = new Function(fs.readFileSync(sozDosya,'utf8') +
+    ';return { EN:' + enAd + ', AYNI:(typeof ' + ayniAd + '!=="undefined"?' + ayniAd + ':[]) };')(); } catch(e){}
+  try { env = JSON.parse(fs.readFileSync(envDosya,'utf8')); } catch(e){}
+  if (!env){ console.log('  ' + ad.padEnd(8) + ' envanter yok'); return; }
+  const cikar = x => Array.isArray(x) ? x[0] : x;
+  const tumu = [...env.sabit.map(cikar), ...env.sablon.map(cikar)];
+  const ayni = new Set(SOZ.AYNI);
+  const eksik = tumu.filter(x => SOZ.EN[x] === undefined && !ayni.has(x));
+  sozlukEksik += eksik.length;
+  console.log('  ' + ad.padEnd(8) + tumu.length + ' metin  ·  ' + Object.keys(SOZ.EN).length +
+              ' çeviri  ·  ' + ayni.size + ' aynı kalan  ·  eksik ' + eksik.length);
+  eksik.slice(0, 10).forEach(x => console.log('      ' + JSON.stringify(x).slice(0,80)));
+  const uyumsuz = Object.entries(SOZ.EN).filter(([k,v]) =>
     (k.match(/#/g)||[]).length !== (String(v).match(/#/g)||[]).length);
   if (uyumsuz.length){
-    console.log('  ⚠ # yer tutucu sayısı uyuşmayan kayıt: ' + uyumsuz.length);
-    uyumsuz.slice(0,10).forEach(([k]) => console.log('    ' + JSON.stringify(k).slice(0,80)));
+    sozlukEksik += uyumsuz.length;
+    console.log('      ⚠ # yer tutucusu uyuşmayan kayıt: ' + uyumsuz.length);
   }
 }
+katman('tuval',  './viz-sozluk.js',    './.tuval-envanter.json',  'TUVAL_EN',  'TUVAL_AYNI');
+katman('arayüz', './arayuz-sozluk.js', './.arayuz-envanter.json', 'ARAYUZ_EN', 'ARAYUZ_AYNI');
 
 console.log('\n── ÖZET ──');
 console.log('  çevrilmemiş ders   : ' + eksik.length + ' / ' + trIds.length);
 console.log('  yapı uyuşmazlığı   : ' + yapiHata);
 console.log('  eksik/çevrilmemiş alan : ' + alanHata);
-console.log('  çevrilmemiş tuval etiketi : ' + tuvalEksik);
+console.log('  sözlükte eksik metin   : ' + sozlukEksik);

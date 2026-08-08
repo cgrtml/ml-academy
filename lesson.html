@@ -233,6 +233,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="viz-sozluk.js"></script>
+<script src="arayuz-sozluk.js"></script>
 <script src="viz.js"></script>
 <script src="content.js"></script>
 <script src="content-en.js"></script>
@@ -297,6 +298,28 @@ const L10N = {
   dilNot:['','This lesson has not been translated yet, so the text below is Turkish. The simulation, the chart and every number work exactly the same, and the interface stays in English.'],
 };
 const T = k => L10N[k][EN ? 1 : 0];
+
+/* content.js'teki FONKSİYONLARDAN üretilen metinler (live sayaçları, unlockMsg,
+   bodyFn, animasyon kareleri, kod laboratuvarı çıktısı) İngilizce derste
+   bulunmaz; arayuz-sozluk.js üzerinden çevrilir. Sayılar # ile eşleşir. */
+const CEVIR = (() => {
+  const SAYI = /-?\d+(?:[.,]\d+)?/g;
+  return v => {
+    if (!EN || v == null) return v;
+    const s = String(v);
+    const D = (typeof ARAYUZ_EN !== 'undefined') ? ARAYUZ_EN : null;
+    if (!D || !s) return v;
+    if (D[s] !== undefined) return D[s];
+    if (/\d/.test(s)){
+      const sayilar = [];
+      const anahtar = s.replace(SAYI, m => { sayilar.push(m); return '#'; });
+      const k = D[anahtar];
+      if (k !== undefined){ let i = 0; return k.replace(/#/g, () => sayilar[i++]); }
+    }
+    return v;
+  };
+})();
+const cevirLive = rows => (rows||[]).map(r => [CEVIR(r[0]), r[1], r[2]]);
 
 const qs = new URLSearchParams(location.search);
 const DERS_ID = qs.get('id') || 'veri';
@@ -446,7 +469,7 @@ function go(i){
   /* ---- durum & çizim ---- */
   let ph = 0, frames = null, playing = false, sel = null, answered = false;
   if (a.kind === 'play'){ frames = a.frames(); $('scrub').max = frames.length-1; }
-  if (a.kod) $('code').innerHTML = a.kod.map((l,k) =>
+  if (a.kod) $('code').innerHTML = a.kod.map(l => CEVIR(l)).map((l,k) =>
     '<div class="cl" id="k'+k+'"><span class="ln">'+(k+1)+'</span>'+l+'</div>').join('');
 
   let runSeq = null, runIdx = 0, dongu = true, sonaGeldi = false;
@@ -469,14 +492,14 @@ function go(i){
     else if (a.kind === 'phases' && a.phases[ph].live) lv = a.phases[ph].live;
     else if (a.kind === 'play' && frames[ph].live) lv = frames[ph].live;
     else if (a.live) lv = a.live(s);
-    $('live').innerHTML = lv ? liveHTML(lv) : '';
+    $('live').innerHTML = lv ? liveHTML(cevirLive(lv)) : '';
     // gövde
     let bd = a.body || '';
     if (runSeq) bd = runSeq[runIdx].body || bd;
     else if (a.kind === 'phases') bd = a.phases[ph].body;
     else if (a.kind === 'play') bd = frames[ph].body;
     else if (a.bodyFn) bd = a.bodyFn(s);
-    $('body').innerHTML = bd;
+    $('body').innerHTML = CEVIR(bd);
     // kod satırı
     if (a.kod){ const ln = a.kind==='phases' ? a.phases[ph].line : -1;
       a.kod.forEach((_,k) => $('k'+k).classList.toggle('on', k === ln)); }
@@ -602,8 +625,8 @@ function go(i){
   /* ---- ilerleme koşulu ---- */
   function gate(){
     const s = vizState();
-    if (a.unlock && !a.unlock(s)) return a.unlockMsg || T('gorevTamam');
-    if (a.bolgeSayisi && Object.keys(S.bolgeler).length < a.bolgeSayisi) return a.unlockMsg;
+    if (a.unlock && !a.unlock(s)) return CEVIR(a.unlockMsg) || T('gorevTamam');
+    if (a.bolgeSayisi && Object.keys(S.bolgeler).length < a.bolgeSayisi) return CEVIR(a.unlockMsg);
     if ((a.kind === 'phases' || a.kind === 'play') && !sonaGeldi)
       return a.kind==='play' ? T('sonuBekle') : T('asamaTamam');
     if (a.kodlab && !kodOK) return T('koduTamam');
