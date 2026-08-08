@@ -326,5 +326,15 @@ $('reset').onclick = () => {
 };
 dilUygula();
 </script>
+
+<!-- ── Supabase · topluluk katmanı ──
+     Ayarlar boşsa hiçbir istek atılmaz, topluluk bölümü gizli kalır.
+     Yani bu bloklar bugün siteye eklense de hiçbir şey bozulmaz. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="yapilandirma.js"></script>
+<script src="topluluk/topluluk.js"></script>
+<script>
+  TOPLULUK.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL });
+</script>
 </body>
 </html>
