@@ -16288,6 +16288,286 @@ const DNG = (() => {
     return en;
   }
 
+  /* ── maliyet temelli eşik ──
+     Kalibre bir olasılıkta beklenen değeri en büyükleyen eşik kapalı formda:
+        t* = C_yanlisAlarm / (C_yanlisAlarm + C_kacirma)
+     Bu, proje kararı dersindeki aritmetiğin eşik tarafındaki karşılığı. */
+  function maliyetEsigi(cAlarm, cKacir){ return cAlarm / (cAlarm + cKacir); }
+  function netKazanc(p, esik, cAlarm, cKacir){
+    const o = olcut(p, TE.Y, esik);
+    /* modelsiz durum: hiç alarm yok, bütün pozitifler kaçırılır */
+    const modelsiz = -(o.TP + o.FN) * cKacir;
+    const modelli  = -(o.FP + o.TP) * cAlarm - o.FN * cKacir;
+    return { modelsiz, modelli, fark: modelli - modelsiz, ...o };
+  }
+
   return { NE, NT, TABAN, EG, TE, egit, model, ornekle, olcut, sayim,
-           tarama, enIyiF1, auc, ece, prAuc };
+           tarama, enIyiF1, auc, ece, prAuc, maliyetEsigi, netKazanc };
 })();
+
+/* ── dengesiz veri · ortak çizim ── */
+function dngKarisiklik(x, y, o, renk){
+  /* 2x2 karışıklık matrisi */
+  const w = 150, h = 66;
+  const hucre = (i, j, ad, n, c) => {
+    box(x + j*w, y + i*h, w-4, h-4, c+'1e', c+'66', 2);
+    txt(ad, x + j*w + w/2 - 2, y + i*h + 26, K.mut, 15);
+    txt(String(n), x + j*w + w/2 - 2, y + i*h + 52, c, 24);
+  };
+  txt('tahmin →', x + w, y - 32, K.mut, 15);
+  txt('POZİTİF', x + w/2,   y - 10, K.mut, 14);
+  txt('NEGATİF', x + w*1.5, y - 10, K.mut, 14);
+  hucre(0, 0, 'TP', o.TP, K.green);
+  hucre(0, 1, 'FN', o.FN, K.red);
+  hucre(1, 0, 'FP', o.FP, K.orange);
+  hucre(1, 1, 'TN', o.TN, K.dim);
+}
+
+/* ── 1 · eşiği oynatmak ── */
+VIZ.dngEsik = s => {
+  clear();
+  const e = Math.max(0.02, Math.min(0.98, s.esik === undefined ? 0.5 : s.esik));
+  const M = DNG.model(1), o = DNG.olcut(M.p, DNG.TE.Y, e), en = DNG.enIyiF1(M.p);
+  baslikSerit('DENGESİZ VERİ · EŞİĞİ OYNATMAK',
+    'Modele hiç dokunmadan, tek bir sayıyı değiştirerek.',
+    [['EŞİK', e.toFixed(2), K.yellow],
+     ['KESİNLİK', o.kesinlik.toFixed(3), K.blue],
+     ['HATIRLAMA', o.hatirlama.toFixed(3), K.green],
+     ['F1', o.f1.toFixed(3), Math.abs(o.f1-en.f1)<0.01?K.green:K.mut]]);
+
+  /* eşik taraması */
+  const P = plot(rect(120, 210, 700, 350), 0, 1, 0, 1.05);
+  txt('EŞİK DEĞİŞİNCE NE OLUYOR', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, 'eşik', 'değer', [0,0.25,0.5,0.75,1], [0,0.5,1]);
+  const T = DNG.tarama(M.p, 0.01);
+  [['kesinlik', K.blue], ['hatirlama', K.green], ['f1', K.yellow], ['dogruluk', K.dim]
+  ].forEach(([alan, renk], i) => {
+    cx.strokeStyle = renk; cx.lineWidth = alan === 'f1' ? 4.5 : 3; cx.beginPath();
+    T.forEach((r,q) => q ? cx.lineTo(P.sx(r.esik), P.sy(r[alan]))
+                         : cx.moveTo(P.sx(r.esik), P.sy(r[alan])));
+    cx.stroke();
+    txt('■ '+['kesinlik','hatırlama','F1','doğruluk'][i], P.R.x+16, P.R.y+30+i*24, renk, 16, 'left');
+  });
+  /* seçili eşik */
+  cx.strokeStyle = K.yellow; cx.lineWidth = 2.5; cx.setLineDash([5,5]);
+  cx.beginPath(); cx.moveTo(P.sx(e), P.R.y); cx.lineTo(P.sx(e), P.R.y+P.R.h); cx.stroke();
+  cx.setLineDash([]);
+  /* en iyi F1 */
+  dot(P.sx(en.esik), P.sy(en.f1), 8, K.yellow);
+  txt('en iyi F1', P.sx(en.esik), P.sy(en.f1)-18, K.yellow, 16);
+
+  dngKarisiklik(900, 250, o, K.blue);
+
+  const bx = 900;
+  box(bx, 430, 460, 210, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('BU EŞİKTE', bx+230, 466, K.mut, 18);
+  [['alarm sayısı', String(o.alarm)],
+   ['yakalanan', o.TP+' / '+(o.TP+o.FN)],
+   ['boş alarm oranı', '%'+(100*(1-o.kesinlik)).toFixed(1)],
+   ['doğruluk', '%'+(100*o.dogruluk).toFixed(1)],
+  ].forEach(([a,b],i) => {
+    txt(a, bx+30,  506+i*34, K.mut, 17, 'left');
+    txt(b, bx+430, 506+i*34, K.txt, 18, 'right');
+  });
+
+  durum('eşik '+e.toFixed(2)+' · kesinlik '+o.kesinlik.toFixed(3)+
+        ' · hatırlama '+o.hatirlama.toFixed(3)+' · F1 '+o.f1.toFixed(3)+
+        '  ·  en iyi F1 '+en.f1.toFixed(3)+' eşik '+en.esik.toFixed(3),
+        Math.abs(o.f1-en.f1)<0.01 ? K.green : K.blue);
+};
+
+/* ── 2 · sınıf ağırlığı ── */
+VIZ.dngAgirlik = s => {
+  clear();
+  const AG = [1,2,5,10,19,40];
+  const i = Math.max(0, Math.min(5, Math.round(s.agirlik === undefined ? 0 : s.agirlik)));
+  const w1 = AG[i];
+  const M = DNG.model(w1), taban = DNG.model(1);
+  const en = DNG.enIyiF1(M.p), o5 = DNG.olcut(M.p, DNG.TE.Y, 0.5);
+  baslikSerit('SINIF AĞIRLIĞI',
+    'Azınlık sınıfının kaybına katsayı koymak. Peki bu ne kazandırıyor?',
+    [['AĞIRLIK', 'w = '+w1, K.blue],
+     ['AUC', M.auc.toFixed(4), Math.abs(M.auc-taban.auc)<0.001?K.green:K.orange],
+     ['EN İYİ F1', en.f1.toFixed(3), K.yellow],
+     ['ECE', M.ece.toFixed(4), M.ece>0.05?K.red:K.green]]);
+
+  /* üç ölçüt, ağırlığa göre */
+  const P = plot(rect(120, 220, 620, 320), -0.4, 5.4, 0, 1.05);
+  txt('AĞIRLIK ARTTIKÇA', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'değer', [], [0, 0.5, 1]);
+  [['auc', K.blue, 'AUC'], ['ece', K.red, 'ECE']].forEach(([alan, renk, ad]) => {
+    cx.strokeStyle = renk; cx.lineWidth = 4; cx.beginPath();
+    AG.forEach((w,q) => { const v = DNG.model(w)[alan];
+      q ? cx.lineTo(P.sx(q), P.sy(v)) : cx.moveTo(P.sx(q), P.sy(v)); });
+    cx.stroke();
+    AG.forEach((w,q) => dot(P.sx(q), P.sy(DNG.model(w)[alan]), 5, renk));
+  });
+  cx.strokeStyle = K.yellow; cx.lineWidth = 4; cx.beginPath();
+  AG.forEach((w,q) => { const v = DNG.enIyiF1(DNG.model(w).p).f1;
+    q ? cx.lineTo(P.sx(q), P.sy(v)) : cx.moveTo(P.sx(q), P.sy(v)); });
+  cx.stroke();
+  AG.forEach((w,q) => txt('w='+w, P.sx(q), P.R.y+P.R.h+28, q===i?K.yellow:K.mut, 16));
+  txt('■ AUC', P.R.x+16, P.R.y+30, K.blue, 16, 'left');
+  txt('■ en iyi F1', P.R.x+16, P.R.y+54, K.yellow, 16, 'left');
+  txt('■ ECE', P.R.x+16, P.R.y+78, K.red, 16, 'left');
+  cx.strokeStyle = K.yellow; cx.lineWidth = 2; cx.setLineDash([5,5]);
+  cx.beginPath(); cx.moveTo(P.sx(i), P.R.y); cx.lineTo(P.sx(i), P.R.y+P.R.h); cx.stroke();
+  cx.setLineDash([]);
+
+  /* en iyi F1'in eşiği kayıyor */
+  const Q = plot(rect(120, 620, 620, 90), -0.4, 5.4, 0, 1.05);
+  txt('EN İYİ F1 HANGİ EŞİKTE', Q.R.x+Q.R.w/2, Q.R.y-14, K.mut, 18);
+  frame(Q, '', 'eşik', [], [0, 0.5, 1]);
+  cx.strokeStyle = K.purple; cx.lineWidth = 4; cx.beginPath();
+  AG.forEach((w,q) => { const v = DNG.enIyiF1(DNG.model(w).p).esik;
+    q ? cx.lineTo(Q.sx(q), Q.sy(v)) : cx.moveTo(Q.sx(q), Q.sy(v)); });
+  cx.stroke();
+  AG.forEach((w,q) => dot(Q.sx(q), Q.sy(DNG.enIyiF1(DNG.model(w).p).esik), 5, K.purple));
+
+  const bx = 790;
+  box(bx, 220, 600, 250, 'rgba(7,10,15,.6)', K.axis, 2);
+  ['ağırlık','AUC','en iyi F1','o eşik','ECE'].forEach((h,q) =>
+    txt(h, bx+70+q*116, 258, K.mut, 15));
+  AG.forEach((w,q) => {
+    const m = DNG.model(w), b = DNG.enIyiF1(m.p), yy = 296 + q*30, vurgu = q === i;
+    if (vurgu) box(bx+14, yy-24, 572, 32, K.yellow+'14', K.yellow+'55', 1.5);
+    txt('w = '+w,          bx+70,  yy, vurgu?K.yellow:K.mut, 16);
+    txt(m.auc.toFixed(4),  bx+186, yy, K.blue, 15);
+    txt(b.f1.toFixed(3),   bx+302, yy, K.txt, 15);
+    txt(b.esik.toFixed(3), bx+418, yy, K.purple, 15);
+    txt(m.ece.toFixed(4),  bx+534, yy, m.ece>0.05?K.red:K.green, 15);
+  });
+
+  box(bx, 490, 600, 220, 'rgba(248,113,113,.06)', 'rgba(248,113,113,.4)', 2);
+  txt('AĞIRLIK NE YAPIYOR', bx+300, 528, K.red, 19);
+  ['AUC değişmiyor: sıralamaya hiçbir şey katmıyor.',
+   'En iyi F1 değişmiyor: ulaşılabilir tavan aynı.',
+   'Değişen tek şey o tavanın hangi eşikte olduğu.',
+   'Ve ECE bozuluyor: olasılıklar artık gerçeği söylemiyor.',
+  ].forEach((t2,q) => txt('· '+t2, bx+24, 572+q*34, K.txt, 17, 'left'));
+
+  durum('w = '+w1+' · AUC '+M.auc.toFixed(4)+' · en iyi F1 '+en.f1.toFixed(3)+
+        ' (eşik '+en.esik.toFixed(3)+') · ECE '+M.ece.toFixed(4),
+        M.ece > 0.05 ? K.red : K.green);
+};
+
+/* ── 3 · yeniden örnekleme ── */
+VIZ.dngOrnekleme = s => {
+  clear();
+  const YON = ['ham','ust','alt','smote'];
+  const AD = { ham:'ham veri', ust:'üst örnekleme', alt:'alt örnekleme', smote:'SMOTE' };
+  const i = Math.max(0, Math.min(3, Math.round(s.yontem === undefined ? 0 : s.yontem)));
+  const sec = YON[i];
+  const al = y => y === 'ham' ? DNG.model(1) : DNG.ornekle(y);
+  const M = al(sec), en = DNG.enIyiF1(M.p);
+  baslikSerit('YENİDEN ÖRNEKLEME',
+    'Veriyi çoğaltmak, azaltmak ya da sentetik örnek üretmek. Ölçüm ne diyor?',
+    [['YÖNTEM', AD[sec], K.blue],
+     ['AUC', M.auc.toFixed(4), K.mut],
+     ['PR-AUC', M.prAuc.toFixed(4), K.mut],
+     ['ECE', M.ece.toFixed(4), M.ece>0.05?K.red:K.green]]);
+
+  const bx = 120;
+  box(bx, 210, 1260, 250, 'rgba(7,10,15,.6)', K.axis, 2);
+  ['yöntem','eğitim n','pozitif','AUC','PR-AUC','ECE','en iyi F1'].forEach((h,q) =>
+    txt(h, bx+110+q*172, 250, K.mut, 16));
+  YON.forEach((y,q) => {
+    const m = al(y), b = DNG.enIyiF1(m.p), yy = 296 + q*38, vurgu = q === i;
+    const n = y === 'ham' ? DNG.EG.n : m.n;
+    const poz = y === 'ham' ? DNG.EG.Y.reduce((a,v)=>a+v,0) : m.poz;
+    if (vurgu) box(bx+16, yy-28, 1228, 38, K.blue+'16', K.blue+'55', 2);
+    txt(AD[y],             bx+110,  yy, vurgu?K.blue:K.mut, 17);
+    txt(String(n),         bx+282,  yy, y==='alt'?K.red:K.txt, 17);
+    txt(String(poz),       bx+454,  yy, K.txt, 17);
+    txt(m.auc.toFixed(4),  bx+626,  yy, K.blue, 17);
+    txt(m.prAuc.toFixed(4),bx+798,  yy, K.blue, 17);
+    txt(m.ece.toFixed(4),  bx+970,  yy, m.ece>0.05?K.red:K.green, 17);
+    txt(b.f1.toFixed(3),   bx+1142, yy, K.yellow, 17);
+  });
+
+  /* ECE karşılaştırma çubukları */
+  const A = plot(rect(120, 530, 600, 140), -0.5, 3.5, 0, 0.2);
+  txt('KALİBRASYON HATASI (ECE)', A.R.x+A.R.w/2, A.R.y-14, K.mut, 19);
+  frame(A, '', 'ECE', [], [0, 0.1, 0.2]);
+  const gen = (A.R.w/4)*0.42;
+  YON.forEach((y,q) => {
+    const v = al(y).ece, x = A.sx(q);
+    box(x-gen/2, A.sy(v), gen, A.sy(0)-A.sy(v), (v>0.05?K.red:K.green)+'cc', null);
+    txt(v.toFixed(4), x, A.sy(v)-12, v>0.05?K.red:K.green, 15);
+    txt(AD[y], x, A.R.y+A.R.h+28, q===i?K.blue:K.mut, 15);
+  });
+
+  box(790, 510, 590, 200, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('ÜÇ SÜTUN OKUMAYA DEĞER', 1085, 548, K.mut, 19);
+  ['AUC ve PR-AUC dört ondalıkta aynı: bilgi eklenmiyor.',
+   'En iyi F1 de aynı: ulaşılabilir tavan değişmiyor.',
+   'ECE ise yıkılıyor: 0.0069 iken 0.10 üstüne çıkıyor.',
+   'Alt örnekleme verinin %90 ını atıyor, karşılığında hiçbir şey.',
+  ].forEach((t2,q) => txt('· '+t2, 814, 590+q*32, K.txt, 17, 'left'));
+
+  durum(AD[sec]+': AUC '+M.auc.toFixed(4)+' · PR-AUC '+M.prAuc.toFixed(4)+
+        ' · ECE '+M.ece.toFixed(4)+' · en iyi F1 '+en.f1.toFixed(3),
+        M.ece > 0.05 ? K.red : K.green);
+};
+
+/* ── 4 · maliyetten gelen eşik ── */
+VIZ.dngKarar = s => {
+  clear();
+  const cK = Math.max(10, Math.round(s.kacir === undefined ? 100 : s.kacir));
+  const cA = 20;
+  const M = DNG.model(1);
+  const t = DNG.maliyetEsigi(cA, cK);
+  const a = DNG.netKazanc(M.p, t, cA, cK), b = DNG.netKazanc(M.p, 0.5, cA, cK);
+  baslikSerit('EŞİĞİ NEREDEN BULMALI',
+    'F1 bir kolaylık. Gerçek eşik, kaçırmanın ve boş alarmın maliyetinden gelir.',
+    [['KAÇIRMA', String(cK), K.red],
+     ['ALARM', String(cA), K.orange],
+     ['t*', t.toFixed(3), K.yellow],
+     ['KAZANÇ FARKI', String(a.fark - b.fark), a.fark>=b.fark?K.green:K.red]]);
+
+  const P = plot(rect(120, 230, 700, 330), 0, 1, Math.min(0, b.fark*1.3), Math.max(a.fark, b.fark)*1.25);
+  txt('EŞİĞE GÖRE NET KAZANÇ', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, 'eşik', 'net kazanç', [0,0.25,0.5,0.75,1], []);
+  cx.strokeStyle = 'rgba(255,255,255,.25)'; cx.lineWidth = 1.5;
+  cx.beginPath(); cx.moveTo(P.R.x, P.sy(0)); cx.lineTo(P.R.x+P.R.w, P.sy(0)); cx.stroke();
+  cx.strokeStyle = K.green; cx.lineWidth = 4; cx.beginPath();
+  let ilk = true;
+  for (let e = 0.02; e <= 0.98; e += 0.01){
+    const v = DNG.netKazanc(M.p, e, cA, cK).fark;
+    ilk ? (cx.moveTo(P.sx(e), P.sy(v)), ilk = false) : cx.lineTo(P.sx(e), P.sy(v));
+  }
+  cx.stroke();
+  /* İki eşik çakışabilir (maliyetler eşitken t* tam 0.5'tir),
+     o yüzden etiketler ayrı satırlara yazılıyor. */
+  [[t, K.yellow, 't* (formül)', 26], [0.5, K.blue, 'varsayılan 0.5', 52]].forEach(([e, renk, ad, dy]) => {
+    cx.strokeStyle = renk; cx.lineWidth = 2.5; cx.setLineDash([5,5]);
+    cx.beginPath(); cx.moveTo(P.sx(e), P.R.y); cx.lineTo(P.sx(e), P.R.y+P.R.h); cx.stroke();
+    cx.setLineDash([]);
+    txt(ad, P.sx(e), P.R.y+dy, renk, 16);
+  });
+
+  const bx = 870;
+  box(bx, 230, 510, 200, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('FORMÜL', bx+255, 268, K.mut, 18);
+  txt('t*  =  C_alarm / (C_alarm + C_kaçırma)', bx+255, 316, K.yellow, 22);
+  txt('= '+cA+' / ('+cA+' + '+cK+') = '+t.toFixed(3), bx+255, 356, K.txt, 21);
+  txt('Kalibre bir olasılıkta beklenen değeri', bx+255, 394, K.mut, 16);
+  txt('en büyükleyen eşik budur.', bx+255, 416, K.mut, 16);
+
+  box(bx, 452, 510, 258, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('NET KAZANÇ', bx+255, 490, K.mut, 18);
+  [['t* = '+t.toFixed(3), a.fark, a.alarm, a.TP, K.yellow],
+   ['varsayılan 0.5',      b.fark, b.alarm, b.TP, K.blue],
+  ].forEach(([ad, f2, al, tp, renk], q) => {
+    const yy = 534 + q*72;
+    txt(ad, bx+30, yy, renk, 18, 'left');
+    txt(String(f2), bx+480, yy, f2>=0?K.green:K.red, 26, 'right');
+    txt(al+' alarm · '+tp+' yakalandı', bx+30, yy+28, K.mut, 16, 'left');
+  });
+  txt(a.fark > b.fark ? 'maliyet eşiği önde' : (a.fark === b.fark ? 'ikisi eşit' : 'bu ayarda 0.5 önde'),
+      bx+255, 690, a.fark>=b.fark?K.green:K.orange, 17);
+
+  durum('kaçırma '+cK+' · alarm '+cA+' → t* '+t.toFixed(3)+
+        '  ·  net kazanç '+a.fark+' (0.5 eşiğinde '+b.fark+')',
+        a.fark >= b.fark ? K.green : K.orange);
+};

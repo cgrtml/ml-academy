@@ -160,6 +160,7 @@ const DERS_ADI_EN = {
   'boyut-laneti':'The curse of dimensionality: why neighbours drift apart',
   'softmax':'Softmax and cross-entropy',
   'kalibrasyon':'Calibration: is "70%" really 70%?',
+  'dengesiz':'Imbalanced data: threshold, weight, resampling',
   'dagilim-kaymasi':'When the ground moves: distribution shift',
   'zaman-serisi':'Time series: the lie of the random split',
   'hiper-arama':'Hyperparameter search: grid, random, halving',
@@ -8284,6 +8285,167 @@ DERSLER_EN['kalibrasyon'] = {
       'models are being combined.<br><br>' +
       'Where it is not: if you only produce a ranking.<br><br>' +
       'And a calibration is valid only in the distribution of its calibration data; when the distribution shifts it must be refitted.',
+  },
+  ],
+};
+
+/* ────────── R1 · imbalanced data ────────── */
+DERSLER_EN['dengesiz'] = {
+  ad:'Imbalanced data: threshold, weight, resampling',
+  alt:'There are three standard fixes. We measured all three, and all three do the same thing, two of them while breaking the calibration.',
+  kaynaklar:[
+    {"y":"Chawla, N. et al.", "t":"2002", "b":"SMOTE: Synthetic Minority Over-sampling Technique", "n":"JAIR, 16"},
+    {"y":"Provost, F.", "t":"2000", "b":"Machine Learning from Imbalanced Data Sets 101", "n":"AAAI Workshop"},
+    {"y":"van den Goorbergh, R. et al.", "t":"2022", "b":"The Harm of Class Imbalance Corrections for Risk Prediction Models", "n":"JAMIA, 29(9)", "u":"https://arxiv.org/abs/2202.09101"},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Moving the threshold',
+    goal:'You will see what is gained by changing a single number, without touching the model.',
+    todo:'Move the threshold. The yellow dot marks where the best F1 sits.',
+    kind:'controls', viz:'dngEsik', h:760, xp:45,
+    controls:[{k:'esik', lb:'THRESHOLD', min:0.02, max:0.98, step:0.01, val:0.5, fmt:v=>v.toFixed(2)}],
+    body:'<p>The <i>Why accuracy lies</i> lesson set up the problem: when the positive class is rare, ' +
+      'accuracy looks high and says nothing. This lesson measures the fixes.</p>' +
+      '<p>The data: 4000 training examples, <b>5%</b> positive. The model is an ordinary logistic ' +
+      'regression. All measurements are on a separate 4000-example test set.</p>' +
+      '<p>At the default threshold of 0.5 the model behaves like this:</p>' +
+      '<p style="font-family:var(--mono)">accuracy &nbsp;&nbsp;96.9%<br>' +
+      'precision &nbsp;0.848<br>' +
+      'recall &nbsp;&nbsp;&nbsp;&nbsp;0.521</p>' +
+      '<p>The accuracy is near perfect but <b>half of the real positives are missed.</b> ' +
+      'The problem is not in the model: 0.5 is an arbitrary number that only makes sense when ' +
+      'the classes are balanced.</p>' +
+      '<p>Lower the threshold and the trade-off becomes visible:</p>' +
+      '<p style="font-family:var(--mono)">thr. &nbsp;precision &nbsp;recall &nbsp;&nbsp;&nbsp;F1<br>' +
+      '0.05 &nbsp;&nbsp;0.325 &nbsp;&nbsp;&nbsp;&nbsp;0.851 &nbsp;&nbsp;0.470<br>' +
+      '0.20 &nbsp;&nbsp;0.600 &nbsp;&nbsp;&nbsp;&nbsp;0.712 &nbsp;&nbsp;0.651<br>' +
+      '0.39 &nbsp;&nbsp;0.799 &nbsp;&nbsp;&nbsp;&nbsp;0.591 &nbsp;&nbsp;<b>0.679</b><br>' +
+      '0.50 &nbsp;&nbsp;0.848 &nbsp;&nbsp;&nbsp;&nbsp;0.521 &nbsp;&nbsp;0.646<br>' +
+      '0.70 &nbsp;&nbsp;0.967 &nbsp;&nbsp;&nbsp;&nbsp;0.414 &nbsp;&nbsp;0.580</p>' +
+      '<p>The best F1 is at <b>0.39</b>, not at the default. The model never changed, ' +
+      'nothing was retrained, one number moved.</p>' +
+      '<p>This is the <b>cheapest intervention</b> available on imbalanced data. In the next two steps ' +
+      'we measure whether two much more expensive methods do anything beyond it.</p>',
+    learned:'<b>0.5 is a default, not a rule.</b><br><br>' +
+      'On this data the default threshold gives 96.9% accuracy but 0.521 recall: half the positives are missed.<br><br>' +
+      'The best F1 is at threshold 0.39 (0.679) against 0.646 at the default. Without touching the model, by changing one number.',
+  },
+  {
+    t:'What class weighting buys',
+    goal:'You will measure what weighting the minority class actually does.',
+    todo:'Increase the weight. Watch all three curves at once: AUC, best F1 and ECE.',
+    kind:'controls', viz:'dngAgirlik', h:760, xp:55,
+    controls:[{k:'agirlik', lb:'WEIGHT', min:0, max:5, step:1, val:0,
+               fmt:v=>'w = '+[1,2,5,10,19,40][Math.round(v)]}],
+    body:'<p><b>Class weighting</b> multiplies the minority class\'s error in the loss function by a ' +
+      'coefficient. The intuition: make the model care more about the minority.</p>' +
+      '<p>The measurement partly confirms that intuition, but the consequence is not what you would think:</p>' +
+      '<p style="font-family:var(--mono)">w &nbsp;&nbsp;&nbsp;&nbsp;AUC &nbsp;&nbsp;&nbsp;&nbsp;best F1 &nbsp;its thr. &nbsp;ECE<br>' +
+      '&nbsp;1 &nbsp;&nbsp;0.9561 &nbsp;&nbsp;0.679 &nbsp;&nbsp;&nbsp;0.390 &nbsp;&nbsp;&nbsp;&nbsp;0.0069<br>' +
+      '&nbsp;5 &nbsp;&nbsp;0.9562 &nbsp;&nbsp;0.679 &nbsp;&nbsp;&nbsp;0.750 &nbsp;&nbsp;&nbsp;&nbsp;0.0499<br>' +
+      '19 &nbsp;&nbsp;0.9563 &nbsp;&nbsp;0.677 &nbsp;&nbsp;&nbsp;0.925 &nbsp;&nbsp;&nbsp;&nbsp;0.1288<br>' +
+      '40 &nbsp;&nbsp;0.9562 &nbsp;&nbsp;0.674 &nbsp;&nbsp;&nbsp;0.970 &nbsp;&nbsp;&nbsp;&nbsp;0.1857</p>' +
+      '<p>The three columns should be read separately.</p>' +
+      '<p><b>AUC is fixed to four decimals.</b> Weighting adds nothing to the ranking. ' +
+      'The model already knew who was riskier without any weight.</p>' +
+      '<p><b>The best F1 is fixed too.</b> From 0.679 to 0.674. The reachable ceiling is the same; ' +
+      'weighting does not raise it.</p>' +
+      '<p><b>The only thing that changes is which threshold that ceiling sits at:</b> from 0.390 to 0.970. ' +
+      'Weighting pushes the probability scale upward, that is all.</p>' +
+      '<p>So <b>class weighting is threshold moving by a longer route.</b> You get the same result ' +
+      'by retraining the model.</p>' +
+      '<p><b>And it is not free:</b> the ECE goes from 0.0069 to 0.1857. What you measured in the ' +
+      'calibration lesson is destroyed here. The weighted model saying "80%" no longer means anything, ' +
+      'because the model is deliberately speaking on an inflated scale.</p>',
+    learned:'<b>Class weighting is the expensive version of moving the threshold.</b><br><br>' +
+      'As w goes from 1 to 40, AUC goes 0.9561 → 0.9562 (unchanged) and the best F1 0.679 → 0.674 (unchanged).<br><br>' +
+      'The only thing that changes is the threshold of that best F1: 0.390 → 0.970.<br><br>' +
+      'The price is the ECE: 0.0069 → 0.1857. The probabilities no longer tell the truth.',
+  },
+  {
+    t:'Resampling',
+    goal:'You will measure what oversampling, undersampling and SMOTE buy.',
+    todo:'Change the method. Read the AUC, PR-AUC and ECE columns together.',
+    kind:'controls', viz:'dngOrnekleme', h:760, xp:60,
+    controls:[{k:'yontem', lb:'METHOD', min:0, max:3, step:1, val:0,
+               fmt:v=>['raw data','oversampling','undersampling','SMOTE'][Math.round(v)]}],
+    body:'<p>The third and most popular approach is to change the data. It comes in three forms:</p>' +
+      '<p><b>Oversampling:</b> duplicate the minority examples.<br>' +
+      '<b>Undersampling:</b> throw away majority examples.<br>' +
+      '<b>SMOTE:</b> create synthetic examples by interpolating between minority points.</p>' +
+      '<p>Same model, same test set:</p>' +
+      '<p style="font-family:var(--mono)">method &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;n &nbsp;&nbsp;&nbsp;&nbsp;AUC &nbsp;&nbsp;&nbsp;&nbsp;PR-AUC &nbsp;&nbsp;ECE &nbsp;&nbsp;&nbsp;&nbsp;F1<br>' +
+      'raw &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4000 &nbsp;0.9561 &nbsp;0.7518 &nbsp;0.0069 &nbsp;0.679<br>' +
+      'over &nbsp;&nbsp;&nbsp;&nbsp;7600 &nbsp;0.9562 &nbsp;0.7514 &nbsp;0.1279 &nbsp;0.676<br>' +
+      'under &nbsp;&nbsp;&nbsp;400 &nbsp;0.9562 &nbsp;0.7522 &nbsp;0.1252 &nbsp;0.677<br>' +
+      'SMOTE &nbsp;&nbsp;7600 &nbsp;0.9563 &nbsp;0.7517 &nbsp;0.1031 &nbsp;0.674</p>' +
+      '<p><b>AUC and PR-AUC are identical to four decimals.</b> Four methods, not one meaningful ' +
+      'difference. PR-AUC is included because it is more informative than ROC on imbalanced data; ' +
+      'it says the same thing.</p>' +
+      '<p><b>The best F1 is the same too.</b> Between 0.674 and 0.679.</p>' +
+      '<p><b>The ECE, on the other hand, collapses.</b> From 0.0069 to the 0.10-0.13 band. The reason is ' +
+      'direct: resampling <b>changes the base rate</b>. The model now saw a world that is 50% positive, ' +
+      'not 5%, and reports its probabilities accordingly. But the real world is still 5%.</p>' +
+      '<p><b>And undersampling throws away 90% of the data:</b> from 4000 examples to 400. ' +
+      'With no measurable gain in return.</p>' +
+      '<p style="color:#facc15">An honest limit: this result holds <b>when the model is well specified</b>. ' +
+      'If the model lacks capacity, or the optimisation genuinely neglects the minority, resampling can ' +
+      'help. We are not saying "it never works"; we are saying "this is what is measured under these conditions".</p>',
+    quiz:{ q:'A team applied SMOTE to imbalanced data and reports that <b>the F1 score went up</b>. What is the first question to ask about that report?',
+      opts:[
+        {t:'At which threshold was F1 measured, and was the threshold optimised for the model without SMOTE?', why:'Correct. Resampling shifts the probability scale, so the 0.5 threshold lands somewhere different on the SMOTE model. Comparing a SMOTE model at an optimised threshold against a raw model at the default 0.5 is a very common mistake and can produce the entire gain. A fair comparison: optimise the threshold for both, or use a threshold-free metric (AUC, PR-AUC).'},
+        {t:'What was SMOTE\'s k-neighbour parameter?', why:'It is tunable but not the main issue. Changing the parameter does not correct a bias coming from the measurement method.'},
+        {t:'Was SMOTE also applied to the test set?', why:'That is genuinely a critical error and worth asking; if synthetic examples enter the test set the result is meaningless. But the most common and most insidious explanation for an F1 increase is the threshold difference, because it appears even when no mistake is made.'},
+        {t:'How many cross-validation folds were used?', why:'That affects the variance of the measurement, not its bias. Even with five folds the same threshold-comparison problem persists.'},
+      ], correct:0 },
+    learned:'<b>Resampling adds no information, it changes the base rate.</b><br><br>' +
+      'Across four methods the AUC is 0.9561-0.9563, PR-AUC 0.7514-0.7522, best F1 0.674-0.679. All the same.<br><br>' +
+      'The ECE goes from 0.0069 to 0.10-0.13: the model now reports probabilities for a 50%-positive world.<br><br>' +
+      'Undersampling also throws away 90% of the data (4000 → 400).',
+  },
+  {
+    t:'Where the threshold comes from',
+    goal:'You will see that the right threshold comes from cost, not from F1.',
+    todo:'Change the cost of a miss and watch how t* moves.',
+    kind:'controls', viz:'dngKarar', h:760, xp:60,
+    controls:[{k:'kacir', lb:'COST OF A MISS', min:20, max:200, step:10, val:100,
+               fmt:v=>String(Math.round(v))}],
+    body:'<p>So far we chose the threshold by F1. But F1 is a <b>convenience</b>: it assumes precision and ' +
+      'recall matter equally. In real life that is almost never true.</p>' +
+      '<p>The right threshold comes from cost and has a closed form:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">t* = C_alarm / (C_alarm + C_miss)</p>' +
+      '<p>For a calibrated probability this is the threshold that maximises expected value. ' +
+      'It is the threshold-side counterpart of the arithmetic in the <i>How to decide on an AI project</i> lesson.</p>' +
+      '<p>There is a simple check on the formula: when the costs are equal, t* comes out at exactly <b>0.5</b>. ' +
+      'So the default threshold is shorthand for the assumption "a miss and a false alarm are equally expensive". ' +
+      'That assumption rarely holds.</p>' +
+      '<p>Measured (false alarm fixed at 20 units, on the 4000-case test set):</p>' +
+      '<p style="font-family:var(--mono)">miss &nbsp;&nbsp;&nbsp;t* &nbsp;&nbsp;&nbsp;net(t*) &nbsp;net(0.5)<br>' +
+      '&nbsp;100 &nbsp;0.167 &nbsp;&nbsp;10540 &nbsp;&nbsp;&nbsp;8560<br>' +
+      '&nbsp;&nbsp;50 &nbsp;0.286 &nbsp;&nbsp;&nbsp;2780 &nbsp;&nbsp;&nbsp;2960<br>' +
+      '&nbsp;&nbsp;20 &nbsp;0.500 &nbsp;&nbsp;&nbsp;−400 &nbsp;&nbsp;&nbsp;−400</p>' +
+      '<p>When a miss is expensive the formula gives a clear gain. When the costs are equalised the two ' +
+      'coincide, because t* is already 0.5.</p>' +
+      '<p style="color:#facc15">The middle row requires honesty: at a miss cost of 50, t* comes out slightly ' +
+      '<b>behind</b>. The formula gives the optimum for the true probability; on a finite test set, and with ' +
+      'calibration that is not perfect, the empirical best point can shift by a few points. The formula is a ' +
+      'starting point, not the last word; the threshold should also be checked on a validation set.</p>' +
+      '<p><b>And the last row is the most important:</b> with equal costs the net gain is <b>negative</b>. ' +
+      'So on this problem, if a false alarm is as expensive as a miss, building a model loses money. ' +
+      'That is not something a threshold can fix; it is the break-even calculation from the project decision lesson.</p>' +
+      '<p><b>The checklist:</b></p>' +
+      '<p><b>1 ·</b> Move the threshold first. Free, does not damage the model, preserves calibration.<br>' +
+      '<b>2 ·</b> Choose the threshold from cost, not from F1. F1 is a stand-in for when you do not know the costs.<br>' +
+      '<b>3 ·</b> Look at class weighting and resampling only when the threshold is not enough, ' +
+      'and when you do, re-measure the calibration.<br>' +
+      '<b>4 ·</b> If the probability will be shown to a user or feed a cost calculation, use the raw model ' +
+      'and then calibrate it.</p>',
+    learned:'<b>The right threshold comes from cost, not F1: t* = C_alarm / (C_alarm + C_miss).</b><br><br>' +
+      'With a miss at 100 and an alarm at 20, t* = 0.167 and the net gain is 10540; at the default 0.5 it is 8560.<br><br>' +
+      'With equal costs t* comes out at exactly 0.5: the default threshold is shorthand for "both errors cost the same".<br><br>' +
+      'The order: threshold first, then cost, and weighting and resampling last.',
   },
   ],
 };

@@ -48,6 +48,7 @@ const ROTALAR = [
     {id:'boyut-laneti',   ad:'Boyut laneti: komşular neden uzaklaşır',         sure:16, durum:'hazir'},
     {id:'softmax',        ad:'Softmax ve çapraz entropi',                      sure:15, durum:'hazir'},
     {id:'kalibrasyon',    ad:'Kalibrasyon: "%70" gerçekten %70 mü?',           sure:15, durum:'hazir'},
+    {id:'dengesiz',       ad:'Dengesiz veri: eşik, ağırlık, örnekleme',        sure:15, durum:'hazir'},
     {id:'dagilim-kaymasi',  ad:'Zemin kayınca: dağılım kayması',                 sure:15, durum:'hazir'},
     {id:'zaman-serisi',     ad:'Zaman serisi: rastgele bölmenin yalanı',         sure:14, durum:'hazir'},
     {id:'hiper-arama',    ad:'Hiperparametre arama: ızgara, rastgele, eleme',  sure:16, durum:'hazir'},
@@ -13596,6 +13597,189 @@ DERSLER['kalibrasyon'] = {
       'modeller birleştirilecekse.<br><br>' +
       'Gerekmediği yer: yalnızca sıralama üretiyorsan.<br><br>' +
       'Ve kalibrasyon yalnızca kalibrasyon verisinin dağılımında geçerlidir; dağılım kayınca yeniden uydurulmalı.',
+    xp:60,
+  },
+]};
+
+/* ────────── R1 · Dengesiz veri ────────── */
+DERSLER['dengesiz'] = {
+  ad:'Dengesiz veri: eşik, ağırlık, örnekleme',
+  alt:'Üç standart çözüm var. Üçünü de ölçtük ve üçü de aslında aynı şeyi yapıyor, ikisi de kalibrasyonu bozarak.',
+  kaynaklar:[
+    {"y":"Chawla, N. et al.", "t":"2002", "b":"SMOTE: Synthetic Minority Over-sampling Technique", "n":"JAIR, 16"},
+    {"y":"Provost, F.", "t":"2000", "b":"Machine Learning from Imbalanced Data Sets 101", "n":"AAAI Workshop"},
+    {"y":"van den Goorbergh, R. et al.", "t":"2022", "b":"The Harm of Class Imbalance Corrections for Risk Prediction Models", "n":"JAMIA, 29(9)", "u":"https://arxiv.org/abs/2202.09101"},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Eşiği oynatmak',
+    goal:'Modele hiç dokunmadan, tek bir sayı değiştirerek ne kazanıldığını göreceksin.',
+    todo:'Eşiği gezdir. Sarı nokta en iyi F1\'in yerini gösteriyor.',
+    kind:'controls', viz:'dngEsik', h:760,
+    controls:[{k:'esik', lb:'EŞİK', min:0.02, max:0.98, step:0.01, val:0.5, fmt:v=>v.toFixed(2)}],
+    live:s => { const o = DNG.olcut(DNG.model(1).p, DNG.TE.Y, s.esik);
+      return [['EŞİK', s.esik.toFixed(2)], ['KESİNLİK', o.kesinlik.toFixed(3), K.blue],
+              ['HATIRLAMA', o.hatirlama.toFixed(3), K.green], ['F1', o.f1.toFixed(3), K.yellow],
+              ['ALARM', o.alarm]]; },
+    body:'<p><i>Accuracy neden yalan söyler</i> dersinde sorunu kurmuştuk: pozitif sınıf nadirse ' +
+      'doğruluk yüksek görünür ama hiçbir şey söylemez. Bu ders çözümleri ölçüyor.</p>' +
+      '<p>Veri: 4000 eğitim örneği, pozitif sınıf <b>%5</b>. Model sıradan bir lojistik regresyon. ' +
+      'Ölçümler ayrı bir 4000 örneklik test kümesinde.</p>' +
+      '<p>Varsayılan 0.5 eşiğinde model şöyle davranıyor:</p>' +
+      '<p style="font-family:var(--mono)">doğruluk &nbsp;&nbsp;%96.9<br>' +
+      'kesinlik &nbsp;&nbsp;0.848<br>' +
+      'hatırlama &nbsp;0.521</p>' +
+      '<p>Doğruluk mükemmele yakın ama <b>gerçek pozitiflerin yarısı kaçıyor.</b> ' +
+      'Sorun modelde değil: 0.5 eşiği, sınıflar dengeliyken anlamlı olan keyfi bir sayı.</p>' +
+      '<p>Eşiği düşürünce takas görünür hâle geliyor:</p>' +
+      '<p style="font-family:var(--mono)">eşik &nbsp;kesinlik &nbsp;hatırlama &nbsp;&nbsp;F1<br>' +
+      '0.05 &nbsp;&nbsp;0.325 &nbsp;&nbsp;&nbsp;&nbsp;0.851 &nbsp;&nbsp;&nbsp;0.470<br>' +
+      '0.20 &nbsp;&nbsp;0.600 &nbsp;&nbsp;&nbsp;&nbsp;0.712 &nbsp;&nbsp;&nbsp;0.651<br>' +
+      '0.39 &nbsp;&nbsp;0.799 &nbsp;&nbsp;&nbsp;&nbsp;0.591 &nbsp;&nbsp;&nbsp;<b>0.679</b><br>' +
+      '0.50 &nbsp;&nbsp;0.848 &nbsp;&nbsp;&nbsp;&nbsp;0.521 &nbsp;&nbsp;&nbsp;0.646<br>' +
+      '0.70 &nbsp;&nbsp;0.967 &nbsp;&nbsp;&nbsp;&nbsp;0.414 &nbsp;&nbsp;&nbsp;0.580</p>' +
+      '<p>En iyi F1 <b>0.39</b> eşiğinde, varsayılanda değil. Model hiç değişmedi, ' +
+      'eğitim tekrarlanmadı, tek bir sayı oynadı.</p>' +
+      '<p>Bu, dengesiz veride yapılabilecek <b>en ucuz müdahale</b>. Sonraki iki adımda ' +
+      'çok daha pahalı iki yöntemin bundan fazlasını yapıp yapmadığını ölçeceğiz.</p>',
+    learned:'<b>0.5 eşiği bir varsayılan, bir kural değil.</b><br><br>' +
+      'Bu veride varsayılan eşikte doğruluk %96.9 ama hatırlama 0.521: pozitiflerin yarısı kaçıyor.<br><br>' +
+      'En iyi F1 0.39 eşiğinde (0.679), varsayılanda 0.646. Modele dokunmadan, tek sayı değiştirerek.',
+    xp:45,
+  },
+  {
+    t:'Sınıf ağırlığı ne kazandırıyor',
+    goal:'Azınlık sınıfına ağırlık vermenin gerçekte ne yaptığını ölçeceksin.',
+    todo:'Ağırlığı büyüt. Üç eğriye birden bak: AUC, en iyi F1 ve ECE.',
+    kind:'controls', viz:'dngAgirlik', h:760,
+    controls:[{k:'agirlik', lb:'AĞIRLIK', min:0, max:5, step:1, val:0,
+               fmt:v=>'w = '+[1,2,5,10,19,40][Math.round(v)]}],
+    live:s => { const w = [1,2,5,10,19,40][Math.max(0,Math.min(5,Math.round(s.agirlik)))];
+      const m = DNG.model(w), b = DNG.enIyiF1(m.p);
+      return [['AĞIRLIK', 'w = '+w], ['AUC', m.auc.toFixed(4), K.blue],
+              ['EN İYİ F1', b.f1.toFixed(3), K.yellow], ['O EŞİK', b.esik.toFixed(3), K.purple],
+              ['ECE', m.ece.toFixed(4), m.ece>0.05?K.red:K.green]]; },
+    body:'<p><b>Sınıf ağırlığı</b>, kayıp fonksiyonunda azınlık sınıfının hatasını bir katsayıyla çarpar. ' +
+      'Sezgi şu: model azınlığı daha çok önemsesin.</p>' +
+      '<p>Ölçüm bu sezgiyi kısmen doğruluyor ama sonucu sandığın gibi değil:</p>' +
+      '<p style="font-family:var(--mono)">w &nbsp;&nbsp;&nbsp;&nbsp;AUC &nbsp;&nbsp;&nbsp;&nbsp;en iyi F1 &nbsp;o eşik &nbsp;&nbsp;ECE<br>' +
+      '&nbsp;1 &nbsp;&nbsp;0.9561 &nbsp;&nbsp;0.679 &nbsp;&nbsp;&nbsp;&nbsp;0.390 &nbsp;&nbsp;&nbsp;0.0069<br>' +
+      '&nbsp;5 &nbsp;&nbsp;0.9562 &nbsp;&nbsp;0.679 &nbsp;&nbsp;&nbsp;&nbsp;0.750 &nbsp;&nbsp;&nbsp;0.0499<br>' +
+      '19 &nbsp;&nbsp;0.9563 &nbsp;&nbsp;0.677 &nbsp;&nbsp;&nbsp;&nbsp;0.925 &nbsp;&nbsp;&nbsp;0.1288<br>' +
+      '40 &nbsp;&nbsp;0.9562 &nbsp;&nbsp;0.674 &nbsp;&nbsp;&nbsp;&nbsp;0.970 &nbsp;&nbsp;&nbsp;0.1857</p>' +
+      '<p>Üç sütun ayrı ayrı okunmalı.</p>' +
+      '<p><b>AUC dört ondalıkta sabit.</b> Ağırlık sıralamaya hiçbir şey katmıyor. ' +
+      'Model kimin daha riskli olduğunu ağırlıksız hâliyle de aynı biliyordu.</p>' +
+      '<p><b>En iyi F1 de sabit.</b> 0.679\'dan 0.674\'e. Yani ulaşılabilir tavan aynı; ' +
+      'ağırlık o tavanı yükseltmiyor.</p>' +
+      '<p><b>Değişen tek şey o tavanın hangi eşikte olduğu:</b> 0.390\'dan 0.970\'e. ' +
+      'Ağırlık, olasılık ölçeğini yukarı itiyor, o kadar.</p>' +
+      '<p>Yani <b>sınıf ağırlığı, eşik kaydırmanın dolambaçlı hâli.</b> Aynı sonucu, ' +
+      'modeli yeniden eğiterek elde ediyorsun.</p>' +
+      '<p><b>Ve bedava değil:</b> ECE 0.0069\'dan 0.1857\'ye çıkıyor. Kalibrasyon dersinde ölçtüğün şey ' +
+      'burada bozuluyor. Ağırlıklı modelin "%80" demesinin artık bir karşılığı yok, ' +
+      'çünkü model bilerek şişirilmiş bir ölçekte konuşuyor.</p>',
+    learned:'<b>Sınıf ağırlığı, eşik kaydırmanın pahalı hâlidir.</b><br><br>' +
+      'w 1\'den 40\'a çıkarken AUC 0.9561 → 0.9562 (değişmiyor), en iyi F1 0.679 → 0.674 (değişmiyor).<br><br>' +
+      'Değişen tek şey en iyi F1\'in eşiği: 0.390 → 0.970.<br><br>' +
+      'Bedeli ECE: 0.0069 → 0.1857. Olasılıklar artık gerçeği söylemiyor.',
+    xp:55,
+  },
+  {
+    t:'Yeniden örnekleme',
+    goal:'Üst örnekleme, alt örnekleme ve SMOTE\'un ne kazandırdığını ölçeceksin.',
+    todo:'Yöntemi değiştir. Tablodaki AUC, PR-AUC ve ECE sütunlarına birlikte bak.',
+    kind:'controls', viz:'dngOrnekleme', h:760,
+    controls:[{k:'yontem', lb:'YÖNTEM', min:0, max:3, step:1, val:0,
+               fmt:v=>['ham veri','üst örnekleme','alt örnekleme','SMOTE'][Math.round(v)]}],
+    live:s => { const y = ['ham','ust','alt','smote'][Math.max(0,Math.min(3,Math.round(s.yontem)))];
+      const m = y === 'ham' ? DNG.model(1) : DNG.ornekle(y);
+      return [['AUC', m.auc.toFixed(4), K.blue], ['PR-AUC', m.prAuc.toFixed(4), K.blue],
+              ['ECE', m.ece.toFixed(4), m.ece>0.05?K.red:K.green],
+              ['EN İYİ F1', DNG.enIyiF1(m.p).f1.toFixed(3), K.yellow]]; },
+    body:'<p>Üçüncü ve en popüler yaklaşım veriyi değiştirmek. Üç biçimi var:</p>' +
+      '<p><b>Üst örnekleme:</b> azınlık örneklerini kopyalayarak çoğalt.<br>' +
+      '<b>Alt örnekleme:</b> çoğunluk örneklerinden at.<br>' +
+      '<b>SMOTE:</b> azınlık örnekleri arasında ara noktalar üreterek sentetik örnek yarat.</p>' +
+      '<p>Aynı model, aynı test kümesi:</p>' +
+      '<p style="font-family:var(--mono)">yöntem &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;n &nbsp;&nbsp;&nbsp;&nbsp;AUC &nbsp;&nbsp;&nbsp;&nbsp;PR-AUC &nbsp;&nbsp;ECE &nbsp;&nbsp;&nbsp;&nbsp;F1<br>' +
+      'ham &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4000 &nbsp;0.9561 &nbsp;0.7518 &nbsp;0.0069 &nbsp;0.679<br>' +
+      'üst &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;7600 &nbsp;0.9562 &nbsp;0.7514 &nbsp;0.1279 &nbsp;0.676<br>' +
+      'alt &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;400 &nbsp;0.9562 &nbsp;0.7522 &nbsp;0.1252 &nbsp;0.677<br>' +
+      'SMOTE &nbsp;&nbsp;&nbsp;7600 &nbsp;0.9563 &nbsp;0.7517 &nbsp;0.1031 &nbsp;0.674</p>' +
+      '<p><b>AUC ve PR-AUC dört ondalıkta aynı.</b> Dört yöntem, tek bir anlamlı fark yok. ' +
+      'PR-AUC\'u da koyduk çünkü dengesiz veride ROC\'tan daha bilgilendiricidir; o da aynı şeyi söylüyor.</p>' +
+      '<p><b>En iyi F1 de aynı.</b> 0.674 ile 0.679 arası.</p>' +
+      '<p><b>ECE ise yıkılıyor.</b> 0.0069\'dan 0.10-0.13 bandına. Sebebi doğrudan: ' +
+      'yeniden örnekleme <b>taban oranını değiştiriyor.</b> Model artık %5 pozitifli bir dünya değil, ' +
+      '%50 pozitifli bir dünya gördü ve olasılıklarını ona göre söylüyor. Ama gerçek dünya hâlâ %5.</p>' +
+      '<p><b>Ve alt örnekleme verinin %90\'ını atıyor:</b> 4000 örnekten 400\'e. ' +
+      'Karşılığında ölçülebilir hiçbir kazanç yok.</p>' +
+      '<p style="color:#facc15">Dürüst sınır: bu sonuç <b>model doğru belirtilmişken</b> geçerli. ' +
+      'Model kapasitesi yetersizse ya da optimizasyon azınlığı gerçekten ihmal ediyorsa ' +
+      'yeniden örnekleme işe yarayabilir. "Hiçbir zaman işe yaramaz" demiyoruz; ' +
+      '"bu koşulda ölçülen budur" diyoruz.</p>',
+    quiz:{ q:'Bir ekip dengesiz veride SMOTE uyguladı ve <b>F1 skoru yükseldi</b> diye raporluyor. Bu raporu değerlendirirken ilk sorman gereken soru hangisi?',
+      opts:[
+        {t:'F1 hangi eşikte ölçüldü, ve SMOTE\'suz modelde eşik optimize edildi mi?', why:'Doğru. Yeniden örnekleme olasılık ölçeğini kaydırır, yani 0.5 eşiği SMOTE\'lu modelde farklı bir yere denk gelir. SMOTE\'lu modeli optimize edilmiş eşikle, ham modeli varsayılan 0.5 ile karşılaştırmak çok yaygın bir hatadır ve bütün kazancı üretebilir. Adil karşılaştırma: her iki modelde de eşiği optimize et, ya da eşikten bağımsız bir ölçüt (AUC, PR-AUC) kullan.'},
+        {t:'SMOTE\'un k komşu parametresi kaçtı?', why:'Ayarlanabilir bir şey ama esas mesele değil. Parametreyi değiştirmek ölçüm yönteminden gelen yanlılığı düzeltmez.'},
+        {t:'Test kümesine de SMOTE uygulandı mı?', why:'Bu gerçekten kritik bir hata ve sorulması gerekir; test kümesine sentetik örnek girerse sonuç tamamen anlamsızdır. Ama F1 yükselmesinin en yaygın ve en sinsi açıklaması eşik farkıdır, çünkü hata yapılmasa bile ortaya çıkar.'},
+        {t:'Kaç kat çapraz doğrulama kullanıldı?', why:'Ölçümün varyansını etkiler, yanlılığını değil. Beş kat da yapsalar aynı eşik karşılaştırması sorunu sürer.'},
+      ], correct:0 },
+    learned:'<b>Yeniden örnekleme bilgi eklemez, taban oranını değiştirir.</b><br><br>' +
+      'Dört yöntemde AUC 0.9561-0.9563, PR-AUC 0.7514-0.7522, en iyi F1 0.674-0.679. Hepsi aynı.<br><br>' +
+      'ECE ise 0.0069\'dan 0.10-0.13\'e çıkıyor: model artık %50 pozitifli bir dünyanın olasılıklarını söylüyor.<br><br>' +
+      'Alt örnekleme ayrıca verinin %90\'ını atıyor (4000 → 400).',
+    xp:60,
+  },
+  {
+    t:'Eşiği nereden bulmalı',
+    goal:'Doğru eşiğin F1\'den değil maliyetten geldiğini göreceksin.',
+    todo:'Kaçırma maliyetini değiştir ve t*\'ın nasıl kaydığına bak.',
+    kind:'controls', viz:'dngKarar', h:760,
+    controls:[{k:'kacir', lb:'KAÇIRMA MALİYETİ', min:20, max:200, step:10, val:100,
+               fmt:v=>String(Math.round(v))}],
+    live:s => { const cK = Math.round(s.kacir), cA = 20, M = DNG.model(1);
+      const t = DNG.maliyetEsigi(cA, cK);
+      const a = DNG.netKazanc(M.p, t, cA, cK), b = DNG.netKazanc(M.p, 0.5, cA, cK);
+      return [['t*', t.toFixed(3), K.yellow], ['NET (t*)', a.fark, a.fark>=0?K.green:K.red],
+              ['NET (0.5)', b.fark, K.blue], ['FARK', a.fark-b.fark, a.fark>=b.fark?K.green:K.orange]]; },
+    body:'<p>Şimdiye kadar eşiği F1\'e göre seçtik. Ama F1 bir <b>kolaylık</b>tır: kesinlik ile hatırlamayı ' +
+      'eşit önemde varsayar. Gerçek hayatta bu neredeyse hiç doğru değildir.</p>' +
+      '<p>Doğru eşik maliyetten gelir ve kapalı formu vardır:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">t* = C_alarm / (C_alarm + C_kaçırma)</p>' +
+      '<p>Kalibre bir olasılıkta beklenen değeri en büyükleyen eşik budur. ' +
+      '<i>Bir AI projesine nasıl karar verilir</i> dersindeki aritmetiğin eşik tarafındaki karşılığı.</p>' +
+      '<p>Formülün doğruluğunun basit bir sınaması var: maliyetler eşitken t* tam olarak <b>0.5</b> çıkar. ' +
+      'Yani varsayılan eşik, "kaçırmak ile boş alarm aynı derecede pahalı" varsayımının kısaltmasıdır. ' +
+      'O varsayım nadiren geçerlidir.</p>' +
+      '<p>Ölçüm (boş alarm 20 birim sabit, 4000 vakalık test kümesi):</p>' +
+      '<p style="font-family:var(--mono)">kaçırma &nbsp;&nbsp;t* &nbsp;&nbsp;&nbsp;net(t*) &nbsp;net(0.5)<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;100 &nbsp;0.167 &nbsp;&nbsp;10540 &nbsp;&nbsp;&nbsp;8560<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;50 &nbsp;0.286 &nbsp;&nbsp;&nbsp;2780 &nbsp;&nbsp;&nbsp;2960<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;20 &nbsp;0.500 &nbsp;&nbsp;&nbsp;−400 &nbsp;&nbsp;&nbsp;−400</p>' +
+      '<p>Kaçırma pahalıyken formül belirgin kazanç veriyor. Maliyetler eşitlendiğinde ikisi çakışıyor, ' +
+      'çünkü t* zaten 0.5.</p>' +
+      '<p style="color:#facc15">Ortadaki satır dürüstlük gerektiriyor: kaçırma 50 iken t* biraz ' +
+      '<b>geride</b> kalıyor. Formül gerçek olasılık için en iyiyi verir; sonlu bir test kümesinde ' +
+      've kalibrasyon tam mükemmel değilken ampirik en iyi nokta birkaç puan kayabilir. ' +
+      'Formül bir başlangıç noktasıdır, son söz değil; eşik doğrulama kümesinde de kontrol edilmelidir.</p>' +
+      '<p><b>Ve son satır en önemlisi:</b> maliyetler eşitken net kazanç <b>negatif</b>. ' +
+      'Yani bu problemde, boş alarm kaçırma kadar pahalıysa model kurmak zarar ettiriyor. ' +
+      'Bu, eşikle çözülecek bir şey değil; proje kararı dersindeki başabaş hesabının kendisi.</p>' +
+      '<p><b>Karar listesi:</b></p>' +
+      '<p><b>1 ·</b> Önce eşiği oyna. Bedava, modeli bozmaz, kalibrasyonu korur.<br>' +
+      '<b>2 ·</b> Eşiği F1\'den değil maliyetten seç. F1 maliyetleri bilmiyorsan geçici bir vekildir.<br>' +
+      '<b>3 ·</b> Sınıf ağırlığı ve yeniden örneklemeye ancak eşik yetmediğinde bak, ' +
+      've baktığında kalibrasyonu yeniden ölç.<br>' +
+      '<b>4 ·</b> Olasılık kullanıcıya gösterilecekse ya da maliyet hesabına girecekse ' +
+      'ham modeli kullan, sonra kalibre et.</p>',
+    learned:'<b>Doğru eşik F1\'den değil maliyetten gelir: t* = C_alarm / (C_alarm + C_kaçırma).</b><br><br>' +
+      'Kaçırma 100, alarm 20 iken t* = 0.167 ve net kazanç 10540; varsayılan 0.5 eşiğinde 8560.<br><br>' +
+      'Maliyetler eşitken t* tam olarak 0.5 çıkıyor: varsayılan eşik, "iki hata aynı derecede pahalı" ' +
+      'varsayımının kısaltmasıdır.<br><br>' +
+      'Sıra: önce eşik, sonra maliyet, en son ağırlık ve örnekleme.',
     xp:60,
   },
 ]};

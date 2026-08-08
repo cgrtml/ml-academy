@@ -38,10 +38,15 @@ En yüksek öncelik: beklentiyi dersin kendisi yaratıyor, karşılığı yok.
       Kapsanmayan: sıcaklık ölçekleme (çok sınıflı), sınıf başına kalibrasyon,
       conformal prediction.
 
-- [ ] **Dengesiz veriyle ne yapılır** · eşik kaydırma, sınıf ağırlığı, yeniden örnekleme
-      `metrikler` sorunu kuruyor (accuracy neden yalan söyler) ama çözümü
-      hiçbir derste yok. `dagilim-kaymasi[4]` ve `cokdilli[4]` de değiniyor.
-      Widget: eşik kaydırıcısı, hatırlama-kesinlik takası canlı.
+- [x] **Dengesiz veriyle ne yapılır** · eşik, ağırlık, örnekleme  ✔ 8 Ağustos 2026
+      `DERSLER['dengesiz']`, Rota 1 (`kalibrasyon` sonrası), 4 adım, 220 XP.
+      Ölçülen: %5 pozitifli veride 0.5 eşiğinde doğruluk %96.9 ama hatırlama 0.521.
+      En iyi F1 0.39 eşiğinde. Sınıf ağırlığı ve üç yeniden örnekleme yöntemi
+      AUC'yi (0.9561-0.9563) ve en iyi F1'i (0.674-0.679) değiştirmiyor,
+      yalnızca en iyi eşiği kaydırıyor ve ECE'yi 0.0069'dan 0.10-0.19'a çıkarıyor.
+      Kapalı form eşik: t* = C_alarm / (C_alarm + C_kaçırma).
+      Kapsanmayan: maliyete duyarlı öğrenme, odak kaybı (focal loss),
+      tek sınıf yöntemleri, aşırı dengesizlik (%0.1 altı).
 
 - [ ] **LoRA / PEFT** · düşük ranklı uyarlama
       `transformer[2]` birebir şunu diyor: "LoRA ve nicemlemenin varlık sebebi budur".
@@ -104,7 +109,7 @@ başlanmamalı.
 
 1. ~~Zaman serisi~~ ✔ tamamlandı
 2. ~~Kalibrasyon~~ ✔ tamamlandı
-3. Dengesiz veri
+3. ~~Dengesiz veri~~ ✔ tamamlandı
 4. A/B testi
 5. Bilgi kuramı
 6. LoRA / PEFT

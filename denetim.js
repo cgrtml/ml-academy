@@ -4059,6 +4059,51 @@ console.log('═══ KALİBRASYON ═══');
 }
 
 console.log('');
+console.log('═══ DENGESİZ VERİ ═══');
+{
+  iddia('eğitim örneği',4000,DNG.EG.n);
+  iddia('test örneği',4000,DNG.TE.n);
+  iddia('test taban oranı %',5.4,100*DNG.TE.Y.reduce((a,b)=>a+b,0)/DNG.TE.n,1);
+  const M = DNG.model(1);
+  iddia('AUC',0.9561,M.auc,4);
+  iddia('PR-AUC',0.7518,M.prAuc,4);
+  iddia('ECE',0.0069,M.ece,4);
+  [[0.05,0.325,0.851,0.470],[0.20,0.600,0.712,0.651],
+   [0.50,0.848,0.521,0.646],[0.70,0.967,0.414,0.580]].forEach(([e,k,h,f])=>{
+    const o = DNG.olcut(M.p, DNG.TE.Y, e);
+    iddia('eşik '+e+' kesinlik',k,o.kesinlik,3);
+    iddia('eşik '+e+' hatırlama',h,o.hatirlama,3);
+    iddia('eşik '+e+' F1',f,o.f1,3);});
+  iddia('eşik 0.5 doğruluk %',96.9,100*DNG.olcut(M.p,DNG.TE.Y,0.5).dogruluk,1);
+  const en = DNG.enIyiF1(M.p);
+  iddia('en iyi F1 eşiği',0.390,en.esik,3);
+  iddia('en iyi F1',0.679,en.f1,3);
+  [[1,0.9561,0.679,0.390,0.0069],[5,0.9562,0.679,0.750,0.0499],
+   [19,0.9563,0.677,0.925,0.1288],[40,0.9562,0.674,0.970,0.1857]].forEach(([w,a,f,e,c])=>{
+    const m = DNG.model(w), b = DNG.enIyiF1(m.p);
+    iddia('w '+w+' AUC',a,m.auc,4);
+    iddia('w '+w+' en iyi F1',f,b.f1,3);
+    iddia('w '+w+' o eşik',e,b.esik,3);
+    iddia('w '+w+' ECE',c,m.ece,4);});
+  [['ust',7600,0.9562,0.7514,0.1279,0.676],['alt',400,0.9562,0.7522,0.1252,0.677],
+   ['smote',7600,0.9563,0.7517,0.1031,0.674]].forEach(([y,n,a,pr,c,f])=>{
+    const m = DNG.ornekle(y), b = DNG.enIyiF1(m.p);
+    iddia(y+' n',n,m.n);
+    iddia(y+' AUC',a,m.auc,4);
+    iddia(y+' PR-AUC',pr,m.prAuc,4);
+    iddia(y+' ECE',c,m.ece,4);
+    iddia(y+' en iyi F1',f,b.f1,3);});
+  iddia('maliyet eşiği 20/100',0.167,DNG.maliyetEsigi(20,100),3);
+  iddia('maliyet eşiği 20/50',0.286,DNG.maliyetEsigi(20,50),3);
+  iddia('maliyet eşiği eşitken',0.5,DNG.maliyetEsigi(20,20),3);
+  iddia('net(t*) kaçırma 100',10540,DNG.netKazanc(M.p,DNG.maliyetEsigi(20,100),20,100).fark);
+  iddia('net(0.5) kaçırma 100',8560,DNG.netKazanc(M.p,0.5,20,100).fark);
+  iddia('net(t*) kaçırma 50',2780,DNG.netKazanc(M.p,DNG.maliyetEsigi(20,50),20,50).fark);
+  iddia('net(0.5) kaçırma 50',2960,DNG.netKazanc(M.p,0.5,20,50).fark);
+  iddia('net eşit maliyet',-400,DNG.netKazanc(M.p,0.5,20,20).fark);
+}
+
+console.log('');
 console.log('  '+hz+' hazır / '+tp+' ders · '+ad+' adım · '+xp+' XP · '+q+' soru · '+unl+' kilit · '+kn+' kaynak · '+Object.keys(VIZ).length+' görsel');
 console.log('  İngilizce çevrilmiş ders: '+nEn+' / '+Object.keys(DERSLER).length);
 console.log('');

@@ -617,6 +617,14 @@ var ARAYUZ_EN = {
   "lojistik": "logistic",
   "isotonik": "isotonic",
   "Platt": "Platt",
+  "EŞİK": "THRESHOLD",
+  "HATIRLAMA": "RECALL",
+  "ALARM": "ALARM",
+  "EN İYİ F#": "BEST F#",
+  "O EŞİK": "ITS THRESHOLD",
+  "t*": "t*",
+  "NET (t*)": "NET (t*)",
+  "NET (#)": "NET (#)",
 /*SON*/
 };
 

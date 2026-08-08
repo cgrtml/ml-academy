@@ -24,6 +24,8 @@
   /* ── hero ── */
   header{text-align:center;padding:56px 0 34px}
   .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.26em;color:var(--mut);text-transform:uppercase}
+  .hUst{position:fixed;top:56px;right:18px;z-index:60;display:flex;gap:8px}
+  @media(max-width:640px){.hUst{position:static;justify-content:center;margin:10px 0 0}}
   .kicker .alan{text-transform:none;letter-spacing:.06em;color:#5b6b80}
   .kicker .alan::before{content:'·';margin:0 9px;color:#3a4a5c}
   h1{font-size:clamp(30px,5.6vw,52px);margin:14px 0 12px;font-weight:850;letter-spacing:-.03em;line-height:1.12}
@@ -106,6 +108,9 @@
     <button data-dil="tr">TR</button>
     <button data-dil="en">EN</button>
   </div>
+
+  <!-- hesap düğmeleri; Supabase yoksa boş kalır -->
+  <div class="hUst" id="hesapCubuk"></div>
 
   <header>
     <div class="kicker">ML Academy</div>
@@ -333,8 +338,12 @@ dilUygula();
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="yapilandirma.js"></script>
 <script src="topluluk/topluluk.js"></script>
+<script src="topluluk/hesap.js"></script>
 <script>
-  TOPLULUK.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL });
+  const toplulukYenile = () => TOPLULUK.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL });
+  toplulukYenile();
+  HESAP.dinle(toplulukYenile);          // yorum onaylanınca sayaçlar tazelensin
+  HESAP.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL });
 </script>
 </body>
 </html>
