@@ -1,7 +1,7 @@
 # Araştırma rızası · gösterilecek metin
 
 **Sürüm:** `2026-08-08.1`
-Bu sürüm numarası `riza.metin_sur` alanına yazılır. Metin değişirse sürüm artar
+Bu sürüm numarası `consent.text_version` alanına yazılır. Metin değişirse sürüm artar
 ve eski rıza geçersiz sayılıp yeniden sorulur.
 
 **Ne zaman gösterilir:** kayıt tamamlandıktan hemen sonra, ilk derse girmeden önce.

@@ -1,151 +1,153 @@
--- ML Academy · araştırma telemetrisi · Supabase şeması
--- Tasarım kuralı: HİZMET verisi ile ARAŞTIRMA verisi ayrı tablolarda durur.
--- Hizmet verisi hesabın çalışması için gerekli, ayrı rıza istemez.
--- Araştırma verisi gerekli değildir, ayrı ve geri alınabilir rıza ister,
--- ve rıza verilmese de site tam olarak çalışır.
+-- ML Academy · research telemetry · Supabase schema
+--
+-- Design rule: SERVICE data and RESEARCH data live in separate tables.
+-- Service data is required for the account to work and needs no separate consent.
+-- Research data is not required, needs its own revocable consent, and the site
+-- works fully without it.
+--
+-- Identifiers are English so the schema can be shared: published datasets,
+-- ethics board data dictionaries and outside collaborators all expect it.
 
 -- ═══════════════════════════════════════════════════════════
--- 1 · HİZMET KATMANI  (dayanak: sözleşmenin ifası)
+-- 1 · SERVICE LAYER  (lawful basis: performance of a contract)
 -- ═══════════════════════════════════════════════════════════
 
-create table if not exists profil (
-  id          uuid primary key references auth.users(id) on delete cascade,
-  olusturuldu timestamptz not null default now(),
-  dil         text not null default 'tr' check (dil in ('tr','en')),
-  ulke        text,                    -- rıza akışını belirler (AB / TR / ABD / diğer)
-  dogum_yili  int                      -- yaş eşiği kontrolü için; tam tarih tutulmuyor
+create table if not exists profile (
+  id         uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  lang       text not null default 'tr' check (lang in ('tr','en')),
+  country    text,                     -- drives the consent flow (EU / TR / US / other)
+  birth_year int                       -- for the age threshold; no full date stored
 );
 
-create table if not exists ilerleme (
-  kullanici uuid not null references auth.users(id) on delete cascade,
-  ders      text not null,
-  adim      int  not null,
-  bitti     boolean not null default false,
-  xp        int  not null default 0,
-  guncel    timestamptz not null default now(),
-  primary key (kullanici, ders, adim)
+create table if not exists progress (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  lesson     text not null,
+  step       int  not null,
+  completed  boolean not null default false,
+  xp         int  not null default 0,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, lesson, step)
 );
 
 -- ═══════════════════════════════════════════════════════════
--- 2 · RIZA KAYDI
+-- 2 · CONSENT LOG
 -- ═══════════════════════════════════════════════════════════
--- Her rıza değişikliği YENİ satır olarak yazılır, güncellenmez.
--- Geri alma da bir satırdır. Böylece "o an neye onay vermişti"
--- sorusunun cevabı her zaman elde kalır. Denetimde istenen budur.
+-- Every consent change is written as a NEW row, never updated.
+-- Withdrawal is a row too. That way "what had they consented to at the time"
+-- is always answerable, which is exactly what an audit asks for.
 
-create table if not exists riza (
+create table if not exists consent (
+  id           bigserial primary key,
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  purpose      text not null check (purpose in ('telemetry','learning_profile','contact')),
+  granted      boolean not null,
+  text_version text not null,          -- version of the consent text, e.g. '2026-08-08.1'
+  created_at   timestamptz not null default now(),
+  source       text                    -- 'after_signup' | 'settings' | 'withdrawal'
+);
+
+create index if not exists consent_user_idx on consent (user_id, purpose, created_at desc);
+
+-- Current consent state: the latest row per purpose.
+create or replace view consent_current as
+select distinct on (user_id, purpose)
+       user_id, purpose, granted, text_version, created_at
+from   consent
+order  by user_id, purpose, created_at desc;
+
+-- ═══════════════════════════════════════════════════════════
+-- 3 · RESEARCH LAYER  (lawful basis: explicit consent)
+-- ═══════════════════════════════════════════════════════════
+-- Write access is guarded by a policy that reads the consent view.
+-- With no consent no row can be written; this is not left to the client.
+
+create table if not exists event (
   id         bigserial primary key,
-  kullanici  uuid not null references auth.users(id) on delete cascade,
-  amac       text not null check (amac in ('telemetri','ogrenme_profili','iletisim')),
-  verildi    boolean not null,
-  metin_sur  text not null,            -- onaylanan metnin sürümü, ör. '2026-08-08.1'
-  zaman      timestamptz not null default now(),
-  kaynak     text                      -- 'kayit_sonrasi' | 'ayarlar' | 'geri_alma'
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  session    uuid not null,            -- one visit; groups rows independently of the user
+  lesson     text not null,
+  step       int  not null,
+  kind       text not null check (kind in (
+               'step_opened','step_closed','option_selected','correct','wrong',
+               'retried','slider_moved','animation_played','hint_opened',
+               'explainer_opened','code_run','abandoned')),
+  value      jsonb,                    -- e.g. {"option":2, "attempt":3, "ms":8400}
+  created_at timestamptz not null default now()
 );
 
-create index if not exists riza_kullanici_idx on riza (kullanici, amac, zaman desc);
-
--- O anki geçerli rıza durumu: her amaç için en son satır.
-create or replace view riza_guncel as
-select distinct on (kullanici, amac)
-       kullanici, amac, verildi, metin_sur, zaman
-from   riza
-order  by kullanici, amac, zaman desc;
+create index if not exists event_user_idx on event (user_id, created_at desc);
+create index if not exists event_item_idx on event (lesson, step, kind);
 
 -- ═══════════════════════════════════════════════════════════
--- 3 · ARAŞTIRMA KATMANI  (dayanak: açık rıza)
--- ═══════════════════════════════════════════════════════════
--- Yazma yetkisi, rıza görünümüne bakan bir politikayla korunuyor.
--- Yani rıza yoksa satır yazılamaz; bu istemci tarafına bırakılmıyor.
-
-create table if not exists olay (
-  id        bigserial primary key,
-  kullanici uuid not null references auth.users(id) on delete cascade,
-  oturum    uuid not null,             -- tek bir ziyaret; kullanıcıdan bağımsız gruplama
-  ders      text not null,
-  adim      int  not null,
-  tur       text not null check (tur in (
-              'adim_acildi','adim_kapandi','sik_secildi','dogru','yanlis',
-              'tekrar_denendi','kaydirici','animasyon_oynatildi','ipucu_acildi',
-              'anlatim_acildi','kod_calistirildi','terk_edildi')),
-  deger     jsonb,                     -- ör. {"sik":2, "deneme":3, "sure_ms":8400}
-  zaman     timestamptz not null default now()
-);
-
-create index if not exists olay_kullanici_idx on olay (kullanici, zaman desc);
-create index if not exists olay_madde_idx     on olay (ders, adim, tur);
-
--- ═══════════════════════════════════════════════════════════
--- 4 · SATIR DÜZEYİ GÜVENLİK
+-- 4 · ROW LEVEL SECURITY
 -- ═══════════════════════════════════════════════════════════
 
-alter table profil    enable row level security;
-alter table ilerleme  enable row level security;
-alter table riza      enable row level security;
-alter table olay      enable row level security;
+alter table profile  enable row level security;
+alter table progress enable row level security;
+alter table consent  enable row level security;
+alter table event    enable row level security;
 
--- Herkes yalnızca kendi satırını görür ve yazar.
-create policy profil_kendi   on profil   for all using (auth.uid() = id)        with check (auth.uid() = id);
-create policy ilerleme_kendi on ilerleme for all using (auth.uid() = kullanici) with check (auth.uid() = kullanici);
+-- Everyone sees and writes only their own rows.
+create policy profile_own  on profile  for all using (auth.uid() = id)      with check (auth.uid() = id);
+create policy progress_own on progress for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
--- Rıza kaydı: yazılır ve okunur, ASLA silinmez veya değiştirilmez.
-create policy riza_oku  on riza for select using (auth.uid() = kullanici);
-create policy riza_yaz  on riza for insert with check (auth.uid() = kullanici);
+-- Consent log: written and read, NEVER updated or deleted.
+create policy consent_read  on consent for select using (auth.uid() = user_id);
+create policy consent_write on consent for insert with check (auth.uid() = user_id);
 
--- Olay yazımı yalnızca geçerli telemetri rızası varken mümkün.
-create policy olay_yaz on olay for insert with check (
-  auth.uid() = kullanici
+-- Events can only be written while a valid telemetry consent exists.
+create policy event_write on event for insert with check (
+  auth.uid() = user_id
   and exists (
-    select 1 from riza_guncel r
-    where r.kullanici = auth.uid() and r.amac = 'telemetri' and r.verildi
+    select 1 from consent_current c
+    where c.user_id = auth.uid() and c.purpose = 'telemetry' and c.granted
   )
 );
-create policy olay_oku on olay for select using (auth.uid() = kullanici);
+create policy event_read on event for select using (auth.uid() = user_id);
 
--- Rıza geri alınınca olayları silen fonksiyon.
--- "Geri almak vermek kadar kolay olmalı" şartını teknik olarak karşılar.
-create or replace function riza_geri_alindi() returns trigger
+-- Delete the events when consent is withdrawn.
+-- This is what technically satisfies "withdrawing must be as easy as giving".
+create or replace function on_consent_revoked() returns trigger
 language plpgsql security definer as $$
 begin
-  if new.amac = 'telemetri' and new.verildi = false then
-    delete from olay where kullanici = new.kullanici;
+  if new.purpose = 'telemetry' and new.granted = false then
+    delete from event where user_id = new.user_id;
   end if;
   return new;
 end $$;
 
-drop trigger if exists riza_geri_alma_tetik on riza;
-create trigger riza_geri_alma_tetik after insert on riza
-for each row execute function riza_geri_alindi();
+drop trigger if exists consent_revoked_trigger on consent;
+create trigger consent_revoked_trigger after insert on consent
+for each row execute function on_consent_revoked();
 
 -- ═══════════════════════════════════════════════════════════
--- 4b · DATA API ERİŞİMİ
+-- 4b · DATA API ACCESS
 -- ═══════════════════════════════════════════════════════════
--- Proje "Automatically expose new tables" KAPALI kurulduğu için tablolar
--- Data API'ye kendiliğinden açılmaz. Aşağıdaki grant'ler olmadan istemci
--- hiçbir satır göremez. Asıl koruma yine RLS'te: grant "tabloya bakabilir",
--- RLS "hangi satırları" sorusunu cevaplar. İkisi birlikte çalışır.
+-- The project is created with "Automatically expose new tables" OFF, so tables
+-- are not exposed to the Data API on their own. Without the grants below the
+-- client sees no rows at all. The real protection is still RLS: a grant answers
+-- "may you look at this table", RLS answers "which rows". They work together.
 
 grant usage on schema public to anon, authenticated;
 
-grant select, insert, update on profil    to authenticated;
-grant select, insert, update on ilerleme  to authenticated;
-grant select, insert          on riza     to authenticated;   -- güncelleme/silme YOK
-grant select, insert          on olay     to authenticated;   -- güncelleme/silme YOK
+grant select, insert, update on profile  to authenticated;
+grant select, insert, update on progress to authenticated;
+grant select, insert          on consent to authenticated;   -- no update, no delete
+grant select, insert          on event   to authenticated;   -- no update, no delete
 
-grant usage on sequence riza_id_seq to authenticated;
-grant usage on sequence olay_id_seq to authenticated;
+grant usage on sequence consent_id_seq to authenticated;
+grant usage on sequence event_id_seq   to authenticated;
 
--- Anonim ziyaretçinin bu tabloların hiçbirinde işi yok.
--- yonetici tablosuna kimseye grant verilmiyor; yalnızca yonetici_mi()
--- fonksiyonu (security definer) içinden okunuyor.
+-- An anonymous visitor has no business in any of these tables.
 
 -- ═══════════════════════════════════════════════════════════
--- 5 · ARAŞTIRMA GÖRÜNÜMÜ  (kimliksiz)
+-- 5 · RESEARCH VIEW  (de-identified)
 -- ═══════════════════════════════════════════════════════════
--- Analiz bu görünüm üzerinden yapılır, ham tablo üzerinden değil.
--- Kullanıcı kimliği takma bir anahtara dönüştürülür.
+-- Analysis runs on this view, never on the raw table.
+-- The user id is replaced by a salted pseudonym.
 
-create or replace view olay_anonim as
-select encode(digest(kullanici::text || current_setting('app.tuz', true), 'sha256'), 'hex') as takma,
-       oturum, ders, adim, tur, deger, date_trunc('hour', zaman) as saat
-from   olay;
+create or replace view event_anonymous as
+select encode(digest(user_id::text || current_setting('app.salt', true), 'sha256'), 'hex') as pseudonym,
+       session, lesson, step, kind, value, date_trunc('hour', created_at) as hour
+from   event;

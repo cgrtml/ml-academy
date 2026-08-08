@@ -81,14 +81,14 @@ const TOPLULUK = (() => {
   /* ── veri ── */
 
   async function sayaclar(){
-    const { data, error } = await sb.rpc('topluluk_sayaclari');
+    const { data, error } = await sb.rpc('community_stats');
     if (error) throw error;
     return data;
   }
 
   async function yorumlar(limit){
     const { data, error } = await sb
-      .from('yorum_acik').select('id, gorunen_ad, puan, metin, onaylandi')
+      .from('review_public').select('id, display_name, rating, body, approved_at')
       .limit(limit || 6);
     if (error) throw error;
     return data || [];
@@ -99,19 +99,19 @@ const TOPLULUK = (() => {
   function ciz(hedef, s, y){
     stil();
     const kartlar = [
-      { n: say(s.kullanici),    e: t.kullanici },
-      { n: say(s.ders_bitiren), e: t.bitiren },
-      { n: say(s.yorum),        e: t.yorum },
-      { n: s.ortalama_puan ? Number(s.ortalama_puan).toFixed(1) : '–',
+      { n: say(s.users),            e: t.kullanici },
+      { n: say(s.lesson_finishers), e: t.bitiren },
+      { n: say(s.reviews),          e: t.yorum },
+      { n: s.avg_rating ? Number(s.avg_rating).toFixed(1) : '–',
         e: t.puan,
-        yld: s.ortalama_puan ? yildiz(Math.round(s.ortalama_puan)) : '' },
+        yld: s.avg_rating ? yildiz(Math.round(s.avg_rating)) : '' },
     ];
 
     const yorumHTML = y.length
       ? `<div class="tYorumlar">${y.map(r => `<div class="tYorum">
-           <div class="ust"><span class="ad">${kacir(r.gorunen_ad)}</span>
-             <span class="p">${yildiz(r.puan)}</span></div>
-           ${r.metin ? `<p>${kacir(r.metin)}</p>` : ''}
+           <div class="ust"><span class="ad">${kacir(r.display_name)}</span>
+             <span class="p">${yildiz(r.rating)}</span></div>
+           ${r.body ? `<p>${kacir(r.body)}</p>` : ''}
          </div>`).join('')}</div>`
       : `<div class="tBos"><b>${t.yokBas}</b>${t.yokAlt}</div>`;
 
@@ -121,7 +121,7 @@ const TOPLULUK = (() => {
       <div class="tSayac">${kartlar.map(k => `<div class="tKart">
         <div class="n">${k.n}</div>${k.yld ? `<div class="yld">${k.yld}</div>` : ''}
         <div class="e">${k.e}</div></div>`).join('')}</div>
-      ${(s.yorum || 0) < 5 ? `<div class="tNot">${t.azBilgi}</div>` : ''}
+      ${(s.reviews || 0) < 5 ? `<div class="tNot">${t.azBilgi}</div>` : ''}
       <div class="tYorumBas">${t.yorumBas}</div>
       ${yorumHTML}`;
     hedef.style.display = '';

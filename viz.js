@@ -16160,3 +16160,134 @@ VIZ.kalSinir = s => {
         '  ·  isotonik ECE değişimi '+(iso.ece-ham.ece).toFixed(4)+
         '  ·  sıralama korunur, ölçek düzelir', K.green);
 };
+
+/* ═══════════════ DENGESİZ VERİ ═══════════════
+   metrikler dersi sorunu kuruyor: dengesiz veride accuracy yalan söyler.
+   Bu motor ÇÖZÜMLERİ ölçüyor: eşik kaydırma, sınıf ağırlığı, yeniden örnekleme.
+
+   Üç yöntemin aynı modele ne yaptığı ayrı ayrı ölçülüyor ve aralarındaki
+   ilişki (çoğu zaman aynı şeyi yaptıkları) sayıyla gösteriliyor. */
+const DNG = (() => {
+  const NE = 4000, NT = 4000, TABAN = 0.05;   // pozitif sınıf oranı
+
+  /* ── veri: pozitifler azınlık ve kısmen örtüşüyor ── */
+  const uret = (n, tohum) => {
+    const R = rng(tohum), X = [], Y = [];
+    for (let i = 0; i < n; i++){
+      const poz = R() < TABAN;
+      /* iki sınıfın merkezleri yakın: ayrım mümkün ama mükemmel değil */
+      const mx = poz ? 1.15 : 0, my = poz ? 0.95 : 0;
+      const g = () => { let s = 0; for (let k = 0; k < 6; k++) s += R(); return (s-3)/1.2; };
+      X.push([mx + g(), my + g()]); Y.push(poz ? 1 : 0);
+    }
+    return { X, Y, n };
+  };
+  const EG = uret(NE, 71), TE = uret(NT, 72);
+
+  /* ── ağırlıklı lojistik regresyon ──
+     w1: pozitif sınıfın kaybındaki ağırlık. 1 = ağırlıksız. */
+  function egit(w1, veri){
+    const D = veri || EG;
+    let w = [0,0], b = 0;
+    const { X, Y, n } = D;
+    for (let e = 0; e < 3000; e++){
+      let g0=0, g1=0, gb=0, tw=0;
+      for (let i = 0; i < n; i++){
+        const a = Y[i] ? w1 : 1;
+        const d = a * (sig(w[0]*X[i][0] + w[1]*X[i][1] + b) - Y[i]);
+        g0 += d*X[i][0]; g1 += d*X[i][1]; gb += d; tw += a;
+      }
+      w[0] -= 0.9*g0/tw; w[1] -= 0.9*g1/tw; b -= 0.9*gb/tw;
+    }
+    return { w, b, p: x => sig(w[0]*x[0] + w[1]*x[1] + b) };
+  }
+
+  /* ── ölçütler ── */
+  function sayim(p, y, esik){
+    let TP=0, FP=0, FN=0, TN=0;
+    p.forEach((pv,i) => { const t = pv >= esik ? 1 : 0;
+      if (t && y[i]) TP++; else if (t && !y[i]) FP++;
+      else if (!t && y[i]) FN++; else TN++; });
+    return { TP, FP, FN, TN };
+  }
+  function olcut(p, y, esik){
+    const s = sayim(p, y, esik);
+    const kesinlik  = s.TP + s.FP ? s.TP/(s.TP+s.FP) : 0;
+    const hatirlama = s.TP + s.FN ? s.TP/(s.TP+s.FN) : 0;
+    return { ...s, kesinlik, hatirlama,
+             f1: kesinlik+hatirlama ? 2*kesinlik*hatirlama/(kesinlik+hatirlama) : 0,
+             dogruluk: (s.TP+s.TN)/y.length,
+             alarm: s.TP+s.FP };
+  }
+  const auc = (p, y) => KAL.auc(p, y);
+  const ece = (p, y) => KAL.ece(p, y);
+  /* PR eğrisinin altındaki alan: dengesiz veride ROC'tan çok daha bilgilendirici */
+  function prAuc(p, y){
+    const s = p.map((v,i) => [v, y[i]]).sort((a,b) => b[0]-a[0]);
+    const P = y.reduce((a,v)=>a+v,0);
+    let TP=0, FP=0, onceH=0, alan=0;
+    s.forEach(([,yy]) => {
+      yy ? TP++ : FP++;
+      const h = TP/P, k = TP/(TP+FP);
+      alan += (h - onceH) * k; onceH = h;
+    });
+    return alan;
+  }
+
+  /* ── önbellekli modeller ── */
+  const _c = {};
+  function model(w1){
+    const a = 'm'+w1;
+    if (_c[a]) return _c[a];
+    const M = egit(w1);
+    const p = TE.X.map(M.p);
+    return (_c[a] = { ...M, p, auc:auc(p, TE.Y), ece:ece(p, TE.Y), prAuc:prAuc(p, TE.Y) });
+  }
+
+  /* ── yeniden örnekleme ── */
+  function ornekle(tur){
+    const a = 'o'+tur;
+    if (_c[a]) return _c[a];
+    const R = rng(313), X = [], Y = [];
+    const poz = [], neg = [];
+    EG.Y.forEach((v,i) => (v ? poz : neg).push(i));
+    if (tur === 'ust'){                       // azınlığı çoğalt
+      neg.forEach(i => { X.push(EG.X[i]); Y.push(0); });
+      for (let k = 0; k < neg.length; k++){ const i = poz[Math.floor(R()*poz.length)];
+        X.push(EG.X[i]); Y.push(1); }
+    } else if (tur === 'alt'){                // çoğunluğu azalt
+      poz.forEach(i => { X.push(EG.X[i]); Y.push(1); });
+      for (let k = 0; k < poz.length; k++){ const i = neg[Math.floor(R()*neg.length)];
+        X.push(EG.X[i]); Y.push(0); }
+    } else if (tur === 'smote'){              // azınlık arasında ara nokta üret
+      neg.forEach(i => { X.push(EG.X[i]); Y.push(0); });
+      poz.forEach(i => { X.push(EG.X[i]); Y.push(1); });
+      for (let k = poz.length; k < neg.length; k++){
+        const i = poz[Math.floor(R()*poz.length)], j = poz[Math.floor(R()*poz.length)];
+        const t = R();
+        X.push([EG.X[i][0] + t*(EG.X[j][0]-EG.X[i][0]),
+                EG.X[i][1] + t*(EG.X[j][1]-EG.X[i][1])]);
+        Y.push(1);
+      }
+    }
+    const M = egit(1, { X, Y, n:X.length });
+    const p = TE.X.map(M.p);
+    return (_c[a] = { ...M, p, n:X.length, poz:Y.reduce((s,v)=>s+v,0),
+                      auc:auc(p, TE.Y), ece:ece(p, TE.Y), prAuc:prAuc(p, TE.Y) });
+  }
+
+  /* ── eşik taraması ── */
+  function tarama(p, adim){
+    const out = [];
+    for (let e = 0.01; e <= 0.99; e += (adim || 0.01)) out.push({ esik:e, ...olcut(p, TE.Y, e) });
+    return out;
+  }
+  function enIyiF1(p){
+    let en = null;
+    tarama(p, 0.005).forEach(r => { if (!en || r.f1 > en.f1) en = r; });
+    return en;
+  }
+
+  return { NE, NT, TABAN, EG, TE, egit, model, ornekle, olcut, sayim,
+           tarama, enIyiF1, auc, ece, prAuc };
+})();

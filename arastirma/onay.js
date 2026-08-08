@@ -5,7 +5,7 @@
    Kullanım:
      ONAY.gerekli(sb, kullaniciId)      -> Promise<boolean>  (gösterilmeli mi)
      ONAY.goster(sb, kullaniciId, dil)  -> Promise<void>
-     ONAY.durum(sb, kullaniciId)        -> Promise<{telemetri, ogrenme_profili, iletisim}>
+     ONAY.durum(sb, kullaniciId)        -> Promise<{telemetry, learning_profile, contact}>
 
    sb: supabase istemcisi. Bağımlılık dışarıdan verilir ki bu dosya
    tek başına test edilebilsin.                                            */
@@ -13,7 +13,7 @@
 const ONAY = (() => {
 
   const SURUM = '2026-08-08.1';
-  const AMACLAR = ['telemetri', 'ogrenme_profili', 'iletisim'];
+  const AMACLAR = ['telemetry', 'learning_profile', 'contact'];
 
   /* ── metinler ── */
   const M = {
@@ -24,13 +24,13 @@ const ONAY = (() => {
       vurgu:'Katılmazsan hiçbir şey değişmez. Bütün dersler, bütün widget\'lar ve ilerleme '+
             'kaydın aynı şekilde çalışır. Üç anahtarı da kapalı bırakabilirsin.',
       kalem:{
-        telemetri:{
+        telemetry:{
           ad:'Ders davranışımı kaydedin',
           ne:'Hangi şıkkı işaretlediğin, bir adımda ne kadar kaldığın, kaç kez denediğin, '+
              'kaydırıcıları oynatıp oynatmadığın, konu anlatımını açıp açmadığın.',
           nicin:'Hangi soruların bozuk olduğunu bulmak ve dersleri düzeltmek için.',
         },
-        ogrenme_profili:{
+        learning_profile:{
           ad:'Bir öğrenme davranışı profili çıkarın',
           ne:'Yukarıdaki kayıtlardan davranış örüntülerin tahmin edilir: widget\'ı oynatmadan '+
              'cevaplama eğilimi, yanlıştan sonra tekrar deneme sıklığı, hangi kavramlarda takıldığın.',
@@ -38,7 +38,7 @@ const ONAY = (() => {
           uyari:'Bunların hepsi çıkarımdır, ölçüm değil. Yanılabilir. Kişilik, karakter, zekâ '+
                 'ya da duygu değerlendirmesi yapılmaz.',
         },
-        iletisim:{
+        contact:{
           ad:'Sonuçlar için benimle iletişime geçin',
           ne:'Çalışmanın sonucunu ya da kısa bir anketi e-postayla göndeririz.',
           nicin:'Reklam gönderilmez.',
@@ -63,13 +63,13 @@ const ONAY = (() => {
       vurgu:'Nothing changes if you decline. Every lesson, every widget and your progress '+
             'work exactly the same. You can leave all three switches off.',
       kalem:{
-        telemetri:{
+        telemetry:{
           ad:'Record my lesson behaviour',
           ne:'Which option you select, how long you stay on a step, how many attempts you '+
              'make, whether you move the sliders, whether you open the explanation.',
           nicin:'To find which questions are broken and fix the lessons.',
         },
-        ogrenme_profili:{
+        learning_profile:{
           ad:'Build a learning-behaviour profile',
           ne:'Your behaviour patterns are estimated from the records above: a tendency to '+
              'answer before playing with the widget, how often you retry, where you get stuck.',
@@ -77,7 +77,7 @@ const ONAY = (() => {
           uyari:'All of these are inferences, not measurements. They can be wrong. No assessment '+
                 'of personality, character, intelligence or emotion is made.',
         },
-        iletisim:{
+        contact:{
           ad:'Contact me about the results',
           ne:'We email you the outcome of the study or a short survey.',
           nicin:'No marketing.',
@@ -100,15 +100,15 @@ const ONAY = (() => {
   /* ── rıza durumu ── */
 
   async function durum(sb, uid){
-    const bos = { telemetri:false, ogrenme_profili:false, iletisim:false };
+    const bos = { telemetry:false, learning_profile:false, contact:false };
     if (!sb || !uid) return bos;
     const { data, error } = await sb
-      .from('riza_guncel').select('amac, verildi, metin_sur').eq('kullanici', uid);
+      .from('consent_current').select('purpose, granted, text_version').eq('user_id', uid);
     if (error || !data) return bos;
     const o = { ...bos };
     data.forEach(r => {
       /* metin değiştiyse eski rıza geçerli değildir */
-      if (r.metin_sur === SURUM) o[r.amac] = !!r.verildi;
+      if (r.text_version === SURUM) o[r.purpose] = !!r.granted;
     });
     return o;
   }
@@ -118,17 +118,17 @@ const ONAY = (() => {
   async function gerekli(sb, uid){
     if (!sb || !uid) return false;
     const { data, error } = await sb
-      .from('riza').select('id').eq('kullanici', uid).eq('metin_sur', SURUM).limit(1);
+      .from('consent').select('id').eq('user_id', uid).eq('text_version', SURUM).limit(1);
     if (error) return false;
     return !data || data.length === 0;
   }
 
   async function yaz(sb, uid, secim, kaynak){
     const satirlar = AMACLAR.map(a => ({
-      kullanici: uid, amac: a, verildi: !!secim[a],
-      metin_sur: SURUM, kaynak: kaynak || 'kayit_sonrasi',
+      user_id: uid, purpose: a, granted: !!secim[a],
+      text_version: SURUM, source: kaynak || 'after_signup',
     }));
-    const { error } = await sb.from('riza').insert(satirlar);
+    const { error } = await sb.from('consent').insert(satirlar);
     if (error) throw error;
   }
 
@@ -222,7 +222,7 @@ const ONAY = (() => {
       });
 
       const bitir = async secim => {
-        try { await yaz(sb, uid, secim, 'kayit_sonrasi'); }
+        try { await yaz(sb, uid, secim, 'after_signup'); }
         catch (e) { console.warn('rıza yazılamadı', e); }
         arka.remove();
         cozum(secim);
@@ -230,7 +230,7 @@ const ONAY = (() => {
 
       /* "Şimdi değil" de kayda geçer: üçü de reddedilmiş sayılır. */
       arka.querySelector('#onaySonra').onclick = () =>
-        bitir({ telemetri:false, ogrenme_profili:false, iletisim:false });
+        bitir({ telemetry:false, learning_profile:false, contact:false });
 
       arka.querySelector('#onayKaydet').onclick = () => {
         const s = {};
