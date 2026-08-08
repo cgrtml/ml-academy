@@ -607,6 +607,16 @@ var ARAYUZ_EN = {
   "MODEL R²": "MODEL R²",
   "NAİF R²": "NAIVE R²",
   "MODEL ÖNDE": "MODEL AHEAD",
+  "KOVA": "BINS",
+  "ECE ÖNCE": "ECE BEFORE",
+  "ECE SONRA": "ECE AFTER",
+  "ECE ham": "ECE raw",
+  "ECE isotonik": "ECE isotonic",
+  "AUC ham": "AUC raw",
+  "AUC Platt": "AUC Platt",
+  "lojistik": "logistic",
+  "isotonik": "isotonic",
+  "Platt": "Platt",
 /*SON*/
 };
 

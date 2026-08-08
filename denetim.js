@@ -4020,6 +4020,45 @@ console.log('═══ ZAMAN SERİSİ ═══');
 }
 
 console.log('');
+console.log('═══ KALİBRASYON ═══');
+{
+  iddia('eğitim örneği',700,KAL.EG.n);
+  iddia('kalibrasyon örneği',500,KAL.KA.n);
+  iddia('test örneği',1200,KAL.TE.n);
+  const L = KAL.olc('lojistik'), A = KAL.olc('derinAgac'), T = KAL.olc('torba');
+  iddia('lojistik ECE',0.0601,L.ece,4);
+  iddia('lojistik Brier',0.1213,L.brier,4);
+  iddia('lojistik doğruluk %',82.6,100*L.dogruluk,1);
+  iddia('lojistik AUC',0.903,L.auc,3);
+  iddia('derin ağaç ECE',0.1381,A.ece,4);
+  iddia('derin ağaç Brier',0.1599,A.brier,4);
+  iddia('derin ağaç doğruluk %',81.4,100*A.dogruluk,1);
+  iddia('derin ağaç AUC',0.843,A.auc,3);
+  iddia('torbalama ECE',0.0385,T.ece,4);
+  iddia('torbalama Brier',0.1135,T.brier,4);
+  iddia('torbalama doğruluk %',84.6,100*T.dogruluk,1);
+  iddia('torbalama AUC',0.909,T.auc,3);
+  const p = KAL.skor('derinAgac','test');
+  iddia('ECE 5 kova',0.1348,KAL.ece(p,KAL.TE.Y,5),4);
+  iddia('ECE 20 kova',0.1411,KAL.ece(p,KAL.TE.Y,20),4);
+  const k = A.kovalar.filter(b=>b.n>0);
+  iddia('ilk kova dediği',0.003,k[0].ortP,3);
+  iddia('ilk kova gerçekleşen',0.129,k[0].ortY,3);
+  iddia('son kova dediği',1.000,k[k.length-1].ortP,3);
+  iddia('son kova gerçekleşen',0.860,k[k.length-1].ortY,3);
+  const AP = KAL.duzelt('derinAgac','platt'), AI = KAL.duzelt('derinAgac','isotonik');
+  iddia('derin ağaç Platt ECE',0.0483,AP.ece,4);
+  iddia('derin ağaç isotonik ECE',0.0183,AI.ece,4);
+  iddia('derin ağaç Platt Brier',0.1440,AP.brier,4);
+  iddia('derin ağaç isotonik Brier',0.1392,AI.brier,4);
+  iddia('Platt AUC değişmiyor',0,AP.auc-A.auc,6);
+  iddia('isotonik sonrası doğruluk %',82.3,100*AI.dogruluk,1);
+  iddia('derin ağaç HATALI ECE',0.1381,KAL.hataliDuzelt('derinAgac','isotonik').ece,4);
+  iddia('torbalama doğru ECE',0.0300,KAL.duzelt('torba','isotonik').ece,4);
+  iddia('torbalama HATALI ECE',0.0749,KAL.hataliDuzelt('torba','isotonik').ece,4);
+}
+
+console.log('');
 console.log('  '+hz+' hazır / '+tp+' ders · '+ad+' adım · '+xp+' XP · '+q+' soru · '+unl+' kilit · '+kn+' kaynak · '+Object.keys(VIZ).length+' görsel');
 console.log('  İngilizce çevrilmiş ders: '+nEn+' / '+Object.keys(DERSLER).length);
 console.log('');

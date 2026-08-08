@@ -15708,3 +15708,455 @@ VIZ.zsIleri = s => {
         '  ·  '+kSay+' katın '+kazanan+' inde model önde',
         kazanan > kSay/2 ? K.green : K.red);
 };
+
+/* ═══════════════ KALİBRASYON ═══════════════
+   "%70 diyorsa gerçekten %70'i mi oluyor?" sorusunu ölçen motor.
+   Üç model gerçekten eğitilir; kalibrasyon bozuklukları dayatılmaz, ölçülür.
+
+   Veri üç parçaya ayrılır ve bu ayrım dersin kendisidir:
+     eğitim      → model buradan öğrenir
+     kalibrasyon → düzeltme eğrisi buradan uydurulur (modelin görmediği veri)
+     test        → her iki sayı da burada ölçülür                            */
+const KAL = (() => {
+  const NE = 700, NK = 500, NT = 1200, KOVA = 10;
+
+  /* ── gerçek olasılık: hafif doğrusal olmayan bir sınır ──
+     Doğrusal olmayanlık bilerek var. Lojistik regresyonun kalibre olması
+     "model ailesi doğruyu kapsıyorsa" koşuluna bağlıdır ve bu ders o koşulu
+     sınıyor. */
+  const gercekP = x => sig(1.7*x[0] + 1.2*x[1] + 0.85*x[0]*x[1] - 0.25);
+
+  const uret = (n, tohum) => {
+    const R = rng(tohum), X = [], Y = [], P = [];
+    for (let i = 0; i < n; i++){
+      const x = [(R()*2-1)*2.2, (R()*2-1)*2.2];
+      const p = gercekP(x);
+      X.push(x); P.push(p); Y.push(R() < p ? 1 : 0);
+    }
+    return { X, Y, P, n };
+  };
+  const EG = uret(NE, 11), KA = uret(NK, 22), TE = uret(NT, 33);
+
+  /* ── model 1 · lojistik regresyon ── */
+  const lojistik = (() => {
+    let w = [0,0], b = 0;
+    const { X, Y, n } = EG;
+    for (let e = 0; e < 4000; e++){
+      let g0=0, g1=0, gb=0;
+      for (let i = 0; i < n; i++){
+        const d = sig(w[0]*X[i][0] + w[1]*X[i][1] + b) - Y[i];
+        g0 += d*X[i][0]/n; g1 += d*X[i][1]/n; gb += d/n;
+      }
+      w[0] -= 0.45*g0; w[1] -= 0.45*g1; b -= 0.45*gb;
+    }
+    return x => sig(w[0]*x[0] + w[1]*x[1] + b);
+  })();
+
+  /* ── karar ağacı (kendi içinde, KAL verisine bağlı) ── */
+  function agacKur(idx, derinlik, maxD, minYaprak, X, Y, R){
+    const p = idx.reduce((s,i) => s + Y[i], 0) / idx.length;
+    const yaprak = { yaprak:true, deger:p };
+    if (derinlik >= maxD || idx.length < 2*minYaprak) return yaprak;
+    let eniyi = null;
+    const ozler = R ? [R() < 0.5 ? 0 : 1] : [0,1];
+    for (const oz of ozler){
+      const sirali = idx.slice().sort((a,b) => X[a][oz] - X[b][oz]);
+      for (let q = minYaprak; q < sirali.length - minYaprak; q += 3){
+        const t = (X[sirali[q-1]][oz] + X[sirali[q]][oz]) / 2;
+        const sol = sirali.slice(0, q), sag = sirali.slice(q);
+        const gi = a => { const m = a.reduce((s,i)=>s+Y[i],0)/a.length; return 2*m*(1-m); };
+        const k = gi(idx) - (sol.length*gi(sol) + sag.length*gi(sag))/idx.length;
+        if (!eniyi || k > eniyi.k) eniyi = { k, oz, t, sol, sag };
+      }
+    }
+    if (!eniyi || eniyi.k <= 1e-9) return yaprak;
+    return { yaprak:false, oz:eniyi.oz, t:eniyi.t,
+             sol:agacKur(eniyi.sol, derinlik+1, maxD, minYaprak, X, Y, R),
+             sag:agacKur(eniyi.sag, derinlik+1, maxD, minYaprak, X, Y, R) };
+  }
+  const agacP = (d, x) => d.yaprak ? d.deger : agacP(x[d.oz] <= d.t ? d.sol : d.sag, x);
+
+  /* ── model 2 · derin karar ağacı: aşırı güvenli ──
+     Yapraklar küçüldükçe saflaşır ve olasılıklar 0/1'e yapışır. Eğitim
+     verisinde "eminim" diyen model, test verisinde eminliğinin karşılığını
+     bulamaz. Kalibrasyon literatüründeki klasik aşırı güven örneği budur. */
+  const derinAgac = (() => {
+    const kok = agacKur(EG.X.map((_,i)=>i), 0, 10, 2, EG.X, EG.Y, null);
+    return x => agacP(kok, x);
+  })();
+
+  /* ── model 3 · torbalama: ortalama alınca olasılıklar ortaya çekilir ── */
+  const torba = (() => {
+    const R = rng(909), agaclar = [];
+    for (let a = 0; a < 40; a++){
+      const boot = [];
+      for (let i = 0; i < EG.n; i++) boot.push(Math.floor(R()*EG.n));
+      agaclar.push(agacKur(boot, 0, 6, 4, EG.X, EG.Y, R));
+    }
+    return x => agaclar.reduce((s,a) => s + agacP(a, x), 0) / agaclar.length;
+  })();
+
+  const MODELLER = { lojistik, derinAgac, torba };
+  const MODEL_AD = { lojistik:'lojistik regresyon', derinAgac:'derin ağaç', torba:'torbalama' };
+
+  /* ── ölçütler ── */
+  function kovala(p, y, m){
+    m = m || KOVA;
+    const k = [];
+    for (let b = 0; b < m; b++) k.push({ n:0, tp:0, ty:0, alt:b/m, ust:(b+1)/m });
+    p.forEach((pv,i) => {
+      const b = Math.min(m-1, Math.floor(pv*m));
+      k[b].n++; k[b].tp += pv; k[b].ty += y[i];
+    });
+    return k.map(b => ({ ...b, ortP: b.n ? b.tp/b.n : null, ortY: b.n ? b.ty/b.n : null }));
+  }
+  /* Beklenen Kalibrasyon Hatası: kovaların |gözlenen − tahmin| farkının
+     ağırlıklı ortalaması. 0 mükemmel. */
+  function ece(p, y, m){
+    const k = kovala(p, y, m), n = p.length;
+    return k.reduce((s,b) => b.n ? s + (b.n/n)*Math.abs(b.ortY - b.ortP) : s, 0);
+  }
+  function brier(p, y){ return p.reduce((s,pv,i) => s + (pv-y[i])*(pv-y[i]), 0) / p.length; }
+  function dogruluk(p, y){ return p.reduce((s,pv,i) => s + ((pv>0.5?1:0)===y[i]?1:0), 0) / p.length; }
+  /* AUC: sıralama kalitesi. Kalibrasyon bunu DEĞİŞTİRMEZ ve ders bunu ölçer. */
+  function auc(p, y){
+    const s = p.map((pv,i) => [pv, y[i]]).sort((a,b) => a[0]-b[0]);
+    let r = 0, n1 = 0, n0 = 0, i = 0;
+    while (i < s.length){
+      let j = i; while (j < s.length && s[j][0] === s[i][0]) j++;
+      const ortR = (i + j + 1) / 2;
+      for (let q = i; q < j; q++) if (s[q][1] === 1) r += ortR;
+      i = j;
+    }
+    y.forEach(v => v === 1 ? n1++ : n0++);
+    return (r - n1*(n1+1)/2) / (n1*n0);
+  }
+
+  /* ── düzeltme 1 · Platt: skor üzerine tek boyutlu lojistik ── */
+  const logit = v => { const c2 = Math.min(1-1e-4, Math.max(1e-4, v));
+                       return Math.log(c2/(1-c2)); };
+  function plattUydur(p, y){
+    /* Logit standartlaştırılmadan eğim inişi derin ağaç gibi uç skorlarda
+       ıraksıyordu. Ölçekleyip sonra geri çevirmek problemi iyi koşullu yapar. */
+    const z0 = p.map(logit);
+    const mu = z0.reduce((s,v)=>s+v,0)/z0.length;
+    const sd = Math.sqrt(z0.reduce((s,v)=>s+(v-mu)*(v-mu),0)/z0.length) || 1;
+    const z = z0.map(v => (v-mu)/sd);
+    let a = 1, c = 0;
+    for (let e = 0; e < 6000; e++){
+      let ga = 0, gc = 0;
+      for (let i = 0; i < z.length; i++){
+        const d2 = sig(a*z[i] + c) - y[i];
+        ga += d2*z[i]/z.length; gc += d2/z.length;
+      }
+      a -= 0.5*ga; c -= 0.5*gc;
+    }
+    return v => sig(a*(logit(v)-mu)/sd + c);
+  }
+
+  /* ── düzeltme 2 · isotonik: bitişik ihlalleri havuzlama (PAVA) ── */
+  function isotonikUydur(p, y){
+    /* Önce AYNI skora sahip noktalar tek bloğa toplanır. Bu yapılmazsa
+       eşitlikler ayrı bloklar olarak kalıp aynı girdiye farklı çıktı
+       üretebiliyor; isotonik regresyon ise bir fonksiyon olmak zorunda. */
+    const grup = new Map();
+    p.forEach((v,i) => { const g = grup.get(v) || { x:v, top:0, n:0 };
+      g.top += y[i]; g.n++; grup.set(v, g); });
+    const blok = [...grup.values()].sort((a,b) => a.x - b.x);
+    let i = 0;
+    while (i < blok.length - 1){
+      if (blok[i].top/blok[i].n <= blok[i+1].top/blok[i+1].n + 1e-12){ i++; continue; }
+      blok[i].top += blok[i+1].top; blok[i].n += blok[i+1].n; blok[i].x = blok[i+1].x;
+      blok.splice(i+1, 1);
+      if (i > 0) i--;
+    }
+    const xs = blok.map(b => b.x), vs = blok.map(b => b.top/b.n);
+    return v => {
+      let lo = 0, hi = xs.length-1;
+      if (v <= xs[0]) return vs[0];
+      if (v >= xs[hi]) return vs[hi];
+      while (lo < hi){ const mid = (lo+hi)>>1; if (xs[mid] < v) lo = mid+1; else hi = mid; }
+      return vs[lo];
+    };
+  }
+
+  /* ── özet (tembel) ── */
+  const _c = {};
+  function skor(ad, kume){
+    const a = 'p:'+ad+':'+kume;
+    if (_c[a]) return _c[a];
+    const D = kume === 'kal' ? KA : (kume === 'egt' ? EG : TE);
+    return (_c[a] = D.X.map(x => MODELLER[ad](x)));
+  }
+  function olc(ad){
+    const a = 'o:'+ad;
+    if (_c[a]) return _c[a];
+    const p = skor(ad, 'test'), y = TE.Y;
+    return (_c[a] = { ece:ece(p,y), brier:brier(p,y), dogruluk:dogruluk(p,y),
+                      auc:auc(p,y), kovalar:kovala(p,y) });
+  }
+  function duzelt(ad, yontem){
+    const a = 'd:'+ad+':'+yontem;
+    if (_c[a]) return _c[a];
+    const pk = skor(ad, 'kal'), pt = skor(ad, 'test');
+    const f = yontem === 'isotonik' ? isotonikUydur(pk, KA.Y) : plattUydur(pk, KA.Y);
+    const p2 = pt.map(f), y = TE.Y;
+    return (_c[a] = { p:p2, ece:ece(p2,y), brier:brier(p2,y), dogruluk:dogruluk(p2,y),
+                      auc:auc(p2,y), kovalar:kovala(p2,y) });
+  }
+  /* Kalibrasyonu KENDİ eğitim verisinde uydurmak: dersin uyarı adımı. */
+  function hataliDuzelt(ad, yontem){
+    const a = 'h:'+ad+':'+yontem;
+    if (_c[a]) return _c[a];
+    const pe = skor(ad, 'egt'), pt = skor(ad, 'test');
+    const f = yontem === 'isotonik' ? isotonikUydur(pe, EG.Y) : plattUydur(pe, EG.Y);
+    const p2 = pt.map(f), y = TE.Y;
+    return (_c[a] = { p:p2, ece:ece(p2,y), brier:brier(p2,y),
+                      dogruluk:dogruluk(p2,y), auc:auc(p2,y), kovalar:kovala(p2,y) });
+  }
+
+  return { NE, NK, NT, KOVA, EG, KA, TE, gercekP, MODELLER, MODEL_AD,
+           kovala, ece, brier, dogruluk, auc, skor, olc, duzelt, hataliDuzelt,
+           plattUydur, isotonikUydur };
+})();
+
+/* ── kalibrasyon · ortak çizim ── */
+function kalDiyagram(P, kovalar, renk, nokta){
+  /* köşegen = mükemmel kalibrasyon */
+  cx.setLineDash([6,6]); cx.strokeStyle = 'rgba(255,255,255,.28)'; cx.lineWidth = 2;
+  cx.beginPath(); cx.moveTo(P.sx(0), P.sy(0)); cx.lineTo(P.sx(1), P.sy(1)); cx.stroke();
+  cx.setLineDash([]);
+  const g = kovalar.filter(b => b.n > 0);
+  cx.strokeStyle = renk; cx.lineWidth = 4; cx.beginPath();
+  g.forEach((b,i) => i ? cx.lineTo(P.sx(b.ortP), P.sy(b.ortY)) : cx.moveTo(P.sx(b.ortP), P.sy(b.ortY)));
+  cx.stroke();
+  if (nokta !== false) g.forEach(b => { dot(P.sx(b.ortP), P.sy(b.ortY), 6, renk);
+    dot(P.sx(b.ortP), P.sy(b.ortY), 6, '#0b1119', null, 2); });
+}
+function kalHistogram(P, kovalar, renk){
+  const enB = Math.max(...kovalar.map(b => b.n)) || 1;
+  const gen = (P.R.w/kovalar.length)*0.72;
+  kovalar.forEach(b => { if (!b.n) return;
+    const x = P.sx((b.alt+b.ust)/2), h = (b.n/enB)*P.R.h;
+    box(x-gen/2, P.R.y+P.R.h-h, gen, h, renk+'99', null); });
+}
+
+/* ── 1 · güvenilirlik diyagramı ── */
+VIZ.kalGuvenilirlik = s => {
+  clear();
+  const m = Math.max(5, Math.min(20, Math.round(s.kova === undefined ? 10 : s.kova)));
+  const p = KAL.skor('derinAgac', 'test'), y = KAL.TE.Y;
+  const kov = KAL.kovala(p, y, m), e = KAL.ece(p, y, m);
+  baslikSerit('KALİBRASYON · "%70" DEDİĞİNDE GERÇEKTEN %70 MÜ?',
+    'Model bir olasılık söylüyor. O olasılığın karşılığı var mı, ölçülebilir.',
+    [['MODEL', 'derin ağaç', K.blue],
+     ['KOVA', String(m), K.mut],
+     ['ECE', e.toFixed(4), e>0.05?K.red:K.green]]);
+
+  const P = plot(rect(160, 210, 520, 360), -0.03, 1.03, -0.03, 1.03);
+  txt('GÜVENİLİRLİK DİYAGRAMI', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, 'modelin dediği olasılık', 'gerçekleşen oran', [0,0.5,1], [0,0.5,1]);
+  kalDiyagram(P, kov, K.blue);
+  txt('köşegen = mükemmel', P.R.x+P.R.w-14, P.R.y+30, K.mut, 16, 'right');
+
+  const H = plot(rect(160, 668, 520, 42), -0.03, 1.03, 0, 1);
+  txt('kaç tahmin hangi kovada', H.R.x+H.R.w/2, H.R.y-10, K.mut, 16);
+  kalHistogram(H, kov, K.blue);
+
+  /* kova tablosu */
+  const bx = 760;
+  box(bx, 200, 620, 420, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('KOVA KOVA', bx+310, 236, K.mut, 19);
+  ['aralık','n','dediği','gerçekleşen','fark'].forEach((h2,i) =>
+    txt(h2, bx+70+i*120, 268, K.mut, 16));
+  const goster = kov.filter(b => b.n > 0).slice(0, 9);
+  goster.forEach((b,i) => {
+    const yy = 300 + i*34, f = Math.abs(b.ortY - b.ortP);
+    txt(b.alt.toFixed(1)+'–'+b.ust.toFixed(1), bx+70,  yy, K.mut, 17);
+    txt(String(b.n),                            bx+190, yy, K.mut, 17);
+    txt(b.ortP.toFixed(3),                      bx+310, yy, K.blue, 17);
+    txt(b.ortY.toFixed(3),                      bx+430, yy, K.txt, 17);
+    txt(f.toFixed(3),                           bx+550, yy, f>0.1?K.red:K.green, 17);
+  });
+  txt('ECE = kovaların |fark| ağırlıklı ortalaması = '+e.toFixed(4),
+      bx+310, 600, e>0.05?K.red:K.green, 19);
+
+  durum(m+' kovada ECE '+e.toFixed(4)+
+        (e>0.05 ? '  ·  model dediğinden fazla emin' : '  ·  makul'), e>0.05?K.red:K.green);
+};
+
+/* ── 2 · üç model, üç eğri ── */
+VIZ.kalModeller = s => {
+  clear();
+  const adlar = ['lojistik','derinAgac','torba'];
+  const renkler = { lojistik:K.blue, derinAgac:K.red, torba:K.green };
+  const sec = adlar[Math.max(0, Math.min(2, Math.round(s.model === undefined ? 1 : s.model)))];
+  const o = KAL.olc(sec);
+  baslikSerit('AYNI VERİ, ÜÇ MODEL',
+    'Doğruluk ile kalibrasyon aynı eksen değil. Biri yüksekken diğeri düşük olabilir.',
+    [['SEÇİLİ', KAL.MODEL_AD[sec], renkler[sec]],
+     ['ECE', o.ece.toFixed(4), o.ece>0.05?K.red:K.green],
+     ['DOĞRULUK', '%'+(100*o.dogruluk).toFixed(1), K.mut]]);
+
+  const P = plot(rect(160, 210, 520, 400), -0.03, 1.03, -0.03, 1.03);
+  txt('ÜÇ MODELİN EĞRİSİ', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, 'modelin dediği olasılık', 'gerçekleşen oran', [0,0.5,1], [0,0.5,1]);
+  cx.setLineDash([6,6]); cx.strokeStyle = 'rgba(255,255,255,.28)'; cx.lineWidth = 2;
+  cx.beginPath(); cx.moveTo(P.sx(0), P.sy(0)); cx.lineTo(P.sx(1), P.sy(1)); cx.stroke();
+  cx.setLineDash([]);
+  adlar.forEach(ad => {
+    const k = KAL.olc(ad).kovalar.filter(b => b.n > 0);
+    const vurgu = ad === sec;
+    cx.strokeStyle = renkler[ad] + (vurgu ? 'ff' : '55'); cx.lineWidth = vurgu ? 5 : 2.5;
+    cx.beginPath();
+    k.forEach((b,i) => i ? cx.lineTo(P.sx(b.ortP), P.sy(b.ortY)) : cx.moveTo(P.sx(b.ortP), P.sy(b.ortY)));
+    cx.stroke();
+    if (vurgu) k.forEach(b => dot(P.sx(b.ortP), P.sy(b.ortY), 6, renkler[ad]));
+  });
+  adlar.forEach((ad,i) => txt('■ '+KAL.MODEL_AD[ad], P.R.x+16, P.R.y+30+i*26,
+    ad === sec ? renkler[ad] : K.dim, 17, 'left'));
+
+  /* karşılaştırma tablosu */
+  const bx = 760;
+  box(bx, 210, 620, 300, 'rgba(7,10,15,.6)', K.axis, 2);
+  ['model','ECE','Brier','doğruluk','AUC'].forEach((h2,i) =>
+    txt(h2, bx+96+i*112, 250, K.mut, 16));
+  adlar.forEach((ad,i) => {
+    const r = KAL.olc(ad), yy = 292 + i*54, vurgu = ad === sec;
+    if (vurgu) box(bx+16, yy-30, 588, 44, renkler[ad]+'18', renkler[ad]+'66', 2);
+    txt(KAL.MODEL_AD[ad], bx+96,  yy, vurgu?renkler[ad]:K.mut, 16);
+    txt(r.ece.toFixed(4),  bx+208, yy, r.ece>0.05?K.red:K.green, 17);
+    txt(r.brier.toFixed(4),bx+320, yy, K.mut, 17);
+    txt('%'+(100*r.dogruluk).toFixed(1), bx+432, yy, K.txt, 17);
+    txt(r.auc.toFixed(3),  bx+544, yy, K.mut, 17);
+  });
+  txt('En doğru model en kalibre model olmak zorunda değil.', bx+310, 470, K.yellow, 18);
+
+  /* seçili modelin tahmin dağılımı */
+  const H = plot(rect(760, 566, 620, 100), -0.03, 1.03, 0, 1);
+  txt('SEÇİLİ MODELİN TAHMİN DAĞILIMI', H.R.x+H.R.w/2, H.R.y-14, K.mut, 18);
+  frame(H, '', '', [0,0.5,1], []);
+  kalHistogram(H, o.kovalar, renkler[sec]);
+
+  durum(KAL.MODEL_AD[sec]+': ECE '+o.ece.toFixed(4)+
+        ' · doğruluk %'+(100*o.dogruluk).toFixed(1)+' · AUC '+o.auc.toFixed(3),
+        renkler[sec]);
+};
+
+/* ── 3 · düzeltme: Platt ve isotonik ── */
+VIZ.kalDuzeltme = s => {
+  clear();
+  const adlar = ['lojistik','derinAgac','torba'];
+  const sec = adlar[Math.max(0, Math.min(2, Math.round(s.model === undefined ? 1 : s.model)))];
+  const yon = (s.yontem || 0) >= 0.5 ? 'isotonik' : 'platt';
+  const ham = KAL.olc(sec), dz = KAL.duzelt(sec, yon);
+  baslikSerit('DÜZELTME · PLATT ve İSOTONİK',
+    'Skorlar tutuluyor, yalnızca olasılığa çevrilme biçimi yeniden uyduruluyor.',
+    [['MODEL', KAL.MODEL_AD[sec], K.blue],
+     ['YÖNTEM', yon === 'platt' ? 'Platt' : 'isotonik', K.purple],
+     ['ECE', ham.ece.toFixed(4)+' → '+dz.ece.toFixed(4),
+      dz.ece < ham.ece ? K.green : K.red]]);
+
+  const P = plot(rect(160, 210, 520, 400), -0.03, 1.03, -0.03, 1.03);
+  txt('ÖNCE ve SONRA', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, 'modelin dediği olasılık', 'gerçekleşen oran', [0,0.5,1], [0,0.5,1]);
+  kalDiyagram(P, ham.kovalar, K.red, false);
+  kalDiyagram(P, dz.kovalar, K.green);
+  txt('■ ham', P.R.x+16, P.R.y+30, K.red, 17, 'left');
+  txt('■ düzeltilmiş', P.R.x+16, P.R.y+56, K.green, 17, 'left');
+
+  /* düzeltme eğrisi: girdi olasılığı → çıktı olasılığı */
+  const Q = plot(rect(760, 210, 300, 230), -0.03, 1.03, -0.03, 1.03);
+  txt('DÜZELTME EĞRİSİ', Q.R.x+Q.R.w/2, Q.R.y-14, K.mut, 18);
+  frame(Q, 'ham olasılık', 'düzeltilmiş', [0,0.5,1], [0,0.5,1]);
+  cx.setLineDash([6,6]); cx.strokeStyle = 'rgba(255,255,255,.25)'; cx.lineWidth = 2;
+  cx.beginPath(); cx.moveTo(Q.sx(0), Q.sy(0)); cx.lineTo(Q.sx(1), Q.sy(1)); cx.stroke();
+  cx.setLineDash([]);
+  const pk = KAL.skor(sec, 'kal');
+  const f = yon === 'isotonik' ? KAL.isotonikUydur(pk, KAL.KA.Y) : KAL.plattUydur(pk, KAL.KA.Y);
+  cx.strokeStyle = K.purple; cx.lineWidth = 4; cx.beginPath();
+  for (let q = 0; q <= 200; q++){ const v = q/200;
+    q ? cx.lineTo(Q.sx(v), Q.sy(f(v))) : cx.moveTo(Q.sx(v), Q.sy(f(v))); }
+  cx.stroke();
+
+  const bx = 1100;
+  box(bx, 210, 290, 260, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('ÖLÇÜM', bx+145, 246, K.mut, 18);
+  [['ECE', ham.ece, dz.ece, true], ['Brier', ham.brier, dz.brier, true],
+   ['doğruluk', ham.dogruluk, dz.dogruluk, false], ['AUC', ham.auc, dz.auc, false]
+  ].forEach(([ad,a,b,kucukIyi],i) => {
+    const yy = 288 + i*44;
+    txt(ad, bx+70, yy, K.mut, 16);
+    txt(a.toFixed(4), bx+160, yy, K.red, 16);
+    txt(b.toFixed(4), bx+245, yy,
+        (kucukIyi ? b < a : b >= a - 1e-9) ? K.green : K.orange, 16);
+  });
+
+  box(760, 500, 630, 210, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('KALİBRASYON KÜMESİ AYRI OLMAK ZORUNDA', 1075, 536, K.mut, 18);
+  const hat = KAL.hataliDuzelt(sec, yon);
+  txt('ayrı kümede uydurulmuş:  ECE '+dz.ece.toFixed(4), 1075, 588, K.green, 21);
+  txt('eğitim kümesinde uydurulmuş:  ECE '+hat.ece.toFixed(4), 1075, 630, K.red, 21);
+  txt(hat.ece > dz.ece + 1e-4
+      ? 'Model kendi eğitim verisinde zaten kalibre görünür.'
+      : 'Bu modelde fark küçük, ama kural değişmez.', 1075, 676, K.txt, 17);
+
+  durum(KAL.MODEL_AD[sec]+' · '+(yon==='platt'?'Platt':'isotonik')+
+        ': ECE '+ham.ece.toFixed(4)+' → '+dz.ece.toFixed(4)+
+        '  ·  AUC '+ham.auc.toFixed(3)+' → '+dz.auc.toFixed(3),
+        dz.ece < ham.ece ? K.green : K.orange);
+};
+
+/* ── 4 · ne çözer, ne çözmez ── */
+VIZ.kalSinir = s => {
+  clear();
+  const adlar = ['lojistik','derinAgac','torba'];
+  const sec = adlar[Math.max(0, Math.min(2, Math.round(s.model === undefined ? 1 : s.model)))];
+  const ham = KAL.olc(sec), pl = KAL.duzelt(sec,'platt'), iso = KAL.duzelt(sec,'isotonik');
+  baslikSerit('NE ÇÖZER, NE ÇÖZMEZ',
+    'Kalibrasyon skorların SIRASINI değiştirmez. Değiştirdiği tek şey ölçeği.',
+    [['MODEL', KAL.MODEL_AD[sec], K.blue],
+     ['AUC DEĞİŞİMİ', (pl.auc-ham.auc).toFixed(4), Math.abs(pl.auc-ham.auc)<1e-6?K.green:K.orange],
+     ['ECE DEĞİŞİMİ', (iso.ece-ham.ece).toFixed(4), K.green]]);
+
+  /* üç ölçüt, üç durum */
+  const A = plot(rect(160, 230, 560, 340), -0.5, 2.5, 0, 1.05);
+  txt('AYNI MODEL, ÜÇ ÖLÇÜT', A.R.x+A.R.w/2, A.R.y-14, K.mut, 19);
+  frame(A, '', 'değer', [], [0, 0.5, 1]);
+  const gruplar = [['ECE ×5', ham.ece*5, pl.ece*5, iso.ece*5],
+                   ['doğruluk', ham.dogruluk, pl.dogruluk, iso.dogruluk],
+                   ['AUC', ham.auc, pl.auc, iso.auc]];
+  const gen = (A.R.w/3)*0.22;
+  gruplar.forEach(([ad,a,b,c],i) => {
+    const x = A.sx(i);
+    [[a,-gen*1.15,K.red],[b,0,K.blue],[c,gen*1.15,K.green]].forEach(([v,dx,renk]) => {
+      box(x+dx-gen/2, A.sy(v), gen, A.sy(0)-A.sy(v), renk+'cc', null);
+      txt(v.toFixed(3), x+dx, A.sy(v)-12, renk, 15);
+    });
+    txt(ad, x, A.R.y+A.R.h+28, K.mut, 17);
+  });
+  txt('■ ham', A.R.x+16, A.R.y+30, K.red, 16, 'left');
+  txt('■ Platt', A.R.x+16, A.R.y+54, K.blue, 16, 'left');
+  txt('■ isotonik', A.R.x+16, A.R.y+78, K.green, 16, 'left');
+
+  const bx = 780;
+  box(bx, 200, 610, 240, 'rgba(34,211,160,.06)', 'rgba(34,211,160,.4)', 2);
+  txt('ÇÖZER', bx+305, 238, K.green, 19);
+  ['Olasılığın anlamını geri kazandırır: "%70" gerçekten %70 olur.',
+   'Beklenen değer hesabı yapılabilir olur: eşik, maliyet, karar.',
+   'Farklı modellerin olasılıkları karşılaştırılabilir olur.',
+   'Brier gibi olasılık temelli ölçütleri düzeltir.',
+  ].forEach((t2,i) => txt('· '+t2, bx+24, 282+i*36, K.txt, 17, 'left'));
+
+  box(bx, 460, 610, 250, 'rgba(248,113,113,.06)', 'rgba(248,113,113,.4)', 2);
+  txt('ÇÖZMEZ', bx+305, 498, K.red, 19);
+  ['Sıralamayı iyileştirmez: AUC neredeyse aynı kalır.',
+   'Kötü bir modeli iyi model yapmaz, yalnızca dürüst yapar.',
+   'Yalnızca kalibrasyon verisinin geldiği dağılımda geçerlidir.',
+   'Dağılım kayınca kalibrasyon da bozulur, yeniden uydurmak gerekir.',
+  ].forEach((t2,i) => txt('· '+t2, bx+24, 542+i*36, K.txt, 17, 'left'));
+
+  durum('Platt AUC değişimi '+(pl.auc-ham.auc).toFixed(4)+
+        '  ·  isotonik ECE değişimi '+(iso.ece-ham.ece).toFixed(4)+
+        '  ·  sıralama korunur, ölçek düzelir', K.green);
+};

@@ -47,6 +47,7 @@ const ROTALAR = [
     {id:'yanlilik',       ad:'Yanlılık ve varyans: modelin iki tür hatası',    sure:16, durum:'hazir'},
     {id:'boyut-laneti',   ad:'Boyut laneti: komşular neden uzaklaşır',         sure:16, durum:'hazir'},
     {id:'softmax',        ad:'Softmax ve çapraz entropi',                      sure:15, durum:'hazir'},
+    {id:'kalibrasyon',    ad:'Kalibrasyon: "%70" gerçekten %70 mü?',           sure:15, durum:'hazir'},
     {id:'dagilim-kaymasi',  ad:'Zemin kayınca: dağılım kayması',                 sure:15, durum:'hazir'},
     {id:'zaman-serisi',     ad:'Zaman serisi: rastgele bölmenin yalanı',         sure:14, durum:'hazir'},
     {id:'hiper-arama',    ad:'Hiperparametre arama: ızgara, rastgele, eleme',  sure:16, durum:'hazir'},
@@ -13423,6 +13424,178 @@ DERSLER['zaman-serisi'] = {
       'Aynı model rastgele bölmede 0.959 alıyordu. Model hiç değişmedi; yalnızca ölçüm dürüstleşti.<br><br>' +
       'Kural: test eğitimden sonra gelsin · naif tabanı her zaman ölç · araya boşluk koy · ' +
       'ön işlemeyi yalnızca eğitim penceresinde fit et.',
+    xp:60,
+  },
+]};
+
+/* ────────── R1 · Kalibrasyon ────────── */
+DERSLER['kalibrasyon'] = {
+  ad:'Kalibrasyon: "%70" gerçekten %70 mü?',
+  alt:'Model bir olasılık söylüyor. O sayının karşılığı olup olmadığı ölçülebilir, ve çoğu modelde yoktur.',
+  kaynaklar:[
+    {"y":"Niculescu-Mizil, A. & Caruana, R.", "t":"2005", "b":"Predicting Good Probabilities with Supervised Learning", "n":"ICML 2005"},
+    {"y":"Platt, J.", "t":"1999", "b":"Probabilistic Outputs for Support Vector Machines", "n":"Advances in Large Margin Classifiers"},
+    {"y":"Guo, C. et al.", "t":"2017", "b":"On Calibration of Modern Neural Networks", "n":"ICML 2017", "u":"https://arxiv.org/abs/1706.04599"},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Güvenilirlik diyagramı',
+    goal:'Bir olasılığın karşılığı olup olmadığını nasıl ölçeceğini öğreneceksin.',
+    todo:'Kova sayısını değiştir. Mavi eğri köşegenden ne kadar saparsa kalibrasyon o kadar bozuk.',
+    kind:'controls', viz:'kalGuvenilirlik', h:760,
+    controls:[{k:'kova', lb:'KOVA SAYISI', min:5, max:20, step:1, val:10, fmt:v=>String(Math.round(v))}],
+    live:s => { const m = Math.max(5, Math.min(20, Math.round(s.kova)));
+      const p = KAL.skor('derinAgac','test');
+      return [['KOVA', m], ['ECE', KAL.ece(p, KAL.TE.Y, m).toFixed(4), K.red],
+              ['TEST', KAL.TE.n]]; },
+    body:'<p>Bir sınıflandırıcı "%70" dediğinde bunun iki farklı anlamı olabilir.</p>' +
+      '<p><b>Sıralama anlamı:</b> "%70 dediklerim, %40 dediklerimden daha olası." Bunu AUC ölçer.</p>' +
+      '<p><b>Olasılık anlamı:</b> "%70 dediğim yüz vakanın yaklaşık yetmişi gerçekleşir." ' +
+      'Buna <b>kalibrasyon</b> denir ve bambaşka bir şeydir.</p>' +
+      '<p>Ölçmek basit: tahminleri kovalara ayır, her kovada <b>modelin dediği ortalama</b> ile ' +
+      '<b>gerçekleşen oranı</b> karşılaştır. Mükemmel kalibre bir modelde bu ikisi eşittir, ' +
+      'yani eğri köşegenin üstünde durur.</p>' +
+      '<p>Buradaki model bir <b>derin karar ağacı</b>, 700 örnekle eğitildi ve 1200 örnekle test ediliyor. ' +
+      'Eğri köşegenin belirgin şekilde altında ve üstünde geziniyor:</p>' +
+      '<p style="font-family:var(--mono)">dediği 0.003 &nbsp;→ &nbsp;gerçekleşen 0.129<br>' +
+      'dediği 1.000 &nbsp;→ &nbsp;gerçekleşen 0.860</p>' +
+      '<p>Yani "kesinlikle olmaz" dediği vakaların <b>%12.9\'u oluyor</b>, ' +
+      '"kesinlikle olur" dediklerinin <b>%14\'ü olmuyor</b>. Model dediğinden fazla emin.</p>' +
+      '<p>Bunu tek sayıya indiren ölçüt <b>ECE</b> (beklenen kalibrasyon hatası): kovaların ' +
+      '|gerçekleşen − dediği| farkının, kova büyüklüğüyle ağırlıklandırılmış ortalaması. ' +
+      'Bu modelde <b>0.1381</b>.</p>' +
+      '<p>Kova sayısını değiştirdiğinde ECE biraz oynuyor ama mertebe değişmiyor: ' +
+      '5 kovada 0.1348, 20 kovada 0.1411. Ölçüt kova seçimine aşırı duyarlı olsaydı ona güvenemezdik.</p>',
+    learned:'<b>Kalibrasyon, olasılığın karşılığı olup olmadığıdır.</b><br><br>' +
+      'Güvenilirlik diyagramı: her kovada modelin dediği ortalama ile gerçekleşen oran. ' +
+      'Mükemmel kalibrasyon köşegendir.<br><br>' +
+      'ECE bunu tek sayıya indirir. Bu derin ağaçta 0.1381: "kesinlikle olmaz" dediklerinin %12.9\'u oluyor.',
+    xp:45,
+  },
+  {
+    t:'Doğruluk ile kalibrasyon aynı şey değil',
+    goal:'Bir modelin daha doğru olmasının, olasılıklarının daha güvenilir olduğu anlamına gelmediğini göreceksin.',
+    todo:'Model anahtarını gezdir. Vurgulanan eğri seçili modeli gösteriyor.',
+    kind:'controls', viz:'kalModeller', h:760,
+    controls:[{k:'model', lb:'MODEL', min:0, max:2, step:1, val:1,
+               fmt:v=>['lojistik','derin ağaç','torbalama'][Math.round(v)]}],
+    live:s => { const ad = ['lojistik','derinAgac','torba'][Math.max(0,Math.min(2,Math.round(s.model)))];
+      const o = KAL.olc(ad);
+      return [['MODEL', KAL.MODEL_AD[ad]], ['ECE', o.ece.toFixed(4), o.ece>0.05?K.red:K.green],
+              ['DOĞRULUK', '%'+(100*o.dogruluk).toFixed(1)], ['AUC', o.auc.toFixed(3)]]; },
+    body:'<p>Aynı veriye üç model eğitildi. Hepsi aynı eğitim kümesini gördü, hepsi aynı testte ölçüldü.</p>' +
+      '<p style="font-family:var(--mono)">model &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ECE &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Brier &nbsp;&nbsp;doğruluk &nbsp;AUC<br>' +
+      'lojistik &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0601 &nbsp;0.1213 &nbsp;%82.6 &nbsp;&nbsp;&nbsp;0.903<br>' +
+      'derin ağaç &nbsp;&nbsp;&nbsp;&nbsp;0.1381 &nbsp;0.1599 &nbsp;%81.4 &nbsp;&nbsp;&nbsp;0.843<br>' +
+      'torbalama &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0385 &nbsp;0.1135 &nbsp;%84.6 &nbsp;&nbsp;&nbsp;0.909</p>' +
+      '<p>Dikkat edilecek iki şey var.</p>' +
+      '<p><b>1 · Derin ağaç ile lojistiğin doğruluğu neredeyse aynı</b> (%81.4 ve %82.6) ' +
+      'ama ECE\'leri <b>iki kattan fazla</b> farklı. Aynı oranda doğru karar veren iki modelden birinin ' +
+      'olasılıkları kullanılabilir, diğerininki değil.</p>' +
+      '<p><b>2 · Lojistik regresyon mükemmel kalibre değil</b> (0.0601). ' +
+      'Bu, sık tekrarlanan "lojistik regresyonun olasılıkları doğal olarak kalibredir" cümlesinin ' +
+      'eksik olduğunu gösteriyor. O cümle bir koşula bağlıdır: <b>model ailesi gerçek fonksiyonu kapsıyorsa.</b> ' +
+      'Buradaki verinin gerçek sınırında lojistik modelin yazamayacağı bir etkileşim terimi var, ' +
+      've kalibrasyon oradan bozuluyor.</p>' +
+      '<p>Torbalama hem en doğru hem en kalibre çıktı. Bu bir kural değil, bu veri kümesindeki sonuç; ' +
+      'başka bir problemde tablo başka türlü dizilebilir. Kural olan tek şey şu: ' +
+      '<b>iki eksen ayrı, birlikte hareket etmek zorunda değiller.</b></p>',
+    quiz:{ q:'İki model aynı veri üzerinde <b>aynı doğruluğu</b> veriyor. A modelinin ECE\'si 0.02, B modelininki 0.15. Hangi durumda bu fark <b>önemsizdir</b>?',
+      opts:[
+        {t:'Modelin çıktısı bir sıralama üretmek için kullanılacaksa', why:'Doğru. Sıralama yalnızca skorların büyüklük sırasına bakar; kalibrasyon monoton bir yeniden ölçekleme olduğu için sıralamayı değiştirmez. Öneri listesi, arama sonucu ya da inceleme kuyruğu sıralıyorsan ECE farkı seni etkilemez.'},
+        {t:'Modelin çıktısı bir eşikle karara çevrilecekse', why:'Önemli olabilir. Eşiği veriye bakarak seçersen kalibrasyon şart değildir, ama eşik bir maliyet hesabından geliyorsa (ör. "beklenen zarar 100 birimi aşarsa müdahale et") olasılığın gerçek olması gerekir.'},
+        {t:'Çıktı kullanıcıya "%X ihtimalle" diye gösterilecekse', why:'Tam tersine, en çok bu durumda önemlidir. Kullanıcıya gösterilen sayının karşılığı yoksa yanlış bilgi vermiş olursun.'},
+        {t:'Model birden fazla modelle birleştirilecekse', why:'Burada da önemlidir. Farklı modellerin olasılıklarını ortalamak ya da karşılaştırmak, hepsinin aynı ölçekte olmasını gerektirir. Kalibre olmayan bir model birleşimi bozar.'},
+      ], correct:0 },
+    learned:'<b>Doğruluk ve kalibrasyon iki ayrı eksendir.</b><br><br>' +
+      'Derin ağaç %81.4 doğruluk ve ECE 0.1381; lojistik %82.6 doğruluk ve ECE 0.0601. ' +
+      'Neredeyse aynı doğruluk, iki kattan fazla kalibrasyon farkı.<br><br>' +
+      'Ve lojistik regresyon burada mükemmel kalibre değil: "doğal olarak kalibredir" cümlesi ' +
+      'ancak model ailesi gerçek fonksiyonu kapsıyorsa geçerli.',
+    xp:55,
+  },
+  {
+    t:'Düzeltme: Platt ve isotonik',
+    goal:'Bozuk olasılıkların nasıl düzeltildiğini ve bunun neyi gerektirdiğini göreceksin.',
+    todo:'Modeli ve yöntemi değiştir. Kırmızı eğri ham, yeşil eğri düzeltilmiş model.',
+    kind:'controls', viz:'kalDuzeltme', h:760,
+    controls:[{k:'model', lb:'MODEL', min:0, max:2, step:1, val:1,
+               fmt:v=>['lojistik','derin ağaç','torbalama'][Math.round(v)]},
+              {k:'yontem', lb:'YÖNTEM', min:0, max:1, step:1, val:1,
+               fmt:v=>v>=0.5?'isotonik':'Platt'}],
+    live:s => { const ad = ['lojistik','derinAgac','torba'][Math.max(0,Math.min(2,Math.round(s.model)))];
+      const yon = s.yontem >= 0.5 ? 'isotonik' : 'platt';
+      const h = KAL.olc(ad), d = KAL.duzelt(ad, yon);
+      return [['YÖNTEM', yon==='platt'?'Platt':'isotonik'],
+              ['ECE ÖNCE', h.ece.toFixed(4), K.red],
+              ['ECE SONRA', d.ece.toFixed(4), K.green],
+              ['AUC', h.auc.toFixed(3)+' → '+d.auc.toFixed(3)]]; },
+    body:'<p>Düzeltmenin fikri şu: <b>modele dokunma, yalnızca skorun olasılığa çevrilme biçimini yeniden uydur.</b> ' +
+      'Yani ham skoru alıp ondan yeni bir olasılık üreten tek boyutlu bir fonksiyon öğren.</p>' +
+      '<p><b>Platt ölçekleme:</b> skorun logiti üzerine bir lojistik regresyon uydurur. ' +
+      'İki parametresi vardır, dolayısıyla az veriyle çalışır ve <b>kesinlikle monotondur</b>. ' +
+      'Eğrinin biçimi S şeklinde sabittir.</p>' +
+      '<p><b>İsotonik regresyon:</b> yalnızca "artan olsun" kısıtı koyar, biçimi veriden öğrenir. ' +
+      'Daha esnektir, dolayısıyla daha iyi düzeltebilir ama az veride aşırı uyum yapar ve basamaklı bir ' +
+      'fonksiyon üretir.</p>' +
+      '<p>Derin ağaçta ölçülen sonuç:</p>' +
+      '<p style="font-family:var(--mono)">ham &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ECE 0.1381 &nbsp;Brier 0.1599<br>' +
+      'Platt &nbsp;&nbsp;&nbsp;&nbsp;ECE 0.0483 &nbsp;Brier 0.1440<br>' +
+      'isotonik &nbsp;ECE 0.0183 &nbsp;Brier 0.1392</p>' +
+      '<p>İsotonik ECE\'yi <b>7.5 kat</b> düşürdü. Ve modelin kendisi hiç değişmedi.</p>' +
+      '<p><b>Kritik nokta:</b> düzeltme eğrisi, modelin <b>görmediği</b> bir veri kümesinde uydurulmalıdır. ' +
+      'Bu ders için veri üçe bölündü: 700 eğitim, 500 kalibrasyon, 1200 test.</p>' +
+      '<p>Neden ayrı olmak zorunda olduğunu derin ağaçta görebilirsin: aynı isotonik düzeltmeyi ' +
+      '<b>eğitim kümesinde</b> uydurunca ECE <b>0.1381\'de kalıyor</b>, yani hiç değişmiyor. ' +
+      'Sebebi basit ve öğretici: derin ağaç kendi eğitim verisinde neredeyse kusursuzdur, ' +
+      'orada zaten kalibre görünür, dolayısıyla düzeltme fonksiyonu "düzeltilecek bir şey yok" sonucuna varır.</p>' +
+      '<p>Torbalamada aynı hata daha az sinsi ama yine ölçülebilir: ayrı kümede 0.0300, ' +
+      'eğitim kümesinde uydurulunca 0.0749.</p>',
+    learned:'<b>Kalibrasyon, modeli değil skorun ölçeğini düzeltir.</b><br><br>' +
+      'Derin ağaçta: ham ECE 0.1381 → Platt 0.0483 → isotonik 0.0183.<br><br>' +
+      'Platt iki parametrelidir ve az veride güvenlidir; isotonik esnektir ama aşırı uyuma açıktır.<br><br>' +
+      '<b>Düzeltme ayrı bir kümede uydurulmalı.</b> Eğitim kümesinde uydurulunca derin ağaçta ECE hiç ' +
+      'değişmiyor (0.1381), çünkü model kendi eğitim verisinde zaten kalibre görünüyor.',
+    xp:60,
+  },
+  {
+    t:'Ne çözer, ne çözmez',
+    goal:'Kalibrasyonun sınırlarını ölçümle göreceksin.',
+    todo:'Modeli değiştir ve üç ölçütün nasıl davrandığına bak.',
+    kind:'controls', viz:'kalSinir', h:760,
+    controls:[{k:'model', lb:'MODEL', min:0, max:2, step:1, val:1,
+               fmt:v=>['lojistik','derin ağaç','torbalama'][Math.round(v)]}],
+    live:s => { const ad = ['lojistik','derinAgac','torba'][Math.max(0,Math.min(2,Math.round(s.model)))];
+      const h = KAL.olc(ad), p = KAL.duzelt(ad,'platt'), i = KAL.duzelt(ad,'isotonik');
+      return [['AUC ham', h.auc.toFixed(4)], ['AUC Platt', p.auc.toFixed(4), K.green],
+              ['ECE ham', h.ece.toFixed(4), K.red], ['ECE isotonik', i.ece.toFixed(4), K.green]]; },
+    body:'<p>Kalibrasyon <b>monoton</b> bir dönüşümdür: büyük skoru büyük, küçüğü küçük tutar. ' +
+      'Bunun doğrudan bir sonucu var ve ölçülebilir.</p>' +
+      '<p><b>Sıralama değişmez.</b> Derin ağaçta AUC ham hâlde 0.8432, Platt sonrası <b>0.8432</b>. ' +
+      'Fark tam olarak sıfır, çünkü Platt kesinlikle artan bir fonksiyon ve AUC yalnızca sıralamaya bakıyor.</p>' +
+      '<p>İsotonikte AUC 0.8433 çıkıyor; küçük fark, isotonik fonksiyonun basamaklı olmasından, ' +
+      'yani bazı farklı skorları aynı değere eşitlemesinden geliyor.</p>' +
+      '<p><b>Doğruluk neredeyse değişmez.</b> Derin ağaçta %81.4\'ten %82.3\'e. ' +
+      'Değişen kısım yalnızca 0.5 eşiğinin etrafındaki vakalar.</p>' +
+      '<p>Yani kalibrasyon <b>kötü bir modeli iyi model yapmaz.</b> Yaptığı şey onu <b>dürüst</b> yapmaktır.</p>' +
+      '<p><b>Ne zaman gerekir:</b></p>' +
+      '<p>· Olasılık kullanıcıya gösterilecekse.<br>' +
+      '· Karar bir <b>maliyet hesabından</b> geliyorsa. Proje kararı dersindeki beklenen değer ' +
+      'aritmetiği kalibre olmayan bir olasılıkla yanlış sonuç verir.<br>' +
+      '· Birden çok modelin olasılıkları birleştirilecek ya da karşılaştırılacaksa.</p>' +
+      '<p><b>Ne zaman gerekmez:</b> yalnızca sıralama üreteceksen. Öneri listesi, arama sonucu, ' +
+      'inceleme kuyruğu. Orada AUC yeterli.</p>' +
+      '<p><b>Ve en önemli sınır:</b> kalibrasyon, kalibrasyon verisinin geldiği <b>dağılıma aittir</b>. ' +
+      'Dağılım kayması dersinde ölçtüğün şey burada da geçerli: dünya kayınca kalibrasyon da bozulur ' +
+      've yeniden uydurmak gerekir. Bayesçi ağ dersinde gördüğün "veri dışında kalibrasyon garantisi yoktur" ' +
+      'uyarısının karşılığı budur.</p>',
+    learned:'<b>Kalibrasyon sıralamayı değil ölçeği düzeltir.</b><br><br>' +
+      'Derin ağaçta AUC: ham 0.8432, Platt sonrası 0.8432. Fark sıfır. Doğruluk %81.4 → %82.3.<br><br>' +
+      'Gerekli olduğu yerler: olasılık kullanıcıya gösteriliyorsa, karar maliyet hesabından geliyorsa, ' +
+      'modeller birleştirilecekse.<br><br>' +
+      'Gerekmediği yer: yalnızca sıralama üretiyorsan.<br><br>' +
+      'Ve kalibrasyon yalnızca kalibrasyon verisinin dağılımında geçerlidir; dağılım kayınca yeniden uydurulmalı.',
     xp:60,
   },
 ]};

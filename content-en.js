@@ -159,6 +159,7 @@ const DERS_ADI_EN = {
   'yanlilik':'Bias and variance: a model’s two kinds of error',
   'boyut-laneti':'The curse of dimensionality: why neighbours drift apart',
   'softmax':'Softmax and cross-entropy',
+  'kalibrasyon':'Calibration: is "70%" really 70%?',
   'dagilim-kaymasi':'When the ground moves: distribution shift',
   'zaman-serisi':'Time series: the lie of the random split',
   'hiper-arama':'Hyperparameter search: grid, random, halving',
@@ -8134,6 +8135,155 @@ DERSLER_EN['zaman-serisi'] = {
       '4 folds of an expanding window: the model averages −0.946, the naive baseline 0.715. The model leads in 0 of 4 folds.<br><br>' +
       'The same model scored 0.959 on the random split. The model never changed; only the measurement became honest.<br><br>' +
       'The rules: test comes after training · always measure the naive baseline · leave a gap · fit preprocessing only on the training window.',
+  },
+  ],
+};
+
+/* ────────── R1 · calibration ────────── */
+DERSLER_EN['kalibrasyon'] = {
+  ad:'Calibration: is "70%" really 70%?',
+  alt:'A model states a probability. Whether that number means anything is measurable, and in most models it does not.',
+  kaynaklar:[
+    {"y":"Niculescu-Mizil, A. & Caruana, R.", "t":"2005", "b":"Predicting Good Probabilities with Supervised Learning", "n":"ICML 2005"},
+    {"y":"Platt, J.", "t":"1999", "b":"Probabilistic Outputs for Support Vector Machines", "n":"Advances in Large Margin Classifiers"},
+    {"y":"Guo, C. et al.", "t":"2017", "b":"On Calibration of Modern Neural Networks", "n":"ICML 2017", "u":"https://arxiv.org/abs/1706.04599"},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'The reliability diagram',
+    goal:'You will learn how to measure whether a probability means anything.',
+    todo:'Change the number of bins. The further the blue curve strays from the diagonal, the worse the calibration.',
+    kind:'controls', viz:'kalGuvenilirlik', h:760, xp:45,
+    controls:[{k:'kova', lb:'BINS', min:5, max:20, step:1, val:10, fmt:v=>String(Math.round(v))}],
+    body:'<p>When a classifier says "70%" that can mean two different things.</p>' +
+      '<p><b>The ranking sense:</b> "the ones I call 70% are more likely than the ones I call 40%." AUC measures that.</p>' +
+      '<p><b>The probability sense:</b> "of a hundred cases where I say 70%, roughly seventy will happen." ' +
+      'That is <b>calibration</b>, and it is a different thing altogether.</p>' +
+      '<p>Measuring it is simple: put the predictions into bins and compare, within each bin, ' +
+      '<b>the model\'s average claim</b> with <b>the observed rate</b>. In a perfectly calibrated model those ' +
+      'two are equal, so the curve sits on the diagonal.</p>' +
+      '<p>The model here is a <b>deep decision tree</b>, trained on 700 examples and tested on 1200. ' +
+      'Its curve strays noticeably above and below the diagonal:</p>' +
+      '<p style="font-family:var(--mono)">says 0.003 &nbsp;→ &nbsp;observed 0.129<br>' +
+      'says 1.000 &nbsp;→ &nbsp;observed 0.860</p>' +
+      '<p>So <b>12.9%</b> of the cases it calls "certainly not" do happen, and <b>14%</b> of those it calls ' +
+      '"certainly yes" do not. The model is more confident than it has any right to be.</p>' +
+      '<p>The metric that reduces this to a single number is <b>ECE</b> (expected calibration error): ' +
+      'the average of |observed − claimed| across the bins, weighted by bin size. ' +
+      'For this model it is <b>0.1381</b>.</p>' +
+      '<p>ECE moves a little as you change the bin count but the order of magnitude does not: ' +
+      '0.1348 with 5 bins, 0.1411 with 20. If the metric were highly sensitive to the binning we could not trust it.</p>',
+    learned:'<b>Calibration is whether a probability means anything.</b><br><br>' +
+      'The reliability diagram: in each bin, the model\'s average claim against the observed rate. ' +
+      'Perfect calibration is the diagonal.<br><br>' +
+      'ECE reduces that to one number. For this deep tree it is 0.1381: 12.9% of what it calls "certainly not" happens.',
+  },
+  {
+    t:'Accuracy and calibration are not the same thing',
+    goal:'You will see that a more accurate model does not necessarily have more trustworthy probabilities.',
+    todo:'Move the model switch. The highlighted curve is the selected model.',
+    kind:'controls', viz:'kalModeller', h:760, xp:55,
+    controls:[{k:'model', lb:'MODEL', min:0, max:2, step:1, val:1,
+               fmt:v=>['logistic','deep tree','bagging'][Math.round(v)]}],
+    body:'<p>Three models were trained on the same data. All saw the same training set, all were measured on the same test set.</p>' +
+      '<p style="font-family:var(--mono)">model &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ECE &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Brier &nbsp;&nbsp;accuracy &nbsp;AUC<br>' +
+      'logistic &nbsp;&nbsp;0.0601 &nbsp;0.1213 &nbsp;82.6% &nbsp;&nbsp;&nbsp;0.903<br>' +
+      'deep tree &nbsp;0.1381 &nbsp;0.1599 &nbsp;81.4% &nbsp;&nbsp;&nbsp;0.843<br>' +
+      'bagging &nbsp;&nbsp;&nbsp;0.0385 &nbsp;0.1135 &nbsp;84.6% &nbsp;&nbsp;&nbsp;0.909</p>' +
+      '<p>Two things are worth noticing.</p>' +
+      '<p><b>1 · The deep tree and the logistic model are almost equally accurate</b> (81.4% and 82.6%) ' +
+      'but their ECEs differ by <b>more than a factor of two</b>. Of two models that decide correctly at ' +
+      'the same rate, one has usable probabilities and the other does not.</p>' +
+      '<p><b>2 · Logistic regression is not perfectly calibrated here</b> (0.0601). ' +
+      'That shows the often-repeated line "logistic regression\'s probabilities are naturally calibrated" ' +
+      'is incomplete. It holds under a condition: <b>if the model family contains the true function.</b> ' +
+      'The true boundary in this data has an interaction term the logistic model cannot express, ' +
+      'and that is where the calibration breaks.</p>' +
+      '<p>Bagging came out both the most accurate and the best calibrated. That is not a rule but the result ' +
+      'on this dataset; on another problem the table could line up differently. The only rule is this: ' +
+      '<b>these are two separate axes and they need not move together.</b></p>',
+    quiz:{ q:'Two models give <b>the same accuracy</b> on the same data. Model A has an ECE of 0.02, model B 0.15. In which case is that difference <b>unimportant</b>?',
+      opts:[
+        {t:'If the output will be used to produce a ranking', why:'Correct. A ranking depends only on the order of the scores; because calibration is a monotone rescaling it does not change the order. If you are ranking a recommendation list, search results or a review queue, the ECE difference does not affect you.'},
+        {t:'If the output will be turned into a decision with a threshold', why:'It can matter. If you pick the threshold by looking at data, calibration is not required; but if the threshold comes from a cost calculation ("intervene if the expected loss exceeds 100"), the probability has to be real.'},
+        {t:'If the output will be shown to a user as "X% likely"', why:'On the contrary, this is where it matters most. If the number shown to a user has no counterpart in reality you have given them false information.'},
+        {t:'If the model will be combined with other models', why:'It matters here too. Averaging or comparing the probabilities of different models requires them all to be on the same scale. An uncalibrated model corrupts the combination.'},
+      ], correct:0 },
+    learned:'<b>Accuracy and calibration are two separate axes.</b><br><br>' +
+      'The deep tree: 81.4% accuracy and ECE 0.1381; logistic: 82.6% accuracy and ECE 0.0601. ' +
+      'Almost the same accuracy, more than double the calibration gap.<br><br>' +
+      'And logistic regression is not perfectly calibrated here: "naturally calibrated" only holds ' +
+      'if the model family contains the true function.',
+  },
+  {
+    t:'The fix: Platt and isotonic',
+    goal:'You will see how broken probabilities are repaired and what that requires.',
+    todo:'Change the model and the method. The red curve is raw, the green one is corrected.',
+    kind:'controls', viz:'kalDuzeltme', h:760, xp:60,
+    controls:[{k:'model', lb:'MODEL', min:0, max:2, step:1, val:1,
+               fmt:v=>['logistic','deep tree','bagging'][Math.round(v)]},
+              {k:'yontem', lb:'METHOD', min:0, max:1, step:1, val:1,
+               fmt:v=>v>=0.5?'isotonic':'Platt'}],
+    body:'<p>The idea behind the fix: <b>do not touch the model, only refit the way its score is turned into ' +
+      'a probability.</b> That is, learn a one-dimensional function that takes the raw score and produces a new probability.</p>' +
+      '<p><b>Platt scaling:</b> fits a logistic regression on the logit of the score. It has two parameters, ' +
+      'so it works with little data and is <b>strictly monotone</b>. The shape of the curve is fixed as an S.</p>' +
+      '<p><b>Isotonic regression:</b> imposes only the constraint "must be increasing" and learns the shape from ' +
+      'the data. It is more flexible, so it can correct more, but it overfits on small data and produces a ' +
+      'step function.</p>' +
+      '<p>Measured on the deep tree:</p>' +
+      '<p style="font-family:var(--mono)">raw &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ECE 0.1381 &nbsp;Brier 0.1599<br>' +
+      'Platt &nbsp;&nbsp;&nbsp;&nbsp;ECE 0.0483 &nbsp;Brier 0.1440<br>' +
+      'isotonic &nbsp;ECE 0.0183 &nbsp;Brier 0.1392</p>' +
+      '<p>Isotonic cut the ECE by a factor of <b>7.5</b>. And the model itself never changed.</p>' +
+      '<p><b>The critical point:</b> the correction curve has to be fitted on data the model has <b>not seen</b>. ' +
+      'For this lesson the data was split three ways: 700 train, 500 calibration, 1200 test.</p>' +
+      '<p>Why it has to be separate is visible on the deep tree: fitting the same isotonic correction on the ' +
+      '<b>training set</b> leaves the ECE <b>at 0.1381</b>, that is completely unchanged. The reason is simple ' +
+      'and instructive: the deep tree is nearly perfect on its own training data, so it already looks calibrated ' +
+      'there, and the correction function concludes that there is nothing to correct.</p>' +
+      '<p>On bagging the same mistake is less dramatic but still measurable: 0.0300 on a separate set, ' +
+      '0.0749 when fitted on the training set.</p>',
+    learned:'<b>Calibration repairs the scale of the score, not the model.</b><br><br>' +
+      'On the deep tree: raw ECE 0.1381 → Platt 0.0483 → isotonic 0.0183.<br><br>' +
+      'Platt has two parameters and is safe on small data; isotonic is flexible but prone to overfitting.<br><br>' +
+      '<b>The correction must be fitted on a separate set.</b> Fitted on the training set, the deep tree\'s ECE ' +
+      'does not move at all (0.1381), because the model already looks calibrated on its own training data.',
+  },
+  {
+    t:'What it fixes, what it does not',
+    goal:'You will see the limits of calibration through measurement.',
+    todo:'Change the model and watch how the three metrics behave.',
+    kind:'controls', viz:'kalSinir', h:760, xp:60,
+    controls:[{k:'model', lb:'MODEL', min:0, max:2, step:1, val:1,
+               fmt:v=>['logistic','deep tree','bagging'][Math.round(v)]}],
+    body:'<p>Calibration is a <b>monotone</b> transformation: it keeps large scores large and small ones small. ' +
+      'That has a direct and measurable consequence.</p>' +
+      '<p><b>The ranking does not change.</b> On the deep tree the AUC is 0.8432 raw and <b>0.8432</b> after Platt. ' +
+      'The difference is exactly zero, because Platt is strictly increasing and AUC looks only at the order.</p>' +
+      '<p>After isotonic the AUC is 0.8433; the tiny difference comes from the isotonic function being a step ' +
+      'function, that is from it mapping some distinct scores to the same value.</p>' +
+      '<p><b>Accuracy barely changes.</b> On the deep tree, from 81.4% to 82.3%. ' +
+      'The only cases that move are the ones around the 0.5 threshold.</p>' +
+      '<p>So calibration <b>does not turn a bad model into a good one.</b> What it does is make it <b>honest</b>.</p>' +
+      '<p><b>When you need it:</b></p>' +
+      '<p>· If the probability will be shown to a user.<br>' +
+      '· If the decision comes from a <b>cost calculation</b>. The expected-value arithmetic from the project ' +
+      'decision lesson gives the wrong answer with an uncalibrated probability.<br>' +
+      '· If the probabilities of several models will be combined or compared.</p>' +
+      '<p><b>When you do not:</b> if you are only producing a ranking. A recommendation list, search results, ' +
+      'a review queue. AUC is enough there.</p>' +
+      '<p><b>And the most important limit:</b> a calibration <b>belongs to the distribution</b> its calibration ' +
+      'data came from. What you measured in the distribution shift lesson applies here too: when the world moves, ' +
+      'the calibration breaks and has to be refitted. This is the counterpart of the warning from the Bayesian ' +
+      'network lesson that there is no calibration guarantee outside the data.</p>',
+    learned:'<b>Calibration fixes the scale, not the ranking.</b><br><br>' +
+      'On the deep tree the AUC is 0.8432 raw and 0.8432 after Platt. Zero difference. Accuracy 81.4% → 82.3%.<br><br>' +
+      'Where it is needed: the probability is shown to a user, the decision comes from a cost calculation, ' +
+      'models are being combined.<br><br>' +
+      'Where it is not: if you only produce a ranking.<br><br>' +
+      'And a calibration is valid only in the distribution of its calibration data; when the distribution shifts it must be refitted.',
   },
   ],
 };

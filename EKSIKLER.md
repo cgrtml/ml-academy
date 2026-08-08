@@ -29,10 +29,14 @@ Adım adım eklenecek; her satır tamamlanınca işaretlenir.
 
 En yüksek öncelik: beklentiyi dersin kendisi yaratıyor, karşılığı yok.
 
-- [ ] **Kalibrasyon** · güvenilirlik diyagramı, Platt / isotonic
-      `bayes-ag[4]` birebir şunu diyor: "ayrı bir kalibrasyon adımı gerekir".
-      O ders yok. Ayrıca `lojistik[2]` ve `adillik[3]` de kalibrasyona atıf yapıyor.
-      Widget: güvenilirlik diyagramı + kapsama oranı ölçer.
+- [x] **Kalibrasyon** · güvenilirlik diyagramı, Platt / isotonik  ✔ 8 Ağustos 2026
+      `DERSLER['kalibrasyon']`, Rota 1 (`softmax` sonrası), 4 adım, 220 XP.
+      Üç model gerçekten eğitiliyor; veri 700 eğitim / 500 kalibrasyon / 1200 test.
+      Ölçülen ECE: lojistik 0.0601, derin ağaç 0.1381, torbalama 0.0385.
+      Derin ağaçta düzeltme: 0.1381 → Platt 0.0483 → isotonik 0.0183, AUC sabit.
+      Ayrıca `lojistik[2]`'nin "doğal olarak kalibredir" cümlesine koşul eklendi.
+      Kapsanmayan: sıcaklık ölçekleme (çok sınıflı), sınıf başına kalibrasyon,
+      conformal prediction.
 
 - [ ] **Dengesiz veriyle ne yapılır** · eşik kaydırma, sınıf ağırlığı, yeniden örnekleme
       `metrikler` sorunu kuruyor (accuracy neden yalan söyler) ama çözümü
@@ -99,7 +103,7 @@ başlanmamalı.
 ## Öncelik sırası
 
 1. ~~Zaman serisi~~ ✔ tamamlandı
-2. Kalibrasyon
+2. ~~Kalibrasyon~~ ✔ tamamlandı
 3. Dengesiz veri
 4. A/B testi
 5. Bilgi kuramı
