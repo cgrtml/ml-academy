@@ -13,10 +13,19 @@ const env = JSON.parse(fs.readFileSync(dosya.env,'utf8'));
 const S = new Function(fs.readFileSync(dosya.soz,'utf8') +
   ';return { EN:' + dosya.ad + ', AYNI:(typeof ' + dosya.ayni + '!=="undefined"?' + dosya.ayni + ':[]) };')();
 const AYNI = new Set(S.AYNI);
+/* arayüz katmanı, karşılığı olmayanlarda tuval sözlüğüne düşer */
+let YEDEK = { EN:{}, AYNI:[] };
+if (hedef === 'arayuz'){
+  try { YEDEK = new Function(fs.readFileSync('./viz-sozluk.js','utf8') +
+    ';return { EN:TUVAL_EN, AYNI:TUVAL_AYNI };')(); } catch(e){}
+}
+const YEDEK_AYNI = new Set(YEDEK.AYNI);
 
 const cift = x => Array.isArray(x) ? x : [x, ''];
 const tumu = [...env.sabit.map(cift), ...env.sablon.map(cift)];
-const eksik = tumu.filter(([s]) => S.EN[s] === undefined && !AYNI.has(s));
+const eksik = tumu.filter(([s]) =>
+  S.EN[s] === undefined && !AYNI.has(s) &&
+  YEDEK.EN[s] === undefined && !YEDEK_AYNI.has(s));
 
 const N    = parseInt(process.argv[2] || '120', 10);
 const atla = parseInt(process.argv[3] || '0', 10);

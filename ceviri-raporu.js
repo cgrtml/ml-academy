@@ -104,7 +104,7 @@ console.log('\n── 3 · SÖZLÜK KAPSAMI ──');
    arayuz-sozluk.js (ARAYUZ_EN) üzerinden çevrilir. Envanterleri üretmek için:
    node tuval-metin.js  ·  node arayuz-metin.js  */
 let sozlukEksik = 0;
-function katman(ad, sozDosya, envDosya, enAd, ayniAd){
+function katman(ad, sozDosya, envDosya, enAd, ayniAd, yedek){
   let SOZ = { EN:{}, AYNI:[] }, env = null;
   try { SOZ = new Function(fs.readFileSync(sozDosya,'utf8') +
     ';return { EN:' + enAd + ', AYNI:(typeof ' + ayniAd + '!=="undefined"?' + ayniAd + ':[]) };')(); } catch(e){}
@@ -113,7 +113,10 @@ function katman(ad, sozDosya, envDosya, enAd, ayniAd){
   const cikar = x => Array.isArray(x) ? x[0] : x;
   const tumu = [...env.sabit.map(cikar), ...env.sablon.map(cikar)];
   const ayni = new Set(SOZ.AYNI);
-  const eksik = tumu.filter(x => SOZ.EN[x] === undefined && !ayni.has(x));
+  /* arayüz katmanı, karşılığı olmayanlarda tuval sözlüğüne düşer (CEVIR de öyle yapar) */
+  const yEN = yedek ? yedek.EN : {}, yAyni = new Set(yedek ? yedek.AYNI : []);
+  const eksik = tumu.filter(x =>
+    SOZ.EN[x] === undefined && !ayni.has(x) && yEN[x] === undefined && !yAyni.has(x));
   sozlukEksik += eksik.length;
   console.log('  ' + ad.padEnd(8) + tumu.length + ' metin  ·  ' + Object.keys(SOZ.EN).length +
               ' çeviri  ·  ' + ayni.size + ' aynı kalan  ·  eksik ' + eksik.length);
@@ -125,8 +128,11 @@ function katman(ad, sozDosya, envDosya, enAd, ayniAd){
     console.log('      ⚠ # yer tutucusu uyuşmayan kayıt: ' + uyumsuz.length);
   }
 }
+let TUVAL = null;
+try { TUVAL = new Function(fs.readFileSync('./viz-sozluk.js','utf8') +
+  ';return { EN:TUVAL_EN, AYNI:TUVAL_AYNI };')(); } catch(e){}
 katman('tuval',  './viz-sozluk.js',    './.tuval-envanter.json',  'TUVAL_EN',  'TUVAL_AYNI');
-katman('arayüz', './arayuz-sozluk.js', './.arayuz-envanter.json', 'ARAYUZ_EN', 'ARAYUZ_AYNI');
+katman('arayüz', './arayuz-sozluk.js', './.arayuz-envanter.json', 'ARAYUZ_EN', 'ARAYUZ_AYNI', TUVAL);
 
 console.log('\n── ÖZET ──');
 console.log('  çevrilmemiş ders   : ' + eksik.length + ' / ' + trIds.length);

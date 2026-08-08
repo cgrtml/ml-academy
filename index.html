@@ -202,6 +202,7 @@ const EN = {
   },
   etiket:{hazir:'READY', yapim:'IN PROGRESS', planli:'PLANNED'},
   dk:'min', adim:'steps', hazirSay:'ready',
+  baslik:'ML Academy · Learn AI from scratch',
   basla:'Start here: ', devam:'Continue where you left off: ', bitti:'You finished everything ✓ ',
   sifirla:'All progress and XP will be deleted. Are you sure?',
 };
@@ -244,6 +245,8 @@ const adEN = d => {
   if (typeof DERS_ADI_EN !== 'undefined' && DERS_ADI_EN[d.id]) return DERS_ADI_EN[d.id];
   return d.ad;
 };
+if (en) document.title = EN.baslik;
+
 $('rotalar').innerHTML = ROTALAR.map(r => {
   const hazir = r.dersler.filter(d => d.durum === 'hazir').length;
   nToplam += r.dersler.length; nHazir += hazir;

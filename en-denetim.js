@@ -97,6 +97,10 @@ const ekle = (s, n) => { s = String(s == null ? '' : s); if (!s.length) return;
   if (!ARAYUZ.has(s)) ARAYUZ.set(s, n); };
 Object.values(M2.DERSLER).forEach(d => d.adimlar.forEach(a => {
   if (a.unlockMsg) ekle(a.unlockMsg, 'unlockMsg');
+  (a.controls || []).forEach(c => { if (!c.fmt) return;
+    const ad = Math.max(c.step || 1, (c.max - c.min) / 20);
+    for (let v = c.min; v <= c.max + 1e-9; v += ad){ try { ekle(c.fmt(v), 'control.fmt'); } catch(e){} }
+    try { ekle(c.fmt(c.max), 'control.fmt'); } catch(e){} });
   (a.kod || []).forEach(l => ekle(l, 'kod'));
   (a.phases || []).forEach(p => (p.live || []).forEach(r => ekle(r[0], 'phase.live')));
   if (a.kind === 'play' && a.frames){ let F = []; try { F = a.frames(); } catch(e){}
@@ -114,10 +118,14 @@ Object.values(M2.DERSLER).forEach(d => d.adimlar.forEach(a => {
     if (a.bodyFn){ try { ekle(a.bodyFn(s), 'bodyFn'); } catch(e){} } });
 }));
 const arayuzKalan = [];
+/* CEVIR önce arayüz, sonra tuval sözlüğüne bakar; denetim de aynı zinciri izler */
+const cevrilir = s => A.EN[s] !== undefined || T.EN[s] !== undefined ||
+  (/\d/.test(s) && (A.EN[sablonla(s)] !== undefined || T.EN[sablonla(s)] !== undefined));
+const ayniBirakildi = s => A.AYNI.includes(s) || A.AYNI.includes(sablonla(s)) ||
+  T.AYNI.includes(s) || T.AYNI.includes(sablonla(s));
 [...ARAYUZ.entries()].forEach(([s, n]) => {
-  if (A.EN[s] !== undefined) return;                       // CEVIR bunu çevirir
-  if (/\d/.test(s) && A.EN[sablonla(s)] !== undefined) return;
-  if (A.AYNI.includes(s) || A.AYNI.includes(sablonla(s))) return;   // bilerek aynı
+  if (cevrilir(s)) return;
+  if (ayniBirakildi(s)) return;
   if (!/[A-Za-zÇĞİÖŞÜçğıöşü]/.test(s.replace(/<[^>]*>/g,''))) return;
   arayuzKalan.push([s, n]);
 });

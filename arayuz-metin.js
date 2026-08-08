@@ -45,6 +45,13 @@ Object.entries(DERSLER).forEach(([id, d]) => {
   d.adimlar.forEach((a, i) => {
     const yer = id + '[' + (i+1) + ']';
     if (a.unlockMsg) ekle(a.unlockMsg, 'unlockMsg');
+    /* kaydırıcı değerini biçimlendiren fmt() de content.js'te ve Türkçe üretebilir */
+    (a.controls || []).forEach(c => {
+      if (!c.fmt) return;
+      const ad = Math.max(c.step || 1, (c.max - c.min) / 20);
+      for (let v = c.min; v <= c.max + 1e-9; v += ad){ try { ekle(c.fmt(v), 'control.fmt'); } catch(e){} }
+      try { ekle(c.fmt(c.max), 'control.fmt'); } catch(e){}
+    });
     (a.kod || []).forEach(l => ekle(l, 'kod'));
     /* phases[].body ve state'i content-en.js zaten sağlıyor; yalnızca live etiketleri kalıyor */
     (a.phases || []).forEach(p => (p.live || []).forEach(r => ekle(r[0], 'phase.live')));

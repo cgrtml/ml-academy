@@ -307,19 +307,24 @@ const CEVIR = (() => {
   return v => {
     if (!EN || v == null) return v;
     const s = String(v);
-    const D = (typeof ARAYUZ_EN !== 'undefined') ? ARAYUZ_EN : null;
-    if (!D || !s) return v;
-    if (D[s] !== undefined) return D[s];
+    /* önce arayüz sözlüğü, sonra tuval sözlüğü: kaydırıcı biçimlendiricileri
+       ve canlı sayaçlar çoğu zaman tuvaldeki etiketlerin aynısını üretir */
+    const D  = (typeof ARAYUZ_EN !== 'undefined') ? ARAYUZ_EN : null;
+    const D2 = (typeof TUVAL_EN  !== 'undefined') ? TUVAL_EN  : null;
+    if (!s || (!D && !D2)) return v;
+    if (D  && D[s]  !== undefined) return D[s];
+    if (D2 && D2[s] !== undefined) return D2[s];
     if (/\d/.test(s)){
       const sayilar = [];
       const anahtar = s.replace(SAYI, m => { sayilar.push(m); return '#'; });
-      const k = D[anahtar];
+      const k = (D && D[anahtar] !== undefined) ? D[anahtar]
+              : (D2 && D2[anahtar] !== undefined) ? D2[anahtar] : undefined;
       if (k !== undefined){ let i = 0; return k.replace(/#/g, () => sayilar[i++]); }
     }
     return v;
   };
 })();
-const cevirLive = rows => (rows||[]).map(r => [CEVIR(r[0]), r[1], r[2]]);
+const cevirLive = rows => (rows||[]).map(r => [CEVIR(r[0]), CEVIR(r[1]), r[2]]);
 
 const qs = new URLSearchParams(location.search);
 const DERS_ID = qs.get('id') || 'veri';
@@ -351,6 +356,10 @@ const CEVRILI = !!(typeof DERSLER_EN !== 'undefined' && DERSLER_EN[DERS_ID]);
 const D = (EN && CEVRILI) ? bindir(DERSLER[DERS_ID], DERSLER_EN[DERS_ID]) : DERSLER[DERS_ID];
 
 if (!D){
+  /* ders yoksa aşağıdaki satırlara hiç gelinmiyor; üst gezinme yazıları burada kurulur */
+  $('bkLink').textContent = T('tumDers');
+  $('adimBasligi').textContent = T('adimlar');
+  document.title = (EN ? 'Lesson' : 'Ders') + ' · ML Academy';
   document.querySelector('main').innerHTML =
     '<div class="stage"><h2>'+T('yokBas')+'</h2><p class="body">' +
     T('yokGov')+' <a href="index.html">'+T('listeDon')+'</a></p></div>';
@@ -398,8 +407,8 @@ function kitapCiz(i){
   const liste = (typeof KITAP_KAYNAK !== 'undefined') ? KITAP_KAYNAK[DERS_ID + ':' + (i+1)] : null;
   if (!liste || !liste.length){ kutu.innerHTML = ''; return; }
   kutu.innerHTML = '<div class="kh">' + T('kitapBas') + '</div>' +
-    liste.map(k => '<div class="kitap"><span class="ad">' + k.k + '</span>' +
-                   '<span class="sy">s. ' + k.s + '</span></div>').join('') +
+    liste.map(k => '<div class="kitap"><span class="ad">' + CEVIR(k.k) + '</span>' +
+                   '<span class="sy">' + (EN ? 'p. ' : 's. ') + k.s + '</span></div>').join('') +
     '<div class="kitapNot">' + T('kitapNot') + '</div>';
 }
 
@@ -423,7 +432,7 @@ function go(i){
   if (a.controls) html += '<div class="ctl">' + a.controls.map(c =>
     '<div class="prow"><label>'+c.lb+'</label>' +
     '<input type="range" id="c_'+c.k+'" min="'+c.min+'" max="'+c.max+'" step="'+c.step+'" value="'+c.val+'">' +
-    '<div class="val" id="v_'+c.k+'">'+c.fmt(c.val)+'</div></div>').join('') + '</div>';
+    '<div class="val" id="v_'+c.k+'">'+CEVIR(c.fmt(c.val))+'</div></div>').join('') + '</div>';
 
   if (a.kod) html += '<div class="code" id="code"></div>';
 
@@ -511,7 +520,7 @@ function go(i){
 
   /* ---- kontroller ---- */
   (a.controls||[]).forEach(c => {
-    $('c_'+c.k).oninput = e => { st[c.k] = +e.target.value; $('v_'+c.k).textContent = c.fmt(st[c.k]); draw(); };
+    $('c_'+c.k).oninput = e => { st[c.k] = +e.target.value; $('v_'+c.k).textContent = CEVIR(c.fmt(st[c.k])); draw(); };
   });
 
   /* ---- faz / oynatıcı ---- */
