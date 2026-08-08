@@ -15,4 +15,17 @@ const SUPA = {
    topluluk bölümü gizli kalır, yani hiçbir şey bozulmaz. */
 SUPA.hazir = !!(SUPA.url && SUPA.anonKey);
 
+/* Açık olan giriş sağlayıcıları. Supabase panelinde etkinleştirilmeden
+   buraya eklenirse düğme çıkar ama tıklandığında hata döner; o yüzden
+   listeyi ancak panelde açtıktan sonra genişlet.
+   Kurulum: Authentication → Sign In / Providers → Google / GitHub
+   Yönlendirme adresi: <proje-url>/auth/v1/callback  */
+SUPA.saglayicilar = ['email'];        // 'google', 'github' eklenebilir
+
+/* Her rotada üyeliksiz açılabilen ders sayısı.
+   NOT: bu kilit yalnızca ARAYÜZDEDİR. Ders içeriği content.js içinde ve o
+   dosya herkese açıktır; kararlı biri kilidi aşabilir. Amaç kayıt olmayı
+   teşvik etmek, içeriği korumak değil. */
+SUPA.ucretsizDers = 3;
+
 if (typeof module !== 'undefined') module.exports = SUPA;

@@ -240,6 +240,9 @@
 <script src="viz.js"></script>
 <script src="content.js"></script>
 <script src="content-en.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="yapilandirma.js"></script>
+<script src="topluluk/hesap.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -329,6 +332,21 @@ const cevirLive = rows => (rows||[]).map(r => [CEVIR(r[0]), CEVIR(r[1]), r[2]]);
 
 const qs = new URLSearchParams(location.search);
 const DERS_ID = qs.get('id') || 'veri';
+
+/* ── erişim kilidi ──
+   Her rotanın ilk N dersi herkese açık. Bu kontrol ARAYÜZ düzeyindedir:
+   içerik content.js içinde ve o dosya herkese açıktır. Amaç kayıt olmayı
+   teşvik etmek, içeriği gizlemek değil. */
+const UCRETSIZ = (typeof SUPA !== 'undefined' && SUPA.ucretsizDers) || 3;
+function dersSirasi(id){
+  for (const r of ROTALAR){
+    const i = r.dersler.findIndex(d => d.id === id);
+    if (i >= 0) return i;
+  }
+  return 0;
+}
+const KILITLI_DERS = (typeof SUPA !== 'undefined' && SUPA.hazir)
+                     && dersSirasi(DERS_ID) >= UCRETSIZ;
 /* İngilizce ders yalnızca METNİ taşır; frames/live/unlock/derive gibi davranış
    alanları Türkçe derste durur. Bu yüzden EN, TR'nin ÜSTÜNE bindirilir:
    böylece iki dilde de simülasyon, kilit ve animasyon birebir aynı çalışır. */
@@ -723,6 +741,44 @@ $('dAlt').textContent = D.alt;
 document.title = $('dAd').textContent + ' · ML Academy';
 renderMap();
 go(MY.done.length && MY.done.length < D.adimlar.length ? Math.max(...MY.done)+1 : 0);
+
+/* ── kilit ──
+   Ders zaten çizildi; giriş yoksa üstüne bir perde konur. Böylece kullanıcı
+   dersin var olduğunu ve neye benzediğini görür ama ilerleyemez. */
+if (KILITLI_DERS && typeof HESAP !== 'undefined'){
+  const perde = document.createElement('div');
+  perde.id = 'kilitPerde';
+  perde.innerHTML =
+    '<div class="kpKart"><div class="kpKilit">🔒</div>' +
+    '<h3>' + (EN ? 'This lesson needs an account' : 'Bu ders için hesap gerekiyor') + '</h3>' +
+    '<p>' + (EN ? 'The first ' + UCRETSIZ + ' lessons of every route are open to everyone. ' +
+                  'A free account covers the rest.'
+                : 'Her rotanın ilk ' + UCRETSIZ + ' dersi herkese açık. ' +
+                  'Gerisi için ücretsiz bir hesap yeterli.') + '</p>' +
+    '<div class="kpDug"><button id="kpGeri">' + (EN ? '← All lessons' : '← Bütün dersler') + '</button>' +
+    '<button id="kpGiris" class="ana">' + (EN ? 'Sign in / Sign up' : 'Giriş yap / Kayıt ol') + '</button></div></div>';
+  document.body.appendChild(perde);
+  const st = document.createElement('style');
+  st.textContent =
+    '#kilitPerde{position:fixed;inset:0;z-index:8500;display:flex;align-items:center;' +
+      'justify-content:center;padding:20px;background:rgba(6,9,14,.82);backdrop-filter:blur(7px)}' +
+    '.kpKart{background:var(--panel);border:1px solid var(--line);border-radius:18px;' +
+      'max-width:430px;width:100%;padding:32px 30px;text-align:center}' +
+    '.kpKilit{font-size:38px;margin-bottom:10px}' +
+    '.kpKart h3{margin:0 0 10px;font-size:21px;font-weight:800;letter-spacing:-.02em}' +
+    '.kpKart p{margin:0;color:var(--mut);font-size:14.5px;line-height:1.7}' +
+    '.kpDug{display:flex;gap:10px;margin-top:24px}' +
+    '.kpDug button{flex:1;padding:12px 16px;border-radius:11px;font-size:14.5px;font-weight:700;' +
+      'cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--txt);font-family:inherit}' +
+    '.kpDug button.ana{background:var(--green);border-color:var(--green);color:#04120d}';
+  document.head.appendChild(st);
+  document.getElementById('kpGeri').onclick = () => location.href = 'index.html';
+  document.getElementById('kpGiris').onclick = () => HESAP.girisEkrani(false);
+
+  HESAP.dinle(() => { if (HESAP.girisli) perde.remove(); });
+  HESAP.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL,
+              saglayicilar:SUPA.saglayicilar });
+}
 </script>
 </body>
 </html>

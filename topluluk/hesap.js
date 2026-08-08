@@ -24,6 +24,14 @@ const HESAP = (() => {
       durumOnayli:'Yorumun yayımda.',
       durumRed:'Yorumun yayımlanmadı.',
       kapat:'Kapat', iptal:'İptal',
+      ya:'ya da',
+      ileGoogle:'Google ile devam et', ileGithub:'GitHub ile devam et',
+      kilitBas:'Devam etmek için giriş yap',
+      kilitAlt:'Her rotanın ilk üç dersi herkese açık. Gerisi için ücretsiz bir hesap yeterli.',
+      kilitNe:'Hesap açmak neden gerekiyor:',
+      kilitMad:['İlerlemen cihazlar arasında saklanır.',
+                'Hangi soruların bozuk olduğunu görüp dersleri düzeltiyoruz.',
+                'Ücretsiz, ve istediğin an silebilirsin.'],
       modBas:'Onay bekleyen yorumlar', modYok:'Bekleyen yorum yok.',
       onayla:'Onayla', reddet:'Reddet',
     },
@@ -42,12 +50,21 @@ const HESAP = (() => {
       durumOnayli:'Your review is live.',
       durumRed:'Your review was not published.',
       kapat:'Close', iptal:'Cancel',
+      ya:'or',
+      ileGoogle:'Continue with Google', ileGithub:'Continue with GitHub',
+      kilitBas:'Sign in to continue',
+      kilitAlt:'The first three lessons of every route are open to everyone. A free account covers the rest.',
+      kilitNe:'Why an account:',
+      kilitMad:['Your progress is kept across devices.',
+                'We see which questions are broken and fix the lessons.',
+                'It is free, and you can delete it whenever you like.'],
       modBas:'Reviews awaiting approval', modYok:'Nothing pending.',
       onayla:'Approve', reddet:'Reject',
     },
   };
 
   let sb = null, t = M.tr, kullanici = null, moderator = false;
+  let saglayicilar = ['email'];
   const dinleyiciler = [];
 
   const kacir = s => String(s == null ? '' : s)
@@ -84,6 +101,17 @@ const HESAP = (() => {
       .hDug button:hover{border-color:var(--mut,#8494a8)}
       .hGecis{display:block;text-align:center;margin-top:15px;font-size:13px;
         color:var(--blue,#4cc4ff);cursor:pointer}
+      .hAyrac{display:flex;align-items:center;gap:12px;margin:20px 0 4px;
+        color:var(--mut,#8494a8);font-size:12px}
+      .hAyrac::before,.hAyrac::after{content:'';flex:1;height:1px;background:var(--line,#1e2a3a)}
+      .hSos{display:flex;flex-direction:column;gap:9px;margin-top:12px}
+      .hSos button{display:flex;align-items:center;justify-content:center;gap:9px;
+        padding:11px 16px;border-radius:11px;font-size:14.5px;font-weight:600;cursor:pointer;
+        border:1px solid var(--line,#1e2a3a);background:var(--panel2,#141c28);
+        color:var(--txt,#e6edf3);font-family:inherit}
+      .hSos button:hover{border-color:var(--mut,#8494a8)}
+      .hKilitMad{margin:14px 0 0;padding-left:18px;color:var(--mut,#8494a8);
+        font-size:13.5px;line-height:1.9}
       .hMesaj{margin-top:14px;padding:10px 13px;border-radius:10px;font-size:13.5px;line-height:1.55}
       .hMesaj.iyi{background:rgba(34,211,160,.1);color:var(--green,#22d3a0)}
       .hMesaj.kotu{background:rgba(248,113,113,.1);color:var(--red,#f87171)}
@@ -126,6 +154,48 @@ const HESAP = (() => {
     arka.querySelector('.hKart').appendChild(d);
   };
 
+  /* ── sosyal giriş ──
+     Yalnızca yapılandırmada açık olan sağlayıcılar gösterilir. Panelde
+     etkinleştirilmemiş bir sağlayıcı için düğme çıkarmak, tıklanınca hata
+     veren bir düğme demek olurdu. */
+  function sosyalHTML(){
+    const v = saglayicilar.filter(p => p !== 'email');
+    if (!v.length) return '';
+    const ad = { google:t.ileGoogle, github:t.ileGithub };
+    return `<div class="hAyrac">${t.ya}</div><div class="hSos">` +
+      v.map(p => `<button data-sag="${p}">${ad[p] || p}</button>`).join('') + '</div>';
+  }
+  function sosyalBagla(arka){
+    arka.querySelectorAll('[data-sag]').forEach(d => {
+      d.onclick = async () => {
+        try {
+          const { error } = await sb.auth.signInWithOAuth({
+            provider: d.dataset.sag,
+            options: { redirectTo: location.origin + location.pathname },
+          });
+          if (error) throw error;
+        } catch (e){ mesaj(arka, e.message || t.hata, false); }
+      };
+    });
+  }
+
+  /* ── kilit ekranı ── */
+  function kilitEkrani(){
+    const arka = kart(`
+      <h3>${t.kilitBas}</h3>
+      <p class="alt">${t.kilitAlt}</p>
+      <div class="hMesaj iyi">${t.kilitNe}
+        <ul class="hKilitMad">${t.kilitMad.map(x => '<li>'+x+'</li>').join('')}</ul></div>
+      <div class="hDug">
+        <button id="hIptal">${t.kapat}</button>
+        <button id="hTamam" class="ana">${t.kayit}</button>
+      </div>
+      <span class="hGecis" id="hGecis">${t.gecis2}</span>`);
+    arka.querySelector('#hIptal').onclick = kapat;
+    arka.querySelector('#hTamam').onclick = () => girisEkrani(true);
+    arka.querySelector('#hGecis').onclick = () => girisEkrani(false);
+  }
+
   /* ── giriş / kayıt ── */
   function girisEkrani(kayitMi){
     const arka = kart(`
@@ -137,8 +207,10 @@ const HESAP = (() => {
         <button id="hIptal">${t.iptal}</button>
         <button id="hTamam" class="ana">${kayitMi ? t.kayit : t.giris}</button>
       </div>
+      ${sosyalHTML()}
       <span class="hGecis" id="hGecis">${kayitMi ? t.gecis2 : t.gecis1}</span>`);
 
+    sosyalBagla(arka);
     arka.querySelector('#hIptal').onclick = kapat;
     arka.querySelector('#hGecis').onclick = () => girisEkrani(!kayitMi);
     arka.querySelector('#hTamam').onclick = async () => {
@@ -287,6 +359,7 @@ const HESAP = (() => {
   async function kur(o){
     o = o || {};
     t = M[o.dil === 'en' ? 'en' : 'tr'];
+    saglayicilar = o.saglayicilar || ['email'];
     if (!o.url || !o.anonKey || typeof window.supabase === 'undefined') return;
     sb = window.supabase.createClient(o.url, o.anonKey);
 
@@ -300,7 +373,8 @@ const HESAP = (() => {
     sb.auth.onAuthStateChange((_, oturum) => uygula(oturum));
   }
 
-  return { kur, dinle, girisEkrani, yorumEkrani, modEkrani,
+  return { kur, dinle, girisEkrani, kilitEkrani, yorumEkrani, modEkrani,
+           get girisli(){ return !!kullanici; },
            get kullanici(){ return kullanici; }, get moderator(){ return moderator; } };
 })();
 
