@@ -61,6 +61,15 @@
   .stag{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--mut);text-transform:uppercase}
   .stage h2{font-size:21px;margin:7px 0 0;font-weight:750;letter-spacing:-.01em}
 
+  .anlatim{background:var(--panel2);border:1px solid var(--line);border-radius:13px;
+           padding:18px 20px;margin:16px 0}
+  .anlatim .h{font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;color:var(--yellow);
+              text-transform:uppercase;font-weight:700;display:block;margin-bottom:9px}
+  .anlatim p{margin:0 0 11px;font-size:14.5px;line-height:1.72}
+  .anlatim p:last-child{margin-bottom:0}
+  .anlatim b{color:var(--txt)}
+  .anlatim code{font-family:var(--mono);font-size:13px;background:rgba(255,255,255,.05);
+                padding:1px 6px;border-radius:5px}
   .goal{background:linear-gradient(180deg,rgba(34,211,160,.12),rgba(34,211,160,.03));
         border:1px solid rgba(34,211,160,.34);border-radius:12px;padding:14px 16px;margin:16px 0}
   .goal .h{font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;color:var(--green);
@@ -195,13 +204,6 @@
   .dilbar button{font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:5px 10px;
     border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--mut);cursor:pointer}
   .dilbar button.on{background:var(--green);border-color:var(--green);color:#04120d;font-weight:800}
-  .kitapBlok{margin-top:20px}
-  .kitap{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--purple);
-         border-radius:0 10px 10px 0;padding:9px 12px;margin-bottom:7px;font-size:11.5px;line-height:1.5}
-  .kitap .ad{color:var(--txt)}
-  .kitap .sy{font-family:var(--mono);font-size:10.5px;color:var(--purple);display:block;margin-top:3px}
-  .kitapNot{font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:var(--mut);
-            text-transform:uppercase;margin-top:6px}
   .dilnot{font-family:var(--mono);font-size:11px;color:var(--yellow);background:rgba(250,204,21,.07);
     border:1px solid rgba(250,204,21,.28);border-radius:9px;padding:8px 12px;margin:0 0 16px}
   .fin{text-align:center;padding:34px 20px}
@@ -221,7 +223,6 @@
   <aside class="side">
     <div class="hd" id="adimBasligi">◆ Bu dersin adımları</div>
     <div class="map" id="map"></div>
-    <div id="kitapBlok"></div>
     <div id="kaynakBlok"></div>
   </aside>
   <main>
@@ -234,10 +235,11 @@
 
 <script src="viz-sozluk.js"></script>
 <script src="arayuz-sozluk.js"></script>
+<script src="anlatim.js"></script>
+<script src="anlatim-en.js"></script>
 <script src="viz.js"></script>
 <script src="content.js"></script>
 <script src="content-en.js"></script>
-<script src="kitap-kaynak.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -254,6 +256,7 @@ const L10N = {
   kazanilabilir:['XP kazanılabilir','XP available'],
   okumaAdimi:['okuma adımı · 5 XP','reading step · 5 XP'],
   ogrenecegin:['🎯 Bu adımda öğreneceğin','🎯 What you will learn here'],
+  anlatimBas:['📖 Konu anlatımı','📖 The idea'],
   yapacagin:['Yapacağın','Your task'],
   geri:['◀ GERİ','◀ BACK'],
   oynat:['▶ OYNAT','▶ PLAY'],
@@ -288,8 +291,6 @@ const L10N = {
   denedin:['denedin','you tried'],
   adimOkundu:['adım okundu','step read'],
   kaynaklar:['◆ Kaynaklar','◆ Sources'],
-  kitapBas:['◆ Bu adımı kitaptan oku','◆ Read this step in a book'],
-  kitapNot:['otomatik eşleşme','matched automatically'],
   baglanti:['bağlantı','link'],
   karsilastirma:['<b>Karşılaştırma:</b> sen 1. adımda kaydırıcılarla en iyi <b>',
                  '<b>Comparison:</b> with the sliders in step 1 your best was <b>'],
@@ -400,16 +401,16 @@ function renderMap(){
   $('xpN').textContent = MY.xp + ' XP';
 }
 
-/* Bu adimin konusunu kapsayan kitap bolumleri. Sadece atif gosterilir. */
-function kitapCiz(i){
-  const kutu = $('kitapBlok');
-  if (!kutu) return;
-  const liste = (typeof KITAP_KAYNAK !== 'undefined') ? KITAP_KAYNAK[DERS_ID + ':' + (i+1)] : null;
-  if (!liste || !liste.length){ kutu.innerHTML = ''; return; }
-  kutu.innerHTML = '<div class="kh">' + T('kitapBas') + '</div>' +
-    liste.map(k => '<div class="kitap"><span class="ad">' + CEVIR(k.k) + '</span>' +
-                   '<span class="sy">' + (EN ? 'p. ' : 's. ') + k.s + '</span></div>').join('') +
-    '<div class="kitapNot">' + T('kitapNot') + '</div>';
+
+/* Konu anlatımı: modelden ÖNCE okunur. anlatim.js / anlatim-en.js içinde,
+   'dersId:adimNo' anahtarıyla. Yoksa blok hiç basılmaz. */
+function anlatimHTML(i){
+  const k = DERS_ID + ':' + (i+1);
+  const en = (typeof ANLATIM_EN !== 'undefined') ? ANLATIM_EN[k] : null;
+  const tr = (typeof ANLATIM !== 'undefined') ? ANLATIM[k] : null;
+  const m = EN ? (en || null) : (tr || null);
+  if (!m) return '';
+  return '<div class="anlatim"><span class="h">' + T('anlatimBas') + '</span>' + m + '</div>';
 }
 
 /* ═══════════════ ADIM RENDER ═══════════════ */
@@ -425,6 +426,7 @@ function go(i){
       ((a.quiz||a.kodlab||a.unlock||a.bolgeSayisi) ? a.xp+' '+T('kazanilabilir') : T('okumaAdimi')) + '</div>' +
     '<h2>'+a.t+'</h2>' +
     '<div class="goal"><span class="h">'+T('ogrenecegin')+'</span><p>'+a.goal+'</p></div>' +
+    anlatimHTML(i) +
     '<div class="do"><b class="lbl">'+T('yapacagin')+'</b>'+a.todo+'</div>' +
     '<canvas id="cv"></canvas>' +
     '<div id="live"></div>';
@@ -694,8 +696,6 @@ function go(i){
       complete(ok);
     } else complete(true);
   };
-
-  kitapCiz(i);
   draw(); upPh(); renderMap();
   if (a.kind === 'play') setTimeout(baslat, 550);
   window.scrollTo({top:0, behavior:'smooth'});
