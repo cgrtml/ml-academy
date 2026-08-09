@@ -4104,6 +4104,25 @@ console.log('═══ DENGESİZ VERİ ═══');
 }
 
 console.log('');
+console.log('═══ A/B TESTİ ═══');
+{
+  iddia('taban dönüşüm',0.10,AB.TABAN,2);
+  iddia('deney sayısı',3000,AB.DENEY);
+  [[0.50,687],[0.30,1776],[0.20,3843],[0.10,14752],[0.05,57764],[0.02,356336]].forEach(([e,n])=>
+    iddia('n · fark %'+(100*e).toFixed(0),n,AB.gerekenN(0.10,e,0.05,0.80)));
+  iddia('A/A sabit ufuk %',4.9,100*AB.sabitUfuk(2000,0).oran,1);
+  [[2,8.7],[5,14.1],[10,18.8],[20,24.6]].forEach(([b,v])=>
+    iddia('A/A '+b+' bakış %',v,100*AB.erkenBakma(2000,b,0).oran,1));
+  [[500,16.8,19.4,48.1,2.41],[1000,28.3,19.6,36.2,1.81],[2000,51.8,19.8,27.2,1.36],
+   [4000,81.8,19.9,22.1,1.11],[8000,98.2,20.0,20.2,1.01]].forEach(([n,g,o,a2,s2])=>{
+    const r = AB.guc(n,0.20);
+    iddia('n '+n+' güç %',g,100*r.guc,1);
+    iddia('n '+n+' tüm deney %',o,100*r.ortEtki,1);
+    iddia('n '+n+' anlamlı %',a2,100*r.anlamliEtki,1);
+    iddia('n '+n+' şişme',s2,r.sisme,2);});
+}
+
+console.log('');
 console.log('  '+hz+' hazır / '+tp+' ders · '+ad+' adım · '+xp+' XP · '+q+' soru · '+unl+' kilit · '+kn+' kaynak · '+Object.keys(VIZ).length+' görsel');
 console.log('  İngilizce çevrilmiş ders: '+nEn+' / '+Object.keys(DERSLER).length);
 console.log('');

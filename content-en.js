@@ -161,6 +161,7 @@ const DERS_ADI_EN = {
   'softmax':'Softmax and cross-entropy',
   'kalibrasyon':'Calibration: is "70%" really 70%?',
   'dengesiz':'Imbalanced data: threshold, weight, resampling',
+  'ab-testi':'A/B testing: online evaluation',
   'dagilim-kaymasi':'When the ground moves: distribution shift',
   'zaman-serisi':'Time series: the lie of the random split',
   'hiper-arama':'Hyperparameter search: grid, random, halving',
@@ -8446,6 +8447,162 @@ DERSLER_EN['dengesiz'] = {
       'With a miss at 100 and an alarm at 20, t* = 0.167 and the net gain is 10540; at the default 0.5 it is 8560.<br><br>' +
       'With equal costs t* comes out at exactly 0.5: the default threshold is shorthand for "both errors cost the same".<br><br>' +
       'The order: threshold first, then cost, and weighting and resampling last.',
+  },
+  ],
+};
+
+/* ────────── R4 · A/B testing ────────── */
+DERSLER_EN['ab-testi'] = {
+  ad:'A/B testing: online evaluation',
+  alt:'An eval set measures offline. Measuring with real users has its own arithmetic, and the most common mistake is looking at the interim result.',
+  kaynaklar:[
+    {"y":"Kohavi, R., Tang, D. & Xu, Y.", "t":"2020", "b":"Trustworthy Online Controlled Experiments", "n":"Cambridge University Press"},
+    {"y":"Gelman, A. & Carlin, J.", "t":"2014", "b":"Beyond Power Calculations: Assessing Type S and Type M Errors", "n":"Perspectives on Psychological Science, 9(6)"},
+    {"y":"Johari, R. et al.", "t":"2017", "b":"Peeking at A/B Tests: Why It Matters and What to Do About It", "n":"KDD 2017"},
+  ],
+  rota:4,
+  adimlar:[
+  {
+    t:'How many users do you need',
+    goal:'You will see the relationship between the size of the effect you are looking for and the sample you need.',
+    todo:'Shrink the effect you are looking for and watch the user count. The axis is logarithmic.',
+    kind:'controls', viz:'abOrneklem', h:760, xp:45,
+    controls:[{k:'etki', lb:'EFFECT SOUGHT', min:0, max:7, step:1, val:3,
+               fmt:v=>(100*[0.50,0.40,0.30,0.20,0.15,0.10,0.05,0.02][Math.round(v)]).toFixed(0)+'%'}],
+    body:'<p>In the <i>Building an eval set</i> lesson you saw the statistics of offline measurement. ' +
+      'An online experiment uses the same arithmetic but the numbers are far larger, because ' +
+      'conversion rates are small and the effects sought are small.</p>' +
+      '<p>The sample size formula:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">n = 2 (z<sub>α</sub> + z<sub>β</sub>)² p̄(1−p̄) / δ²</p>' +
+      '<p>The only thing to notice is that <b>δ is squared in the denominator</b>. That means halving ' +
+      'the effect you are looking for <b>quadruples</b> the sample.</p>' +
+      '<p>With a 10% baseline conversion, 80% power and α = 0.05, the users needed per arm:</p>' +
+      '<p style="font-family:var(--mono)">relative effect &nbsp;&nbsp;&nbsp;&nbsp;n<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;50% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;687<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;20% &nbsp;&nbsp;&nbsp;&nbsp;3.843<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;10% &nbsp;&nbsp;&nbsp;14.752<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;5% &nbsp;&nbsp;&nbsp;57.764<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2% &nbsp;&nbsp;356.336</p>' +
+      '<p>You can see a 50% difference in a day. Seeing a 2% difference takes <b>500 times</b> more users.</p>' +
+      '<p>That gives a very useful reframing: do not ask "how many users do I have" but ' +
+      '<b>"with this many users, how large a difference can I see"</b>. If the answer is larger than ' +
+      'the difference you are looking for, there is no point in running that experiment.</p>',
+    learned:'<b>The sample scales with the inverse square of the effect sought.</b><br><br>' +
+      'At a 10% baseline, 80% power and α = 0.05, per arm: 687 users for a 50% effect, 3,843 for 20%, ' +
+      '14,752 for 10%, 57,764 for 5%, 356,336 for 2%.<br><br>' +
+      'The right question is not "how many users do I have" but "which difference can I see with them".',
+  },
+  {
+    t:'The price of peeking',
+    goal:'You will measure how looking at interim results blows up the false positive rate.',
+    todo:'Increase the number of interim looks. In reality both arms are IDENTICAL, there is no difference.',
+    kind:'controls', viz:'abErken', h:760, xp:60,
+    controls:[{k:'bakis', lb:'INTERIM LOOKS', min:0, max:4, step:1, val:0,
+               fmt:v=>{const b=[1,2,5,10,20][Math.round(v)]; return b===1?'only at the end':b+' times';}}],
+    body:'<p>In this step\'s experiment there is <b>genuinely no difference</b>. Both arms are shown ' +
+      'exactly the same thing and both convert at 10%. This is called an A/A test and it is the ' +
+      'standard way to test a measurement setup against itself.</p>' +
+      '<p>In a correctly built test, the rate of declaring a winner when there is no difference should ' +
+      'equal α, that is <b>5%</b>.</p>' +
+      '<p>Measured (2,000 users per arm, 3,000 experiments):</p>' +
+      '<p style="font-family:var(--mono)">when it was checked &nbsp;&nbsp;false positive<br>' +
+      'only at the end &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>4.9%</b><br>' +
+      '2 times &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8.7%<br>' +
+      '5 times &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;14.1%<br>' +
+      '10 times &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;18.8%<br>' +
+      '20 times &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>24.6%</b></p>' +
+      '<p>Checking only at the end gives <b>4.9%</b>, which is the 5% that was promised. That is the ' +
+      'proof that the simulation itself is working correctly.</p>' +
+      '<p>With twenty interim looks the same number becomes <b>24.6%</b>. So <b>one in four A/A tests ' +
+      'finds a "winner"</b> when there is no difference at all.</p>' +
+      '<p>The mechanism is simple: every look is a new chance. Random fluctuation crosses the threshold ' +
+      'sooner or later, and if you stop at exactly that moment, what you measured is not a difference ' +
+      'but <b>impatience</b>.</p>' +
+      '<p>On top of that, the experiments that stop do so at far below the planned sample. So the ' +
+      'experiment is both cut short and inflated; the next step measures that inflation.</p>',
+    quiz:{ q:'A team stops an A/B test "the moment it reaches statistical significance" and defends this as <b>making decisions fast</b>. What is the most accurate criticism of that practice?',
+      opts:[
+        {t:'The false positive rate rises far above the α that was declared', why:'Correct. The measurement shows it: with no real difference at all, the rate of finding a "winner" goes from 4.9% to 24.6% with 20 interim looks. The team says "we work at a 5% error rate" while actually working at 25%. The fix is not to forbid looking but to use sequential testing, which spends the α budget across the looks.'},
+        {t:'Shorter experiments cannot capture seasonal effects', why:'A real problem, and experiments are recommended to run in whole-week multiples for day-of-week effects. But the error here is statistical, and interim looking produces the same inflation even if the experiment runs for a year.'},
+        {t:'The sample stays small so the confidence intervals are wide', why:'True but not enough. A wide interval is an honest statement of uncertainty; the problem here is not the width of the interval but the error rate differing from the one declared.'},
+        {t:'Testing several metrics at once creates a multiple-comparison problem', why:'A separate and real problem (needing a Bonferroni-style correction) but the question is about early stopping. Interim looking blows up the false positive rate even with a single metric.'},
+      ], correct:0 },
+    learned:'<b>Looking at interim results invalidates the error rate you declared.</b><br><br>' +
+      'With no real difference (A/A), the false positive rate is 4.9% checking only at the end, ' +
+      '8.7% with 2 looks, 14.1% with 5, and 24.6% with 20.<br><br>' +
+      'One experiment in four declares a "winner" when there is no difference.',
+  },
+  {
+    t:'Low power misleads twice',
+    goal:'You will see that an underpowered test does not only miss, it also exaggerates.',
+    todo:'Grow the sample. When does the red curve come down to the yellow line?',
+    kind:'controls', viz:'abGuc', h:760, xp:60,
+    controls:[{k:'n', lb:'n PER ARM', min:0, max:4, step:1, val:0,
+               fmt:v=>[500,1000,2000,4000,8000][Math.round(v)].toLocaleString('en')}],
+    body:'<p>Now there is a real difference: arm B really is 20% better. The question is whether the ' +
+      'test can see it, and <b>what it says</b> when it does.</p>' +
+      '<p style="font-family:var(--mono)">n &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;power &nbsp;all runs &nbsp;significant ones &nbsp;inflation<br>' +
+      '&nbsp;&nbsp;500 &nbsp;&nbsp;&nbsp;17% &nbsp;&nbsp;&nbsp;19.4% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>48.1%</b> &nbsp;&nbsp;&nbsp;&nbsp;2.41×<br>' +
+      '&nbsp;1000 &nbsp;&nbsp;&nbsp;28% &nbsp;&nbsp;&nbsp;19.6% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;36.2% &nbsp;&nbsp;&nbsp;&nbsp;1.81×<br>' +
+      '&nbsp;2000 &nbsp;&nbsp;&nbsp;52% &nbsp;&nbsp;&nbsp;19.8% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;27.2% &nbsp;&nbsp;&nbsp;&nbsp;1.36×<br>' +
+      '&nbsp;4000 &nbsp;&nbsp;&nbsp;82% &nbsp;&nbsp;&nbsp;19.9% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;22.1% &nbsp;&nbsp;&nbsp;&nbsp;1.11×<br>' +
+      '&nbsp;8000 &nbsp;&nbsp;&nbsp;98% &nbsp;&nbsp;&nbsp;20.0% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;20.2% &nbsp;&nbsp;&nbsp;&nbsp;1.01×</p>' +
+      '<p><b>The first error is familiar:</b> with low power you miss the real difference. At n = 500 ' +
+      'only 17% of the experiments see it.</p>' +
+      '<p><b>The second error is far less known and more dangerous:</b> when you do see it, you ' +
+      '<b>exaggerate</b>. At n = 500 the experiments that reach significance report an average effect ' +
+      'of <b>48%</b>. The real effect is 20%. So the reported number is <b>2.4 times</b> reality.</p>' +
+      '<p>The reason is in the third column: <b>the average over all experiments is unbiased</b> ' +
+      '(19.4%, 19.6%, … 20.0%). So there is nothing wrong with the measuring instrument. The bias ' +
+      'appears only when you look at <b>the significant ones</b>: in a small sample, clearing the ' +
+      'threshold requires the random fluctuation to be in your favour on top of the real difference, ' +
+      'so the ones that come out significant are systematically the exaggerated ones.</p>' +
+      '<p>This is called a <b>magnitude error</b> (Gelman and Carlin, 2014: Type M error). It is the ' +
+      'same mechanism as the winner\'s curse from the <i>The competition illusion</i> lesson, except ' +
+      'the selection here is not among models but <b>among outcomes</b>.</p>' +
+      '<p>The practical consequence: the "48% improvement" from an underpowered experiment gets ' +
+      'promised to the product, the roadmap is built on it, and when the real gain turns out to be ' +
+      '20% nobody understands why.</p>',
+    learned:'<b>Low power produces two separate errors.</b><br><br>' +
+      'With a real effect of 20%, at n = 500 the power is 17% and the average effect among significant ' +
+      'runs is 48.1% (2.41× inflated). At n = 8000 the power is 98% and the inflation 1.01×.<br><br>' +
+      'The average over all runs is unbiased (19.4%-20.0%). The bias appears only when selecting the ' +
+      'significant ones: a magnitude error (Type M).',
+  },
+  {
+    t:'The right setup',
+    goal:'You will see what has to be written down before an experiment starts, and how the duration is computed.',
+    todo:'Change the effect sought and the daily traffic. The blue curve is the smallest difference visible in that time.',
+    kind:'controls', viz:'abKurulum', h:760, xp:60,
+    controls:[{k:'etki', lb:'EFFECT SOUGHT', min:0, max:4, step:1, val:2,
+               fmt:v=>(100*[0.50,0.30,0.20,0.10,0.05][Math.round(v)]).toFixed(0)+'%'},
+              {k:'gunluk', lb:'USERS PER DAY', min:100, max:5000, step:100, val:500,
+               fmt:v=>Math.round(v).toLocaleString('en')}],
+    body:'<p>The three things measured so far come down to one rule: <b>every number of the experiment ' +
+      'is written before it starts and is not changed afterwards.</b></p>' +
+      '<p><b>1 · The primary metric.</b> Exactly one. Watching several metrics and waiting for one of ' +
+      'them to come out significant is another form of peeking.</p>' +
+      '<p><b>2 · The smallest effect worth finding.</b> Not a statistical decision but a <b>business</b> ' +
+      'one: how large an improvement justifies spending the resources on this product?</p>' +
+      '<p><b>3 · α and power.</b> Usually 0.05 and 80%. A power of 80% means that if a real difference ' +
+      'exists you have an 80% chance of seeing it; so one time in five you still miss it.</p>' +
+      '<p><b>4 · The sample.</b> Computed from the first three, not guessed.</p>' +
+      '<p><b>5 · The stopping rule.</b> It stops when n is reached. This is the only antidote to the ' +
+      'inflation you measured in the second step.</p>' +
+      '<p><b>6 · Guardrail metrics.</b> Things that must not degrade while the primary metric improves: ' +
+      'error rate, page latency, cancellation rate. You may think you won while having broken something else.</p>' +
+      '<p><b>When peeking really is necessary</b> a ban is not the answer: an experiment that is doing ' +
+      'harm should be stopped. The right tool is <b>sequential testing</b>. The idea: α is a budget and ' +
+      'it is spread across the looks. Each look uses a stricter threshold, so the total false positive ' +
+      'rate stays at 5%. The price is some loss of power. What is forbidden is unplanned looking and ' +
+      'arbitrary stopping, not looking itself.</p>' +
+      '<p>Finally the duration: the sample alone is not enough, it has to be <b>divided by the traffic</b>. ' +
+      'And the number of days should be rounded to whole weeks, because weekday and weekend users differ.</p>',
+    learned:'<b>The numbers of an experiment are written before it starts.</b><br><br>' +
+      'Primary metric · smallest effect worth finding · α and power · sample · stopping rule · guardrail metrics.<br><br>' +
+      'If you must peek, the right tool is sequential testing: the α budget is spread across the looks and ' +
+      'the false positive rate stays at 5%. What is forbidden is unplanned looking.<br><br>' +
+      'In the duration calculation, round the days to whole weeks; weekday and weekend users differ.',
   },
   ],
 };

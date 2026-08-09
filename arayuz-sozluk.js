@@ -625,6 +625,14 @@ var ARAYUZ_EN = {
   "t*": "t*",
   "NET (t*)": "NET (t*)",
   "NET (#)": "NET (#)",
+  "ARANAN FARK": "EFFECT SOUGHT",
+  "KOL BAŞINA n": "n PER ARM",
+  "TOPLAM n": "TOTAL n",
+  "ARA BAKIŞ": "INTERIM LOOKS",
+  "OLMASI GEREKEN": "SHOULD BE",
+  "GÜÇ": "POWER",
+  "ANLAMLI ÇIKANLARIN ETKİSİ": "EFFECT AMONG SIGNIFICANT",
+  "SÜRE": "DURATION",
 /*SON*/
 };
 

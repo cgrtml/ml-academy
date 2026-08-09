@@ -16571,3 +16571,467 @@ VIZ.dngKarar = s => {
         '  ·  net kazanç '+a.fark+' (0.5 eşiğinde '+b.fark+')',
         a.fark >= b.fark ? K.green : K.orange);
 };
+
+/* ═══════════════ A/B TESTİ ═══════════════
+   eval ve arena dersleri tamamen çevrimdışı. Bu motor çevrimiçi deneyin
+   üç sayısını ölçüyor: kaç kullanıcı gerekir, erken bakmanın bedeli nedir,
+   ve yetersiz güçlü bir test neyi kaçırır.
+
+   Bütün olasılıklar simülasyonla ölçülüyor; formüller yalnızca karşılaştırma
+   çizgisi olarak kullanılıyor. */
+const AB = (() => {
+  const TABAN = 0.10;            // A kolunun dönüşüm oranı
+  const DENEY = 3000;            // her ölçümde koşulan deney sayısı
+
+  /* ── normal dağılım ── */
+  function erf(x){
+    const s = x < 0 ? -1 : 1; x = Math.abs(x);
+    const t = 1/(1 + 0.3275911*x);
+    const y = 1 - (((((1.061405429*t - 1.453152027)*t) + 1.421413741)*t
+                    - 0.284496736)*t + 0.254829592)*t*Math.exp(-x*x);
+    return s*y;
+  }
+  const normCdf = z => 0.5*(1 + erf(z/Math.SQRT2));
+  /* ters normal (Acklam yaklaşımı, kuyruklarda yeterli) */
+  function normInv(p){
+    const a=[-39.69683028665376,220.9460984245205,-275.9285104469687,
+             138.3577518672690,-30.66479806614716,2.506628277459239];
+    const b=[-54.47609879822406,161.5858368580409,-155.6989798598866,
+             66.80131188771972,-13.28068155288572];
+    const c=[-0.007784894002430293,-0.3223964580411365,-2.400758277161838,
+             -2.549732539343734,4.374664141464968,2.938163982698783];
+    const d=[0.007784695709041462,0.3224671290700398,2.445134137142996,3.754408661907416];
+    const pl=0.02425;
+    if (p < pl){ const q=Math.sqrt(-2*Math.log(p));
+      return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) /
+             ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+    if (p > 1-pl){ const q=Math.sqrt(-2*Math.log(1-p));
+      return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) /
+              ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1); }
+    const q=p-0.5, r=q*q;
+    return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q /
+           (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+  }
+
+  /* ── iki oran testi ── */
+  function zTest(x1, n1, x2, n2){
+    if (!n1 || !n2) return { z:0, p:1 };
+    const p1 = x1/n1, p2 = x2/n2, ph = (x1+x2)/(n1+n2);
+    const se = Math.sqrt(ph*(1-ph)*(1/n1 + 1/n2));
+    if (se < 1e-12) return { z:0, p:1, p1, p2 };
+    const z = (p2-p1)/se;
+    return { z, p: 2*(1 - normCdf(Math.abs(z))), p1, p2 };
+  }
+
+  /* ── örneklem büyüklüğü (kol başına) ──
+     n = 2 (z_α/2 + z_β)² p̄(1−p̄) / δ² */
+  function gerekenN(taban, etki, alfa, guc){
+    const p2 = taban*(1+etki), pm = (taban+p2)/2, d = p2-taban;
+    const za = normInv(1 - alfa/2), zb = normInv(guc);
+    return Math.ceil(2*Math.pow(za+zb, 2)*pm*(1-pm)/(d*d));
+  }
+
+  const bellek = {};
+
+  /* ── 1 · SABİT UFUK: yalnızca sonda bakmak ──
+     Gerçek fark yokken (A/A) yanlış pozitif oranı α'ya oturmalı. */
+  function sabitUfuk(n, etki){
+    const a = 'su:'+n+':'+etki;
+    if (bellek[a]) return bellek[a];
+    const R = rng(1234);
+    let anlamli = 0, toplamEtki = 0, anlamliEtki = 0;
+    const pA = TABAN, pB = TABAN*(1+etki);
+    for (let d = 0; d < DENEY; d++){
+      let xa = 0, xb = 0;
+      for (let i = 0; i < n; i++){ if (R() < pA) xa++; if (R() < pB) xb++; }
+      const t = zTest(xa, n, xb, n);
+      const olculen = (xb/n - xa/n) / pA;
+      toplamEtki += olculen;
+      if (t.p < 0.05){ anlamli++; anlamliEtki += olculen; }
+    }
+    return (bellek[a] = {
+      oran: anlamli/DENEY,
+      ortEtki: toplamEtki/DENEY,
+      anlamliEtki: anlamli ? anlamliEtki/anlamli : 0,
+      anlamli, n, etki,
+    });
+  }
+
+  /* ── 2 · ERKEN BAKMA (peeking) ──
+     Aynı deneye bakis kez ara sonuç kontrolü yapılır ve p < 0.05 görülür
+     görülmez durdurulur. Gerçek fark YOKKEN bile yanlış pozitif patlar. */
+  function erkenBakma(n, bakis, etki){
+    const a = 'eb:'+n+':'+bakis+':'+etki;
+    if (bellek[a]) return bellek[a];
+    const R = rng(777);
+    const pA = TABAN, pB = TABAN*(1+(etki||0));
+    const adim = Math.max(1, Math.floor(n/bakis));
+    let durdu = 0, ilkToplam = 0;
+    const nerede = new Array(bakis).fill(0);
+    for (let d = 0; d < DENEY; d++){
+      let xa = 0, xb = 0, kesildi = false;
+      for (let b = 0; b < bakis; b++){
+        const son = (b === bakis-1) ? n : (b+1)*adim;
+        for (let i = b*adim; i < son; i++){ if (R() < pA) xa++; if (R() < pB) xb++; }
+        if (zTest(xa, son, xb, son).p < 0.05){
+          durdu++; nerede[b]++; ilkToplam += son; kesildi = true;
+          /* deney burada biterdi ama simülasyonu tamamlamak için
+             kalan çekilişleri yine de tüketiyoruz ki RNG akışı bozulmasın */
+          for (let i = son; i < n; i++){ R(); R(); }
+          break;
+        }
+      }
+      if (!kesildi){ /* akış zaten tükendi */ }
+    }
+    return (bellek[a] = { oran: durdu/DENEY, nerede, ortDurma: durdu ? ilkToplam/durdu : 0,
+                          n, bakis, etki:etki||0 });
+  }
+
+  /* ── 3 · GÜÇ: gerçek farkı yakalayabilme ── */
+  function guc(n, etki){
+    const r = sabitUfuk(n, etki);
+    return { guc:r.oran, ortEtki:r.ortEtki, anlamliEtki:r.anlamliEtki,
+             sisme: r.anlamli ? r.anlamliEtki/etki : 0, n, etki };
+  }
+
+  return { TABAN, DENEY, zTest, gerekenN, normCdf, normInv,
+           sabitUfuk, erkenBakma, guc };
+})();
+
+/* ── 1 · kaç kullanıcı gerekir ── */
+VIZ.abOrneklem = s => {
+  clear();
+  const E = [0.50,0.40,0.30,0.20,0.15,0.10,0.05,0.02];
+  const i = Math.max(0, Math.min(7, Math.round(s.etki === undefined ? 3 : s.etki)));
+  const e = E[i];
+  const n = AB.gerekenN(AB.TABAN, e, 0.05, 0.80);
+  baslikSerit('A/B TESTİ · KAÇ KULLANICI GEREKİR',
+    'Küçük farkı görmek, büyük farkı görmekten kat kat pahalıdır.',
+    [['TABAN', '%'+(100*AB.TABAN).toFixed(0), K.mut],
+     ['ARANAN FARK', '%'+(100*e).toFixed(0), K.blue],
+     ['KOL BAŞINA n', n.toLocaleString('tr'), n>50000?K.red:K.green]]);
+
+  const P = plot(rect(130, 220, 700, 400), -0.4, 7.4, 0, Math.log10(400000));
+  txt('GEREKEN ÖRNEKLEM (log ölçek)', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  /* y ekseni log10; tick etiketleri üs olarak okunur */
+  frame(P, 'aranan bağıl fark', 'kol başına n (log₁₀)', [], [2,3,4,5]);
+  const gen = (P.R.w/8)*0.5;
+  E.forEach((ee,q) => {
+    const nn = AB.gerekenN(AB.TABAN, ee, 0.05, 0.80);
+    const x = P.sx(q), y = P.sy(Math.log10(nn));
+    const renk = q === i ? K.yellow : (nn > 50000 ? K.red : K.blue);
+    box(x-gen/2, y, gen, P.sy(0)-y, renk+'cc', null);
+    txt(nn >= 1000 ? (nn/1000).toFixed(0)+'k' : String(nn), x, y-12, renk, 15);
+    txt('%'+(100*ee).toFixed(0), x, P.R.y+P.R.h+28, q===i?K.yellow:K.mut, 16);
+  });
+
+  const bx = 880;
+  box(bx, 220, 510, 200, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('FORMÜL', bx+255, 258, K.mut, 18);
+  txt('n = 2 (z_α + z_β)² p̄(1−p̄) / δ²', bx+255, 306, K.yellow, 21);
+  txt('δ paydada KARELİ duruyor.', bx+255, 350, K.txt, 17);
+  txt('Aranan farkı yarıya indirmek', bx+255, 376, K.mut, 16);
+  txt('örneklemi DÖRT katına çıkarır.', bx+255, 398, K.mut, 16);
+
+  box(bx, 442, 510, 280, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('SEÇİLİ AYAR', bx+255, 480, K.mut, 18);
+  const gunluk = 500;
+  [['taban dönüşüm', '%'+(100*AB.TABAN).toFixed(0)],
+   ['aranan bağıl fark', '%'+(100*e).toFixed(0)],
+   ['hedef güç', '%80'],
+   ['kol başına n', n.toLocaleString('tr')],
+   ['toplam n', (2*n).toLocaleString('tr')],
+   ['günde '+gunluk+' kullanıcıyla', Math.ceil(2*n/gunluk)+' gün'],
+  ].forEach(([a,b2],q) => {
+    txt(a,  bx+30,  520+q*34, K.mut, 17, 'left');
+    txt(b2, bx+480, 520+q*34, q>=3?K.txt:K.mut, 18, 'right');
+  });
+
+  durum('bağıl fark %'+(100*e).toFixed(0)+' için kol başına '+n.toLocaleString('tr')+
+        ' kullanıcı  ·  toplam '+(2*n).toLocaleString('tr'), n>50000?K.red:K.green);
+};
+
+/* ── 2 · erken bakmanın bedeli ── */
+VIZ.abErken = s => {
+  clear();
+  const B = [1,2,5,10,20];
+  const i = Math.max(0, Math.min(4, Math.round(s.bakis === undefined ? 0 : s.bakis)));
+  const b = B[i];
+  const r = AB.erkenBakma(2000, b, 0);
+  baslikSerit('ERKEN BAKMANIN BEDELİ',
+    'Gerçekte hiç fark YOK. İki kola da aynı şey gösteriliyor.',
+    [['ARA BAKIŞ', String(b), K.blue],
+     ['YANLIŞ POZİTİF', '%'+(100*r.oran).toFixed(1), r.oran>0.08?K.red:K.green],
+     ['OLMASI GEREKEN', '%5', K.mut]]);
+
+  const P = plot(rect(130, 230, 700, 360), -0.4, 4.4, 0, 0.30);
+  txt('A/A TESTİNDE "KAZANAN" ÇIKMA ORANI', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, 'kaç kez ara sonuca bakıldı', 'yanlış pozitif', [], [0, 0.1, 0.2, 0.3]);
+  cx.setLineDash([6,6]); cx.strokeStyle = K.green; cx.lineWidth = 2.5;
+  cx.beginPath(); cx.moveTo(P.R.x, P.sy(0.05)); cx.lineTo(P.R.x+P.R.w, P.sy(0.05)); cx.stroke();
+  cx.setLineDash([]);
+  txt('α = 0.05', P.R.x+P.R.w-14, P.sy(0.05)-12, K.green, 16, 'right');
+  const gen = (P.R.w/5)*0.44;
+  B.forEach((bb,q) => {
+    const v = AB.erkenBakma(2000, bb, 0).oran, x = P.sx(q);
+    const renk = q === i ? K.yellow : (v > 0.08 ? K.red : K.green);
+    box(x-gen/2, P.sy(v), gen, P.sy(0)-P.sy(v), renk+'cc', null);
+    txt('%'+(100*v).toFixed(1), x, P.sy(v)-12, renk, 17);
+    txt(bb === 1 ? 'sadece sonda' : bb+' kez', x, P.R.y+P.R.h+28, q===i?K.yellow:K.mut, 16);
+  });
+
+  const bx = 880;
+  box(bx, 230, 510, 210, 'rgba(248,113,113,.06)', 'rgba(248,113,113,.4)', 2);
+  txt('NEDEN', bx+255, 268, K.red, 19);
+  ['Her bakış yeni bir şans demek.',
+   'Rastgele dalgalanma er ya da geç eşiği aşar.',
+   'Ve sen tam o anda durdurup "kazandı" dersen,',
+   'ölçtüğün şey fark değil, sabırsızlık.',
+  ].forEach((t2,q) => txt(t2, bx+255, 310+q*32, K.txt, 17));
+
+  box(bx, 462, 510, 260, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('DURMA ANI', bx+255, 500, K.mut, 18);
+  if (b === 1){
+    txt('Tek bakış: deney sonuna kadar gider.', bx+255, 552, K.mut, 17);
+    txt('%'+(100*r.oran).toFixed(1)+' yanlış pozitif', bx+255, 600, K.green, 30);
+    txt('nominal α ile uyumlu', bx+255, 640, K.mut, 16);
+  } else {
+    txt('Durduran deneylerin ortalama', bx+255, 540, K.mut, 17);
+    txt(Math.round(r.ortDurma).toLocaleString('tr')+' kullanıcı', bx+255, 586, K.orange, 30);
+    txt('planlanan 2.000 yerine', bx+255, 622, K.mut, 16);
+    txt('Yani deney erken kesiliyor ve sonuç şişik.', bx+255, 668, K.red, 16);
+  }
+
+  durum(b === 1
+    ? 'sadece sonda bakınca yanlış pozitif %'+(100*r.oran).toFixed(1)+'  ·  beklendiği gibi'
+    : b+' kez ara bakışta yanlış pozitif %'+(100*r.oran).toFixed(1)+
+      '  ·  α = 0.05 sözü tutulmuyor', r.oran>0.08?K.red:K.green);
+};
+
+/* ── 3 · yetersiz güç iki kere yanıltır ── */
+VIZ.abGuc = s => {
+  clear();
+  const N = [500,1000,2000,4000,8000];
+  const i = Math.max(0, Math.min(4, Math.round(s.n === undefined ? 0 : s.n)));
+  const n = N[i], g = AB.guc(n, 0.20);
+  baslikSerit('YETERSİZ GÜÇ İKİ KERE YANILTIR',
+    'Gerçek bağıl etki %20. Testin onu görme şansı ve gördüğünde söylediği sayı.',
+    [['KOL BAŞINA n', n.toLocaleString('tr'), K.blue],
+     ['GÜÇ', '%'+(100*g.guc).toFixed(1), g.guc<0.8?K.red:K.green],
+     ['ANLAMLI ÇIKANLARIN ETKİSİ', '%'+(100*g.anlamliEtki).toFixed(1),
+      g.sisme>1.2?K.red:K.green]]);
+
+  const P = plot(rect(130, 230, 700, 370), -0.4, 4.4, 0, 0.55);
+  txt('GÜÇ ve RAPORLANAN ETKİ', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, 'kol başına n', '', [], []);
+  cx.setLineDash([6,6]); cx.strokeStyle = K.yellow; cx.lineWidth = 2.5;
+  cx.beginPath(); cx.moveTo(P.R.x, P.sy(0.20)); cx.lineTo(P.R.x+P.R.w, P.sy(0.20)); cx.stroke();
+  cx.setLineDash([]);
+  txt('gerçek etki %20', P.R.x+16, P.sy(0.20)-12, K.yellow, 16, 'left');
+  /* güç eğrisi (0-1 ölçeğini 0-0.5'e sığdırmak yerine ayrı çiz) */
+  cx.strokeStyle = K.blue; cx.lineWidth = 4; cx.beginPath();
+  N.forEach((nn,q) => { const v = AB.guc(nn,0.20).guc*0.5;
+    q ? cx.lineTo(P.sx(q), P.sy(v)) : cx.moveTo(P.sx(q), P.sy(v)); });
+  cx.stroke();
+  cx.strokeStyle = K.red; cx.lineWidth = 4; cx.beginPath();
+  N.forEach((nn,q) => { const v = AB.guc(nn,0.20).anlamliEtki;
+    q ? cx.lineTo(P.sx(q), P.sy(v)) : cx.moveTo(P.sx(q), P.sy(v)); });
+  cx.stroke();
+  N.forEach((nn,q) => {
+    const gg = AB.guc(nn,0.20);
+    dot(P.sx(q), P.sy(gg.guc*0.5), 6, K.blue);
+    dot(P.sx(q), P.sy(gg.anlamliEtki), 6, K.red);
+    txt(nn >= 1000 ? (nn/1000)+'k' : String(nn), P.sx(q), P.R.y+P.R.h+28, q===i?K.yellow:K.mut, 16);
+  });
+  txt('■ güç (sağ eksen 0-1)', P.R.x+16, P.R.y+30, K.blue, 16, 'left');
+  txt('■ anlamlı çıkanların ortalama etkisi', P.R.x+16, P.R.y+54, K.red, 16, 'left');
+  cx.strokeStyle = K.yellow; cx.lineWidth = 2; cx.setLineDash([5,5]);
+  cx.beginPath(); cx.moveTo(P.sx(i), P.R.y); cx.lineTo(P.sx(i), P.R.y+P.R.h); cx.stroke();
+  cx.setLineDash([]);
+
+  const bx = 880;
+  box(bx, 230, 510, 240, 'rgba(7,10,15,.6)', K.axis, 2);
+  ['n','güç','tüm deneyler','anlamlı olanlar','şişme'].forEach((h,q) =>
+    txt(h, bx+60+q*100, 268, K.mut, 14));
+  N.forEach((nn,q) => {
+    const gg = AB.guc(nn,0.20), yy = 306 + q*30, vurgu = q === i;
+    if (vurgu) box(bx+14, yy-24, 482, 32, K.yellow+'14', K.yellow+'55', 1.5);
+    txt(nn >= 1000 ? (nn/1000)+'k' : String(nn), bx+60,  yy, vurgu?K.yellow:K.mut, 15);
+    txt('%'+(100*gg.guc).toFixed(0),            bx+160, yy, gg.guc<0.8?K.red:K.green, 15);
+    txt('%'+(100*gg.ortEtki).toFixed(1),        bx+260, yy, K.mut, 15);
+    txt('%'+(100*gg.anlamliEtki).toFixed(1),    bx+360, yy, K.red, 15);
+    txt(gg.sisme.toFixed(2)+'×',                bx+460, yy, gg.sisme>1.2?K.red:K.green, 15);
+  });
+
+  box(bx, 492, 510, 230, 'rgba(248,113,113,.06)', 'rgba(248,113,113,.4)', 2);
+  txt('İKİ AYRI HATA', bx+255, 530, K.red, 19);
+  ['1 · Gerçek farkı KAÇIRIRSIN. Güç düşükse',
+   '     deneylerin çoğu "fark yok" der.',
+   '2 · Yakaladığında ABARTIRSIN. Anlamlı çıkmak için',
+   '     dalgalanmanın da lehine olması gerekir.',
+   'Tüm deneylerin ortalaması sapmasız (%19-20).',
+   'Sapma yalnızca "anlamlı olanlara" bakınca doğuyor.',
+  ].forEach((t2,q) => txt(t2, bx+24, 570+q*28, q>=4?K.mut:K.txt, 15.5, 'left'));
+
+  durum('n = '+n.toLocaleString('tr')+' · güç %'+(100*g.guc).toFixed(1)+
+        ' · anlamlı çıkanların ortalama etkisi %'+(100*g.anlamliEtki).toFixed(1)+
+        ' (gerçek %20, şişme '+g.sisme.toFixed(2)+'×)',
+        g.sisme>1.2?K.red:K.green);
+};
+
+/* ── 4 · doğru kurulum ── */
+VIZ.abKurulum = s => {
+  clear();
+  const etki = [0.50,0.30,0.20,0.10,0.05][Math.max(0,Math.min(4,Math.round(s.etki===undefined?2:s.etki)))];
+  const n = AB.gerekenN(AB.TABAN, etki, 0.05, 0.80);
+  const gunluk = Math.max(50, Math.round(s.gunluk === undefined ? 500 : s.gunluk));
+  const gun = Math.ceil(2*n/gunluk);
+  baslikSerit('DOĞRU KURULUM',
+    'Deneyin bütün sayıları başlamadan ÖNCE yazılır. Sonrasında değiştirilmez.',
+    [['ARANAN FARK', '%'+(100*etki).toFixed(0), K.blue],
+     ['TOPLAM n', (2*n).toLocaleString('tr'), K.mut],
+     ['SÜRE', gun+' gün', gun>60?K.red:K.green]]);
+
+  const bx = 130;
+  box(bx, 210, 620, 500, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('BAŞLAMADAN ÖNCE YAZILACAKLAR', bx+310, 250, K.mut, 19);
+  [['1 · Birincil ölçüt', 'tek bir tane. İkincil ölçütler ayrı yazılır.'],
+   ['2 · Aranan en küçük fark', 'iş açısından anlamlı olan eşik.'],
+   ['3 · α ve güç', 'genelde 0.05 ve %80.'],
+   ['4 · Örneklem büyüklüğü', 'yukarıdaki üçünden hesaplanır.'],
+   ['5 · Durdurma kuralı', 'n dolunca durur. Erken bakış yok.'],
+   ['6 · Koruma ölçütleri', 'bozulmaması gereken şeyler.'],
+  ].forEach(([a,b2],q) => {
+    txt(a,  bx+28, 300+q*66, K.txt, 18, 'left');
+    txt(b2, bx+28, 326+q*66, K.mut, 16, 'left');
+  });
+
+  const P = plot(rect(800, 250, 590, 170), 0, 60, 0, 1.05);
+  txt('SÜRE ile TESPİT EDİLEBİLEN FARK', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, 'gün', 'bağıl fark', [0,15,30,45,60], []);
+  cx.strokeStyle = K.blue; cx.lineWidth = 4; cx.beginPath();
+  let ilk = true;
+  for (let g = 2; g <= 60; g++){
+    /* g günde toplanan kişi sayısıyla tespit edilebilir en küçük fark */
+    let alt = 0.005, ust = 1.0;
+    for (let it = 0; it < 40; it++){ const m = (alt+ust)/2;
+      if (2*AB.gerekenN(AB.TABAN, m, 0.05, 0.80) > g*gunluk) alt = m; else ust = m; }
+    const v = (alt+ust)/2;
+    ilk ? (cx.moveTo(P.sx(g), P.sy(v)), ilk=false) : cx.lineTo(P.sx(g), P.sy(v));
+  }
+  cx.stroke();
+  cx.strokeStyle = K.yellow; cx.lineWidth = 2.5; cx.setLineDash([5,5]);
+  cx.beginPath(); cx.moveTo(P.R.x, P.sy(etki)); cx.lineTo(P.R.x+P.R.w, P.sy(etki)); cx.stroke();
+  cx.setLineDash([]);
+  txt('aradığın fark', P.R.x+P.R.w-14, P.sy(etki)-12, K.yellow, 16, 'right');
+
+  box(800, 500, 590, 212, 'rgba(34,211,160,.06)', 'rgba(34,211,160,.4)', 2);
+  txt('ERKEN BAKMAK ŞART OLDUĞUNDA', 1095, 538, K.green, 19);
+  ['Bazı deneyler gerçekten erken durdurulmalı: zarar veriyorsa.',
+   'Doğru araç sıralı test (sequential testing): α bütçesi',
+   'bakışlara paylaştırılır, böylece yanlış pozitif %5 kalır.',
+   'Bedeli: her bakışta eşik daha katıdır, yani biraz güç kaybı.',
+   'Yasak olan şey plansız bakıp keyfî durdurmaktır.',
+  ].forEach((t2,q) => txt(t2, 824, 578+q*28, K.txt, 16, 'left'));
+
+  durum('%'+(100*etki).toFixed(0)+' fark için toplam '+(2*n).toLocaleString('tr')+
+        ' kullanıcı  ·  günde '+gunluk+' ile '+gun+' gün', gun>60?K.red:K.green);
+};
+
+/* ═══════════════ BİLGİ KURAMI ═══════════════
+   Entropi, KL ıraksaması ve karşılıklı bilgi bu müfredatta 12 ayrı derste
+   HESAPLANIYOR ama hiçbirinde ÖĞRETİLMİYOR. Bu motor o boşluğu dolduruyor.
+
+   Her sayı burada gerçekten hesaplanır; hiçbiri kapalı formdan okunup
+   yazılmaz, formüller yalnızca karşılaştırma çizgisi olarak kullanılır. */
+const BK = (() => {
+  const log2 = x => Math.log(x) / Math.LN2;
+
+  /* ── entropi: H(p) = −Σ p log₂ p, bit cinsinden ── */
+  function entropi(p){
+    return p.reduce((s,v) => v > 0 ? s - v*log2(v) : s, 0);
+  }
+  /* ── çapraz entropi: gerçek p, model q ── */
+  function caprazEntropi(p, q){
+    return p.reduce((s,v,i) => v > 0 ? s - v*log2(Math.max(1e-12, q[i])) : s, 0);
+  }
+  /* ── KL: fazladan ödenen bit sayısı, D(p‖q) = H(p,q) − H(p) ── */
+  const kl = (p, q) => caprazEntropi(p, q) - entropi(p);
+
+  /* ── optimal kod uzunlukları (Shannon) ve gerçek Huffman kodu ──
+     Shannon sınırı kesirli bit verir; gerçek bir kod tam sayı bit kullanmak
+     zorundadır. Aradaki farkı ölçmek entropinin "sınır" olduğunu gösterir. */
+  function huffman(p){
+    if (p.length === 1) return [1];
+    let dugum = p.map((v,i) => ({ p:v, yaprak:i }));
+    while (dugum.length > 1){
+      dugum.sort((a,b) => a.p - b.p);
+      const a = dugum.shift(), b = dugum.shift();
+      dugum.push({ p:a.p+b.p, sol:a, sag:b });
+    }
+    const boy = new Array(p.length).fill(0);
+    (function gez(n, d){
+      if (n.yaprak !== undefined){ boy[n.yaprak] = Math.max(1, d); return; }
+      gez(n.sol, d+1); gez(n.sag, d+1);
+    })(dugum[0], 0);
+    return boy;
+  }
+  const ortKod = (p, boy) => p.reduce((s,v,i) => s + v*boy[i], 0);
+
+  /* ── ikili entropi eğrisi ── */
+  const ikili = q => entropi([q, 1-q]);
+
+  /* ── karşılıklı bilgi ──
+     I(X;Y) = H(X) − H(X|Y).  Ortak dağılım üzerinden hesaplanır. */
+  function marjinal(ortak, eksen){
+    const n = ortak.length, m = ortak[0].length;
+    if (eksen === 0) return ortak.map(r => r.reduce((s,v)=>s+v,0));
+    const out = new Array(m).fill(0);
+    for (let i=0;i<n;i++) for (let j=0;j<m;j++) out[j] += ortak[i][j];
+    return out;
+  }
+  function karsilikliBilgi(ortak){
+    const px = marjinal(ortak, 0), py = marjinal(ortak, 1);
+    let I = 0;
+    ortak.forEach((r,i) => r.forEach((v,j) => {
+      if (v > 0) I += v*log2(v/(px[i]*py[j]));
+    }));
+    return I;
+  }
+  function kosulluEntropi(ortak){          // H(X|Y)
+    const py = marjinal(ortak, 1);
+    let H = 0;
+    ortak.forEach((r,i) => r.forEach((v,j) => {
+      if (v > 0) H -= v*log2(v/py[j]);
+    }));
+    return H;
+  }
+
+  /* ── gürültülü kanal: X ikili, Y gözlem, gürültü oranı e ──
+     Bir özelliğin etiket hakkında kaç bit taşıdığını ölçmenin en yalın hâli. */
+  function kanal(e, px1){
+    const p0 = 1-px1, p1 = px1;
+    /* ortak[i][j] = P(X=i, Y=j) */
+    return [[p0*(1-e), p0*e], [p1*e, p1*(1-e)]];
+  }
+
+  /* ── örnek dağılımlar ── */
+  const DAGILIM = {
+    dengeli:   { ad:'düzgün · 8 sonuç', p:new Array(8).fill(1/8) },
+    zar:       { ad:'adil zar · 6 yüz',  p:new Array(6).fill(1/6) },
+    egik:      { ad:'eğik · 8 sonuç',    p:[0.50,0.20,0.12,0.08,0.05,0.03,0.015,0.005] },
+    cokEgik:   { ad:'çok eğik · 8 sonuç',p:[0.90,0.04,0.02,0.015,0.01,0.008,0.005,0.002] },
+    ikili:     { ad:'yazı tura',         p:[0.5,0.5] },
+  };
+
+  /* ── tahmin oyunu: entropi kaç soruya denk gelir ──
+     İkili arama ile ortalama soru sayısı, Huffman kod uzunluğuna eşittir. */
+  function oyun(ad){
+    const d = DAGILIM[ad], boy = huffman(d.p);
+    return { ad:d.ad, p:d.p, H:entropi(d.p), boy, ortalama:ortKod(d.p, boy),
+             fark: ortKod(d.p, boy) - entropi(d.p) };
+  }
+
+  return { log2, entropi, caprazEntropi, kl, huffman, ortKod, ikili,
+           karsilikliBilgi, kosulluEntropi, marjinal, kanal, DAGILIM, oyun };
+})();

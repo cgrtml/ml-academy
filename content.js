@@ -132,6 +132,7 @@ const ROTALAR = [
   dersler:[
     {id:'prompt',    ad:'Prompt anatomisi',                sure:12, durum:'hazir'},
     {id:'eval',      ad:'Eval seti kurmak',                sure:16, durum:'hazir'},
+    {id:'ab-testi',      ad:'A/B testi: çevrimiçi değerlendirme',              sure:15, durum:'hazir'},
     {id:'arena',     ad:'Prompt Arena · kör karşılaştırma', sure:16, durum:'hazir'},
     {id:'rag-kir',   ad:'RAG kırma odası',                 sure:16, durum:'hazir'},
     {id:'ajan',      ad:'Ajanlar ve araç çağırma',         sure:14, durum:'hazir'},
@@ -13780,6 +13781,178 @@ DERSLER['dengesiz'] = {
       'Maliyetler eşitken t* tam olarak 0.5 çıkıyor: varsayılan eşik, "iki hata aynı derecede pahalı" ' +
       'varsayımının kısaltmasıdır.<br><br>' +
       'Sıra: önce eşik, sonra maliyet, en son ağırlık ve örnekleme.',
+    xp:60,
+  },
+]};
+
+/* ────────── R4 · A/B testi ────────── */
+DERSLER['ab-testi'] = {
+  ad:'A/B testi: çevrimiçi değerlendirme',
+  alt:'Eval seti çevrimdışı ölçer. Gerçek kullanıcıyla ölçmenin kendi aritmetiği var, ve en sık yapılan hata ara sonuca bakmak.',
+  kaynaklar:[
+    {"y":"Kohavi, R., Tang, D. & Xu, Y.", "t":"2020", "b":"Trustworthy Online Controlled Experiments", "n":"Cambridge University Press"},
+    {"y":"Gelman, A. & Carlin, J.", "t":"2014", "b":"Beyond Power Calculations: Assessing Type S and Type M Errors", "n":"Perspectives on Psychological Science, 9(6)"},
+    {"y":"Johari, R. et al.", "t":"2017", "b":"Peeking at A/B Tests: Why It Matters and What to Do About It", "n":"KDD 2017"},
+  ],
+  rota:4,
+  adimlar:[
+  {
+    t:'Kaç kullanıcı gerekir',
+    goal:'Aranan farkın büyüklüğü ile gereken örneklem arasındaki ilişkiyi göreceksin.',
+    todo:'Aranan farkı küçült ve gereken kullanıcı sayısına bak. Eksen logaritmik.',
+    kind:'controls', viz:'abOrneklem', h:760,
+    controls:[{k:'etki', lb:'ARANAN FARK', min:0, max:7, step:1, val:3,
+               fmt:v=>'%'+(100*[0.50,0.40,0.30,0.20,0.15,0.10,0.05,0.02][Math.round(v)]).toFixed(0)}],
+    live:s => { const e = [0.50,0.40,0.30,0.20,0.15,0.10,0.05,0.02][Math.max(0,Math.min(7,Math.round(s.etki)))];
+      const n = AB.gerekenN(AB.TABAN, e, 0.05, 0.80);
+      return [['ARANAN FARK', '%'+(100*e).toFixed(0)], ['KOL BAŞINA n', n.toLocaleString('tr'), K.blue],
+              ['TOPLAM', (2*n).toLocaleString('tr')]]; },
+    body:'<p><i>Eval seti kurmak</i> dersinde çevrimdışı ölçümün istatistiğini görmüştün. ' +
+      'Çevrimiçi deney aynı aritmetiği kullanır ama sayılar çok daha büyüktür, çünkü ' +
+      'dönüşüm oranları küçüktür ve aranan farklar küçüktür.</p>' +
+      '<p>Örneklem büyüklüğü formülü:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">n = 2 (z<sub>α</sub> + z<sub>β</sub>)² p̄(1−p̄) / δ²</p>' +
+      '<p>Dikkat edilecek tek şey <b>δ\'nın paydada kareli</b> olması. Bu, aranan farkı yarıya ' +
+      'indirmenin örneklemi <b>dört katına</b> çıkardığı anlamına gelir.</p>' +
+      '<p>Taban dönüşüm %10 iken, %80 güç ve α = 0.05 ile kol başına gereken kullanıcı:</p>' +
+      '<p style="font-family:var(--mono)">bağıl fark &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;n<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%50 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;687<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%20 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3.843<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%10 &nbsp;&nbsp;&nbsp;&nbsp;14.752<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%5 &nbsp;&nbsp;&nbsp;&nbsp;57.764<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%2 &nbsp;&nbsp;&nbsp;356.336</p>' +
+      '<p>%50\'lik bir farkı bir günde görebilirsin. %2\'lik bir farkı görmek için ' +
+      '<b>500 kat</b> daha fazla kullanıcı gerekir.</p>' +
+      '<p>Buradan pratikte çok işe yarayan bir çevirme çıkıyor: soruyu ' +
+      '"kaç kullanıcım var" diye değil, <b>"bu kadar kullanıcıyla hangi büyüklükteki farkı ' +
+      'görebilirim"</b> diye sor. Cevap aradığın farktan büyükse, o deneyi kurmanın anlamı yok.</p>',
+    learned:'<b>Örneklem, aranan farkın karesiyle ters orantılıdır.</b><br><br>' +
+      'Taban %10, güç %80, α = 0.05 iken kol başına: %50 fark için 687, %20 için 3.843, ' +
+      '%10 için 14.752, %5 için 57.764, %2 için 356.336 kullanıcı.<br><br>' +
+      'Doğru soru "kaç kullanıcım var" değil, "bu kullanıcıyla hangi farkı görebilirim".',
+    xp:45,
+  },
+  {
+    t:'Erken bakmanın bedeli',
+    goal:'Ara sonuca bakmanın yanlış pozitif oranını nasıl patlattığını ölçeceksin.',
+    todo:'Ara bakış sayısını artır. Gerçekte iki kol da AYNI, hiç fark yok.',
+    kind:'controls', viz:'abErken', h:760,
+    controls:[{k:'bakis', lb:'ARA BAKIŞ', min:0, max:4, step:1, val:0,
+               fmt:v=>{const b=[1,2,5,10,20][Math.round(v)]; return b===1?'sadece sonda':b+' kez';}}],
+    live:s => { const b = [1,2,5,10,20][Math.max(0,Math.min(4,Math.round(s.bakis)))];
+      const r = AB.erkenBakma(2000, b, 0);
+      return [['ARA BAKIŞ', b===1?'yok':b], ['YANLIŞ POZİTİF', '%'+(100*r.oran).toFixed(1),
+              r.oran>0.08?K.red:K.green], ['OLMASI GEREKEN', '%5', K.mut]]; },
+    body:'<p>Bu adımdaki deneyde <b>gerçekte hiçbir fark yok</b>. İki kola da tamamen aynı şey ' +
+      'gösteriliyor, ikisinin de dönüşüm oranı %10. Buna A/A testi denir ve bir ölçüm ' +
+      'düzeneğinin kendisini sınamanın standart yoludur.</p>' +
+      '<p>Doğru kurulmuş bir testte, fark yokken "kazanan var" deme oranı α kadar olmalı, ' +
+      'yani <b>%5</b>.</p>' +
+      '<p>Ölçüm (kol başına 2.000 kullanıcı, 3.000 deney):</p>' +
+      '<p style="font-family:var(--mono)">ne zaman bakıldı &nbsp;&nbsp;yanlış pozitif<br>' +
+      'sadece sonda &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>%4.9</b><br>' +
+      '2 kez &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%8.7<br>' +
+      '5 kez &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%14.1<br>' +
+      '10 kez &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%18.8<br>' +
+      '20 kez &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>%24.6</b></p>' +
+      '<p>Sadece sonda bakınca <b>%4.9</b>, yani söz verilen %5. Bu, simülasyonun kendisinin ' +
+      'doğru çalıştığının kanıtı.</p>' +
+      '<p>Yirmi kez ara bakış yapınca aynı sayı <b>%24.6</b>\'ya çıkıyor. ' +
+      'Yani <b>dört A/A testinden biri "kazanan" buluyor</b>, ortada hiçbir fark yokken.</p>' +
+      '<p>Mekanizma basit: her bakış yeni bir şanstır. Rastgele dalgalanma er ya da geç eşiği ' +
+      'aşar ve sen tam o anda durdurursan, ölçtüğün şey fark değil <b>sabırsızlıktır</b>.</p>' +
+      '<p>Üstelik durduran deneylerin ortalama örneklemi planlananın çok altında kalıyor. ' +
+      'Yani deney hem erken kesiliyor hem de sonuç şişik oluyor; bir sonraki adım bu şişmeyi ölçüyor.</p>',
+    quiz:{ q:'Bir ekip A/B testini "istatistiksel anlamlılığa ulaştığı anda" durduruyor ve bunu <b>hızlı karar</b> olarak savunuyor. Bu uygulamanın en doğru eleştirisi hangisi?',
+      opts:[
+        {t:'Yanlış pozitif oranı, ilan edilen α değerinin çok üstüne çıkar', why:'Doğru. Ölçüm bunu gösteriyor: gerçekte hiç fark yokken 20 ara bakışla "kazanan" bulma oranı %4.9\'dan %24.6\'ya çıkıyor. Ekip "%5 hata payıyla çalışıyoruz" derken gerçekte %25 ile çalışıyor. Çözüm bakmayı yasaklamak değil, sıralı test kullanarak α bütçesini bakışlara paylaştırmaktır.'},
+        {t:'Deney süresi kısaldığı için mevsimsel etkiler yakalanamaz', why:'Gerçek bir sorun ve haftanın günü etkisi için deneylerin tam hafta katları sürmesi önerilir. Ama buradaki asıl hata istatistikseldir ve deney bir yıl sürse bile ara bakış aynı şişmeyi üretir.'},
+        {t:'Örneklem küçük kaldığı için güven aralıkları geniş olur', why:'Doğru ama yetersiz. Geniş aralık dürüst bir belirsizlik ifadesidir; buradaki sorun aralığın genişliği değil, hata oranının ilan edilenden farklı olması.'},
+        {t:'Birden çok ölçüt aynı anda test edilirse çoklu karşılaştırma sorunu doğar', why:'Ayrı ve gerçek bir sorun (Bonferroni vb. düzeltme gerekir) ama sorulan şey erken durdurma. Tek bir ölçütle bile ara bakış yanlış pozitifi patlatır.'},
+      ], correct:0 },
+    learned:'<b>Ara sonuca bakmak, ilan ettiğin hata payını geçersiz kılar.</b><br><br>' +
+      'Gerçekte hiç fark yokken (A/A) yanlış pozitif oranı: sadece sonda bakınca %4.9, ' +
+      '2 bakışta %8.7, 5 bakışta %14.1, 20 bakışta %24.6.<br><br>' +
+      'Dört deneyden biri, ortada fark yokken "kazanan" ilan ediyor.',
+    xp:60,
+  },
+  {
+    t:'Yetersiz güç iki kere yanıltır',
+    goal:'Güçsüz bir testin yalnızca kaçırmadığını, aynı zamanda abarttığını göreceksin.',
+    todo:'Örneklemi büyüt. Kırmızı eğri sarı çizgiye ne zaman iniyor?',
+    kind:'controls', viz:'abGuc', h:760,
+    controls:[{k:'n', lb:'KOL BAŞINA n', min:0, max:4, step:1, val:0,
+               fmt:v=>[500,1000,2000,4000,8000][Math.round(v)].toLocaleString('tr')}],
+    live:s => { const n = [500,1000,2000,4000,8000][Math.max(0,Math.min(4,Math.round(s.n)))];
+      const g = AB.guc(n, 0.20);
+      return [['n', n.toLocaleString('tr')], ['GÜÇ', '%'+(100*g.guc).toFixed(1), g.guc<0.8?K.red:K.green],
+              ['ANLAMLI ÇIKANLARIN ETKİSİ', '%'+(100*g.anlamliEtki).toFixed(1), K.red],
+              ['ŞİŞME', g.sisme.toFixed(2)+'×', g.sisme>1.2?K.red:K.green]]; },
+    body:'<p>Şimdi gerçek bir fark var: B kolu gerçekten %20 daha iyi. Soru şu: ' +
+      'test bunu görebiliyor mu, ve gördüğünde <b>ne diyor</b>?</p>' +
+      '<p style="font-family:var(--mono)">n &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;güç &nbsp;&nbsp;&nbsp;tüm deneyler &nbsp;anlamlı olanlar &nbsp;şişme<br>' +
+      '&nbsp;&nbsp;500 &nbsp;&nbsp;%17 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%19.4 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>%48.1</b> &nbsp;&nbsp;&nbsp;&nbsp;2.41×<br>' +
+      '&nbsp;1000 &nbsp;&nbsp;%28 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%19.6 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%36.2 &nbsp;&nbsp;&nbsp;&nbsp;1.81×<br>' +
+      '&nbsp;2000 &nbsp;&nbsp;%52 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%19.8 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%27.2 &nbsp;&nbsp;&nbsp;&nbsp;1.36×<br>' +
+      '&nbsp;4000 &nbsp;&nbsp;%82 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%19.9 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%22.1 &nbsp;&nbsp;&nbsp;&nbsp;1.11×<br>' +
+      '&nbsp;8000 &nbsp;&nbsp;%98 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%20.0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%20.2 &nbsp;&nbsp;&nbsp;&nbsp;1.01×</p>' +
+      '<p><b>Birinci hata tanıdık:</b> güç düşükse gerçek farkı kaçırırsın. n = 500\'de ' +
+      'deneylerin yalnızca %17\'si farkı görüyor.</p>' +
+      '<p><b>İkinci hata çok daha az bilinir ve daha tehlikelidir:</b> gördüğünde <b>abartırsın</b>. ' +
+      'n = 500\'de anlamlı çıkan deneyler ortalama <b>%48</b> etki raporluyor. Gerçek etki %20. ' +
+      'Yani rapor edilen sayı gerçeğin <b>2.4 katı</b>.</p>' +
+      '<p>Sebebi üçüncü sütunda görünüyor: <b>tüm deneylerin ortalaması sapmasız</b> (%19.4, %19.6, ... %20.0). ' +
+      'Yani ölçüm aracında bir bozukluk yok. Sapma yalnızca <b>"anlamlı olanlara" bakınca</b> doğuyor: ' +
+      'küçük bir örneklemde eşiği aşabilmek için gerçek farkın yanında rastgele dalgalanmanın da ' +
+      'lehine olması gerekir, dolayısıyla anlamlı çıkanlar sistematik olarak abartılı olanlardır.</p>' +
+      '<p>Buna <b>büyüklük hatası</b> denir (Gelman ve Carlin, 2014: Type M error). ' +
+      '<i>Yarışma yanılsaması</i> dersindeki kazananın laneti ile aynı mekanizmadır, ' +
+      'yalnızca burada seçim modeller arasında değil, <b>sonuçlar arasında</b> yapılıyor.</p>' +
+      '<p>Pratik sonucu şu: güçsüz bir deneyden çıkan "%48 iyileşme" sayısı ürüne söz verilir, ' +
+      'yol haritası ona göre kurulur ve gerçek kazanç %20 çıkınca kimse sebebini anlamaz.</p>',
+    learned:'<b>Yetersiz güç iki ayrı hata üretir.</b><br><br>' +
+      'Gerçek etki %20 iken n = 500\'de güç %17, ve anlamlı çıkan deneylerin ortalama etkisi %48.1 ' +
+      '(2.41× şişik). n = 8000\'de güç %98 ve şişme 1.01×.<br><br>' +
+      'Tüm deneylerin ortalaması sapmasız (%19.4-%20.0). Sapma yalnızca anlamlı olanları seçince doğuyor: ' +
+      'büyüklük hatası (Type M).',
+    xp:60,
+  },
+  {
+    t:'Doğru kurulum',
+    goal:'Bir deneyin başlamadan önce yazılması gerekenleri ve süre hesabını göreceksin.',
+    todo:'Aranan farkı ve günlük trafiği değiştir. Mavi eğri o sürede görülebilen en küçük farkı gösteriyor.',
+    kind:'controls', viz:'abKurulum', h:760,
+    controls:[{k:'etki', lb:'ARANAN FARK', min:0, max:4, step:1, val:2,
+               fmt:v=>'%'+(100*[0.50,0.30,0.20,0.10,0.05][Math.round(v)]).toFixed(0)},
+              {k:'gunluk', lb:'GÜNLÜK KULLANICI', min:100, max:5000, step:100, val:500,
+               fmt:v=>Math.round(v).toLocaleString('tr')}],
+    live:s => { const e = [0.50,0.30,0.20,0.10,0.05][Math.max(0,Math.min(4,Math.round(s.etki)))];
+      const n = AB.gerekenN(AB.TABAN, e, 0.05, 0.80), g = Math.max(50, Math.round(s.gunluk));
+      return [['ARANAN FARK', '%'+(100*e).toFixed(0)], ['TOPLAM n', (2*n).toLocaleString('tr')],
+              ['SÜRE', Math.ceil(2*n/g)+' gün', Math.ceil(2*n/g)>60?K.red:K.green]]; },
+    body:'<p>Buraya kadar ölçülen üç şey tek bir kurala çıkıyor: <b>deneyin bütün sayıları ' +
+      'başlamadan önce yazılır ve sonrasında değiştirilmez.</b></p>' +
+      '<p><b>1 · Birincil ölçüt.</b> Tek bir tane. Birden çok ölçüte bakıp içlerinden birinin ' +
+      'anlamlı çıkmasını beklemek, erken bakmanın başka bir biçimidir.</p>' +
+      '<p><b>2 · Aranan en küçük fark.</b> İstatistiksel değil, <b>iş</b> kararı: bu üründe hangi ' +
+      'büyüklükteki bir iyileşme kaynak ayırmayı hak eder?</p>' +
+      '<p><b>3 · α ve güç.</b> Genelde 0.05 ve %80. Güç %80 demek, gerçek fark varsa ' +
+      'onu görme şansının %80 olması demek; yani beşte bir ihtimalle yine de kaçırırsın.</p>' +
+      '<p><b>4 · Örneklem.</b> İlk üçünden hesaplanır, tahmin edilmez.</p>' +
+      '<p><b>5 · Durdurma kuralı.</b> n dolunca durur. Bu, ikinci adımda ölçtüğün şişmenin tek panzehiri.</p>' +
+      '<p><b>6 · Koruma ölçütleri.</b> Birincil ölçüt iyileşirken bozulmaması gereken şeyler: ' +
+      'hata oranı, sayfa süresi, iptal oranı. Kazandın sanıp başka bir yeri bozmuş olabilirsin.</p>' +
+      '<p><b>Erken bakmak gerçekten şart olduğunda</b> yasak koymak çözüm değil: bir deney zarar ' +
+      'veriyorsa durdurulmalıdır. Doğru araç <b>sıralı test</b>tir. Fikir şu: α bir bütçedir ve ' +
+      'bakışlara paylaştırılır. Her bakışta eşik daha katıdır, toplam yanlış pozitif %5\'te kalır. ' +
+      'Bedeli bir miktar güç kaybıdır. Yasak olan plansız bakıp keyfî durdurmaktır, bakmanın kendisi değil.</p>' +
+      '<p>Son olarak süre: örneklem tek başına yetmez, <b>trafiğe bölünmesi</b> gerekir. ' +
+      'Ve gün sayısı hafta katlarına yuvarlanmalıdır, çünkü hafta içi ve hafta sonu kullanıcıları farklıdır.</p>',
+    learned:'<b>Deneyin sayıları başlamadan önce yazılır.</b><br><br>' +
+      'Birincil ölçüt · aranan en küçük fark · α ve güç · örneklem · durdurma kuralı · koruma ölçütleri.<br><br>' +
+      'Erken bakmak gerekiyorsa doğru araç sıralı testtir: α bütçesi bakışlara paylaştırılır ve ' +
+      'yanlış pozitif %5\'te kalır. Yasak olan plansız bakmaktır.<br><br>' +
+      'Süre hesabında gün sayısı hafta katlarına yuvarlanmalı; hafta içi ve hafta sonu kullanıcıları farklıdır.',
     xp:60,
   },
 ]};

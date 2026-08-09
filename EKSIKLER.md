@@ -57,9 +57,14 @@ En yüksek öncelik: beklentiyi dersin kendisi yaratıyor, karşılığı yok.
 
 Tarama sonucu: müfredatta tek bir kez bile geçmiyor.
 
-- [ ] **A/B testi ve çevrimiçi değerlendirme**
-      `eval` ve `arena` tamamen çevrimdışı. Örneklem büyüklüğü, güç, durdurma kuralı yok.
-      Widget: örneklem büyüklüğü ve güç hesabı, erken durdurmanın yanlılığı.
+- [x] **A/B testi ve çevrimiçi değerlendirme**  ✔ 8 Ağustos 2026
+      `DERSLER['ab-testi']`, Rota 4 (`eval` sonrası), 4 adım, 225 XP.
+      Ölçülen: taban %10'da %2'lik farkı görmek kol başına 356.336 kullanıcı istiyor.
+      A/A testinde yanlış pozitif sadece sonda bakınca %4.9, 20 ara bakışta %24.6.
+      Gerçek etki %20 iken n=500'de güç %17 ve anlamlı çıkanların ortalaması %48.1
+      (2.41× şişme, Type M hatası).
+      Kapsanmayan: çok kollu testler, katmanlı deney altyapısı, CUPED gibi
+      varyans azaltma, ağ etkisi olan ortamlarda birim seçimi.
 
 - [ ] **Gizlilik ve kişisel veri** · PII, anonimleştirme, diferansiyel gizlilik
       `adillik` var, gizlilik yok. R4 için ciddi bir eksik.
@@ -110,7 +115,7 @@ başlanmamalı.
 1. ~~Zaman serisi~~ ✔ tamamlandı
 2. ~~Kalibrasyon~~ ✔ tamamlandı
 3. ~~Dengesiz veri~~ ✔ tamamlandı
-4. A/B testi
+4. ~~A/B testi~~ ✔ tamamlandı
 5. Bilgi kuramı
 6. LoRA / PEFT
 7. Üretimde izleme
