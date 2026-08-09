@@ -17726,3 +17726,437 @@ VIZ.lrOlcek = s => {
         'M, LoRA r='+RS[ri]+' ile '+(o.lora/1e6).toFixed(2)+'M  ·  '+
         (o.tam/o.lora).toFixed(0)+' kat az', K.green);
 };
+
+/* ═══════════════ ÜRETİMDE İZLEME ═══════════════
+   `dagilim-kaymasi` kaymanın olduğunu ve fark edilmesi gerektiğini gösteriyor.
+   Bu motor ondan SONRASINI ölçüyor: etiketler geç geldiğinde ne olur, hangi
+   yeniden eğitim politikası ne kazandırır, ve geri alma ne zaman gerekir. */
+const IZL = (() => {
+  const T   = 3000;      // akıştaki toplam adım
+  const D   = 4;         // özellik sayısı
+  const PEN = 400;       // eğitim penceresi
+  const ILK = 400;       // ilk eğitim için beklenen adım
+
+  /* ── akış: katsayılar yavaş kayıyor, 1800. adımda ani bir kırılma var ── */
+  function akis(tohum){
+    const R = rng(tohum), X = [], y = [], W = [];
+    for (let t=0;t<T;t++){
+      /* yavaş kayma: ilk iki katsayı zamanla yer değiştiriyor */
+      const p = t/T;
+      let w = [1.6 - 2.4*p, 0.2 + 2.0*p, -1.1, 0.5];
+      /* ani kırılma: 1800. adımda dördüncü özelliğin işareti dönüyor */
+      if (t >= 1800) w = [w[0], w[1], w[2], -1.4];
+      const x = Array.from({length:D}, () => R()*2-1);
+      const s = x.reduce((a,v,i) => a + v*w[i], 0) + (R()-0.5)*0.5;
+      X.push(x); y.push(s > 0 ? 1 : 0); W.push(w);
+    }
+    return { X, y, W };
+  }
+
+  /* ── lojistik regresyon, pencere üzerinde ── */
+  function egit(X, y, bas, son){
+    let w = new Array(D).fill(0), b = 0;
+    const n = son - bas;
+    for (let tur=0;tur<160;tur++){
+      const g = new Array(D).fill(0); let gb = 0;
+      for (let i=bas;i<son;i++){
+        const z = X[i].reduce((a,v,k)=>a+v*w[k],0) + b;
+        const p = 1/(1+Math.exp(-z)), d = p - y[i];
+        for (let k=0;k<D;k++) g[k] += d*X[i][k];
+        gb += d;
+      }
+      for (let k=0;k<D;k++) w[k] -= 0.9*g[k]/n;
+      b -= 0.9*gb/n;
+    }
+    return { w, b };
+  }
+  const tahmin = (m, x) =>
+    (1/(1+Math.exp(-(x.reduce((a,v,k)=>a+v*m.w[k],0) + m.b)))) > 0.5 ? 1 : 0;
+
+  /* ── PSI: girdi dağılımı kaymasının etiketsiz ölçüsü ──
+     Referans pencereye göre her özelliği 10 kutuya bölüp karşılaştırır.
+     Etiket GEREKTİRMEZ, yani canlıda anında hesaplanabilir. */
+  function psi(X, refBas, refSon, curBas, curSon){
+    const KUTU = 10;
+    let top = 0;
+    for (let k=0;k<D;k++){
+      const ref = new Array(KUTU).fill(0), cur = new Array(KUTU).fill(0);
+      for (let i=refBas;i<refSon;i++){
+        const q = Math.min(KUTU-1, Math.max(0, Math.floor((X[i][k]+1)/2*KUTU)));
+        ref[q]++;
+      }
+      for (let i=curBas;i<curSon;i++){
+        const q = Math.min(KUTU-1, Math.max(0, Math.floor((X[i][k]+1)/2*KUTU)));
+        cur[q]++;
+      }
+      const nr = refSon-refBas, nc = curSon-curBas;
+      for (let q=0;q<KUTU;q++){
+        const a = Math.max(ref[q]/nr, 1e-4), c = Math.max(cur[q]/nc, 1e-4);
+        top += (c-a)*Math.log(c/a);
+      }
+    }
+    return top/D;
+  }
+
+  /* ── tahmin kayması: modelin çıktı dağılımı değişti mi ──
+     Bu da etiket gerektirmez ve pratikte en çok kullanılan vekil sinyaldir. */
+  function tahminKaymasi(model, X, refBas, refSon, curBas, curSon){
+    const oran = (b,s) => {
+      let n=0; for (let i=b;i<s;i++) n += tahmin(model, X[i]);
+      return n/(s-b);
+    };
+    return Math.abs(oran(curBas,curSon) - oran(refBas,refSon));
+  }
+
+  /* ── bir politikayı akış üzerinde koştur ──
+     politika: 'hic' | 'takvim' | 'tetik' | 'kahin'
+     gecikme:  etiketlerin kaç adım geç geldiği                         */
+  function kostur(A, politika, ayar, gecikme){
+    const { X, y } = A;
+    let model = egit(X, y, 0, ILK);
+    let sonEgitim = ILK, refBas = 0, refSon = ILK;
+    const dogru = [], egitimAnlari = [];
+    const ADIM = 50;                       // izleme penceresi
+
+    for (let t=ILK;t<T;t++){
+      dogru.push(tahmin(model, X[t]) === y[t] ? 1 : 0);
+
+      if (t % ADIM !== 0 || t - sonEgitim < 100) continue;
+
+      let egitmeli = false;
+      if (politika === 'takvim'){
+        egitmeli = (t - sonEgitim) >= ayar;
+      } else if (politika === 'tetik'){
+        egitmeli = psi(X, refBas, refSon, t-ADIM, t) > ayar;
+      } else if (politika === 'kahin'){
+        /* Gerçek doğruluğa bakar. Canlıda YAPILAMAZ çünkü etiketler o an yok.
+           Dikkat: bu bir ÜST SINIR DEĞİLDİR. Doğruluk düştükten SONRA tepki
+           verdiği için, girdi kaymasına bakan tetikleyiciden geride kalır.
+           Ölçüm bunu doğruluyor ve ders bu sonucu açıkça anlatıyor. */
+        const son = dogru.slice(-ADIM);
+        egitmeli = son.reduce((a,b)=>a+b,0)/son.length < ayar;
+      }
+      if (!egitmeli) continue;
+
+      /* etiket gecikmesi: yalnızca t-gecikme anına kadarki etiketler bilinir */
+      const son = Math.max(ILK, t - gecikme);
+      const bas = Math.max(0, son - PEN);
+      if (son - bas < 100) continue;
+      model = egit(X, y, bas, son);
+      sonEgitim = t; refBas = bas; refSon = son;
+      egitimAnlari.push(t);
+    }
+    return { dogruluk: dogru.reduce((a,b)=>a+b,0)/dogru.length,
+             seri: dogru, egitimAnlari, sayi: egitimAnlari.length };
+  }
+
+  /* ── kayan pencere doğruluğu, çizim için ── */
+  function pencereDogruluk(seri, gen){
+    const out = [];
+    for (let i=gen;i<=seri.length;i+=10)
+      out.push({ t: ILK+i, v: seri.slice(i-gen,i).reduce((a,b)=>a+b,0)/gen });
+    return out;
+  }
+
+  const C = {};
+  function olc(){
+    if (C.hazir) return C;
+    const A = akis(77);
+    C.A = A;
+
+    /* 1 · vekil sinyaller gerçek doğruluğu izliyor mu */
+    const temel = kostur(A, 'hic', 0, 0);
+    C.hic = temel;
+    C.pencere = pencereDogruluk(temel.seri, 200);
+    C.psiSeri = [];
+    for (let t=ILK+200;t<T;t+=25)
+      C.psiSeri.push({ t, v: psi(A.X, 0, ILK, t-200, t) });
+
+    /* 2 · gecikme etkisi: aynı tetikleyici politika, farklı etiket gecikmesi */
+    C.gecikme = [0, 100, 300, 600, 1000].map(g => {
+      const r = kostur(A, 'tetik', 0.10, g);
+      return { g, dogruluk: r.dogruluk, sayi: r.sayi };
+    });
+
+    /* 3 · politika karşılaştırması, gecikme 200 sabit */
+    C.politika = [
+      { ad:'hiç yeniden eğitme', tur:'hic',    ayar:0    },
+      { ad:'takvim · 200 adım',  tur:'takvim', ayar:200  },
+      { ad:'takvim · 500 adım',  tur:'takvim', ayar:500  },
+      { ad:'tetikleyici · PSI',  tur:'tetik',  ayar:0.10 },
+      { ad:'gerçek doğruluk',    tur:'kahin',  ayar:0.80 },
+    ].map(p => {
+      const r = kostur(A, p.tur, p.ayar, 200);
+      return { ...p, dogruluk: r.dogruluk, sayi: r.sayi,
+               anlar: r.egitimAnlari, seri: r.seri };
+    });
+
+    /* 4 · geri alma: çevrimdışı iyi görünen model canlıda kötü olabilir ──
+       1800. adımdaki ani kırılmanın hemen ÖNCESİNDE eğitilmiş bir aday model,
+       kendi doğrulama kümesinde iyi puan alır ama canlıda çöker. */
+    {
+      const KIR = 1800, PEN2 = 400;
+      /* aday: kırılmadan hemen önceki veriyle eğitildi */
+      const aday = egit(A.X, A.y, KIR-PEN2, KIR-80);
+      /* çevrimdışı doğrulama: aynı dönemden ayrılmış, modelin görmediği kısım */
+      const cevrimdisiDogru = (m, b2, s2) => {
+        let n=0; for (let i=b2;i<s2;i++) n += (tahmin(m,A.X[i])===A.y[i]?1:0);
+        return n/(s2-b2);
+      };
+      C.geri = {
+        adayCevrimdisi: cevrimdisiDogru(aday, KIR-80, KIR),      // kırılmadan önce
+        adayCanli:      cevrimdisiDogru(aday, KIR, KIR+300),     // kırılmadan sonra
+        /* gölge dağıtım: adayı canlı trafikte çalıştır ama kararı kullanma.
+           Kaç örnek gördükten sonra farkı istatistiksel olarak görebilirsin? */
+        golge: [25, 50, 100, 200, 400].map(n => ({
+          n, dogruluk: cevrimdisiDogru(aday, KIR, KIR+n) }))
+      };
+      /* kırılmadan SONRA eğitilmiş model, karşılaştırma için */
+      const yeni = egit(A.X, A.y, KIR+40, KIR+340);
+      C.geri.yeniCanli = cevrimdisiDogru(yeni, KIR+340, KIR+640);
+    }
+
+    C.T = T; C.ILK = ILK; C.hazir = true;
+    return C;
+  }
+
+  return { T, D, ILK, akis, egit, tahmin, psi, tahminKaymasi, kostur,
+           pencereDogruluk, olc };
+})();
+
+/* ── 1 · etiketler geç gelir, vekil sinyal gerekir ── */
+VIZ.izCokus = s => {
+  clear();
+  const o = IZL.olc();
+  const goster = Math.max(0, Math.min(2, Math.round(s.katman === undefined ? 0 : s.katman)));
+  const sonD = o.pencere[o.pencere.length-1].v;
+  baslikSerit('MODEL SESSİZCE ÇÜRÜR',
+    'Hiç yeniden eğitilmeyen bir model, kayan bir dünyada ne kadar dayanır?',
+    [['BAŞLANGIÇ', (100*o.pencere[0].v).toFixed(1)+'%', K.green],
+     ['SON', (100*sonD).toFixed(1)+'%', K.red],
+     ['ORTALAMA', (100*o.hic.dogruluk).toFixed(1)+'%', K.orange]]);
+
+  const P = plot(rect(120, 240, 1260, 250), o.ILK, o.T, 0.35, 1.0);
+  txt('KAYAN PENCERE DOĞRULUĞU  ·  yatay eksen adım', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'doğruluk', [500,1000,1500,2000,2500,3000], [0.5, 0.75, 1.0]);
+  cx.setLineDash([6,6]); cx.strokeStyle = K.mut; cx.lineWidth = 2;
+  cx.beginPath(); cx.moveTo(P.R.x, P.sy(0.5)); cx.lineTo(P.R.x+P.R.w, P.sy(0.5)); cx.stroke();
+  cx.setLineDash([]);
+  txt('yazı tura  %50', P.R.x+P.R.w-12, P.sy(0.5)-10, K.mut, 15, 'right');
+  cx.strokeStyle = K.red; cx.lineWidth = 3.5; cx.beginPath();
+  o.pencere.forEach((q,i) => i===0 ? cx.moveTo(P.sx(q.t), P.sy(q.v))
+                                   : cx.lineTo(P.sx(q.t), P.sy(q.v)));
+  cx.stroke();
+  if (goster >= 1){
+    cx.strokeStyle = K.yellow; cx.lineWidth = 2.5; cx.setLineDash([7,5]);
+    cx.beginPath(); cx.moveTo(P.sx(1800), P.R.y); cx.lineTo(P.sx(1800), P.R.y+P.R.h); cx.stroke();
+    cx.setLineDash([]);
+    txt('ani kırılma', P.sx(1800)+12, P.R.y+28, K.yellow, 16, 'left');
+  }
+
+  if (goster >= 2){
+    const Q = plot(rect(120, 572, 1260, 96), o.ILK, o.T, 0, Math.max(...o.psiSeri.map(q=>q.v))*1.15);
+    txt('PSI · GİRDİ KAYMASI  ·  etiket GEREKTİRMEZ, canlıda anında hesaplanır',
+        Q.R.x+Q.R.w/2, Q.R.y-38, K.mut, 18);
+    txt('doğruluk düşerken PSI yükseliyor, ve bunun için tek bir etikete ihtiyaç yok',
+        Q.R.x+Q.R.w/2, Q.R.y-14, K.green, 16);
+    frame(Q, '', '', [500,1000,1500,2000,2500,3000], []);
+    cx.strokeStyle = K.blue; cx.lineWidth = 3; cx.beginPath();
+    o.psiSeri.forEach((q,i) => i===0 ? cx.moveTo(Q.sx(q.t), Q.sy(q.v))
+                                     : cx.lineTo(Q.sx(q.t), Q.sy(q.v)));
+    cx.stroke();
+  } else {
+    box(120, 560, 1260, 108, 'rgba(7,10,15,.4)', K.axis, 2);
+    txt(goster === 0 ? 'Kaydırıcıyı ilerlet' : 'Peki bunu canlıda nasıl fark edeceksin?',
+        750, 620, K.mut, 20);
+  }
+
+  durum(goster === 0
+    ? 'doğruluk %'+(100*o.pencere[0].v).toFixed(1)+' den %'+(100*sonD).toFixed(1)+
+      ' e düştü  ·  yazı turadan bile kötü'
+    : (goster === 1
+      ? 'yavaş kayma zaten aşındırıyordu, 1800. adımdaki ani kırılma işi bitirdi'
+      : 'PSI etiketsiz hesaplanır  ·  doğruluğu bekleyemeyeceğin için vekil sinyal şart'),
+    goster === 2 ? K.green : K.red);
+};
+
+/* ── 2 · etiket gecikmesinin bedeli ── */
+VIZ.izGecikme = s => {
+  clear();
+  const o = IZL.olc();
+  const i = Math.max(0, Math.min(4, Math.round(s.gecikme === undefined ? 2 : s.gecikme)));
+  const se = o.gecikme[i], en = o.gecikme[0];
+  baslikSerit('ETİKET GECİKMESİNİN BEDELİ',
+    'Aynı politika, aynı sayıda yeniden eğitim. Değişen tek şey etiketlerin ne kadar geç geldiği.',
+    [['GECİKME', String(se.g)+' adım', se.g>400?K.red:K.blue],
+     ['DOĞRULUK', (100*se.dogruluk).toFixed(1)+'%', K.green],
+     ['YENİDEN EĞİTİM', String(se.sayi), K.mut]]);
+
+  const P = plot(rect(160, 250, 640, 320), -0.4, 4.4, 0.70, 0.95);
+  txt('GECİKME ARTTIKÇA DOĞRULUK', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'doğruluk', [], [0.75, 0.85, 0.95]);
+  cx.strokeStyle = K.orange; cx.lineWidth = 4; cx.beginPath();
+  o.gecikme.forEach((q,k) => k===0 ? cx.moveTo(P.sx(k), P.sy(q.dogruluk))
+                                   : cx.lineTo(P.sx(k), P.sy(q.dogruluk)));
+  cx.stroke();
+  o.gecikme.forEach((q,k) => {
+    dot(P.sx(k), P.sy(q.dogruluk), k===i?9:6, k===i?K.yellow:K.orange);
+    txt(String(q.g), P.sx(k), P.R.y+P.R.h+30, k===i?K.yellow:K.mut, 16);
+    txt((100*q.dogruluk).toFixed(1)+'%', P.sx(k), P.sy(q.dogruluk)+(k===4?30:-18),
+        k===i?K.yellow:K.orange, 15);
+  });
+  txt('etiket gecikmesi (adım)', P.R.x+P.R.w/2, P.R.y+P.R.h+58, K.mut, 17);
+
+  const bx = 850;
+  box(bx, 250, 540, 210, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('DENEYİN KONTROLÜ', bx+270, 288, K.mut, 19);
+  txt('gecikme', bx+110, 324, K.mut, 15);
+  txt('doğruluk', bx+280, 324, K.mut, 15);
+  txt('eğitim', bx+440, 324, K.mut, 15);
+  o.gecikme.forEach((q,k) => {
+    const y = 348+k*20, vur = k===i;
+    txt(String(q.g), bx+110, y, vur?K.yellow:K.mut, 15);
+    txt((100*q.dogruluk).toFixed(1)+'%', bx+280, y, vur?K.yellow:K.green, 15);
+    txt(String(q.sayi), bx+440, y, vur?K.yellow:K.mut, 15);
+  });
+  txt('eğitim sayısı hep aynı: '+se.sayi, bx+270, 452, K.green, 16);
+
+  box(bx, 480, 540, 230, 'rgba(248,113,113,.06)', 'rgba(248,113,113,.4)', 2);
+  txt('NEDEN ÖNEMLİ', bx+270, 518, K.red, 18);
+  txt('Yeniden eğitim sayısı sabit tutuldu, yani', bx+24, 554, K.mut, 16, 'left');
+  txt('fark "az eğitmekten" gelmiyor.', bx+24, 578, K.mut, 16, 'left');
+  txt('Model her seferinde ESKİ etiketlerle', bx+24, 610, K.txt, 16, 'left');
+  txt('eğitiliyor, yani dünün dünyasını öğreniyor.', bx+24, 634, K.txt, 16, 'left');
+  txt('Kayıp: '+(100*(en.dogruluk-se.dogruluk)).toFixed(1)+' puan',
+      bx+270, 674, se.g===0?K.green:K.red, 22);
+
+  durum('gecikme '+se.g+' adım  ·  doğruluk %'+(100*se.dogruluk).toFixed(1)+
+        '  ·  gecikmesiz hâline göre '+(100*(en.dogruluk-se.dogruluk)).toFixed(1)+
+        ' puan kayıp', se.g === 0 ? K.green : (se.g > 400 ? K.red : K.orange));
+};
+
+/* ── 3 · yeniden eğitim politikası ── */
+VIZ.izPolitika = s => {
+  clear();
+  const o = IZL.olc();
+  const i = Math.max(0, Math.min(4, Math.round(s.politika === undefined ? 3 : s.politika)));
+  const se = o.politika[i], tab = o.politika[0];
+  const kazanc = se.sayi ? (se.dogruluk - tab.dogruluk)/se.sayi*100 : 0;
+  baslikSerit('NE ZAMAN YENİDEN EĞİTMELİ',
+    'Beş politika, aynı akış, aynı 200 adımlık etiket gecikmesi.',
+    [['POLİTİKA', se.ad, K.blue],
+     ['DOĞRULUK', (100*se.dogruluk).toFixed(1)+'%', K.green],
+     ['EĞİTİM SAYISI', String(se.sayi), K.yellow]]);
+
+  const P = plot(rect(370, 240, 450, 300), 0.65, 0.90, -0.5, 4.5);
+  txt('DOĞRULUK · politika başına  ·  yatay eksen doğruluk',
+      P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', '', [0.70, 0.80, 0.90], []);
+  o.politika.forEach((p,k) => {
+    const y = P.sy(k), h2 = 30, vur = k===i;
+    box(P.sx(0.65), y-h2/2, P.sx(p.dogruluk)-P.sx(0.65), h2,
+        (vur?K.yellow:(k===0?K.red:K.blue))+'cc', null);
+    txt(p.ad, P.R.x-16, y+6, vur?K.yellow:K.mut, 16, 'right');
+    txt((100*p.dogruluk).toFixed(1)+'%', P.sx(p.dogruluk)+10, y+6,
+        vur?K.yellow:K.txt, 17, 'left');
+  });
+
+  const Q = plot(rect(370, 604, 450, 80), -0.5, 4.5, 0, 28);
+  txt('YENİDEN EĞİTİM SAYISI  ·  maliyet', Q.R.x+Q.R.w/2, Q.R.y-14, K.mut, 18);
+  frame(Q, '', '', [], [0, 10, 20]);
+  o.politika.forEach((p,k) => {
+    const x = Q.sx(k), gen = 54, vur = k===i;
+    box(x-gen/2, Q.sy(p.sayi), gen, Q.sy(0)-Q.sy(p.sayi),
+        (vur?K.yellow:K.orange)+'cc', null);
+    txt(String(p.sayi), x, Q.sy(p.sayi)-10, vur?K.yellow:K.orange, 16);
+  });
+
+  const bx = 850;
+  box(bx, 240, 540, 250, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('EĞİTİM BAŞINA KAZANÇ', bx+270, 278, K.mut, 19);
+  txt('hiç eğitmemeye göre kazanılan puan / eğitim sayısı', bx+270, 304, K.mut, 14);
+  o.politika.slice(1).forEach((p,k) => {
+    const y = 342+k*30, vur = (k+1)===i;
+    txt(p.ad, bx+24, y, vur?K.yellow:K.mut, 15, 'left');
+    txt(((p.dogruluk-tab.dogruluk)/p.sayi*100).toFixed(2)+' puan', bx+516, y,
+        vur?K.yellow:K.green, 16, 'right');
+  });
+  txt('En çok doğruluk veren, en verimli olan değil.', bx+270, 470, K.orange, 16);
+
+  box(bx, 510, 540, 200, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('ŞAŞIRTAN SONUÇ', bx+270, 548, K.mut, 18);
+  txt('"Gerçek doğruluğa bak" politikası, girdi', bx+24, 584, K.mut, 16, 'left');
+  txt('kaymasına bakandan DAHA KÖTÜ çıktı', bx+24, 608, K.txt, 16, 'left');
+  txt('(%'+(100*o.politika[4].dogruluk).toFixed(1)+' karşı %'+
+      (100*o.politika[3].dogruluk).toFixed(1)+').', bx+24, 632, K.txt, 16, 'left');
+  txt('Çünkü doğruluk DÜŞTÜKTEN SONRA tepki verir.', bx+24, 664, K.orange, 16, 'left');
+  txt('Girdi kayması ise hasar görünmeden önce.', bx+24, 688, K.green, 16, 'left');
+
+  durum(se.ad+'  ·  doğruluk %'+(100*se.dogruluk).toFixed(1)+'  ·  '+se.sayi+
+        ' yeniden eğitim'+(se.sayi ? '  ·  eğitim başına '+kazanc.toFixed(2)+' puan' : ''),
+        i===0 ? K.red : K.green);
+};
+
+/* ── 4 · geri alma ve gölge dağıtım ── */
+VIZ.izGeri = s => {
+  clear();
+  const o = IZL.olc(), g = o.geri;
+  const ni = Math.max(0, Math.min(4, Math.round(s.orneklem === undefined ? 2 : s.orneklem)));
+  const se = g.golge[ni];
+  baslikSerit('ÇEVRİMDIŞI İYİ, CANLIDA KÖTÜ',
+    'Aday model kendi doğrulama kümesinde parlıyor. Canlı trafik başka bir şey söylüyor.',
+    [['ÇEVRİMDIŞI', (100*g.adayCevrimdisi).toFixed(1)+'%', K.green],
+     ['CANLI', (100*g.adayCanli).toFixed(1)+'%', K.red],
+     ['FARK', (100*(g.adayCevrimdisi-g.adayCanli)).toFixed(1)+' puan', K.yellow]]);
+
+  const P = plot(rect(160, 246, 600, 252), -0.5, 2.5, 0, 1.0);
+  txt('AYNI MODEL, İKİ FARKLI ÖLÇÜM', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'doğruluk', [], [0, 0.5, 1.0]);
+  [['aday\nçevrimdışı', g.adayCevrimdisi, K.green],
+   ['aday\ncanlı', g.adayCanli, K.red],
+   ['yeni model\ncanlı', g.yeniCanli, K.blue]].forEach(([ad,v,renk], k) => {
+    const x = P.sx(k), gen = 120;
+    box(x-gen/2, P.sy(v), gen, P.sy(0)-P.sy(v), renk+'cc', null);
+    txt((100*v).toFixed(1)+'%', x, P.sy(v)-14, renk, 20);
+    ad.split('\n').forEach((sat,q) => txt(sat, x, P.R.y+P.R.h+28+q*22, K.mut, 15));
+  });
+
+  const Q = plot(rect(160, 606, 600, 72), 0, 4, 0.6, 0.85);
+  txt('GÖLGE DAĞITIM · kaç örnekten sonra görünür', Q.R.x+Q.R.w/2, Q.R.y-14, K.mut, 18);
+  frame(Q, '', '', [], [0.65, 0.75, 0.85]);
+  cx.strokeStyle = K.purple; cx.lineWidth = 3.5; cx.beginPath();
+  g.golge.forEach((q,k) => k===0 ? cx.moveTo(Q.sx(k), Q.sy(q.dogruluk))
+                                 : cx.lineTo(Q.sx(k), Q.sy(q.dogruluk)));
+  cx.stroke();
+  g.golge.forEach((q,k) => {
+    dot(Q.sx(k), Q.sy(q.dogruluk), k===ni?8:5, k===ni?K.yellow:K.purple);
+    txt('n='+q.n, Q.sx(k), Q.R.y+Q.R.h+24, k===ni?K.yellow:K.mut, 15);
+  });
+
+  const bx = 810;
+  box(bx, 250, 580, 210, 'rgba(248,113,113,.06)', 'rgba(248,113,113,.4)', 2);
+  txt('NE OLDU', bx+290, 288, K.red, 19);
+  txt('Aday model, ani kırılmanın hemen ÖNCESİNDEKİ', bx+24, 326, K.mut, 16, 'left');
+  txt('veriyle eğitildi ve o dönemden ayrılmış bir', bx+24, 350, K.mut, 16, 'left');
+  txt('doğrulama kümesinde %'+(100*g.adayCevrimdisi).toFixed(1)+' aldı.', bx+24, 374, K.mut, 16, 'left');
+  txt('Çevrimdışı ölçüm "bu model hazır" diyor.', bx+24, 406, K.txt, 16, 'left');
+  txt('Canlıda %'+(100*g.adayCanli).toFixed(1)+'. Dünya değişmişti.', bx+24, 434, K.red, 17, 'left');
+
+  box(bx, 480, 580, 230, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('GÖLGE DAĞITIM NE KADAR SÜRER', bx+290, 518, K.mut, 18);
+  txt('n = '+se.n+' örnekte ölçülen: %'+(100*se.dogruluk).toFixed(1), bx+290, 554, K.txt, 19);
+  txt(se.n <= 50
+      ? 'Bu kadar örnekle karar vermek yanıltır:'
+      : 'Örneklem yeterli, düşüş net görünüyor.', bx+24, 590, se.n<=50?K.orange:K.green, 16, 'left');
+  txt(se.n <= 50
+      ? 'ölçülen %'+(100*se.dogruluk).toFixed(1)+', gerçek %'+(100*g.adayCanli).toFixed(1)+'.'
+      : 'ölçülen %'+(100*se.dogruluk).toFixed(1)+', gerçek %'+(100*g.adayCanli).toFixed(1)+'.',
+      bx+24, 614, K.mut, 16, 'left');
+  txt('A/B testi dersindeki örneklem aritmetiği', bx+24, 648, K.mut, 16, 'left');
+  txt('burada da aynen geçerli.', bx+24, 672, K.mut, 16, 'left');
+
+  durum('aday çevrimdışı %'+(100*g.adayCevrimdisi).toFixed(1)+', canlıda %'+
+        (100*g.adayCanli).toFixed(1)+'  ·  '+
+        (100*(g.adayCevrimdisi-g.adayCanli)).toFixed(1)+' puanlık uçurum  ·  '+
+        'gölgede n='+se.n+' ile %'+(100*se.dogruluk).toFixed(1)+' görünüyor', K.red);
+};

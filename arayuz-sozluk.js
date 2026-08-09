@@ -657,6 +657,17 @@ var ARAYUZ_EN = {
   "ETKİN RANK": "EFFECTIVE RANK",
   "EĞİTİLEN": "TRAINED",
   "LoRA": "LoRA",
+  "kırılma anı": "the break",
+  "vekil sinyal": "proxy signal",
+  "takvim #": "calendar #",
+  "tetikleyici": "triggered",
+  "gerçek doğruluk": "true accuracy",
+  "SON": "AT THE END",
+  "YENİDEN EĞİTİM": "RETRAINS",
+  "EĞİTİM BAŞINA": "PER RETRAIN",
+  "ÇEVRİMDIŞI": "OFFLINE",
+  "CANLI": "LIVE",
+  "GÖLGEDE n=#": "IN SHADOW n=#",
 /*SON*/
 };
 

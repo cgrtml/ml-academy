@@ -135,6 +135,7 @@ const ROTALAR = [
     {id:'prompt',    ad:'Prompt anatomisi',                sure:12, durum:'hazir'},
     {id:'eval',      ad:'Eval seti kurmak',                sure:16, durum:'hazir'},
     {id:'ab-testi',      ad:'A/B testi: çevrimiçi değerlendirme',              sure:15, durum:'hazir'},
+    {id:'izleme',        ad:'Üretimde izleme: ne zaman yeniden eğitmeli',      sure:17, durum:'hazir'},
     {id:'arena',     ad:'Prompt Arena · kör karşılaştırma', sure:16, durum:'hazir'},
     {id:'rag-kir',   ad:'RAG kırma odası',                 sure:16, durum:'hazir'},
     {id:'ajan',      ad:'Ajanlar ve araç çağırma',         sure:14, durum:'hazir'},
@@ -14339,6 +14340,211 @@ DERSLER['lora'] = {
       'Çıkarımda ek gecikme yok, çünkü W + BA tek bir matrise toplanır. ' +
       'Uyarlayıcılar takılıp çıkarılabilir: bir taban model artı görev başına birkaç MB.',
     xp:50,
+  },
+  ],
+};
+
+DERSLER['izleme'] = {
+  ad:'Üretimde izleme: ne zaman yeniden eğitmeli',
+  alt:'Dağılım kayması dersi kaymayı fark etmeyi anlattı. Bu ders ondan sonra ne yapılacağını ölçüyor.',
+  kaynaklar:[
+    {"y":"Sculley, D. et al.", "t":"2015", "b":"Hidden Technical Debt in Machine Learning Systems", "n":"NeurIPS 2015"},
+    {"y":"Breck, E. et al.", "t":"2017", "b":"The ML Test Score: A Rubric for ML Production Readiness", "n":"IEEE Big Data 2017"},
+    {"y":"Huyen, C.", "t":"2022", "b":"Designing Machine Learning Systems", "n":"O'Reilly"},
+  ],
+  rota:4,
+  adimlar:[
+  {
+    t:'Model sessizce çürür',
+    goal:'Hiç yeniden eğitilmeyen bir modelin kayan bir dünyada ne kadar dayandığını ölçeceksin.',
+    todo:'Kaydırıcıyı ilerlet. Son adımda etiketsiz ölçülebilen vekil sinyal görünecek.',
+    kind:'controls', viz:'izCokus', h:760,
+    controls:[{k:'katman', lb:'GÖSTER', min:0, max:2, step:1, val:0,
+               fmt:v=>['doğruluk','kırılma anı','vekil sinyal'][Math.round(v)]}],
+    live:s => { const o = IZL.olc();
+      return [['BAŞLANGIÇ', '%'+(100*o.pencere[0].v).toFixed(1), K.green],
+              ['SON', '%'+(100*o.pencere[o.pencere.length-1].v).toFixed(1), K.red],
+              ['ORTALAMA', '%'+(100*o.hic.dogruluk).toFixed(1)]]; }, 
+    body:'<p><i>Dağılım kayması</i> dersinde kaymanın modeli bozduğunu görmüştün. O ders ' +
+      '"doğruluk eşiğin altına düşerse alarm ver" diyerek bitiyordu. Bu ders o cümlenin ' +
+      'neden yetersiz olduğuyla başlıyor.</p>' +
+      '<p>Düzenek: 3.000 adımlık bir akış. Etiketi belirleyen katsayılar zamanla yavaşça ' +
+      'kayıyor, ve 1.800. adımda bir katsayının işareti aniden dönüyor. Model bir kez ' +
+      'eğitiliyor ve bir daha hiç dokunulmuyor.</p>' +
+      '<p>Ölçüm:</p>' +
+      '<p style="font-family:var(--mono)">ilk 200 adımlık pencere &nbsp;&nbsp;&nbsp;<b>%93.0</b><br>' +
+      'son 200 adımlık pencere &nbsp;&nbsp;<b>%48.0</b><br>' +
+      'tüm akış ortalaması &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%68.2</p>' +
+      '<p>Sondaki sayı <b>%48.0</b>, yani yazı turadan bile kötü. Bu şaşırtıcı görünebilir ama ' +
+      'sebebi basit: kayma ilişkiyi zayıflatmakla kalmıyor, bir noktada <b>ters çeviriyor</b>. ' +
+      'Modelin öğrendiği kural artık yanlış değil, tersine dönmüş durumda.</p>' +
+      '<p>Şimdi asıl soru. Bu grafiği çizebilmek için her adımın <b>gerçek etiketini</b> ' +
+      'bilmek gerekti. Üretimde bu bilgi genelde <b>yoktur</b>.</p>' +
+      '<p>Bir kredi başvurusunun geri ödenip ödenmeyeceği aylar sonra belli olur. Bir öneri ' +
+      'algoritmasının doğru öneri yapıp yapmadığı, kullanıcı tıklamazsa hiç belli olmaz. ' +
+      'Bir teşhis modelinin haklı olup olmadığı, ancak takip muayenesinde anlaşılır.</p>' +
+      '<p>Yani "doğruluk düşerse alarm ver" kuralı, <b>alarmın aylar sonra çalması</b> ' +
+      'anlamına gelir. O zamana kadar hasar çoktan oluşmuştur.</p>' +
+      '<p>Çözüm, etiket gerektirmeyen <b>vekil sinyaller</b> izlemektir. Son adımda görünen ' +
+      'PSI (population stability index) bunlardan biri: girdi dağılımının referans döneme ' +
+      'göre ne kadar kaydığını ölçer. Tek bir etikete ihtiyaç duymaz, dolayısıyla ' +
+      '<b>anında</b> hesaplanabilir.</p>' +
+      '<p>Grafikte görülen şey şu: doğruluk düşerken PSI yükseliyor. İkisi aynı olayı ' +
+      'farklı taraflarından görüyor, ama yalnızca biri zamanında elinde oluyor.</p>',
+    learned:'<b>Yeniden eğitilmeyen model çürür, ve bunu zamanında göremezsin.</b><br><br>' +
+      'Doğruluk ilk pencerede %93.0, son pencerede %48.0. Yazı turadan kötü, çünkü kayma ' +
+      'ilişkiyi zayıflatmakla kalmayıp ters çevirdi.<br><br>' +
+      'Ama bu grafiği çizmek gerçek etiketleri gerektirdi. Üretimde etiketler geç gelir ya da ' +
+      'hiç gelmez.<br><br>' +
+      'Bu yüzden PSI gibi <b>etiketsiz vekil sinyaller</b> izlenir: girdi dağılımının kayması ' +
+      'anında ölçülebilir.',
+    xp:50,
+  },
+  {
+    t:'Etiket gecikmesinin bedeli',
+    goal:'Etiketlerin geç gelmesinin tek başına ne kadar doğruluk kaybettirdiğini ölçeceksin.',
+    todo:'Gecikmeyi artır. Yeniden eğitim sayısının hiç değişmediğine dikkat et.',
+    kind:'controls', viz:'izGecikme', h:760,
+    controls:[{k:'gecikme', lb:'GECİKME', min:0, max:4, step:1, val:2,
+               fmt:v=>[0,100,300,600,1000][Math.round(v)]+' adım'}],
+    live:s => { const o = IZL.olc(), q = o.gecikme[Math.max(0,Math.min(4,Math.round(s.gecikme===undefined?2:s.gecikme)))];
+      return [['GECİKME', String(q.g)], ['DOĞRULUK', '%'+(100*q.dogruluk).toFixed(1), K.green],
+              ['YENİDEN EĞİTİM', String(q.sayi)]]; },
+    body:'<p>Bu adım tek bir değişkeni yalıtıyor. Politika aynı (PSI eşiği aşınca yeniden eğit), ' +
+      'akış aynı, eşik aynı. Değişen tek şey <b>etiketlerin ne kadar geç geldiği</b>.</p>' +
+      '<p>Ölçüm:</p>' +
+      '<p style="font-family:var(--mono)">gecikme &nbsp;&nbsp;doğruluk &nbsp;&nbsp;eğitim<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;<b>%91.4</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;25<br>' +
+      '&nbsp;&nbsp;100 &nbsp;&nbsp;&nbsp;%89.0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;25<br>' +
+      '&nbsp;&nbsp;300 &nbsp;&nbsp;&nbsp;%84.8 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;25<br>' +
+      '&nbsp;&nbsp;600 &nbsp;&nbsp;&nbsp;%80.3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;25<br>' +
+      '&nbsp;1000 &nbsp;&nbsp;&nbsp;<b>%74.3</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;25</p>' +
+      '<p>Eğitim sütununa dikkat: <b>hepsi 25</b>. Yani fark "daha az eğitmekten" gelmiyor. ' +
+      'Model her durumda aynı sayıda ve aynı anlarda yeniden eğitildi.</p>' +
+      '<p>Fark tamamen şundan geliyor: model yeniden eğitilirken elindeki en yeni etiketler ' +
+      '<b>gecikme kadar eskidir</b>. Yani model her seferinde <b>dünün dünyasını</b> ' +
+      'öğreniyor ve bugüne o bilgiyle çıkıyor.</p>' +
+      '<p>Gecikme sıfırdan 1.000 adıma çıkınca kayıp <b>17.1 puan</b>. Bu, mimariden ya da ' +
+      'hiperparametreden gelen bir kayıp değil; tamamen <b>veri altyapısından</b> gelen ' +
+      'bir kayıp.</p>' +
+      '<p>Buradan çıkan mühendislik sonucu genelde şaşırtıcı bulunur: <b>etiket toplama ' +
+      'süresini kısaltmak, model iyileştirmekten daha yüksek getirili olabilir.</b> ' +
+      'Bir insan doğrulama döngüsü kurmak, kullanıcıdan hızlı geri bildirim almak, ya da ' +
+      'örneklem alıp elle etiketletmek bu yüzden yapılır.</p>' +
+      '<p>Pratikte kullanılan bir ara çözüm de <b>gecikmeli etiketlerle vekil sinyalleri ' +
+      'birlikte</b> izlemektir: PSI ne zaman eğiteceğini söyler, geciken etiketler ise ' +
+      'kararın doğru olup olmadığını sonradan doğrular.</p>',
+    learned:'<b>Etiket gecikmesi tek başına doğruluk kaybettirir.</b><br><br>' +
+      'Aynı politika, aynı akış ve <b>her durumda tam 25 yeniden eğitim</b> ile: gecikme 0 iken ' +
+      '%91.4, gecikme 1000 iken %74.3. Kayıp 17.1 puan.<br><br>' +
+      'Sebep, modelin her seferinde gecikme kadar eski etiketlerle eğitilmesi, yani dünün ' +
+      'dünyasını öğrenmesi.<br><br>' +
+      'Sonuç: etiket toplama süresini kısaltmak, model iyileştirmekten daha yüksek getirili ' +
+      'olabilir.',
+    xp:55,
+  },
+  {
+    t:'Ne zaman yeniden eğitmeli',
+    goal:'Beş yeniden eğitim politikasını doğruluk ve maliyet açısından karşılaştıracaksın.',
+    todo:'Politikaları gez. Alttaki çubuklar maliyeti, yani kaç kez eğitildiğini gösteriyor.',
+    kind:'controls', viz:'izPolitika', h:760,
+    controls:[{k:'politika', lb:'POLİTİKA', min:0, max:4, step:1, val:3,
+               fmt:v=>['hiç','takvim 200','takvim 500','tetikleyici','gerçek doğruluk'][Math.round(v)]}],
+    live:s => { const o = IZL.olc(), p = o.politika[Math.max(0,Math.min(4,Math.round(s.politika===undefined?3:s.politika)))];
+      return [['DOĞRULUK', '%'+(100*p.dogruluk).toFixed(1), K.green],
+              ['EĞİTİM', String(p.sayi), K.yellow],
+              ['EĞİTİM BAŞINA', p.sayi ? ((p.dogruluk-o.politika[0].dogruluk)/p.sayi*100).toFixed(2)+' puan' : '-']]; },
+    body:'<p>Beş politika, aynı akış üzerinde, aynı 200 adımlık etiket gecikmesiyle:</p>' +
+      '<p style="font-family:var(--mono)">politika &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;doğruluk &nbsp;&nbsp;eğitim<br>' +
+      'hiç &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%68.2 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0<br>' +
+      'takvim · 200 adım &nbsp;&nbsp;&nbsp;&nbsp;%85.5 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;12<br>' +
+      'takvim · 500 adım &nbsp;&nbsp;&nbsp;&nbsp;%83.3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;5<br>' +
+      'tetikleyici · PSI &nbsp;&nbsp;&nbsp;&nbsp;<b>%86.3</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;25<br>' +
+      'gerçek doğruluk &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%84.3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8</p>' +
+      '<p>Üç sonuç çıkıyor ve üçüncüsü beklenmedik.</p>' +
+      '<p><b>Bir.</b> Herhangi bir yeniden eğitim, hiç eğitmemekten çok daha iyidir. En kötü ' +
+      'politika bile %68.2\'yi %83.3\'e çıkarıyor.</p>' +
+      '<p><b>İki.</b> En yüksek doğruluğu veren politika, en verimli olan değildir. ' +
+      'Tetikleyici %86.3 ile birinci ama bunun için <b>25 kez</b> eğitiyor. Takvim 500 ise ' +
+      'yalnızca 5 kez eğitip %83.3 alıyor. Hiç eğitmemeye göre kazanılan puanı eğitim ' +
+      'sayısına bölersek:</p>' +
+      '<p style="font-family:var(--mono)">takvim · 500 &nbsp;&nbsp;&nbsp;<b>3.02</b> puan / eğitim<br>' +
+      'gerçek doğruluk &nbsp;2.02 puan / eğitim<br>' +
+      'takvim · 200 &nbsp;&nbsp;&nbsp;1.45 puan / eğitim<br>' +
+      'tetikleyici &nbsp;&nbsp;&nbsp;&nbsp;<b>0.72</b> puan / eğitim</p>' +
+      '<p>Sıralama <b>tam tersine döndü</b>. Yeniden eğitim bedava değildir: hesaplama ' +
+      'maliyeti, doğrulama emeği ve her dağıtımın taşıdığı risk vardır. Hangi politikanın ' +
+      'doğru olduğu, bir eğitimin sana neye mal olduğuna bağlıdır.</p>' +
+      '<p><b>Üç ve en ilginci.</b> "Gerçek doğruluğa bak, düşerse eğit" politikası, girdi ' +
+      'kaymasına bakan politikadan <b>daha kötü</b> çıktı (%84.3 karşı %86.3). Oysa bu ' +
+      'politika üretimde <b>uygulanamaz bile</b>, çünkü gerçek etiketleri anında bilmeyi ' +
+      'gerektiriyor.</p>' +
+      '<p>Sebep şu: doğruluk bir <b>gecikmeli göstergedir</b>. Ancak hasar oluştuktan sonra ' +
+      'düşer, yani o politika her zaman geç kalır. Girdi kayması ise <b>öncü göstergedir</b>: ' +
+      'dünya değiştiği anda hareket eder, doğruluk henüz düşmemişken bile.</p>' +
+      '<p>Bunun pratikteki karşılığı önemli: mükemmel bilgiye sahip olmak, <b>doğru zamanda</b> ' +
+      'bilgi sahibi olmanın yerini tutmuyor.</p>',
+    learned:'<b>Yeniden eğitim politikası bir doğruluk-maliyet takasıdır.</b><br><br>' +
+      'Hiç eğitmemek %68.2. Tetikleyici en yüksek doğruluğu veriyor (%86.3) ama 25 kez ' +
+      'eğiterek. Takvim 500 ise 5 eğitimle %83.3.<br><br>' +
+      'Eğitim başına kazanç sıralamayı tersine çeviriyor: takvim 500 için 3.02 puan, ' +
+      'tetikleyici için yalnızca 0.72 puan.<br><br>' +
+      '<b>"Gerçek doğruluğa bak" politikası girdi kaymasına bakandan daha kötü çıktı</b> ' +
+      '(%84.3 karşı %86.3), çünkü doğruluk gecikmeli, girdi kayması öncü göstergedir.',
+    xp:60,
+  },
+  {
+    t:'Geri alma ve gölge dağıtım',
+    goal:'Çevrimdışı iyi görünen bir modelin canlıda ne kadar kötü olabileceğini ölçeceksin.',
+    todo:'Gölge dağıtımdaki örneklem sayısını değiştir. Az örnekle verilen karara dikkat et.',
+    kind:'controls', viz:'izGeri', h:760,
+    controls:[{k:'orneklem', lb:'GÖLGE ÖRNEKLEM', min:0, max:4, step:1, val:2,
+               fmt:v=>'n = '+[25,50,100,200,400][Math.round(v)]}],
+    live:s => { const o = IZL.olc(), q = o.geri.golge[Math.max(0,Math.min(4,Math.round(s.orneklem===undefined?2:s.orneklem)))];
+      return [['ÇEVRİMDIŞI', '%'+(100*o.geri.adayCevrimdisi).toFixed(1), K.green],
+              ['CANLI', '%'+(100*o.geri.adayCanli).toFixed(1), K.red],
+              ['GÖLGEDE n='+q.n, '%'+(100*q.dogruluk).toFixed(1), K.purple]]; },
+    body:'<p>Bu adımdaki aday model, 1.800. adımdaki ani kırılmanın <b>hemen öncesindeki</b> ' +
+      'veriyle eğitildi. Sonra iki ayrı ölçüm yapıldı.</p>' +
+      '<p style="font-family:var(--mono)">aday · çevrimdışı doğrulama &nbsp;&nbsp;<b>%93.8</b><br>' +
+      'aday · canlı trafik &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>%66.7</b><br>' +
+      'kırılmadan sonra eğitilen &nbsp;&nbsp;&nbsp;%94.3</p>' +
+      '<p>Aradaki fark <b>27.1 puan</b>, ve ikisi de <b>aynı modelin</b> ölçümü. Çevrimdışı ' +
+      'ölçüm "bu model hazır, dağıt" diyor. Canlı trafik "bu model bozuk" diyor. ' +
+      'İkisi de doğru ölçüyor; farklı dünyaları ölçüyorlar.</p>' +
+      '<p>Bu, <i>Eval seti kurmak</i> dersindeki uyarının en sert biçimidir. Bir doğrulama ' +
+      'kümesi, ancak <b>toplandığı dönemin dünyasını</b> temsil eder. Dünya değiştiyse o ' +
+      'küme artık geçerli bir sınav değildir, ama sana bunu söylemez; parlak bir sayı ' +
+      'üretmeye devam eder.</p>' +
+      '<p>Buna karşı kullanılan yöntem <b>gölge dağıtım</b>tır: aday model canlı trafikte ' +
+      'gerçekten çalıştırılır, tahminleri kaydedilir, ama <b>kararlar hâlâ eski modelden</b> ' +
+      'alınır. Böylece riske girmeden gerçek dünyada ölçüm yapılır.</p>' +
+      '<p>Ama gölge dağıtımın da kendi aritmetiği var. Farkı ne kadar örnekten sonra ' +
+      'görebildiğine bak:</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;&nbsp;n &nbsp;&nbsp;ölçülen<br>' +
+      '&nbsp;&nbsp;25 &nbsp;&nbsp;&nbsp;<b>%80.0</b><br>' +
+      '&nbsp;&nbsp;50 &nbsp;&nbsp;&nbsp;%78.0<br>' +
+      '&nbsp;100 &nbsp;&nbsp;&nbsp;%78.0<br>' +
+      '&nbsp;200 &nbsp;&nbsp;&nbsp;%69.0<br>' +
+      '&nbsp;400 &nbsp;&nbsp;&nbsp;<b>%67.0</b></p>' +
+      '<p>25 örnekle bakan biri <b>%80.0</b> görür ve "biraz düşük ama kabul edilebilir" ' +
+      'diyebilir. Gerçek değer <b>%66.7</b>. Yani gölge dağıtımı erken kesmek, ' +
+      '<i>A/B testi</i> dersindeki erken bakma hatasının aynısıdır.</p>' +
+      '<p>Üretim için çıkan asgari liste şu:</p>' +
+      '<p><b>1 · Model kaydı.</b> Hangi model, hangi veriyle, hangi kodla eğitildi. Geri ' +
+      'alacaksan neye döneceğini bilmen gerekir.</p>' +
+      '<p><b>2 · Kademeli dağıtım.</b> Trafiğin küçük bir yüzdesiyle başla, koruma ' +
+      'ölçütlerini izle, sonra genişlet.</p>' +
+      '<p><b>3 · Otomatik geri alma.</b> Koruma ölçütü bozulursa insan kararı beklemeden ' +
+      'eski modele dön. Gece yarısı bozulan bir modelin sabahı beklemesi çok pahalıdır.</p>' +
+      '<p><b>4 · Vekil sinyal izleme.</b> Etiketler gelmeden önce hareket edebilmek için, ' +
+      'ikinci adımda ölçtüğün sebeple.</p>',
+    learned:'<b>Çevrimdışı ölçüm, dünya değiştiğinde yalan söylemeye devam eder.</b><br><br>' +
+      'Aynı aday model çevrimdışı doğrulamada %93.8, canlı trafikte %66.7. Fark 27.1 puan.<br><br>' +
+      'Gölge dağıtım bu riski almadan ölçmeyi sağlar, ama kendi örneklem aritmetiği vardır: ' +
+      'n = 25 te %80.0 görünüyor, gerçek değer %66.7. Erken bakmak burada da yanıltır.<br><br>' +
+      'Üretim asgarisi: model kaydı, kademeli dağıtım, otomatik geri alma, vekil sinyal izleme.',
+    xp:55,
   },
   ],
 };

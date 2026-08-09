@@ -4104,6 +4104,70 @@ console.log('═══ DENGESİZ VERİ ═══');
 }
 
 console.log('');
+console.log('═══ ÜRETİMDE İZLEME ═══');
+{
+  const Z = IZL.olc();
+  iddia('akış uzunluğu',3000,Z.T);
+  iddia('ilk eğitim adımı',400,Z.ILK);
+
+  /* 1 · yeniden eğitilmeyen model çürüyor */
+  iddia('hiç eğitmeme ortalama %',68.2,100*Z.hic.dogruluk,1);
+  iddia('ilk pencere %',93.0,100*Z.pencere[0].v,1);
+  iddia('son pencere %',48.0,100*Z.pencere[Z.pencere.length-1].v,1);
+  /* son pencere yazı turadan KÖTÜ olmalı: ders bunu iddia ediyor */
+  if (Z.pencere[Z.pencere.length-1].v >= 0.5)
+    console.log('  ✗ son pencere yazı turadan kötü çıkmadı, ders yanlış');
+
+  /* 2 · etiket gecikmesi, eğitim sayısı SABİT tutularak */
+  [[0,91.4],[100,89.0],[300,84.8],[600,80.3],[1000,74.3]].forEach(([g,d],i)=>{
+    iddia('gecikme '+g+' doğruluk %',d,100*Z.gecikme[i].dogruluk,1);
+    iddia('gecikme '+g+' eğitim sayısı',25,Z.gecikme[i].sayi);
+  });
+  iddia('gecikme kaybı puan',17.1,100*(Z.gecikme[0].dogruluk-Z.gecikme[4].dogruluk),1);
+  /* gecikme arttıkça doğruluk MONOTON düşmeli */
+  for (let i=1;i<Z.gecikme.length;i++)
+    if (Z.gecikme[i].dogruluk >= Z.gecikme[i-1].dogruluk)
+      console.log('  ✗ gecikme artarken doğruluk düşmedi');
+
+  /* 3 · politika karşılaştırması */
+  [[0,68.2,0],[1,85.5,12],[2,83.3,5],[3,86.3,25],[4,84.3,8]].forEach(([i,d,n])=>{
+    iddia('politika '+i+' doğruluk %',d,100*Z.politika[i].dogruluk,1);
+    iddia('politika '+i+' eğitim',n,Z.politika[i].sayi);
+  });
+  /* eğitim başına kazanç */
+  [[1,1.45],[2,3.02],[3,0.72],[4,2.02]].forEach(([i,v])=>
+    iddia('politika '+i+' eğitim başına puan',v,
+          100*(Z.politika[i].dogruluk-Z.politika[0].dogruluk)/Z.politika[i].sayi,2));
+  /* dersin en çarpıcı iddiası: gerçek doğruluk politikası tetikleyiciden KÖTÜ */
+  if (Z.politika[4].dogruluk >= Z.politika[3].dogruluk)
+    console.log('  ✗ gerçek doğruluk politikası tetikleyiciyi geçti, ders yanlış');
+  /* tetikleyici en yüksek doğruluk ama eğitim başına EN DÜŞÜK kazanç */
+  {
+    const enIyi = Z.politika.reduce((a,b) => b.dogruluk > a.dogruluk ? b : a);
+    if (enIyi !== Z.politika[3]) console.log('  ✗ en yüksek doğruluk tetikleyicide değil');
+    const verim = Z.politika.slice(1).map(p =>
+      (p.dogruluk-Z.politika[0].dogruluk)/p.sayi);
+    if (Math.min(...verim) !== verim[2])
+      console.log('  ✗ eğitim başına en düşük kazanç tetikleyicide değil');
+    if (Math.max(...verim) !== verim[1])
+      console.log('  ✗ eğitim başına en yüksek kazanç takvim 500 de değil');
+  }
+
+  /* 4 · geri alma */
+  iddia('aday çevrimdışı %',93.8,100*Z.geri.adayCevrimdisi,1);
+  iddia('aday canlı %',66.7,100*Z.geri.adayCanli,1);
+  iddia('çevrimdışı-canlı fark puan',27.1,
+        100*(Z.geri.adayCevrimdisi-Z.geri.adayCanli),1);
+  iddia('kırılmadan sonra eğitilen %',94.3,100*Z.geri.yeniCanli,1);
+  [[25,80.0],[50,78.0],[100,78.0],[200,69.0],[400,67.0]].forEach(([n,v],i)=>{
+    iddia('gölge n='+n+' %',v,100*Z.geri.golge[i].dogruluk,1);
+    iddia('gölge n='+n+' örneklem',n,Z.geri.golge[i].n);
+  });
+  /* az örneklem gerçeği ABARTIYOR: ders bunu iddia ediyor */
+  if (Z.geri.golge[0].dogruluk <= Z.geri.adayCanli)
+    console.log('  ✗ n=25 gerçek değeri abartmadı, ders yanlış');
+}
+
 console.log('═══ LoRA ═══');
 {
   const L = LORA.olc();

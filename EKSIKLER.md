@@ -80,9 +80,22 @@ Tarama sonucu: müfredatta tek bir kez bile geçmiyor.
       `adillik` var, gizlilik yok. R4 için ciddi bir eksik.
       Widget: k-anonimlik, yeniden kimliklendirme riski.
 
-- [ ] **MLOps ve üretimde izleme** · yeniden eğitim kararı, geri alma, model kaydı
-      `dagilim-kaymasi` kaymayı ölçüyor ama "ne zaman yeniden eğitilir,
-      nasıl geri alınır" sorusunun cevabı yok.
+- [x] **MLOps ve üretimde izleme** · yeniden eğitim kararı, geri alma, model kaydı  ✔ 8 Ağustos 2026
+      `DERSLER['izleme']`, Rota 4 (`ab-testi` sonrası), 4 adım, 220 XP.
+      Ölçülen: 3000 adımlık kayan akışta hiç eğitilmeyen model %93.0 dan %48.0 a
+      düşüyor, yani yazı turadan kötü (kayma ilişkiyi ters çeviriyor).
+      Etiket gecikmesi yalıtıldı: yeniden eğitim sayısı beş koşulda da tam 25
+      tutularak, gecikme 0 iken %91.4, gecikme 1000 iken %74.3. Kayıp 17.1 puan
+      ve tamamen veri altyapısından geliyor.
+      Beş politika karşılaştırıldı. Beklenmedik sonuç: "gerçek doğruluğa bak"
+      politikası (%84.3) girdi kaymasına bakandan (%86.3) DAHA KÖTÜ, çünkü
+      doğruluk gecikmeli, girdi kayması öncü göstergedir. Denetim bu sonucu
+      ayrıca kontrol ediyor, ters çıkarsa hata veriyor.
+      Geri alma: aynı aday model çevrimdışı %93.8, canlıda %66.7 (27.1 puan).
+      Gölge dağıtımda n=25 te %80.0 görünüyor, gerçek %66.7.
+      Kapsanmayan: geri besleme döngüleri ve kanarya dağıtımı yalnızca anlatımda
+      anılıyor, özellik deposu (feature store) yok, eğitim-servis tutarsızlığı
+      (training-serving skew) ayrı bir ders olarak ele alınmadı.
 
 - [ ] **MoE (uzman karışımı)**
       R3 güncel mimari gerçekliğini kaçırıyor.
@@ -138,7 +151,7 @@ başlanmamalı.
 4. ~~A/B testi~~ ✔ tamamlandı
 5. ~~Bilgi kuramı~~ ✔ tamamlandı
 6. ~~LoRA / PEFT~~ ✔ tamamlandı
-7. Üretimde izleme
+7. ~~Üretimde izleme~~ ✔ tamamlandı
 8. Gizlilik
 
 Bu sekizi widget formatına iyi oturuyor ve toplam 25-30 adım eder

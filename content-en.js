@@ -8949,3 +8949,189 @@ DERSLER_EN['lora'] = {
   ],
 };
 DERS_ADI_EN['lora'] = 'LoRA: adapting a model without training all of it';
+
+DERSLER_EN['izleme'] = {
+  ad:'Monitoring in production: when to retrain',
+  alt:'The distribution shift lesson covered noticing drift. This one measures what to do next.',
+  adimlar:[
+  {
+    t:'A model rots quietly',
+    goal:'You will measure how long a model that is never retrained survives in a drifting world.',
+    todo:'Advance the slider. The last stage shows the proxy signal that needs no labels.',
+    kind:'controls', viz:'izCokus', h:760, xp:50,
+    controls:[{k:'katman', lb:'SHOW', min:0, max:2, step:1, val:0,
+               fmt:v=>['accuracy','the break','proxy signal'][Math.round(v)]}],
+    body:'<p>In the <i>distribution shift</i> lesson you saw drift break a model. That lesson ' +
+      'ended with "raise an alarm when accuracy falls below a threshold". This one starts with ' +
+      'why that sentence is not enough.</p>' +
+      '<p>The setup: a stream of 3,000 steps. The coefficients that determine the label drift ' +
+      'slowly, and at step 1,800 one coefficient suddenly flips sign. The model is trained once ' +
+      'and never touched again.</p>' +
+      '<p>Measured:</p>' +
+      '<p style="font-family:var(--mono)">first 200-step window &nbsp;&nbsp;&nbsp;<b>93.0%</b><br>' +
+      'last 200-step window &nbsp;&nbsp;&nbsp;&nbsp;<b>48.0%</b><br>' +
+      'whole-stream average &nbsp;&nbsp;&nbsp;&nbsp;68.2%</p>' +
+      '<p>That last figure, <b>48.0%</b>, is worse than a coin flip. It may look surprising but ' +
+      'the reason is simple: drift does not merely weaken the relationship, at some point it ' +
+      '<b>inverts</b> it. The rule the model learned is not just wrong, it is backwards.</p>' +
+      '<p>Now the real question. Drawing that graph required knowing the <b>true label</b> at ' +
+      'every step. In production you usually <b>do not have it</b>.</p>' +
+      '<p>Whether a loan application gets repaid becomes clear months later. Whether a ' +
+      'recommender made a good recommendation never becomes clear at all if the user does not ' +
+      'click. Whether a diagnostic model was right is only settled at the follow-up visit.</p>' +
+      '<p>So "alarm when accuracy drops" means <b>the alarm rings months late</b>. By then the ' +
+      'damage is long done.</p>' +
+      '<p>The answer is to monitor <b>proxy signals</b> that need no labels. The PSI ' +
+      '(population stability index) shown in the last stage is one: it measures how far the ' +
+      'input distribution has moved from a reference period. It needs no labels at all and can ' +
+      'therefore be computed <b>immediately</b>.</p>' +
+      '<p>What the graph shows is this: as accuracy falls, PSI rises. Both see the same event ' +
+      'from different sides, but only one of them is available in time.</p>',
+    learned:'<b>A model that is not retrained rots, and you cannot see it in time.</b><br><br>' +
+      'Accuracy was 93.0% in the first window and 48.0% in the last. Worse than a coin flip, ' +
+      'because drift did not just weaken the relationship, it inverted it.<br><br>' +
+      'But drawing that graph required the true labels. In production labels arrive late or ' +
+      'never.<br><br>' +
+      'That is why <b>label-free proxy signals</b> like PSI are monitored: input drift can be ' +
+      'measured immediately.',
+  },
+  {
+    t:'The price of label lag',
+    goal:'You will measure what late labels alone cost in accuracy.',
+    todo:'Increase the lag. Notice that the number of retrains never changes.',
+    kind:'controls', viz:'izGecikme', h:760, xp:55,
+    controls:[{k:'gecikme', lb:'LAG', min:0, max:4, step:1, val:2,
+               fmt:v=>[0,100,300,600,1000][Math.round(v)]+' steps'}],
+    body:'<p>This step isolates a single variable. The policy is the same (retrain when PSI ' +
+      'crosses a threshold), the stream is the same, the threshold is the same. The only thing ' +
+      'that changes is <b>how late the labels arrive</b>.</p>' +
+      '<p>Measured:</p>' +
+      '<p style="font-family:var(--mono)">lag &nbsp;&nbsp;&nbsp;accuracy &nbsp;&nbsp;retrains<br>' +
+      '&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;<b>91.4%</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;25<br>' +
+      '&nbsp;100 &nbsp;&nbsp;&nbsp;89.0% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;25<br>' +
+      '&nbsp;300 &nbsp;&nbsp;&nbsp;84.8% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;25<br>' +
+      '&nbsp;600 &nbsp;&nbsp;&nbsp;80.3% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;25<br>' +
+      '1000 &nbsp;&nbsp;&nbsp;<b>74.3%</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;25</p>' +
+      '<p>Look at the retrain column: <b>all 25</b>. So the difference does not come from ' +
+      'retraining less often. The model was retrained the same number of times, at the same ' +
+      'moments, in every case.</p>' +
+      '<p>The difference comes entirely from this: when the model is retrained, the freshest ' +
+      'labels available are <b>as old as the lag</b>. So every time, the model learns ' +
+      '<b>yesterday\'s world</b> and walks into today with it.</p>' +
+      '<p>Going from zero lag to 1,000 steps costs <b>17.1 points</b>. That is not a loss from ' +
+      'architecture or hyperparameters; it comes entirely from <b>data infrastructure</b>.</p>' +
+      '<p>The engineering consequence tends to surprise people: <b>shortening the time it takes ' +
+      'to collect labels can have a higher return than improving the model.</b> That is why ' +
+      'teams build human-in-the-loop verification, ask users for fast feedback, or sample ' +
+      'traffic and have it labelled by hand.</p>' +
+      '<p>A common middle path is to monitor <b>lagged labels and proxy signals together</b>: ' +
+      'PSI tells you when to retrain, and the late-arriving labels confirm afterwards whether ' +
+      'the decision was right.</p>',
+    learned:'<b>Label lag alone costs accuracy.</b><br><br>' +
+      'Same policy, same stream and <b>exactly 25 retrains in every case</b>: 91.4% at zero lag, ' +
+      '74.3% at a lag of 1000. A loss of 17.1 points.<br><br>' +
+      'The cause is that each retrain uses labels as old as the lag, so the model learns ' +
+      'yesterday\'s world.<br><br>' +
+      'The consequence: shortening label collection time can pay better than improving the model.',
+  },
+  {
+    t:'When to retrain',
+    goal:'You will compare five retraining policies on both accuracy and cost.',
+    todo:'Step through the policies. The bars below show cost, meaning how many times it retrained.',
+    kind:'controls', viz:'izPolitika', h:760, xp:60,
+    controls:[{k:'politika', lb:'POLICY', min:0, max:4, step:1, val:3,
+               fmt:v=>['never','calendar 200','calendar 500','triggered','true accuracy'][Math.round(v)]}],
+    body:'<p>Five policies, on the same stream, with the same 200-step label lag:</p>' +
+      '<p style="font-family:var(--mono)">policy &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;accuracy &nbsp;&nbsp;retrains<br>' +
+      'never &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;68.2% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0<br>' +
+      'calendar · 200 steps &nbsp;&nbsp;&nbsp;85.5% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;12<br>' +
+      'calendar · 500 steps &nbsp;&nbsp;&nbsp;83.3% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;5<br>' +
+      'triggered · PSI &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>86.3%</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;25<br>' +
+      'true accuracy &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;84.3% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8</p>' +
+      '<p>Three conclusions follow, and the third is unexpected.</p>' +
+      '<p><b>One.</b> Any retraining beats none by a wide margin. Even the worst policy lifts ' +
+      '68.2% to 83.3%.</p>' +
+      '<p><b>Two.</b> The policy with the highest accuracy is not the most efficient one. The ' +
+      'trigger leads at 86.3% but retrains <b>25 times</b> to get there. Calendar 500 retrains ' +
+      'only 5 times for 83.3%. Dividing the points gained over never retraining by the number ' +
+      'of retrains:</p>' +
+      '<p style="font-family:var(--mono)">calendar · 500 &nbsp;&nbsp;<b>3.02</b> points / retrain<br>' +
+      'true accuracy &nbsp;&nbsp;2.02 points / retrain<br>' +
+      'calendar · 200 &nbsp;&nbsp;1.45 points / retrain<br>' +
+      'triggered &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>0.72</b> points / retrain</p>' +
+      '<p>The ranking <b>reverses completely</b>. Retraining is not free: there is compute cost, ' +
+      'validation effort, and the risk every deployment carries. Which policy is right depends ' +
+      'on what one retrain costs you.</p>' +
+      '<p><b>Three, and most interesting.</b> The "look at true accuracy and retrain when it ' +
+      'drops" policy came out <b>worse</b> than the one watching input drift (84.3% against ' +
+      '86.3%). And that policy <b>cannot even be implemented</b> in production, since it ' +
+      'requires knowing true labels immediately.</p>' +
+      '<p>The reason: accuracy is a <b>lagging indicator</b>. It only falls after the damage is ' +
+      'done, so that policy is always late. Input drift is a <b>leading indicator</b>: it moves ' +
+      'the moment the world changes, while accuracy has not yet fallen.</p>' +
+      '<p>The practical lesson matters: having perfect information is no substitute for having ' +
+      'information <b>at the right time</b>.</p>',
+    learned:'<b>A retraining policy is an accuracy-cost trade-off.</b><br><br>' +
+      'Never retraining gives 68.2%. The trigger gives the highest accuracy (86.3%) but ' +
+      'retrains 25 times. Calendar 500 reaches 83.3% with 5 retrains.<br><br>' +
+      'Points per retrain reverses the ranking: 3.02 for calendar 500, only 0.72 for the ' +
+      'trigger.<br><br>' +
+      '<b>The "true accuracy" policy came out worse than the input-drift one</b> (84.3% against ' +
+      '86.3%), because accuracy is a lagging indicator and input drift a leading one.',
+  },
+  {
+    t:'Rollback and shadow deployment',
+    goal:'You will measure how bad a model that looks good offline can be in production.',
+    todo:'Change the sample size in the shadow deployment. Watch what a small sample would tell you.',
+    kind:'controls', viz:'izGeri', h:760, xp:55,
+    controls:[{k:'orneklem', lb:'SHADOW SAMPLE', min:0, max:4, step:1, val:2,
+               fmt:v=>'n = '+[25,50,100,200,400][Math.round(v)]}],
+    body:'<p>The candidate model in this step was trained on the data <b>just before</b> the ' +
+      'sudden break at step 1,800. Then two separate measurements were taken.</p>' +
+      '<p style="font-family:var(--mono)">candidate · offline validation &nbsp;&nbsp;<b>93.8%</b><br>' +
+      'candidate · live traffic &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>66.7%</b><br>' +
+      'trained after the break &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;94.3%</p>' +
+      '<p>The gap is <b>27.1 points</b>, and both are measurements of <b>the same model</b>. ' +
+      'The offline measurement says "this model is ready, ship it". Live traffic says "this ' +
+      'model is broken". Both measure correctly; they are measuring different worlds.</p>' +
+      '<p>This is the sharpest form of the warning from <i>building an eval set</i>. A ' +
+      'validation set only represents <b>the world of the period it was collected in</b>. If ' +
+      'the world has changed that set is no longer a valid exam, but it will not tell you so; ' +
+      'it will keep producing a shiny number.</p>' +
+      '<p>The technique used against this is <b>shadow deployment</b>: the candidate model ' +
+      'really does run on live traffic and its predictions are recorded, but <b>decisions are ' +
+      'still taken from the old model</b>. That gives a real-world measurement without taking ' +
+      'the risk.</p>' +
+      '<p>But shadow deployment has its own arithmetic. Look at how many samples it takes ' +
+      'before the difference is visible:</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;&nbsp;n &nbsp;&nbsp;measured<br>' +
+      '&nbsp;&nbsp;25 &nbsp;&nbsp;&nbsp;<b>80.0%</b><br>' +
+      '&nbsp;&nbsp;50 &nbsp;&nbsp;&nbsp;78.0%<br>' +
+      '&nbsp;100 &nbsp;&nbsp;&nbsp;78.0%<br>' +
+      '&nbsp;200 &nbsp;&nbsp;&nbsp;69.0%<br>' +
+      '&nbsp;400 &nbsp;&nbsp;&nbsp;<b>67.0%</b></p>' +
+      '<p>Someone looking at 25 samples sees <b>80.0%</b> and might say "a bit low but ' +
+      'acceptable". The true value is <b>66.7%</b>. Cutting a shadow deployment short is ' +
+      'exactly the peeking mistake from the <i>A/B testing</i> lesson.</p>' +
+      '<p>The minimum list for production comes out as:</p>' +
+      '<p><b>1 · A model registry.</b> Which model, trained on which data, with which code. If ' +
+      'you are going to roll back you need to know what you are rolling back to.</p>' +
+      '<p><b>2 · Gradual rollout.</b> Start with a small percentage of traffic, watch the ' +
+      'guardrail metrics, then widen.</p>' +
+      '<p><b>3 · Automatic rollback.</b> If a guardrail breaks, return to the old model without ' +
+      'waiting for a human decision. A model that breaks at midnight waiting until morning is ' +
+      'very expensive.</p>' +
+      '<p><b>4 · Proxy signal monitoring.</b> So you can act before the labels arrive, for the ' +
+      'reason measured in the second step.</p>',
+    learned:'<b>Offline measurement keeps lying once the world has changed.</b><br><br>' +
+      'The same candidate model scored 93.8% on offline validation and 66.7% on live traffic. ' +
+      'A gap of 27.1 points.<br><br>' +
+      'Shadow deployment lets you measure without taking the risk, but has its own sample-size ' +
+      'arithmetic: at n = 25 it looks like 80.0% when the true value is 66.7%. Peeking early ' +
+      'misleads here too.<br><br>' +
+      'Production minimum: a model registry, gradual rollout, automatic rollback, proxy signal ' +
+      'monitoring.',
+  },
+  ],
+};
+DERS_ADI_EN['izleme'] = 'Monitoring in production: when to retrain';
