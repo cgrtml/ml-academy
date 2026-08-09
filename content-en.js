@@ -8606,3 +8606,176 @@ DERSLER_EN['ab-testi'] = {
   },
   ],
 };
+
+DERSLER_EN['bilgi-kurami'] = {
+  ad:'Information theory: entropy, cross entropy, KL',
+  alt:'In the next lesson you will use cross entropy as a loss function. First measure what that thing actually is.',
+  adimlar:[
+  {
+    t:'Entropy: the measure of surprise',
+    goal:'You will measure a distribution\'s uncertainty in bits and see that the number is not arbitrary.',
+    todo:'Change the distribution. The Huffman code on the right is genuinely rebuilt each time.',
+    kind:'controls', viz:'bkEntropi', h:760, xp:50,
+    controls:[{k:'dagilim', lb:'DISTRIBUTION', min:0, max:4, step:1, val:2,
+               fmt:v=>['coin flip','fair die','uniform 8','skewed 8','very skewed 8'][Math.round(v)]}],
+    body:'<p>If I had to tell you the outcome of a coin flip, how many bits would I need to send? ' +
+      'One: 0 or 1. And to tell you which of eight equally likely outcomes occurred? ' +
+      'Three bits, because 2³ = 8.</p>' +
+      '<p>Shannon\'s question was: what if the outcomes are <b>not equally likely</b>? ' +
+      'The answer is entropy:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">H(p) = − Σ p<sub>i</sub> log<sub>2</sub> p<sub>i</sub></p>' +
+      '<p>There are two claims here and both are testable. First, that entropy is the ' +
+      '<b>average code length</b>. Second, that it is a <b>lower bound</b>, meaning no code ' +
+      'can be shorter.</p>' +
+      '<p>This step tests the second claim directly. For every distribution a real Huffman code ' +
+      'is built, and then that code\'s average length is compared to the entropy:</p>' +
+      '<p style="font-family:var(--mono)">distribution &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;H &nbsp;&nbsp;&nbsp;&nbsp;Huffman &nbsp;&nbsp;gap<br>' +
+      'coin flip &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.0000 &nbsp;&nbsp;&nbsp;1.0000 &nbsp;&nbsp;0.0000<br>' +
+      'uniform 8 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3.0000 &nbsp;&nbsp;&nbsp;3.0000 &nbsp;&nbsp;0.0000<br>' +
+      'fair die &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5850 &nbsp;&nbsp;&nbsp;2.6667 &nbsp;&nbsp;0.0817<br>' +
+      'skewed 8 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1199 &nbsp;&nbsp;&nbsp;2.1500 &nbsp;&nbsp;0.0301<br>' +
+      'very skewed 8 &nbsp;&nbsp;0.7046 &nbsp;&nbsp;&nbsp;1.2420 &nbsp;&nbsp;0.5374</p>' +
+      '<p>In no row does Huffman fall <b>below</b> the entropy. The bound is real.</p>' +
+      '<p>But the gap column is interesting too. For uniform distributions the gap is exactly ' +
+      'zero, because every probability is a power of 2 and the ideal code lengths are already ' +
+      'whole numbers. For the very skewed distribution the gap reaches <b>0.5374 bits</b>: ' +
+      'the outcome with probability 0.90 "deserves" a length of −log₂(0.90) = 0.15 bits, but a ' +
+      'real code has to give it at least <b>1 bit</b>. That gap is exactly why arithmetic ' +
+      'coding exists.</p>' +
+      '<p>The curve below shows the binary case. Its peak is at p = 0.5 where H = 1 bit. ' +
+      'At p = 0.01, H is only <b>0.0808 bits</b>: rare events carry little uncertainty. ' +
+      'That is what explains why 95% accuracy comes for free in the imbalanced data lesson.</p>',
+    learned:'<b>Entropy is the smallest average number of bits needed to encode a distribution.</b><br><br>' +
+      'Real Huffman codes never fell below the entropy for any distribution. For uniform 8 ' +
+      'outcomes H = 3.0000 and Huffman = 3.0000, no gap. For the very skewed one H = 0.7046 ' +
+      'but Huffman = 1.2420: 0.5374 bits are wasted because a code must use whole bits.<br><br>' +
+      'Binary entropy peaks at p = 0.5 (1 bit) and is only 0.0808 bits at p = 0.01.',
+  },
+  {
+    t:'Cross entropy and KL divergence',
+    goal:'You will measure how many extra bits it costs to encode with a wrong model.',
+    todo:'Push the model away from the truth. In the bar below the green part stays fixed while the red part grows.',
+    kind:'controls', viz:'bkKL', h:760, xp:55,
+    controls:[{k:'uzaklik', lb:'MODEL DEVIATION', min:0, max:1, step:0.05, val:0.5,
+               fmt:v=>v<0.001?'model = truth':(v>0.999?'fully uniform':v.toFixed(2))}],
+    body:'<p>Entropy is what you pay when you <b>know</b> the distribution. But in machine ' +
+      'learning you do not know the true distribution; you have a <b>model</b>. How much extra ' +
+      'do you pay when the model is wrong?</p>' +
+      '<p>When the truth is p but you encode according to your model q, the average length ' +
+      'becomes the <b>cross entropy</b>:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">H(p, q) = − Σ p<sub>i</sub> log<sub>2</sub> q<sub>i</sub></p>' +
+      '<p>The difference between them is the <b>KL divergence</b>:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">KL(p‖q) = H(p, q) − H(p)</p>' +
+      '<p>Which reduces to one sentence: <b>cross entropy = unavoidable uncertainty + the ' +
+      'model\'s error.</b></p>' +
+      '<p>Measured (true p is the skewed 8-outcome distribution, H(p) = 2.1199):</p>' +
+      '<p style="font-family:var(--mono)">deviation &nbsp;H(p,q) &nbsp;&nbsp;KL(p‖q) &nbsp;&nbsp;KL(q‖p)<br>' +
+      '0.00 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1199 &nbsp;&nbsp;&nbsp;0.0000 &nbsp;&nbsp;&nbsp;0.0000<br>' +
+      '0.25 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1963 &nbsp;&nbsp;&nbsp;0.0764 &nbsp;&nbsp;&nbsp;0.1106<br>' +
+      '0.50 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.3534 &nbsp;&nbsp;&nbsp;0.2335 &nbsp;&nbsp;&nbsp;0.3526<br>' +
+      '0.75 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5968 &nbsp;&nbsp;&nbsp;0.4769 &nbsp;&nbsp;&nbsp;0.6939<br>' +
+      '1.00 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3.0000 &nbsp;&nbsp;&nbsp;0.8801 &nbsp;&nbsp;&nbsp;1.1385</p>' +
+      '<p>Three things can be read off. First, <b>H(p) never changes</b>: it stays at 2.1199. ' +
+      'That comes from the data and no model can lower it. The only term training reduces ' +
+      'is KL.</p>' +
+      '<p>Second, <b>KL can never go below zero</b>, and it is zero only when the model equals ' +
+      'the truth exactly. That is why minimising cross entropy is the same thing as moving the ' +
+      'model towards the truth, and why cross entropy is the loss function for classification.</p>' +
+      '<p>Third, and most often skipped: <b>KL is not symmetric</b>. At deviation 0.50, ' +
+      'KL(p‖q) = 0.2335 but KL(q‖p) = 0.3526. The same two distributions, two different ' +
+      'numbers. That is why KL is not a distance and why the order you write it in genuinely ' +
+      'matters.</p>' +
+      '<p>One last connection: <b>perplexity is 2 to the power of entropy</b>. This skewed ' +
+      'distribution has a perplexity of 2^2.1199 = <b>4.35</b>. There are eight outcomes, but ' +
+      'the model is as confused as if it were choosing among 4.35 equally likely ones. That is ' +
+      'the number you will measure in the perplexity lesson.</p>',
+    learned:'<b>H(p,q) = H(p) + KL(p‖q).</b> Cross entropy is unavoidable uncertainty plus the model\'s error.<br><br>' +
+      'With the truth held fixed, H(p) = 2.1199 never moved. When the model collapsed to a ' +
+      'uniform distribution, H(p,q) = 3.0000 and KL = 0.8801.<br><br>' +
+      '<b>KL is not symmetric:</b> at deviation 0.50, KL(p‖q) = 0.2335 but KL(q‖p) = 0.3526.<br><br>' +
+      'Perplexity = 2^H. For this distribution, 2^2.1199 = 4.35.',
+  },
+  {
+    t:'Mutual information',
+    goal:'You will measure how many bits a feature carries about the label.',
+    todo:'Increase the noise. Watch what happens to the transmitted information as noise reaches 0.5.',
+    kind:'controls', viz:'bkKarsilikli', h:760, xp:55,
+    controls:[{k:'gurultu', lb:'NOISE', min:0, max:0.5, step:0.01, val:0.1,
+               fmt:v=>v.toFixed(2)},
+              {k:'taban', lb:'P(X = 1)', min:0.05, max:0.5, step:0.05, val:0.5,
+               fmt:v=>v.toFixed(2)}],
+    body:'<p>The information-theoretic answer to "is this feature any good?" is a number: ' +
+      'how many bits of uncertainty about the label seeing that feature removes.</p>' +
+      '<p style="font-family:var(--mono);text-align:center">I(X; Y) = H(X) − H(X|Y)</p>' +
+      '<p>The setup here is: X is the true label and Y is the observation you have. The ' +
+      'observation is corrupted with <b>noise rate e</b>, meaning it is flipped with ' +
+      'probability e.</p>' +
+      '<p>Measured (X balanced, H(X) = 1 bit):</p>' +
+      '<p style="font-family:var(--mono)">noise &nbsp;&nbsp;&nbsp;H(X|Y) &nbsp;&nbsp;I(X;Y)<br>' +
+      '0.00 &nbsp;&nbsp;&nbsp;&nbsp;0.0000 &nbsp;&nbsp;&nbsp;<b>1.0000</b><br>' +
+      '0.05 &nbsp;&nbsp;&nbsp;&nbsp;0.2864 &nbsp;&nbsp;&nbsp;0.7136<br>' +
+      '0.10 &nbsp;&nbsp;&nbsp;&nbsp;0.4690 &nbsp;&nbsp;&nbsp;0.5310<br>' +
+      '0.20 &nbsp;&nbsp;&nbsp;&nbsp;0.7219 &nbsp;&nbsp;&nbsp;0.2781<br>' +
+      '0.30 &nbsp;&nbsp;&nbsp;&nbsp;0.8813 &nbsp;&nbsp;&nbsp;0.1187<br>' +
+      '0.40 &nbsp;&nbsp;&nbsp;&nbsp;0.9710 &nbsp;&nbsp;&nbsp;0.0290<br>' +
+      '0.50 &nbsp;&nbsp;&nbsp;&nbsp;1.0000 &nbsp;&nbsp;&nbsp;<b>0.0000</b></p>' +
+      '<p>The two endpoints carry meaning. At zero noise I = 1 bit: the observation carries the ' +
+      'whole label. At noise 0.5, I is exactly <b>zero</b>: the observation is now a coin flip ' +
+      'and says nothing at all. That this comes out as <b>exactly zero</b> rather than ' +
+      '"approximately zero" is not a coincidence; it follows from the definition.</p>' +
+      '<p>Notice that the decline in between is <b>not linear</b>. Going from 0 to 0.10 noise ' +
+      'drops the information from 1.0000 to 0.5310, nearly half of it gone. But going from ' +
+      '0.40 to 0.50 only drops it from 0.0290 to 0. <b>The first noise is the most ' +
+      'expensive.</b></p>' +
+      '<p>The second slider shows something separate. Set P(X=1) to 0.05 and hold the noise at ' +
+      '0.10, and H(X) falls to 0.2864 while I becomes <b>0.1152</b>. Same noise, far less ' +
+      'information. Because there was little to carry in the first place: with imbalanced data ' +
+      'the maximum obtainable information is small.</p>' +
+      '<p><b>Information gain</b> in the decision tree lesson was exactly this. The quality of a ' +
+      'split is how many bits of label entropy that split removes.</p>',
+    learned:'<b>I(X;Y) = H(X) − H(X|Y): the bits of uncertainty in one variable removed by seeing the other.</b><br><br>' +
+      'With X balanced (H = 1 bit): at noise 0, I = 1.0000; at noise 0.10, 0.5310; at noise ' +
+      '0.50, exactly <b>0.0000</b>.<br><br>' +
+      'The decline is not linear, the first noise is the most expensive.<br><br>' +
+      'At P(X=1) = 0.05, H(X) drops to 0.2864 and the same 0.10 noise leaves only I = 0.1152.',
+  },
+  {
+    t:'Where you will meet it',
+    goal:'You will see which lessons across the curriculum compute these three quantities.',
+    todo:'Read the map. The next lesson picks up directly from step two of this page.',
+    kind:'viz', viz:'bkHarita', h:760, xp:45,
+    body:'<p>This is a tool lesson rather than a result lesson. The three quantities you measured ' +
+      'today will keep appearing throughout the curriculum, and in most places they are used ' +
+      '<b>without being named</b>.</p>' +
+      '<p><b>Decision trees (already seen).</b> The quality of a split is its information gain: ' +
+      'how far the label entropy falls. The Gini criterion behaves very similarly to entropy ' +
+      'and is preferred because it is cheaper to compute.</p>' +
+      '<p><b>Softmax and cross entropy (the next lesson).</b> The loss function for ' +
+      'classification is H(p, q) itself. Because of the identity you saw today, minimising it ' +
+      'means minimising KL, which means moving the model towards the truth.</p>' +
+      '<p><b>Temperature and sampling (Route 3).</b> Temperature is a dial that sets the entropy ' +
+      'of the output distribution. Low temperature means low entropy and repetitive text; high ' +
+      'temperature means high entropy and scattered text.</p>' +
+      '<p><b>Perplexity (Route 3).</b> Perplexity = 2^H. It answers "how many options is the ' +
+      'model confused among". Today the skewed distribution gave 4.35: eight outcomes, but as ' +
+      'much uncertainty as 4.35 equally likely ones.</p>' +
+      '<p><b>Mixture density networks (Route 2).</b> The distance from a single Gaussian to a ' +
+      'genuinely two-peaked distribution is measured with KL. The number there is in nats ' +
+      'rather than bits: the only difference is the base of the logarithm ' +
+      '(1 nat = 1.4427 bits).</p>' +
+      '<p><b>In-context learning (Route 3).</b> The model\'s belief about which task it is doing ' +
+      'is tracked with posterior entropy. Complete indecision among three tasks is ln 3 nats.</p>' +
+      '<p>All three fit in one sentence. <b>Entropy</b> is the minimum cost of encoding a ' +
+      'distribution, <b>KL</b> is the extra cost of encoding against the wrong one, and ' +
+      '<b>mutual information</b> is how much seeing one variable reduces the uncertainty in ' +
+      'another. All three share a unit and are tied together by equations.</p>',
+    learned:'<b>Information theory runs underneath this whole curriculum.</b><br><br>' +
+      'Information gain in decision trees, the loss function in softmax, what temperature ' +
+      'controls in sampling, the exponent in perplexity, model distance in mixture density ' +
+      'networks, posterior uncertainty in in-context learning.<br><br>' +
+      'Entropy is the minimum cost of encoding, KL the extra cost of a wrong model, and mutual ' +
+      'information what an observation buys you.',
+  },
+  ],
+};
+DERS_ADI_EN['bilgi-kurami'] = 'Information theory: entropy, cross entropy, KL';

@@ -17032,6 +17032,258 @@ const BK = (() => {
              fark: ortKod(d.p, boy) - entropi(d.p) };
   }
 
-  return { log2, entropi, caprazEntropi, kl, huffman, ortKod, ikili,
+  /* ── model dağılımı: gerçek p ile düzgün arasında karışım ──
+     t = 0 → model gerçeğe eşit (KL = 0), t = 1 → tamamen düzgün. */
+  function modelQ(p, t){
+    const u = 1/p.length;
+    return p.map(v => (1-t)*v + t*u);
+  }
+
+  return { log2, entropi, caprazEntropi, kl, huffman, ortKod, ikili, modelQ,
            karsilikliBilgi, kosulluEntropi, marjinal, kanal, DAGILIM, oyun };
 })();
+
+/* ── bilgi kuramı · ortak çizim ── */
+function bkCubuk(P, p, renk, etiket){
+  const gen = (P.R.w/p.length)*0.62;
+  p.forEach((v,i) => {
+    const x = P.sx(i);
+    box(x-gen/2, P.sy(v), gen, P.sy(0)-P.sy(v), renk+'cc', null);
+    if (etiket !== false) txt(v.toFixed(3), x, P.sy(v)-12, renk, 14);
+  });
+}
+
+/* ── 1 · entropi: sürprizin ölçüsü ── */
+VIZ.bkEntropi = s => {
+  clear();
+  const AD = ['ikili','zar','dengeli','egik','cokEgik'];
+  const i = Math.max(0, Math.min(4, Math.round(s.dagilim === undefined ? 2 : s.dagilim)));
+  const o = BK.oyun(AD[i]);
+  baslikSerit('BİLGİ KURAMI · ENTROPİ',
+    'Bir dağılımın ne kadar belirsiz olduğunu bit cinsinden ölçmek.',
+    [['DAĞILIM', o.ad, K.blue],
+     ['ENTROPİ', o.H.toFixed(4)+' bit', K.green],
+     ['HUFFMAN ORT.', o.ortalama.toFixed(4)+' bit', K.yellow]]);
+
+  const P = plot(rect(120, 230, 620, 286), -0.6, o.p.length-0.4, 0, Math.max(...o.p)*1.2);
+  txt('DAĞILIM · sonuç ve olasılık', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'olasılık', [], []);
+  bkCubuk(P, o.p, K.blue);
+  o.p.forEach((v,q) => txt(String(q+1), P.sx(q), P.R.y+P.R.h+26, K.mut, 15));
+
+  /* ikili entropi eğrisi */
+  const Q = plot(rect(120, 596, 620, 82), 0, 1, 0, 1.08);
+  txt('İKİLİ ENTROPİ  H(p, 1−p)  ·  yatay eksen p', Q.R.x+Q.R.w/2, Q.R.y-14, K.mut, 18);
+  frame(Q, '', '', [0,0.5,1], []);
+  cx.strokeStyle = K.green; cx.lineWidth = 3.5; cx.beginPath();
+  for (let q = 0.001; q <= 0.999; q += 0.004){
+    const v = BK.ikili(q);
+    q <= 0.005 ? cx.moveTo(Q.sx(q), Q.sy(v)) : cx.lineTo(Q.sx(q), Q.sy(v));
+  }
+  cx.stroke();
+  dot(Q.sx(0.5), Q.sy(1), 6, K.yellow);
+  txt('en belirsiz nokta', Q.sx(0.5)+16, Q.sy(1)+6, K.yellow, 15, 'left');
+
+  /* Huffman kodu */
+  const bx = 790;
+  box(bx, 230, 600, 300, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('GERÇEK BİR KOD KURALIM', bx+300, 268, K.mut, 19);
+  ['sonuç','olasılık','ideal bit','Huffman'].forEach((h,q) =>
+    txt(h, bx+80+q*145, 302, K.mut, 15));
+  o.p.slice(0, 7).forEach((v,q) => {
+    const yy = 336 + q*26;
+    txt(String(q+1),                   bx+80,  yy, K.mut, 15);
+    txt(v.toFixed(3),                  bx+225, yy, K.blue, 15);
+    txt((-BK.log2(v)).toFixed(2),      bx+370, yy, K.green, 15);
+    txt(String(o.boy[q]),              bx+515, yy, K.yellow, 15);
+  });
+  txt('ideal bit = −log₂(olasılık) · kesirli olabilir', bx+300, 512, K.mut, 15);
+
+  box(bx, 552, 600, 158, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('ENTROPİ BİR ALT SINIRDIR', bx+300, 588, K.mut, 18);
+  txt('H = '+o.H.toFixed(4)+'   ·   gerçek kod = '+o.ortalama.toFixed(4),
+      bx+300, 630, K.txt, 20);
+  txt(o.fark < 0.001
+      ? 'Fark yok: olasılıkların hepsi 2 nin kuvveti.'
+      : 'Fark '+o.fark.toFixed(4)+' bit. Kod tam sayı bit kullanmak zorunda.',
+      bx+300, 668, o.fark < 0.001 ? K.green : K.orange, 17);
+
+  durum(o.ad+'  ·  H = '+o.H.toFixed(4)+' bit  ·  Huffman ortalaması '+
+        o.ortalama.toFixed(4)+' bit  ·  fark '+o.fark.toFixed(4),
+        o.fark < 0.1 ? K.green : K.orange);
+};
+
+/* ── 2 · çapraz entropi ve KL ── */
+VIZ.bkKL = s => {
+  clear();
+  const t = Math.max(0, Math.min(1, s.uzaklik === undefined ? 0.5 : s.uzaklik));
+  const p = BK.DAGILIM.egik.p, q = BK.modelQ(p, t);
+  const H = BK.entropi(p), CE = BK.caprazEntropi(p, q), D = BK.kl(p, q);
+  baslikSerit('ÇAPRAZ ENTROPİ ve KL IRAKSAMASI',
+    'Gerçek dağılım p, modelin dediği q. Yanlış modelle ne kadar fazla bit ödersin?',
+    [['H(p)', H.toFixed(4), K.green],
+     ['H(p,q)', CE.toFixed(4), K.blue],
+     ['KL(p‖q)', D.toFixed(4), D>0.3?K.red:(D<0.001?K.green:K.orange)]]);
+
+  const P = plot(rect(120, 230, 660, 286), -0.6, 7.4, 0, 0.58);
+  txt('GERÇEK p  ve  MODELİN DEDİĞİ q', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'olasılık', [], [0, 0.25, 0.5]);
+  const gen = (P.R.w/8)*0.30;
+  p.forEach((v,i) => {
+    const x = P.sx(i);
+    box(x-gen*1.05, P.sy(v),    gen, P.sy(0)-P.sy(v),    K.green+'cc', null);
+    box(x+gen*0.05, P.sy(q[i]), gen, P.sy(0)-P.sy(q[i]), K.blue+'cc',  null);
+    txt(String(i+1), x, P.R.y+P.R.h+26, K.mut, 15);
+  });
+  txt('■ gerçek p', P.R.x+16, P.R.y+30, K.green, 16, 'left');
+  txt('■ model q',  P.R.x+16, P.R.y+54, K.blue, 16, 'left');
+
+  /* bit bileşimi */
+  const A = plot(rect(120, 596, 660, 82), 0, Math.max(3.2, CE*1.1), -0.6, 0.6);
+  txt('ÖDENEN BİT  ·  yatay eksen bit', A.R.x+A.R.w/2, A.R.y-14, K.mut, 18);
+  frame(A, '', '', [0,1,2,3], []);
+  box(A.sx(0), A.R.y+14, A.sx(H)-A.sx(0), A.R.h-28, K.green+'cc', null);
+  box(A.sx(H), A.R.y+14, A.sx(CE)-A.sx(H), A.R.h-28, K.red+'cc', null);
+  txt('H(p) = '+H.toFixed(3), (A.sx(0)+A.sx(H))/2, A.R.y+A.R.h/2+7, '#04120d', 17);
+  if (D > 0.06) txt('KL = '+D.toFixed(3), (A.sx(H)+A.sx(CE))/2, A.R.y+A.R.h/2+7, '#1a0505', 17);
+
+  const bx = 830;
+  box(bx, 230, 560, 210, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('TEK BİR ÖZDEŞLİK', bx+280, 268, K.mut, 19);
+  txt('H(p,q)  =  H(p)  +  KL(p‖q)', bx+280, 320, K.yellow, 23);
+  txt(CE.toFixed(4)+'  =  '+H.toFixed(4)+'  +  '+D.toFixed(4), bx+280, 360, K.txt, 20);
+  txt('H(p) veriden gelir, değiştiremezsin.', bx+280, 398, K.mut, 16);
+  txt('KL modelden gelir, tek düşürebileceğin terim bu.', bx+280, 422, K.mut, 16);
+
+  box(bx, 462, 560, 248, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('KL BİR UZAKLIK DEĞİLDİR', bx+280, 500, K.mut, 18);
+  const D2 = BK.kl(q, p);
+  txt('KL(p‖q) = '+D.toFixed(4), bx+280, 546, K.orange, 20);
+  txt('KL(q‖p) = '+D2.toFixed(4), bx+280, 578, K.purple, 20);
+  txt(Math.abs(D-D2) < 1e-6 ? 'Bu noktada eşitler, ama genelde değiller.'
+                            : 'Aynı iki dağılım, iki farklı sayı: simetrik değil.',
+      bx+280, 616, K.txt, 16);
+  txt('Ve KL ≥ 0, yalnızca p = q iken sıfır.', bx+280, 646, K.mut, 16);
+  txt('Bu yüzden çapraz entropiyi küçültmek', bx+280, 674, K.green, 16);
+  txt('modeli gerçeğe yaklaştırmakla aynı şeydir.', bx+280, 696, K.green, 16);
+
+  durum('KL(p‖q) = '+D.toFixed(4)+' bit  ·  model gerçekten '+
+        (D < 0.001 ? 'ayırt edilemez' : D.toFixed(2)+' bit uzakta'),
+        D < 0.001 ? K.green : (D > 0.3 ? K.red : K.orange));
+};
+
+/* ── 3 · karşılıklı bilgi ── */
+VIZ.bkKarsilikli = s => {
+  clear();
+  const e = Math.max(0, Math.min(0.5, s.gurultu === undefined ? 0.1 : s.gurultu));
+  const px1 = Math.max(0.02, Math.min(0.5, s.taban === undefined ? 0.5 : s.taban));
+  const o = BK.kanal(e, px1);
+  const HX = BK.entropi(BK.marjinal(o, 0));
+  const HXY = BK.kosulluEntropi(o);
+  const I = BK.karsilikliBilgi(o);
+  baslikSerit('KARŞILIKLI BİLGİ',
+    'Bir özellik, etiket hakkında kaç bit taşıyor? Cevap bit cinsinden verilebilir.',
+    [['GÜRÜLTÜ', e.toFixed(2), e>0.3?K.red:K.blue],
+     ['H(X)', HX.toFixed(4), K.green],
+     ['I(X;Y)', I.toFixed(4)+' bit', I<0.1?K.red:K.green]]);
+
+  const P = plot(rect(120, 240, 660, 340), 0, 0.5, 0, 1.08);
+  txt('GÜRÜLTÜ ARTTIKÇA TAŞINAN BİLGİ', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, 'gürültü oranı', 'bit', [0,0.1,0.2,0.3,0.4,0.5], [0,0.5,1]);
+  [['I', K.green], ['H', K.orange]].forEach(([tur, renk]) => {
+    cx.strokeStyle = renk; cx.lineWidth = 4; cx.beginPath();
+    let ilk = true;
+    for (let g = 0; g <= 0.5; g += 0.005){
+      const k = BK.kanal(g, px1);
+      const v = tur === 'I' ? BK.karsilikliBilgi(k) : BK.kosulluEntropi(k);
+      ilk ? (cx.moveTo(P.sx(g), P.sy(v)), ilk=false) : cx.lineTo(P.sx(g), P.sy(v));
+    }
+    cx.stroke();
+  });
+  cx.setLineDash([6,6]); cx.strokeStyle = K.green; cx.lineWidth = 2;
+  cx.beginPath(); cx.moveTo(P.R.x, P.sy(HX)); cx.lineTo(P.R.x+P.R.w, P.sy(HX)); cx.stroke();
+  cx.setLineDash([]);
+  txt('H(X) = '+HX.toFixed(3), P.R.x+P.R.w-14, P.sy(HX)-12, K.green, 16, 'right');
+  txt('■ I(X;Y) taşınan bilgi', P.R.x+16, P.R.y+30, K.green, 16, 'left');
+  txt('■ H(X|Y) kalan belirsizlik', P.R.x+16, P.R.y+54, K.orange, 16, 'left');
+  cx.strokeStyle = K.yellow; cx.lineWidth = 2.5; cx.setLineDash([5,5]);
+  cx.beginPath(); cx.moveTo(P.sx(e), P.R.y); cx.lineTo(P.sx(e), P.R.y+P.R.h); cx.stroke();
+  cx.setLineDash([]);
+
+  /* ortak dağılım tablosu */
+  const bx = 830;
+  box(bx, 240, 560, 230, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('ORTAK DAĞILIM  P(X, Y)', bx+280, 278, K.mut, 19);
+  txt('Y = 0', bx+330, 316, K.mut, 16);
+  txt('Y = 1', bx+460, 316, K.mut, 16);
+  o.forEach((r,i) => {
+    txt('X = '+i, bx+180, 356+i*44, K.mut, 16);
+    r.forEach((v,j) => {
+      const dogru = i === j;
+      box(bx+270+j*130, 332+i*44, 120, 34, (dogru?K.green:K.red)+'1e', (dogru?K.green:K.red)+'55', 1.5);
+      txt(v.toFixed(3), bx+330+j*130, 356+i*44, dogru?K.green:K.red, 17);
+    });
+  });
+  txt('köşegen = doğru iletildi', bx+280, 452, K.mut, 15);
+
+  box(bx, 492, 560, 218, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('TEK BİR DENKLEM', bx+280, 530, K.mut, 18);
+  txt('I(X;Y) = H(X) − H(X|Y)', bx+280, 576, K.yellow, 22);
+  txt(I.toFixed(4)+'  =  '+HX.toFixed(4)+'  −  '+HXY.toFixed(4), bx+280, 612, K.txt, 19);
+  txt('"Y yi görmek belirsizliğimi ne kadar azalttı."', bx+280, 650, K.mut, 16);
+  txt(e >= 0.499 ? 'Gürültü 0.5: Y yazı tura, hiçbir şey taşımıyor.'
+                 : (I > 0.5 ? 'Y, X hakkında çok şey söylüyor.'
+                            : 'Y zayıf bir sinyal, ama sıfır değil.'),
+      bx+280, 682, e>=0.499?K.red:(I>0.5?K.green:K.orange), 16);
+
+  durum('gürültü '+e.toFixed(2)+'  ·  H(X) = '+HX.toFixed(4)+
+        '  ·  H(X|Y) = '+HXY.toFixed(4)+'  ·  I(X;Y) = '+I.toFixed(4)+' bit',
+        I < 0.1 ? K.red : K.green);
+};
+
+/* ── 4 · müfredattaki kullanımlar ── */
+VIZ.bkHarita = s => {
+  clear();
+  baslikSerit('BU MÜFREDATTA NEREDE KULLANILIR',
+    'Bu üç büyüklük müfredat boyunca hep hesaplanır. Nerede karşına çıkacağı.', []);
+
+  const KUT = [
+    ['Karar ağacı · Gini ve bilgi kazancı  ✓ görüldü',
+     'Bölünmenin iyiliği, etiketteki belirsizliğin ne kadar azaldığıdır.',
+     'Gini entropiye çok yakın davranır, hesabı daha ucuzdur.', K.blue],
+    ['Softmax ve çapraz entropi  → sıradaki ders',
+     'Sınıflandırmanın kayıp fonksiyonu doğrudan H(p,q) dir.',
+     'Onu küçültmek KL yi küçültmek, yani modeli gerçeğe yaklaştırmaktır.', K.green],
+    ['Sıcaklık ve örnekleme  → Rota 3',
+     'Sıcaklık, çıktı dağılımının entropisini ayarlayan bir düğmedir.',
+     'Düşük sıcaklık düşük entropi, yüksek sıcaklık yüksek entropi.', K.orange],
+    ['Perplexity  → Rota 3',
+     'Perplexity = 2 üzeri H. Entropinin çarpımsal karşılığıdır.',
+     'Bugünkü eğik dağılım için 4.35 çıkmıştı.', K.purple],
+    ['Karışım yoğunluk ağı  → Rota 2',
+     'Tek Gauss un iki tepeli dağılıma uzaklığı KL ile ölçülür.',
+     'Oradaki sayı nat cinsindendir: 1 nat = 1.4427 bit.', K.pink],
+    ['Bağlam içi öğrenme  → Rota 3',
+     'Modelin hangi görevi yaptığına dair inancı sonsal entropiyle izlenir.',
+     'Üç görev arasında tam kararsızlık ln 3 nat demektir.', K.yellow],
+  ];
+  const W = 620, H2 = 96;
+  KUT.forEach(([ad, s1, s2, renk], i) => {
+    const x = 120 + (i%2)*660, y = 210 + Math.floor(i/2)*116;
+    box(x, y, W, H2, renk+'12', renk+'55', 2);
+    txt(ad, x+20, y+32, renk, 18, 'left');
+    txt(s1, x+20, y+60, K.mut, 15, 'left');
+    txt(s2, x+20, y+82, K.mut, 15, 'left');
+  });
+
+  box(120, 574, 1260, 136, 'rgba(34,211,160,.06)', 'rgba(34,211,160,.4)', 2);
+  txt('ÜÇ BÜYÜKLÜK, TEK BİR FİKİR', 750, 610, K.green, 19);
+  txt('Entropi: bir dağılımı kodlamanın en az bedeli.', 160, 646, K.txt, 17, 'left');
+  txt('KL: yanlış dağılıma göre kodlamanın fazladan bedeli.', 160, 672, K.txt, 17, 'left');
+  txt('Karşılıklı bilgi: bir gözlemin kazandırdığı bit.', 160, 698, K.txt, 17, 'left');
+  txt('Üçü de aynı birimdedir ve birbirine denklemle bağlıdır.', 790, 646, K.mut, 17, 'left');
+  txt('Karşılıklı bilgi de aslında bir KL ıraksamasıdır:', 790, 672, K.mut, 17, 'left');
+  txt('ortak dağılım ile marjinallerin çarpımı arasındaki KL.', 790, 698, K.mut, 17, 'left');
+
+  durum('entropi · çapraz entropi · KL ıraksaması · karşılıklı bilgi  ·  hepsi bit cinsinden', K.green);
+};

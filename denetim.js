@@ -4104,6 +4104,67 @@ console.log('═══ DENGESİZ VERİ ═══');
 }
 
 console.log('');
+console.log('═══ BİLGİ KURAMI ═══');
+{
+  /* entropi ve gerçek Huffman kodu */
+  [['ikili',1.0000,1.0000],['dengeli',3.0000,3.0000],['zar',2.5850,2.6667],
+   ['egik',2.1199,2.1500],['cokEgik',0.7046,1.2420]].forEach(([ad,H,hf])=>{
+    const o = BK.oyun(ad);
+    iddia('H · '+ad,H,o.H,4);
+    iddia('Huffman · '+ad,hf,o.ortalama,4);
+    /* entropi bir ALT SINIR: hiçbir kod altına inemez */
+    if (o.ortalama < o.H - 1e-9) console.log('  ✗ '+ad+' Huffman entropinin altına indi');
+  });
+  iddia('cokEgik fark',0.5374,BK.oyun('cokEgik').fark,4);
+  iddia('egik fark',0.0301,BK.oyun('egik').fark,4);
+  iddia('zar fark',0.0817,BK.oyun('zar').fark,4);
+
+  /* ikili entropi eğrisi */
+  [[0.5,1.0000],[0.4,0.9710],[0.3,0.8813],[0.2,0.7219],[0.1,0.4690],
+   [0.05,0.2864],[0.01,0.0808]].forEach(([q,H])=>iddia('ikili H · p='+q,H,BK.ikili(q),4));
+
+  /* çapraz entropi ve KL */
+  const pE = BK.DAGILIM.egik.p;
+  iddia('H(p) egik',2.1199,BK.entropi(pE),4);
+  [[0.00,2.1199,0.0000,0.0000],[0.25,2.1963,0.0764,0.1106],[0.50,2.3534,0.2335,0.3526],
+   [0.75,2.5968,0.4769,0.6939],[1.00,3.0000,0.8801,1.1385]].forEach(([t,ce,d1,d2])=>{
+    const q = BK.modelQ(pE,t);
+    iddia('t='+t.toFixed(2)+' H(p,q)',ce,BK.caprazEntropi(pE,q),4);
+    iddia('t='+t.toFixed(2)+' KL(p‖q)',d1,BK.kl(pE,q),4);
+    iddia('t='+t.toFixed(2)+' KL(q‖p)',d2,BK.kl(q,pE),4);
+    /* özdeşlik: H(p,q) = H(p) + KL(p‖q) */
+    iddia('t='+t.toFixed(2)+' özdeşlik',BK.caprazEntropi(pE,q),BK.entropi(pE)+BK.kl(pE,q),6);
+    /* KL ≥ 0 */
+    if (BK.kl(pE,q) < -1e-9) console.log('  ✗ KL negatif çıktı');
+  });
+  /* KL simetrik DEĞİL: t=0.50'de iki sayı farklı olmalı */
+  {
+    const q = BK.modelQ(pE,0.50);
+    if (Math.abs(BK.kl(pE,q) - BK.kl(q,pE)) < 0.01)
+      console.log('  ✗ KL simetrik çıktı, ders yanlış');
+  }
+  iddia('perplexity egik',4.35,Math.pow(2,BK.entropi(pE)),2);
+  iddia('1 nat kaç bit',1.4427,1/Math.LN2,4);
+
+  /* karşılıklı bilgi */
+  [[0.00,0.0000,1.0000],[0.05,0.2864,0.7136],[0.10,0.4690,0.5310],[0.20,0.7219,0.2781],
+   [0.30,0.8813,0.1187],[0.40,0.9710,0.0290],[0.50,1.0000,0.0000]].forEach(([e,hxy,I])=>{
+    const o = BK.kanal(e,0.5);
+    iddia('e='+e.toFixed(2)+' H(X)',1.0000,BK.entropi(BK.marjinal(o,0)),4);
+    iddia('e='+e.toFixed(2)+' H(X|Y)',hxy,BK.kosulluEntropi(o),4);
+    iddia('e='+e.toFixed(2)+' I(X;Y)',I,BK.karsilikliBilgi(o),4);
+    /* I = H(X) − H(X|Y) özdeşliği */
+    iddia('e='+e.toFixed(2)+' I özdeşlik',BK.karsilikliBilgi(o),
+          BK.entropi(BK.marjinal(o,0))-BK.kosulluEntropi(o),6);
+  });
+  /* dengesiz X */
+  {
+    const o = BK.kanal(0.10,0.05);
+    iddia('dengesiz H(X)',0.2864,BK.entropi(BK.marjinal(o,0)),4);
+    iddia('dengesiz I(X;Y)',0.1152,BK.karsilikliBilgi(o),4);
+  }
+}
+
 console.log('═══ A/B TESTİ ═══');
 {
   iddia('taban dönüşüm',0.10,AB.TABAN,2);

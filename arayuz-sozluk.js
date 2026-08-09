@@ -633,6 +633,19 @@ var ARAYUZ_EN = {
   "GÜÇ": "POWER",
   "ANLAMLI ÇIKANLARIN ETKİSİ": "EFFECT AMONG SIGNIFICANT",
   "SÜRE": "DURATION",
+  "adil zar": "fair die",
+  "düzgün #": "uniform #",
+  "eğik #": "skewed #",
+  "çok eğik #": "very skewed #",
+  "model = gerçek": "model = truth",
+  "tamamen düzgün": "fully uniform",
+  "HUFFMAN": "HUFFMAN",
+  "H(p)": "H(p)",
+  "H(p,q)": "H(p,q)",
+  "KL(p‖q)": "KL(p‖q)",
+  "H(X)": "H(X)",
+  "H(X|Y)": "H(X|Y)",
+  "I(X;Y)": "I(X;Y)",
 /*SON*/
 };
 

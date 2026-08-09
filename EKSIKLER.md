@@ -83,9 +83,19 @@ Tarama sonucu: müfredatta tek bir kez bile geçmiyor.
 
 ## C · Kullanılıyor ama öğretilmiyor
 
-- [ ] **Bilgi kuramı** · entropi, KL ıraksaması, karşılıklı bilgi
-      12 ayrı derste hesaplanıyor (`agac` Gini, `sampling` entropi, `perplexity`,
-      `mdn` KL, `icl` sonsal entropi) ama kavramın kendisi hiçbir yerde anlatılmıyor.
+- [x] **Bilgi kuramı** · entropi, KL ıraksaması, karşılıklı bilgi  ✔ 8 Ağustos 2026
+      `DERSLER['bilgi-kurami']`, Rota 1 (`softmax` öncesi), 4 adım, 205 XP.
+      Ölçülen: her dağılım için gerçek bir Huffman kodu kuruluyor ve entropinin
+      alt sınır olduğu doğrudan sınanıyor. Düzgün 8 sonuçta H = 3.0000 ve
+      Huffman = 3.0000; çok eğik dağılımda H = 0.7046 ama Huffman = 1.2420
+      (kod tam sayı bit kullanmak zorunda olduğu için 0.5374 bit israf).
+      H(p,q) = H(p) + KL(p‖q) özdeşliği her kaydırıcı konumunda 6 basamağa kadar
+      doğrulandı. KL'nin simetrik olmadığı ölçüldü: sapma 0.50'de
+      KL(p‖q) = 0.2335 ama KL(q‖p) = 0.3526.
+      Karşılıklı bilgi gürültüsüz kanalda 1.0000 bit, gürültü 0.50'de tam 0.0000.
+      Kapsanmayan: kanal kapasitesi teoremi, MDL, sürekli değişkenlerde MI tahmini
+      (kNN tabanlı tahmin ediciler yalnızca anlatımda anılıyor), çapraz entropinin
+      özellik seçiminde kullanımı.
 
 - [x] **Zaman serisi** · otokorelasyon, walk-forward doğrulama  ✔ 8 Ağustos 2026
       `DERSLER['zaman-serisi']`, Rota 1, 4 adım, 210 XP.
@@ -116,7 +126,7 @@ başlanmamalı.
 2. ~~Kalibrasyon~~ ✔ tamamlandı
 3. ~~Dengesiz veri~~ ✔ tamamlandı
 4. ~~A/B testi~~ ✔ tamamlandı
-5. Bilgi kuramı
+5. ~~Bilgi kuramı~~ ✔ tamamlandı
 6. LoRA / PEFT
 7. Üretimde izleme
 8. Gizlilik

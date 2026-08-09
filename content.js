@@ -46,6 +46,7 @@ const ROTALAR = [
     {id:'norm-l1l2',      ad:'L1 ve L2: iki ceza, iki farklı dünya',           sure:12, durum:'hazir'},
     {id:'yanlilik',       ad:'Yanlılık ve varyans: modelin iki tür hatası',    sure:16, durum:'hazir'},
     {id:'boyut-laneti',   ad:'Boyut laneti: komşular neden uzaklaşır',         sure:16, durum:'hazir'},
+    {id:'bilgi-kurami',   ad:'Bilgi kuramı: entropi, çapraz entropi, KL',      sure:16, durum:'hazir'},
     {id:'softmax',        ad:'Softmax ve çapraz entropi',                      sure:15, durum:'hazir'},
     {id:'kalibrasyon',    ad:'Kalibrasyon: "%70" gerçekten %70 mü?',           sure:15, durum:'hazir'},
     {id:'dengesiz',       ad:'Dengesiz veri: eşik, ağırlık, örnekleme',        sure:15, durum:'hazir'},
@@ -13956,3 +13957,191 @@ DERSLER['ab-testi'] = {
     xp:60,
   },
 ]};
+
+DERSLER['bilgi-kurami'] = {
+  ad:'Bilgi kuramı: entropi, çapraz entropi, KL',
+  alt:'Sonraki derste çapraz entropiyi kayıp fonksiyonu olarak kullanacaksın. Önce o şeyin ne olduğunu ölç.',
+  kaynaklar:[
+    {"y":"Shannon, C. E.", "t":"1948", "b":"A Mathematical Theory of Communication", "n":"Bell System Technical Journal, 27"},
+    {"y":"Cover, T. M. & Thomas, J. A.", "t":"2006", "b":"Elements of Information Theory", "n":"2nd ed., Wiley"},
+    {"y":"MacKay, D. J. C.", "t":"2003", "b":"Information Theory, Inference, and Learning Algorithms", "n":"Cambridge University Press"},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Entropi: sürprizin ölçüsü',
+    goal:'Bir dağılımın belirsizliğini bit cinsinden ölçeceksin ve bunun keyfî bir sayı olmadığını göreceksin.',
+    todo:'Dağılımı değiştir. Sağdaki Huffman kodu her seferinde gerçekten baştan kuruluyor.',
+    kind:'controls', viz:'bkEntropi', h:760,
+    controls:[{k:'dagilim', lb:'DAĞILIM', min:0, max:4, step:1, val:2,
+               fmt:v=>['yazı tura','adil zar','düzgün 8','eğik 8','çok eğik 8'][Math.round(v)]}],
+    live:s => { const AD=['ikili','zar','dengeli','egik','cokEgik'];
+      const o = BK.oyun(AD[Math.max(0,Math.min(4,Math.round(s.dagilim)))]);
+      return [['ENTROPİ', o.H.toFixed(4)+' bit', K.green],
+              ['HUFFMAN', o.ortalama.toFixed(4)+' bit', K.yellow],
+              ['FARK', o.fark.toFixed(4), o.fark<0.1?K.green:K.orange]]; },
+    body:'<p>Bir yazı tura atışının sonucunu sana bildirmem gerekse, kaç bit göndermem gerekir? ' +
+      'Bir tane: 0 ya da 1. Peki sekiz eşit olasılıklı sonuçtan hangisinin çıktığını bildirmem ' +
+      'gerekse? Üç bit, çünkü 2³ = 8.</p>' +
+      '<p>Shannon\'ın sorduğu soru şuydu: ya sonuçlar <b>eşit olasılıklı değilse</b>? ' +
+      'Cevabı entropi:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">H(p) = − Σ p<sub>i</sub> log<sub>2</sub> p<sub>i</sub></p>' +
+      '<p>Burada iki iddia var ve ikisi de sınanabilir. Birincisi entropinin ' +
+      '<b>ortalama kod uzunluğu</b> olduğu. İkincisi bunun bir <b>alt sınır</b> olduğu, ' +
+      'yani hiçbir kodun daha kısa olamayacağı.</p>' +
+      '<p>Bu adım ikinci iddiayı doğrudan sınıyor. Her dağılım için gerçek bir Huffman kodu ' +
+      'kuruluyor, sonra o kodun ortalama uzunluğu entropiyle karşılaştırılıyor:</p>' +
+      '<p style="font-family:var(--mono)">dağılım &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;H &nbsp;&nbsp;&nbsp;&nbsp;Huffman &nbsp;&nbsp;fark<br>' +
+      'yazı tura &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.0000 &nbsp;&nbsp;&nbsp;1.0000 &nbsp;&nbsp;0.0000<br>' +
+      'düzgün 8 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3.0000 &nbsp;&nbsp;&nbsp;3.0000 &nbsp;&nbsp;0.0000<br>' +
+      'adil zar &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.5850 &nbsp;&nbsp;&nbsp;2.6667 &nbsp;&nbsp;0.0817<br>' +
+      'eğik 8 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2.1199 &nbsp;&nbsp;&nbsp;2.1500 &nbsp;&nbsp;0.0301<br>' +
+      'çok eğik 8 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.7046 &nbsp;&nbsp;&nbsp;1.2420 &nbsp;&nbsp;0.5374</p>' +
+      '<p>Hiçbir satırda Huffman entropinin <b>altına inemiyor</b>. Sınır gerçek.</p>' +
+      '<p>Ama fark sütunu da ilginç. Düzgün dağılımlarda fark tam sıfır, çünkü olasılıkların ' +
+      'hepsi 2\'nin kuvveti ve ideal kod uzunlukları zaten tam sayı. Çok eğik dağılımda fark ' +
+      '<b>0.5374 bite</b> çıkıyor: olasılığı 0.90 olan sonucun "hak ettiği" uzunluk ' +
+      '−log₂(0.90) = 0.15 bit, ama gerçek bir kod ona en az <b>1 bit</b> vermek zorunda. ' +
+      'Aritmetik kodlamanın var olma sebebi tam olarak bu boşluktur.</p>' +
+      '<p>Alttaki eğri ikili durumu gösteriyor. En yüksek nokta p = 0.5\'te ve orada H = 1 bit. ' +
+      'p = 0.01\'de H yalnızca <b>0.0808 bit</b>: nadir olayların taşıdığı belirsizlik azdır. ' +
+      'Dengesiz veri dersinde neden %95 doğruluğun bedava geldiğini bu açıklıyor.</p>',
+    learned:'<b>Entropi, bir dağılımı kodlamak için gereken en az ortalama bit sayısıdır.</b><br><br>' +
+      'Gerçek Huffman kodları hiçbir dağılımda entropinin altına inemedi. Düzgün 8 sonuçta ' +
+      'H = 3.0000 ve Huffman = 3.0000, fark yok. Çok eğik dağılımda H = 0.7046 ama ' +
+      'Huffman = 1.2420: kod tam sayı bit kullanmak zorunda olduğu için 0.5374 bit israf var.<br><br>' +
+      'İkili entropi p = 0.5\'te en yüksek (1 bit), p = 0.01\'de yalnızca 0.0808 bit.',
+    xp:50,
+  },
+  {
+    t:'Çapraz entropi ve KL ıraksaması',
+    goal:'Yanlış bir modelle kodlamanın kaç bit fazladan tuttuğunu ölçeceksin.',
+    todo:'Modeli gerçekten uzaklaştır. Alttaki çubukta yeşil kısım sabit, kırmızı kısım büyüyor.',
+    kind:'controls', viz:'bkKL', h:760,
+    controls:[{k:'uzaklik', lb:'MODEL SAPMASI', min:0, max:1, step:0.05, val:0.5,
+               fmt:v=>v<0.001?'model = gerçek':(v>0.999?'tamamen düzgün':v.toFixed(2))}],
+    live:s => { const p=BK.DAGILIM.egik.p, q=BK.modelQ(p, s.uzaklik===undefined?0.5:s.uzaklik);
+      return [['H(p)', BK.entropi(p).toFixed(4), K.green],
+              ['H(p,q)', BK.caprazEntropi(p,q).toFixed(4), K.blue],
+              ['KL(p‖q)', BK.kl(p,q).toFixed(4), BK.kl(p,q)>0.3?K.red:K.orange]]; },
+    body:'<p>Entropi, dağılımı <b>bildiğin</b> zaman ödediğin bedeldir. Ama makine öğrenmesinde ' +
+      'gerçek dağılımı bilmezsin; elinde bir <b>model</b> vardır. Model yanlışsa ne kadar ' +
+      'fazladan ödersin?</p>' +
+      '<p>Gerçek dağılım p iken, modelin dediği q\'ya göre kodlarsan ortalama uzunluk ' +
+      '<b>çapraz entropi</b> olur:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">H(p, q) = − Σ p<sub>i</sub> log<sub>2</sub> q<sub>i</sub></p>' +
+      '<p>Aradaki fark <b>KL ıraksaması</b>dır:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">KL(p‖q) = H(p, q) − H(p)</p>' +
+      '<p>Bunu tek bir cümleye çevirmek mümkün: <b>çapraz entropi = kaçınılmaz belirsizlik + ' +
+      'modelin hatası.</b></p>' +
+      '<p>Ölçüm (gerçek p eğik 8 sonuç, H(p) = 2.1199):</p>' +
+      '<p style="font-family:var(--mono)">sapma &nbsp;&nbsp;&nbsp;H(p,q) &nbsp;&nbsp;KL(p‖q) &nbsp;&nbsp;KL(q‖p)<br>' +
+      '0.00 &nbsp;&nbsp;&nbsp;&nbsp;2.1199 &nbsp;&nbsp;&nbsp;0.0000 &nbsp;&nbsp;&nbsp;0.0000<br>' +
+      '0.25 &nbsp;&nbsp;&nbsp;&nbsp;2.1963 &nbsp;&nbsp;&nbsp;0.0764 &nbsp;&nbsp;&nbsp;0.1106<br>' +
+      '0.50 &nbsp;&nbsp;&nbsp;&nbsp;2.3534 &nbsp;&nbsp;&nbsp;0.2335 &nbsp;&nbsp;&nbsp;0.3526<br>' +
+      '0.75 &nbsp;&nbsp;&nbsp;&nbsp;2.5968 &nbsp;&nbsp;&nbsp;0.4769 &nbsp;&nbsp;&nbsp;0.6939<br>' +
+      '1.00 &nbsp;&nbsp;&nbsp;&nbsp;3.0000 &nbsp;&nbsp;&nbsp;0.8801 &nbsp;&nbsp;&nbsp;1.1385</p>' +
+      '<p>Üç şey okunuyor. Birincisi, <b>H(p) hiç değişmiyor</b>: 2.1199 sabit. O veriden gelir, ' +
+      'model onu düşüremez. Modeli eğitirken düşürdüğün tek terim KL\'dir.</p>' +
+      '<p>İkincisi, <b>KL sıfırdan küçük olamıyor</b> ve yalnızca model gerçeğe tam eşitken ' +
+      'sıfır. Bu yüzden çapraz entropiyi küçültmek, modeli gerçeğe yaklaştırmakla aynı şeydir. ' +
+      'Sınıflandırmanın kayıp fonksiyonu bu yüzden çapraz entropidir.</p>' +
+      '<p>Üçüncüsü ve en sık atlanan: <b>KL simetrik değildir</b>. Sapma 0.50\'de KL(p‖q) = 0.2335 ' +
+      'ama KL(q‖p) = 0.3526. Aynı iki dağılım, iki farklı sayı. Bu yüzden KL bir uzaklık ' +
+      'değildir ve hangi sırayla yazdığın gerçekten fark eder.</p>' +
+      '<p>Son bir bağlantı: <b>perplexity 2 üzeri entropidir</b>. Bu eğik dağılımın perplexity\'si ' +
+      '2^2.1199 = <b>4.35</b>. Sekiz sonuç var ama model, 4.35 eşit olasılıklı seçenek ' +
+      'arasında kalmış kadar şaşkın. Perplexity dersinde ölçeceğin sayı budur.</p>',
+    learned:'<b>H(p,q) = H(p) + KL(p‖q).</b> Çapraz entropi, kaçınılmaz belirsizlik artı modelin hatasıdır.<br><br>' +
+      'Gerçek p sabitken H(p) = 2.1199 hiç değişmedi. Model tamamen düzgün dağılıma kaydığında ' +
+      'H(p,q) = 3.0000 ve KL = 0.8801 oldu.<br><br>' +
+      '<b>KL simetrik değildir:</b> sapma 0.50\'de KL(p‖q) = 0.2335 ama KL(q‖p) = 0.3526.<br><br>' +
+      'Perplexity = 2^H. Bu dağılım için 2^2.1199 = 4.35.',
+    xp:55,
+  },
+  {
+    t:'Karşılıklı bilgi',
+    goal:'Bir özelliğin etiket hakkında kaç bit taşıdığını ölçeceksin.',
+    todo:'Gürültüyü artır. Gürültü 0.5\'e gelince taşınan bilgiye ne olduğuna bak.',
+    kind:'controls', viz:'bkKarsilikli', h:760,
+    controls:[{k:'gurultu', lb:'GÜRÜLTÜ', min:0, max:0.5, step:0.01, val:0.1,
+               fmt:v=>v.toFixed(2)},
+              {k:'taban', lb:'P(X = 1)', min:0.05, max:0.5, step:0.05, val:0.5,
+               fmt:v=>v.toFixed(2)}],
+    live:s => { const o = BK.kanal(s.gurultu===undefined?0.1:s.gurultu, s.taban===undefined?0.5:s.taban);
+      return [['H(X)', BK.entropi(BK.marjinal(o,0)).toFixed(4), K.green],
+              ['H(X|Y)', BK.kosulluEntropi(o).toFixed(4), K.orange],
+              ['I(X;Y)', BK.karsilikliBilgi(o).toFixed(4)+' bit',
+               BK.karsilikliBilgi(o)<0.1?K.red:K.green]]; },
+    body:'<p>"Bu özellik işe yarıyor mu?" sorusunun bilgi kuramındaki cevabı bir sayıdır: ' +
+      'o özelliği görmek, etiketteki belirsizliğini kaç bit azaltıyor.</p>' +
+      '<p style="font-family:var(--mono);text-align:center">I(X; Y) = H(X) − H(X|Y)</p>' +
+      '<p>Buradaki düzenek şu: X gerçek etiket, Y ise elindeki gözlem. Gözlem <b>gürültü ' +
+      'oranı e</b> ile bozuluyor, yani e olasılıkla ters çevriliyor.</p>' +
+      '<p>Ölçüm (X dengeli, H(X) = 1 bit):</p>' +
+      '<p style="font-family:var(--mono)">gürültü &nbsp;&nbsp;H(X|Y) &nbsp;&nbsp;I(X;Y)<br>' +
+      '0.00 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0000 &nbsp;&nbsp;&nbsp;<b>1.0000</b><br>' +
+      '0.05 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.2864 &nbsp;&nbsp;&nbsp;0.7136<br>' +
+      '0.10 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.4690 &nbsp;&nbsp;&nbsp;0.5310<br>' +
+      '0.20 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.7219 &nbsp;&nbsp;&nbsp;0.2781<br>' +
+      '0.30 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.8813 &nbsp;&nbsp;&nbsp;0.1187<br>' +
+      '0.40 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.9710 &nbsp;&nbsp;&nbsp;0.0290<br>' +
+      '0.50 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.0000 &nbsp;&nbsp;&nbsp;<b>0.0000</b></p>' +
+      '<p>İki uç nokta anlamlı. Gürültü sıfırken I = 1 bit: gözlem etiketin tamamını taşıyor. ' +
+      'Gürültü 0.5\'te I tam <b>sıfır</b>: gözlem artık yazı turadır ve hiçbir şey söylemez. ' +
+      'Bunun "yaklaşık sıfır" değil <b>tam sıfır</b> çıkması tesadüf değil, tanımın gereği.</p>' +
+      '<p>Aradaki azalışın <b>doğrusal olmadığına</b> dikkat et. Gürültü 0\'dan 0.10\'a çıkınca ' +
+      'bilgi 1.0000\'dan 0.5310\'a düşüyor, yani neredeyse yarısı gidiyor. Ama 0.40\'tan 0.50\'ye ' +
+      'giderken zaten 0.0290\'dan 0\'a düşüyor. <b>İlk gürültü en pahalıdır.</b></p>' +
+      '<p>İkinci kaydırıcı ayrı bir şey gösteriyor. P(X=1)\'i 0.05 yapıp gürültüyü 0.10\'da ' +
+      'tutarsan, H(X) = 0.2864\'e düşer ve I = <b>0.1152</b> olur. Aynı gürültü, çok daha az ' +
+      'bilgi. Çünkü taşınabilecek bilgi zaten baştan azdır: dengesiz veride ' +
+      'kazanılabilecek maksimum bilgi küçüktür.</p>' +
+      '<p>Karar ağacı dersindeki <b>bilgi kazancı</b> tam olarak buydu. Bir bölünmenin iyiliği, ' +
+      'o bölünmenin etiketteki entropiyi kaç bit düşürdüğüdür.</p>',
+    learned:'<b>I(X;Y) = H(X) − H(X|Y): bir değişkeni görmenin diğerindeki belirsizliği azalttığı bit.</b><br><br>' +
+      'X dengeliyken (H = 1 bit): gürültü 0\'da I = 1.0000, gürültü 0.10\'da 0.5310, ' +
+      'gürültü 0.50\'de tam <b>0.0000</b>.<br><br>' +
+      'Azalış doğrusal değil, ilk gürültü en pahalıdır.<br><br>' +
+      'P(X=1) = 0.05 iken H(X) = 0.2864\'e düşer ve aynı 0.10 gürültüde I yalnızca 0.1152 olur.',
+    xp:55,
+  },
+  {
+    t:'Nerede karşına çıkacak',
+    goal:'Bu üç büyüklüğün müfredat boyunca hangi derslerde hesaplandığını göreceksin.',
+    todo:'Haritayı oku. Sonraki ders bu sayfadaki ikinci adımın doğrudan devamı.',
+    kind:'viz', viz:'bkHarita', h:760,
+    body:'<p>Bu ders bir araç dersi, kendi başına bir sonuç dersi değil. Bugün ölçtüğün üç ' +
+      'büyüklük müfredat boyunca sürekli karşına çıkacak, ve çoğu yerde ' +
+      '<b>adı anılmadan</b> kullanılacak.</p>' +
+      '<p><b>Karar ağacı (görüldü).</b> Bir bölünmenin iyiliği bilgi kazancıdır: etiketteki ' +
+      'entropinin ne kadar düştüğü. Gini ölçütü entropiye çok yakın davranır ve hesabı ' +
+      'daha ucuz olduğu için tercih edilir.</p>' +
+      '<p><b>Softmax ve çapraz entropi (sıradaki ders).</b> Sınıflandırmanın kayıp fonksiyonu ' +
+      'doğrudan H(p, q). Bugün gördüğün özdeşlik yüzünden onu küçültmek KL\'yi küçültmektir, ' +
+      'yani modeli gerçeğe yaklaştırmaktır.</p>' +
+      '<p><b>Sıcaklık ve örnekleme (Rota 3).</b> Sıcaklık, çıktı dağılımının entropisini ' +
+      'ayarlayan bir düğmedir. Düşük sıcaklık düşük entropi ve tekdüze metin, yüksek sıcaklık ' +
+      'yüksek entropi ve dağınık metin demektir.</p>' +
+      '<p><b>Perplexity (Rota 3).</b> Perplexity = 2^H. "Model kaç seçenek arasında şaşkın" ' +
+      'sorusunun cevabıdır. Bugün eğik dağılım için 4.35 çıkmıştı: sekiz sonuç varken ' +
+      '4.35 eşit seçenek kadar belirsizlik.</p>' +
+      '<p><b>Karışım yoğunluk ağı (Rota 2).</b> Tek Gauss\'un iki tepeli gerçek dağılıma ' +
+      'uzaklığı KL ile ölçülür. Oradaki sayı nat cinsindendir, bit değil: tek fark ' +
+      'logaritmanın tabanıdır (1 nat = 1.4427 bit).</p>' +
+      '<p><b>Bağlam içi öğrenme (Rota 3).</b> Modelin hangi görevi yaptığına dair inancı ' +
+      'sonsal entropiyle izlenir. Üç görev arasında tam kararsızlık ln 3 nat demektir.</p>' +
+      '<p>Üçünü tek cümlede toplamak mümkün. <b>Entropi</b> bir dağılımı kodlamanın en az ' +
+      'bedeli, <b>KL</b> yanlış dağılıma göre kodlarsan fazladan ödediğin bedel, ' +
+      '<b>karşılıklı bilgi</b> ise bir değişkeni görmenin diğerindeki belirsizliği ' +
+      'azalttığı miktardır. Üçü de aynı birimdedir ve birbirine denklemle bağlıdır.</p>',
+    learned:'<b>Bilgi kuramı bu müfredatın altında sürekli çalışır.</b><br><br>' +
+      'Karar ağacında bilgi kazancı, softmax\'ta kayıp fonksiyonu, örneklemede sıcaklığın ' +
+      'ayarladığı şey, perplexity\'nin üssü, karışım yoğunluk ağında model uzaklığı, ' +
+      'bağlam içi öğrenmede sonsal belirsizlik.<br><br>' +
+      'Entropi kodlamanın en az bedeli, KL yanlış modelin fazladan bedeli, karşılıklı bilgi ' +
+      'ise bir gözlemin kazandırdığı miktardır.',
+    xp:45,
+  },
+  ],
+};
