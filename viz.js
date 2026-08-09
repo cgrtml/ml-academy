@@ -17287,3 +17287,442 @@ VIZ.bkHarita = s => {
 
   durum('entropi · çapraz entropi · KL ıraksaması · karşılıklı bilgi  ·  hepsi bit cinsinden', K.green);
 };
+
+/* ═══════════════ LoRA · DÜŞÜK RANKLI UYARLAMA ═══════════════
+   `transformer[2]` birebir "LoRA ve nicemlemenin varlık sebebi budur" diyor
+   ama LoRA dersi yoktu. Bu motor o boşluğu dolduruyor.
+
+   Ölçülen iddialar:
+     1. İnce ayar güncellemesi ΔW gerçekten düşük ranklıdır (tekil değer izgesi)
+     2. Rank r ile eğitilen uyarlayıcı, tam ince ayarın kalitesine ne kadar yaklaşır
+     3. Eğitilen parametre sayısı: tam d·k, LoRA r(d+k). Bu aritmetik, ölçüm değil.
+     4. B sıfırdan başlar, yani eğitim başlangıcında model hiç bozulmaz          */
+const LORA = (() => {
+  const D = 48;          // gizli boyut
+  const SINIF = 3;
+  const N = 600;         // görev başına örnek
+
+  const carp = (A, x) => A.map(r => r.reduce((s,v,i) => s + v*x[i], 0));
+  const tanh = v => v.map(Math.tanh);
+
+  /* ── donmuş gövde: rastgele ama sabit bir gömme katmanı ── */
+  const R0 = rng(7);
+  const GOVDE = Array.from({length:D}, () =>
+    Array.from({length:8}, () => (R0()-0.5)*1.4));
+
+  /* ── veri: 8 boyutlu gizli özellik, iki farklı etiket kuralı ── */
+  function veri(gorev, tohum){
+    const R = rng(tohum), X = [], y = [];
+    for (let i=0;i<N;i++){
+      const z = Array.from({length:8}, () => R()*2-1);
+      /* görev A: ilk üç özelliğin ağırlıklı toplamı
+         görev B: farklı ama İLİŞKİLİ bir kural (4. ve 5. özellik de girer) */
+      const s = gorev === 'A'
+        ? 1.4*z[0] + 0.9*z[1] - 0.7*z[2]
+        : 1.4*z[0] + 0.9*z[1] - 0.7*z[2] + 1.1*z[3] - 0.8*z[4];
+      y.push(s < -0.55 ? 0 : (s < 0.55 ? 1 : 2));
+      X.push(tanh(carp(GOVDE, z)));            // D boyutlu donmuş temsil
+    }
+    return { X, y };
+  }
+
+  /* ── softmax + çapraz entropi ile eğitilen tek katman ──
+     W: SINIF×D uyarlanan matris değil; uyarlanan matris D×D ara katman.
+     Mimari:  h = tanh(M x),  logit = H h   (H de eğitilir ama LoRA M'ye uygulanır) */
+  function ileri(M, H, x){
+    const h = tanh(carp(M, x));
+    const o = carp(H, h);
+    const mx = Math.max(...o);
+    const e = o.map(v => Math.exp(v-mx));
+    const t = e.reduce((a,b)=>a+b,0);
+    return { h, p: e.map(v => v/t) };
+  }
+  const dogruluk = (M, H, d) =>
+    d.X.reduce((s,x,i) => {
+      const p = ileri(M,H,x).p;
+      return s + (p.indexOf(Math.max(...p)) === d.y[i] ? 1 : 0);
+    }, 0) / d.X.length;
+
+  /* ── tam eğitim: M ve H birlikte ── */
+  function egit(M0, H0, d, tur, lr){
+    const M = M0.map(r=>r.slice()), H = H0.map(r=>r.slice());
+    for (let t=0;t<tur;t++){
+      const gM = M.map(r=>r.map(()=>0)), gH = H.map(r=>r.map(()=>0));
+      d.X.forEach((x,i) => {
+        const {h,p} = ileri(M,H,x);
+        const dO = p.map((v,c) => v - (c===d.y[i]?1:0));
+        for (let c=0;c<SINIF;c++) for (let j=0;j<D;j++) gH[c][j] += dO[c]*h[j];
+        const dH = new Array(D).fill(0);
+        for (let j=0;j<D;j++){
+          let s=0; for (let c=0;c<SINIF;c++) s += dO[c]*H[c][j];
+          dH[j] = s*(1 - h[j]*h[j]);
+        }
+        for (let j=0;j<D;j++) for (let k=0;k<D;k++) gM[j][k] += dH[j]*x[k];
+      });
+      const n = d.X.length;
+      for (let c=0;c<SINIF;c++) for (let j=0;j<D;j++) H[c][j] -= lr*gH[c][j]/n;
+      for (let j=0;j<D;j++) for (let k=0;k<D;k++) M[j][k] -= lr*gM[j][k]/n;
+    }
+    return { M, H };
+  }
+
+  /* ── LoRA eğitimi: M DONMUŞ, yalnızca A (r×D) ve B (D×r) öğrenilir ──
+     B sıfırla başlar, dolayısıyla ilk adımda ΔW = 0 ve model hiç bozulmaz. */
+  function egitLora(M0, H0, d, r, tur, lr, alfa){
+    const R = rng(31+r);
+    /* A rastgele küçük, B tam sıfır: LoRA makalesindeki ilk değer atama */
+    const A = Array.from({length:r}, () => Array.from({length:D}, () => (R()-0.5)*0.04));
+    const B = Array.from({length:D}, () => new Array(r).fill(0));
+    const H = H0.map(row=>row.slice());
+    const olc = alfa / r;
+    const etkin = () => M0.map((row,j) =>
+      row.map((v,k) => v + olc * B[j].reduce((s,b,q) => s + b*A[q][k], 0)));
+
+    for (let t=0;t<tur;t++){
+      const gA = A.map(row=>row.map(()=>0)), gB = B.map(row=>row.map(()=>0));
+      const gH = H.map(row=>row.map(()=>0));
+      const M = etkin();
+      d.X.forEach((x,i) => {
+        const {h,p} = ileri(M,H,x);
+        const dO = p.map((v,c) => v - (c===d.y[i]?1:0));
+        for (let c=0;c<SINIF;c++) for (let j=0;j<D;j++) gH[c][j] += dO[c]*h[j];
+        const dPre = new Array(D).fill(0);
+        for (let j=0;j<D;j++){
+          let s=0; for (let c=0;c<SINIF;c++) s += dO[c]*H[c][j];
+          dPre[j] = s*(1 - h[j]*h[j]);
+        }
+        /* ΔW = olc · B A  ⇒  dB[j][q] = olc · dPre[j] · (A[q]·x)
+                               dA[q][k] = olc · x[k] · Σ_j dPre[j] B[j][q] */
+        const Ax = A.map(row => row.reduce((s,v,k)=>s+v*x[k],0));
+        for (let j=0;j<D;j++) for (let q=0;q<r;q++) gB[j][q] += olc*dPre[j]*Ax[q];
+        const dBt = new Array(r).fill(0);
+        for (let q=0;q<r;q++){ let s=0; for (let j=0;j<D;j++) s += dPre[j]*B[j][q]; dBt[q]=s; }
+        for (let q=0;q<r;q++) for (let k=0;k<D;k++) gA[q][k] += olc*dBt[q]*x[k];
+      });
+      const n = d.X.length;
+      for (let c=0;c<SINIF;c++) for (let j=0;j<D;j++) H[c][j] -= lr*gH[c][j]/n;
+      for (let j=0;j<D;j++) for (let q=0;q<r;q++) B[j][q] -= lr*gB[j][q]/n;
+      for (let q=0;q<r;q++) for (let k=0;k<D;k++) A[q][k] -= lr*gA[q][k]/n;
+    }
+    return { A, B, H, M: etkin(), egitilen: r*(2*D) };
+  }
+
+  /* ── ΔW'nin tekil değerleri: ΔWᵀΔW'nin özdeğerlerinin karekökü ── */
+  function tekilDegerler(Delta){
+    const n = Delta.length;
+    const G = Array.from({length:n}, (_,i) =>
+      Array.from({length:n}, (_,j) =>
+        Delta.reduce((s,row) => s + row[i]*row[j], 0)));
+    const { l } = jacobi(G, 220);
+    return l.map(v => Math.sqrt(Math.max(0, v)));
+  }
+
+  /* ── rank-r kesme, Frobenius normunun ne kadarını tutuyor ── */
+  function kesmeOrani(sv, r){
+    const kare = sv.map(v => v*v);
+    const top = kare.reduce((a,b)=>a+b,0);
+    const ust = kare.slice(0, r).reduce((a,b)=>a+b,0);
+    return Math.sqrt(ust/top);
+  }
+
+  /* ── tüm ölçüm, bir kez ── */
+  const CACHE = {};
+  function olc(){
+    if (CACHE.hazir) return CACHE;
+    const dA = veri('A', 101), dB = veri('B', 202), dBtest = veri('B', 303);
+    const R = rng(5);
+    const M0 = Array.from({length:D}, () => Array.from({length:D}, () => (R()-0.5)*0.30));
+    const H0 = Array.from({length:SINIF}, () => Array.from({length:D}, () => (R()-0.5)*0.30));
+
+    /* 1 · görev A üzerinde ön eğitim */
+    const on = egit(M0, H0, dA, 260, 0.9);
+    CACHE.onA   = dogruluk(on.M, on.H, dA);
+    CACHE.onB   = dogruluk(on.M, on.H, dBtest);   // uyarlanmadan görev B başarısı
+
+    /* 2 · görev B üzerinde TAM ince ayar */
+    const tam = egit(on.M, on.H, dB, 260, 0.9);
+    CACHE.tamB = dogruluk(tam.M, tam.H, dBtest);
+    CACHE.tamEgitilen = D*D + SINIF*D;
+
+    /* 3 · ΔW gerçekten düşük ranklı mı */
+    const Delta = tam.M.map((row,j) => row.map((v,k) => v - on.M[j][k]));
+    CACHE.sv = tekilDegerler(Delta);
+    CACHE.kesme = [1,2,4,8,16,48].map(r => ({ r, oran: kesmeOrani(CACHE.sv, r) }));
+    /* etkin rank: toplam normun %90'ını tutan en küçük r */
+    CACHE.etkinRank = CACHE.kesme.length;
+    for (let r=1;r<=D;r++) if (kesmeOrani(CACHE.sv, r) >= 0.90){ CACHE.etkinRank = r; break; }
+
+    /* 4 · gerçek LoRA eğitimi, her rank için */
+    CACHE.rank = [1,2,4,8,16].map(r => {
+      const L = egitLora(on.M, on.H, dB, r, 260, 0.9, r);   // alfa = r ⇒ ölçek 1
+      return { r, dogruluk: dogruluk(L.M, L.H, dBtest),
+               egitilen: L.egitilen + SINIF*D };
+    });
+    CACHE.D = D; CACHE.SINIF = SINIF;
+    CACHE.hazir = true;
+    return CACHE;
+  }
+
+  /* ── gerçek ölçekte aritmetik ──
+     Bu bir ölçüm değil, tam sayı aritmetiğidir; d büyüdükçe LoRA'nın kazancının
+     neden patladığını göstermek için. Bir transformer katmanında dikkat
+     matrisleri d×d boyutundadır ve LoRA genelde Q ile V'ye uygulanır. */
+  function olcek(d, katman, r, basinaMatris){
+    const m = basinaMatris === undefined ? 2 : basinaMatris;   // Q ve V
+    const tam  = katman * m * d * d;
+    const lora = katman * m * r * (2*d);
+    return { d, katman, r, tam, lora, oran: lora/tam,
+             /* fp16 optimizer durumu dahil kabaca bellek: ağırlık 2 bayt,
+                Adam momentumları 2×4 bayt, gradyan 2 bayt ⇒ eğitilen başına 12 bayt */
+             tamGB: tam*12/1e9, loraGB: lora*12/1e9 };
+  }
+
+  return { D, SINIF, olc, tekilDegerler, kesmeOrani, olcek };
+})();
+
+/* ── 1 · uyarlanmadan olmuyor ── */
+VIZ.lrBosluk = s => {
+  clear();
+  const o = LORA.olc();
+  const goster = Math.max(0, Math.min(2, Math.round(s.asama === undefined ? 0 : s.asama)));
+  baslikSerit('İNCE AYAR NEDEN GEREKİYOR',
+    'Bir görevde eğitilmiş model, akraba bir göreve olduğu gibi taşınmıyor.',
+    [['A', (100*o.onA).toFixed(1)+'%', K.blue],
+     ['B · uyarlanmadan', (100*o.onB).toFixed(1)+'%', K.red],
+     ['B · ince ayar', (100*o.tamB).toFixed(1)+'%', goster>=1?K.green:K.mut]]);
+
+  const P = plot(rect(160, 230, 620, 340), -0.5, 2.5, 0, 1.0);
+  txt('DOĞRULUK', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'doğruluk', [], [0, 0.25, 0.5, 0.75, 1]);
+  cx.setLineDash([6,6]); cx.strokeStyle = K.mut; cx.lineWidth = 2;
+  cx.beginPath(); cx.moveTo(P.R.x, P.sy(1/3)); cx.lineTo(P.R.x+P.R.w, P.sy(1/3)); cx.stroke();
+  cx.setLineDash([]);
+  txt('rastgele tahmin  33.3%', P.R.x+P.R.w-12, P.sy(1/3)-10, K.mut, 15, 'right');
+
+  const KOL = [['görev A', o.onA, K.blue, 0], ['görev B\nuyarlanmadan', o.onB, K.red, 1],
+               ['görev B\ntam ince ayar', o.tamB, K.green, 2]];
+  KOL.forEach(([ad, v, renk, i], q) => {
+    if (q === 2 && goster < 1) return;
+    const x = P.sx(i), gen = 130;
+    box(x-gen/2, P.sy(v), gen, P.sy(0)-P.sy(v), renk+'cc', null);
+    txt((100*v).toFixed(1)+'%', x, P.sy(v)-14, renk, 21);
+    ad.split('\n').forEach((sat,k) => txt(sat, x, P.R.y+P.R.h+30+k*22, K.mut, 15));
+  });
+  if (goster >= 1){
+    cx.strokeStyle = K.yellow; cx.lineWidth = 3;
+    const x1 = P.sx(1)+80, y1 = P.sy(o.onB), y2 = P.sy(o.tamB);
+    cx.beginPath(); cx.moveTo(x1,y1); cx.lineTo(x1,y2); cx.stroke();
+    txt('kazanılan  '+(100*(o.tamB-o.onB)).toFixed(1)+' puan', x1+14, (y1+y2)/2+6, K.yellow, 16, 'left');
+  }
+
+  const bx = 830;
+  box(bx, 230, 560, 200, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('DÜZENEK', bx+280, 268, K.mut, 19);
+  txt('Görev A: 3 gizli özelliğin ağırlıklı toplamı', bx+24, 306, K.mut, 16, 'left');
+  txt('Görev B: aynı 3 özellik ARTI 2 tanesi daha', bx+24, 334, K.mut, 16, 'left');
+  txt('Yani görevler akraba ama aynı değil.', bx+24, 366, K.txt, 16, 'left');
+  txt('Model önce A üzerinde eğitiliyor, sonra B ye', bx+24, 396, K.mut, 16, 'left');
+  txt('uyarlanıyor. Uyarlanan matris '+o.D+'×'+o.D+' boyutunda.', bx+24, 418, K.mut, 16, 'left');
+
+  if (goster >= 2){
+    box(bx, 450, 560, 260, 'rgba(248,113,113,.06)', 'rgba(248,113,113,.4)', 2);
+    txt('AMA TAM İNCE AYARIN BEDELİ VAR', bx+280, 488, K.red, 18);
+    txt('Eğitilen parametre: '+o.tamEgitilen.toLocaleString('tr'), bx+280, 528, K.txt, 20);
+    txt('Bu küçük modelde sorun değil. Ama aynı işlemi', bx+24, 566, K.mut, 16, 'left');
+    txt('7 milyar parametreli bir modelde yapmak,', bx+24, 590, K.mut, 16, 'left');
+    txt('tek bir görev için modelin TAMAMININ ayrı bir', bx+24, 614, K.mut, 16, 'left');
+    txt('kopyasını saklamak demektir.', bx+24, 638, K.mut, 16, 'left');
+    txt('On görev, on tam kopya.', bx+280, 676, K.orange, 18);
+  } else {
+    box(bx, 450, 560, 260, 'rgba(7,10,15,.4)', K.axis, 2);
+    txt('Kaydırıcıyı ilerlet', bx+280, 588, K.mut, 19);
+  }
+
+  durum(goster === 0
+    ? 'ön eğitim görev A da %'+(100*o.onA).toFixed(1)+'  ·  aynı model görev B de yalnızca %'+(100*o.onB).toFixed(1)
+    : 'tam ince ayar görev B yi %'+(100*o.tamB).toFixed(1)+'e çıkarıyor  ·  bedeli '+
+      o.tamEgitilen.toLocaleString('tr')+' parametre eğitmek',
+    goster === 0 ? K.red : K.green);
+};
+
+/* ── 2 · ΔW gerçekten düşük ranklı mı ── */
+VIZ.lrRank = s => {
+  clear();
+  const o = LORA.olc();
+  const r = Math.max(1, Math.min(48, Math.round(s.rank === undefined ? 8 : s.rank)));
+  const oran = LORA.kesmeOrani(o.sv, r);
+  baslikSerit('İNCE AYAR GÜNCELLEMESİ DÜŞÜK RANKLIDIR',
+    'ΔW = (ince ayarlı W) − (ön eğitimli W). Bu matrisin tekil değerlerine bak.',
+    [['RANK  r', String(r), K.blue],
+     ['TUTULAN NORM', (100*oran).toFixed(1)+'%', oran>0.9?K.green:K.orange],
+     ['ETKİN RANK', String(o.etkinRank)+' / '+o.D, K.yellow]]);
+
+  const P = plot(rect(120, 240, 700, 320), -0.5, o.D-0.5, 0, Math.max(...o.sv)*1.12);
+  txt('ΔW NİN TEKİL DEĞERLERİ  ·  yatay eksen sıra', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'tekil değer', [0,8,16,24,32,40], [0,1,2]);
+  o.sv.forEach((v,i) => {
+    const x = P.sx(i), gen = Math.max(2, P.R.w/o.D*0.7);
+    box(x-gen/2, P.sy(v), gen, P.sy(0)-P.sy(v), (i<r?K.green:K.mut)+'cc', null);
+  });
+  cx.strokeStyle = K.yellow; cx.lineWidth = 3; cx.setLineDash([6,5]);
+  cx.beginPath(); cx.moveTo(P.sx(r-0.5), P.R.y); cx.lineTo(P.sx(r-0.5), P.R.y+P.R.h); cx.stroke();
+  cx.setLineDash([]);
+  txt('r = '+r, P.sx(r-0.5)+10, P.R.y+26, K.yellow, 17, 'left');
+  txt('■ tutulan', P.R.x+P.R.w-14, P.R.y+30, K.green, 16, 'right');
+  txt('■ atılan', P.R.x+P.R.w-14, P.R.y+54, K.mut, 16, 'right');
+
+  /* kesme oranı eğrisi */
+  const Q = plot(rect(120, 620, 700, 60), 1, o.D, 0, 1.05);
+  txt('RANK r ile TUTULAN FROBENIUS NORMU  ·  yatay eksen r', Q.R.x+Q.R.w/2, Q.R.y-14, K.mut, 17);
+  frame(Q, '', '', [1,8,16,24,32,40,48], []);
+  cx.strokeStyle = K.blue; cx.lineWidth = 3; cx.beginPath();
+  for (let q=1;q<=o.D;q++){
+    const v = LORA.kesmeOrani(o.sv, q);
+    q===1 ? cx.moveTo(Q.sx(q), Q.sy(v)) : cx.lineTo(Q.sx(q), Q.sy(v));
+  }
+  cx.stroke();
+  dot(Q.sx(r), Q.sy(oran), 6, K.yellow);
+
+  const bx = 870;
+  box(bx, 240, 520, 200, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('SAYILAR', bx+260, 278, K.mut, 19);
+  txt('r', bx+90, 314, K.mut, 16);
+  txt('tutulan norm', bx+300, 314, K.mut, 16);
+  o.kesme.slice(0,5).forEach((k,i) => {
+    const y = 348+i*22, vur = k.r === r;
+    txt(String(k.r), bx+90, y, vur?K.yellow:K.mut, 16);
+    txt((100*k.oran).toFixed(1)+'%', bx+300, y, vur?K.yellow:(k.oran>0.9?K.green:K.mut), 16);
+  });
+
+  box(bx, 460, 520, 250, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('OKUNAN ŞEY', bx+260, 498, K.mut, 18);
+  txt('Matris '+o.D+'×'+o.D+', yani tam rank '+o.D+'.', bx+24, 534, K.mut, 16, 'left');
+  txt('Ama ilk 8 tekil değer normun %94.5 ini', bx+24, 562, K.txt, 16, 'left');
+  txt('taşıyor. Kalan 40 tanesi neredeyse boş.', bx+24, 586, K.txt, 16, 'left');
+  txt('Yani ince ayarın yaptığı değişiklik,', bx+24, 620, K.mut, 16, 'left');
+  txt(o.D+' boyutlu değil, kabaca 8 boyutlu.', bx+24, 644, K.mut, 16, 'left');
+  txt('LoRA nın dayandığı gözlem bu.', bx+260, 684, K.green, 18);
+
+  durum('r = '+r+'  ·  tekil değerlerin ilk '+r+' tanesi Frobenius normunun %'+
+        (100*oran).toFixed(1)+'ini tutuyor', oran > 0.9 ? K.green : K.orange);
+};
+
+/* ── 3 · LoRA rank taraması ── */
+VIZ.lrTara = s => {
+  clear();
+  const o = LORA.olc();
+  const RS = [1,2,4,8,16];
+  const i = Math.max(0, Math.min(4, Math.round(s.secim === undefined ? 3 : s.secim)));
+  const se = o.rank[i];
+  const kazanc = (se.dogruluk - o.onB) / (o.tamB - o.onB);
+  baslikSerit('LoRA · RANK TARAMASI',
+    'W donduruldu. Yalnızca iki küçük matris (A ve B) eğitiliyor.',
+    [['RANK  r', String(se.r), K.blue],
+     ['DOĞRULUK', (100*se.dogruluk).toFixed(1)+'%', K.green],
+     ['EĞİTİLEN', se.egitilen.toLocaleString('tr'), K.yellow]]);
+
+  const P = plot(rect(140, 240, 660, 330), -0.5, 4.5, 0.55, 0.80);
+  txt('DOĞRULUK · rank başına', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'doğruluk', [], [0.6, 0.7, 0.8]);
+  /* referans çizgileri */
+  [[o.tamB, K.green, 'tam ince ayar'], [o.onB, K.red, 'uyarlanmadan']].forEach(([v,renk,ad]) => {
+    cx.strokeStyle = renk; cx.lineWidth = 2.5; cx.setLineDash([7,5]);
+    cx.beginPath(); cx.moveTo(P.R.x, P.sy(v)); cx.lineTo(P.R.x+P.R.w, P.sy(v)); cx.stroke();
+    cx.setLineDash([]);
+    txt(ad+'  '+(100*v).toFixed(1)+'%', P.R.x+10, P.sy(v)-10, renk, 15, 'left');
+  });
+  cx.strokeStyle = K.blue; cx.lineWidth = 4; cx.beginPath();
+  o.rank.forEach((q,k) => k===0 ? cx.moveTo(P.sx(k), P.sy(q.dogruluk))
+                                : cx.lineTo(P.sx(k), P.sy(q.dogruluk)));
+  cx.stroke();
+  o.rank.forEach((q,k) => {
+    dot(P.sx(k), P.sy(q.dogruluk), k===i?9:6, k===i?K.yellow:K.blue);
+    txt('r='+q.r, P.sx(k), P.R.y+P.R.h+30, k===i?K.yellow:K.mut, 16);
+    txt((100*q.dogruluk).toFixed(1)+'%', P.sx(k), P.sy(q.dogruluk)-18, k===i?K.yellow:K.blue, 15);
+  });
+
+  const bx = 850;
+  box(bx, 240, 540, 210, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('EĞİTİLEN PARAMETRE', bx+270, 278, K.mut, 19);
+  txt('r', bx+70, 312, K.mut, 15);
+  txt('eğitilen', bx+220, 312, K.mut, 15);
+  txt('tam ayarın', bx+400, 312, K.mut, 15);
+  o.rank.forEach((q,k) => {
+    const y = 344+k*20, vur = k===i;
+    txt(String(q.r), bx+70, y, vur?K.yellow:K.mut, 15);
+    txt(q.egitilen.toLocaleString('tr'), bx+220, y, vur?K.yellow:K.blue, 15);
+    txt('%'+(100*q.egitilen/o.tamEgitilen).toFixed(1), bx+400, y,
+        vur?K.yellow:K.mut, 15);
+  });
+
+  box(bx, 470, 540, 240, 'rgba(34,211,160,.06)', 'rgba(34,211,160,.4)', 2);
+  txt('SEÇİLİ RANK', bx+270, 508, K.green, 18);
+  txt('r = '+se.r+'  ·  '+se.egitilen.toLocaleString('tr')+' parametre', bx+270, 546, K.txt, 20);
+  txt('Uyarlanmadan '+(100*o.onB).toFixed(1)+'% idi.', bx+24, 584, K.mut, 16, 'left');
+  txt('Tam ince ayar '+(100*o.tamB).toFixed(1)+'% veriyor.', bx+24, 608, K.mut, 16, 'left');
+  txt('Bu rank '+(100*se.dogruluk).toFixed(1)+'% veriyor,', bx+24, 632, K.txt, 16, 'left');
+  txt('yani kazancın %'+(100*kazanc).toFixed(1)+'ini geri alıyor', bx+24, 656, K.green, 16, 'left');
+  txt('tam ayarın %'+(100*se.egitilen/o.tamEgitilen).toFixed(1)+' parametresiyle.', bx+24, 680, K.green, 16, 'left');
+
+  durum('r = '+se.r+'  ·  doğruluk %'+(100*se.dogruluk).toFixed(1)+
+        '  ·  eğitilen '+se.egitilen.toLocaleString('tr')+
+        ' (tam ayarın %'+(100*se.egitilen/o.tamEgitilen).toFixed(1)+'i)', K.green);
+};
+
+/* ── 4 · gerçek ölçekte ── */
+VIZ.lrOlcek = s => {
+  clear();
+  const MOD = [['7B', 4096, 32], ['13B', 5120, 40], ['70B', 8192, 80]];
+  const mi = Math.max(0, Math.min(2, Math.round(s.model === undefined ? 0 : s.model)));
+  const RS = [1,2,4,8,16,64];
+  const ri = Math.max(0, Math.min(5, Math.round(s.rank === undefined ? 3 : s.rank)));
+  const [ad, d, kat] = MOD[mi];
+  const o = LORA.olcek(d, kat, RS[ri]);
+  baslikSerit('GERÇEK ÖLÇEKTE NE ANLAMA GELİYOR',
+    'Aşağıdaki sayılar ölçüm değil, tam sayı aritmetiğidir. Dikkat matrisleri Q ve V.',
+    [['MODEL', ad+' · d='+d, K.blue],
+     ['RANK  r', String(RS[ri]), K.yellow],
+     ['ORAN', '%'+(100*o.oran).toFixed(3), K.green]]);
+
+  const P = plot(rect(140, 250, 640, 300), 0, 1, -0.6, 1.6);
+  txt('EĞİTİLEN PARAMETRE (log ölçek)', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  const lg = v => Math.log10(Math.max(1, v));
+  const enB = lg(o.tam);
+  [['tam ince ayar', o.tam, K.red, 1.15], ['LoRA r='+RS[ri], o.lora, K.green, 0.35]].forEach(
+    ([et, v, renk, yy]) => {
+      const gen = P.R.w * (lg(v)/enB);
+      box(P.R.x+10, P.sy(yy)-34, gen-20, 60, renk+'cc', null);
+      txt(et, P.R.x+24, P.sy(yy)-6, '#04120d', 17, 'left');
+      txt((v/1e6).toFixed(v>=1e8?0:2)+'M parametre', P.R.x+24, P.sy(yy)+18, '#04120d', 17, 'left');
+    });
+  txt('çubuk uzunluğu logaritmiktir', P.R.x+P.R.w/2, P.R.y+P.R.h-16, K.mut, 15);
+
+  box(140, 580, 640, 130, 'rgba(34,211,160,.06)', 'rgba(34,211,160,.4)', 2);
+  txt('KAT FARK', 460, 616, K.green, 19);
+  txt((o.tam/o.lora).toFixed(0)+'×', 460, 664, K.green, 40);
+  txt('oran tam olarak 2r/d ye eşittir', 460, 696, K.mut, 15);
+
+  const bx = 830;
+  box(bx, 250, 560, 210, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('OPTİMİZER DURUMU İÇİN BELLEK', bx+280, 288, K.mut, 19);
+  txt('eğitilen parametre başına ~12 bayt', bx+280, 316, K.mut, 15);
+  txt('tam ince ayar', bx+24, 356, K.red, 17, 'left');
+  txt(o.tamGB.toFixed(2)+' GB', bx+520, 356, K.red, 19, 'right');
+  txt('LoRA r='+RS[ri], bx+24, 392, K.green, 17, 'left');
+  txt(o.loraGB < 1 ? (o.loraGB*1000).toFixed(0)+' MB' : o.loraGB.toFixed(2)+' GB',
+      bx+520, 392, K.green, 19, 'right');
+  txt('Tek GPU ya sığmakla sığmamak arasındaki fark.', bx+280, 432, K.txt, 16);
+
+  box(bx, 480, 560, 230, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('İKİ PRATİK SONUÇ', bx+280, 518, K.mut, 18);
+  txt('1 · Çıkarımda ek gecikme YOK.', bx+24, 554, K.green, 17, 'left');
+  txt('W + BA tek bir matrise toplanabilir,', bx+24, 578, K.mut, 16, 'left');
+  txt('yani modelin şekli hiç değişmez.', bx+24, 600, K.mut, 16, 'left');
+  txt('2 · Uyarlayıcılar takılıp çıkarılabilir.', bx+24, 634, K.green, 17, 'left');
+  txt('Her görev için birkaç MB saklarsın,', bx+24, 658, K.mut, 16, 'left');
+  txt('taban model tek kopya olarak durur.', bx+24, 680, K.mut, 16, 'left');
+
+  durum(ad+' · d='+d+' · '+kat+' katman  ·  tam '+(o.tam/1e6).toFixed(1)+
+        'M, LoRA r='+RS[ri]+' ile '+(o.lora/1e6).toFixed(2)+'M  ·  '+
+        (o.tam/o.lora).toFixed(0)+' kat az', K.green);
+};

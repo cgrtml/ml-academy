@@ -4104,6 +4104,60 @@ console.log('═══ DENGESİZ VERİ ═══');
 }
 
 console.log('');
+console.log('═══ LoRA ═══');
+{
+  const L = LORA.olc();
+  iddia('gizli boyut D',48,L.D);
+  iddia('görev A doğruluk %',80.0,100*L.onA,1);
+  iddia('görev B uyarlanmadan %',58.8,100*L.onB,1);
+  iddia('görev B tam ince ayar %',74.2,100*L.tamB,1);
+  iddia('tam eğitilen parametre',2448,L.tamEgitilen);
+
+  /* ΔW tekil değerleri */
+  [[0,2.756],[1,2.286],[2,2.111],[3,2.081],[4,1.726],
+   [5,1.652],[6,1.343],[7,1.327],[8,0.465],[9,0.445]].forEach(([i,v])=>
+    iddia('ΔW tekil değer '+i,v,L.sv[i],3));
+  /* sekizden dokuza keskin düşüş: ders bunu iddia ediyor */
+  if (L.sv[8] > L.sv[7]*0.5) console.log('  ✗ tekil değerlerde beklenen düşüş yok');
+  iddia('etkin rank',7,L.etkinRank);
+  [[1,46.9],[2,60.9],[4,79.1],[8,94.5],[16,96.5],[48,100.0]].forEach(([r,v])=>
+    iddia('kesme r='+r+' %',v,100*LORA.kesmeOrani(L.sv,r),1));
+
+  /* LoRA rank taraması */
+  [[1,72.7,240],[2,73.2,336],[4,73.8,528],[8,74.2,912],[16,73.8,1680]].forEach(([r,d,e],i)=>{
+    iddia('LoRA r='+r+' doğruluk %',d,100*L.rank[i].dogruluk,1);
+    iddia('LoRA r='+r+' eğitilen',e,L.rank[i].egitilen);
+    iddia('LoRA r='+r+' tam ayarın %',100*e/L.tamEgitilen,100*L.rank[i].egitilen/L.tamEgitilen,4);
+  });
+  /* r=8 tam ince ayara birebir oturuyor: ders bunu iddia ediyor */
+  if (Math.abs(L.rank[3].dogruluk - L.tamB) > 1e-9)
+    console.log('  ✗ r=8 tam ince ayara birebir oturmuyor');
+  /* r=1 kazancın %90.2 sini geri alıyor */
+  iddia('r=1 geri alınan kazanç %',90.2,
+        100*(L.rank[0].dogruluk-L.onB)/(L.tamB-L.onB),1);
+  /* r=16, r=8 den iyi DEĞİL: ders bunu iddia ediyor */
+  if (L.rank[4].dogruluk > L.rank[3].dogruluk)
+    console.log('  ✗ r=16, r=8 den iyi çıktı, ders yanlış');
+
+  /* gerçek ölçek aritmetiği */
+  [[4096,32,8,1073741824,4194304],[5120,40,8,2097152000,6553600],
+   [8192,80,8,10737418240,20971520]].forEach(([d,k,r,tam,lora])=>{
+    const o = LORA.olcek(d,k,r);
+    iddia('d='+d+' tam',tam,o.tam);
+    iddia('d='+d+' LoRA',lora,o.lora);
+    /* oran tam olarak 2r/d olmalı */
+    iddia('d='+d+' oran = 2r/d',2*r/d,o.oran,10);
+  });
+  [[1,0.0488],[2,0.0977],[4,0.1953],[8,0.3906],[16,0.7813],[64,3.1250]].forEach(([r,v])=>
+    iddia('7B r='+r+' oran %',v,100*LORA.olcek(4096,32,r).oran,4));
+  iddia('7B r=8 kat fark',256,LORA.olcek(4096,32,8).tam/LORA.olcek(4096,32,8).lora);
+  iddia('7B tam GB',12.88,LORA.olcek(4096,32,8).tamGB,2);
+  iddia('7B LoRA MB',50.33,1000*LORA.olcek(4096,32,8).loraGB,2);
+  [1,2,4,8,16,64].forEach(r=>
+    iddia('7B r='+r+' M param',LORA.olcek(4096,32,r).lora/1e6,
+          [0.52,1.05,2.10,4.19,8.39,33.55][[1,2,4,8,16,64].indexOf(r)],2));
+}
+
 console.log('═══ BİLGİ KURAMI ═══');
 {
   /* entropi ve gerçek Huffman kodu */

@@ -646,6 +646,17 @@ var ARAYUZ_EN = {
   "H(X)": "H(X)",
   "H(X|Y)": "H(X|Y)",
   "I(X;Y)": "I(X;Y)",
+  "boşluk": "the gap",
+  "bedeli": "its price",
+  "#B": "#B",
+  "GÖREV A": "TASK A",
+  "UYARLANMADAN": "UNADAPTED",
+  "TAM İNCE AYAR": "FULL FINE-TUNE",
+  "RANK": "RANK",
+  "TUTULAN NORM": "NORM KEPT",
+  "ETKİN RANK": "EFFECTIVE RANK",
+  "EĞİTİLEN": "TRAINED",
+  "LoRA": "LoRA",
 /*SON*/
 };
 

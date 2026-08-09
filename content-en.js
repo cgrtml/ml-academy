@@ -8779,3 +8779,173 @@ DERSLER_EN['bilgi-kurami'] = {
   ],
 };
 DERS_ADI_EN['bilgi-kurami'] = 'Information theory: entropy, cross entropy, KL';
+
+DERSLER_EN['lora'] = {
+  ad:'LoRA: adapting a model without training all of it',
+  alt:'The transformer lesson said "this is why LoRA and quantisation exist". The reason gets measured here.',
+  adimlar:[
+  {
+    t:'Why fine-tuning is needed',
+    goal:'You will measure how much a model trained on one task loses on a related one.',
+    todo:'Advance the slider. First the gap, then the price of full fine-tuning.',
+    kind:'controls', viz:'lrBosluk', h:760, xp:45,
+    controls:[{k:'asama', lb:'STAGE', min:0, max:2, step:1, val:0,
+               fmt:v=>['the gap','full fine-tune','its price'][Math.round(v)]}],
+    body:'<p>The setup: a 48×48 intermediate weight matrix is first trained on <b>task A</b>. ' +
+      'Task A is sorting into three classes by a weighted sum of three hidden features.</p>' +
+      '<p>The same model is then tested on <b>task B</b>. Task B is related but not the same: ' +
+      'the same three features <b>plus two more</b> determine the label.</p>' +
+      '<p>Measured:</p>' +
+      '<p style="font-family:var(--mono)">accuracy on task A &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>80.0%</b><br>' +
+      'task B, unadapted &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>58.8%</b><br>' +
+      'task B, full fine-tune &nbsp;&nbsp;&nbsp;<b>74.2%</b></p>' +
+      '<p>With three classes, random guessing gives 33.3%. The unadapted model\'s 58.8% is ' +
+      'better than that, so pretraining <b>did teach something</b> and it partly transfers. ' +
+      'But full fine-tuning adds another 15.4 points.</p>' +
+      '<p>Nothing surprising so far. The real issue is the second part: winning those 15.4 ' +
+      'points required training and storing <b>all 2,448 parameters</b>.</p>' +
+      '<p>In a model this small that is no problem. But doing the same thing to a model with ' +
+      '7 billion parameters means storing <b>a complete extra copy</b> of the model for one ' +
+      'task. Ten tasks, ten copies. And the memory the optimizer state needs during training ' +
+      'is several times the size of the model itself.</p>' +
+      '<p>The question to ask: can those 15.4 points be won without moving <b>all</b> the ' +
+      'parameters?</p>',
+    learned:'<b>A model loses accuracy when moved to a related task, and fine-tuning wins it back.</b><br><br>' +
+      '80.0% on task A, 58.8% on task B unadapted, 74.2% after full fine-tuning. Since random ' +
+      'guessing is 33.3%, pretraining helps but is not enough.<br><br>' +
+      'The price: all 2,448 parameters were trained for those 15.4 points.',
+  },
+  {
+    t:'The change is low rank',
+    goal:'You will measure how many dimensions the change fine-tuning makes to the weights actually fits into.',
+    todo:'Move the rank slider. Green bars are kept components, grey ones are discarded.',
+    kind:'controls', viz:'lrRank', h:760, xp:55,
+    controls:[{k:'rank', lb:'RANK', min:1, max:48, step:1, val:8, fmt:v=>String(Math.round(v))}],
+    body:'<p>The previous step produced two matrices: W from pretraining and W\' from ' +
+      'fine-tuning. The difference <b>ΔW = W\' − W</b> is exactly what fine-tuning changed.</p>' +
+      '<p>The question in this step: is ΔW genuinely a 48-dimensional change, or does it fit ' +
+      'into fewer dimensions? The way to measure that is to look at its <b>singular ' +
+      'values</b>, which say in how many independent directions a matrix does how much work.</p>' +
+      '<p>The first ten singular values of ΔW:</p>' +
+      '<p style="font-family:var(--mono)">2.756 &nbsp;2.286 &nbsp;2.111 &nbsp;2.081 &nbsp;1.726<br>' +
+      '1.652 &nbsp;1.343 &nbsp;1.327 &nbsp;<b>0.465</b> &nbsp;0.445</p>' +
+      '<p>Going from the eighth to the ninth it falls from <b>1.327 to 0.465</b>, to about a ' +
+      'third. A drop that abrupt does not appear in a random matrix.</p>' +
+      '<p>The same thing is easier to read cumulatively: how much of the matrix\'s Frobenius ' +
+      'norm the first r singular values hold:</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;r &nbsp;&nbsp;norm kept<br>' +
+      '&nbsp;1 &nbsp;&nbsp;&nbsp;46.9%<br>' +
+      '&nbsp;2 &nbsp;&nbsp;&nbsp;60.9%<br>' +
+      '&nbsp;4 &nbsp;&nbsp;&nbsp;79.1%<br>' +
+      '&nbsp;8 &nbsp;&nbsp;&nbsp;<b>94.5%</b><br>' +
+      '16 &nbsp;&nbsp;&nbsp;96.5%<br>' +
+      '48 &nbsp;&nbsp;100.0%</p>' +
+      '<p>The matrix is 48×48, so its full rank is 48. Yet <b>8 components carry 94.5% of the ' +
+      'norm</b>. The smallest rank that keeps 90% of the norm is <b>7</b>.</p>' +
+      '<p>What that means: the work fine-tuning does looks like a 48-dimensional change but is ' +
+      'really about 8-dimensional. The remaining 40 directions are barely used.</p>' +
+      '<p>This is exactly the observation LoRA rests on. Aghajanyan and colleagues measured it ' +
+      'in 2021 under the name "intrinsic dimension", and Hu and colleagues turned it into a ' +
+      'training method the same year.</p>',
+    learned:'<b>The change fine-tuning makes to the weights is low rank.</b><br><br>' +
+      'Although ΔW is 48×48, its first 8 singular values hold 94.5% of the Frobenius norm. ' +
+      'The singular values fall from 1.327 to 0.465 between the eighth and the ninth.<br><br>' +
+      'The smallest rank keeping 90% of the norm is only 7.<br><br>' +
+      'So although the model looks like it changed in 48 dimensions, it really changed in ' +
+      'roughly 8.',
+  },
+  {
+    t:'LoRA: just two small matrices',
+    goal:'You will measure how much quality a low-rank adapter on a frozen model recovers.',
+    todo:'Pick a rank. The green dashed line is full fine-tuning, the red one is the unadapted model.',
+    kind:'controls', viz:'lrTara', h:760, xp:60,
+    controls:[{k:'secim', lb:'RANK', min:0, max:4, step:1, val:3,
+               fmt:v=>'r = '+[1,2,4,8,16][Math.round(v)]}],
+    body:'<p>The idea: since ΔW is low rank, let us learn it while <b>forcing it to be low rank ' +
+      'from the start</b>. W stays frozen and what gets learned is two small matrices:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">W<sub>effective</sub> = W + (α/r) · B A</p>' +
+      '<p>Here A is rank×48 and B is 48×rank. Their product is 48×48 but its rank is at most ' +
+      'r. The number of trained parameters becomes <b>r · 96</b> instead of 48² = 2,304.</p>' +
+      '<p>One detail matters: <b>B starts at zero</b> and A at small random values. So at the ' +
+      'first moment of training BA = 0 and the model is exactly its pretrained self. Attaching ' +
+      'an adapter therefore <b>does not damage the model at all</b>; it starts from nothing ' +
+      'and improves.</p>' +
+      '<p>Measured (references: 58.8% unadapted, 74.2% full fine-tune):</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;r &nbsp;&nbsp;accuracy &nbsp;&nbsp;trained &nbsp;&nbsp;of full<br>' +
+      '&nbsp;&nbsp;1 &nbsp;&nbsp;&nbsp;72.7% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;240 &nbsp;&nbsp;&nbsp;&nbsp;9.8%<br>' +
+      '&nbsp;&nbsp;2 &nbsp;&nbsp;&nbsp;73.2% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;336 &nbsp;&nbsp;&nbsp;13.7%<br>' +
+      '&nbsp;&nbsp;4 &nbsp;&nbsp;&nbsp;73.8% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;528 &nbsp;&nbsp;&nbsp;21.6%<br>' +
+      '&nbsp;&nbsp;8 &nbsp;&nbsp;&nbsp;<b>74.2%</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;912 &nbsp;&nbsp;&nbsp;37.3%<br>' +
+      '16 &nbsp;&nbsp;&nbsp;73.8% &nbsp;&nbsp;&nbsp;&nbsp;1,680 &nbsp;&nbsp;&nbsp;68.6%</p>' +
+      '<p>Two things can be read off.</p>' +
+      '<p>First: <b>r = 8 lands exactly on full fine-tuning\'s accuracy</b> (74.2% = 74.2%). ' +
+      'That is not a coincidence; the effective rank measured in the previous step was 7 and ' +
+      'the singular values dropped right there.</p>' +
+      '<p>Second and more striking: <b>even r = 1</b>, meaning a single direction added to a ' +
+      '48×48 matrix, recovers <b>90.2%</b> of the gain. And it does so with 9.8% of the ' +
+      'parameters of full fine-tuning.</p>' +
+      '<p>One point deserves honesty: r = 16 is <b>not better</b> than r = 8, it is slightly ' +
+      'worse (73.8% against 74.2%). More parameters do not automatically produce better ' +
+      'results. Training more parameters on the same data makes optimisation harder and ' +
+      'raises the risk of overfitting. Rank is a hyperparameter to be tuned, and "just make ' +
+      'it bigger" is not the right strategy.</p>',
+    learned:'<b>A low-rank adapter on a frozen model catches full fine-tuning.</b><br><br>' +
+      'r = 8 landed exactly on full fine-tuning\'s accuracy: 74.2% = 74.2%, with only 37.3% ' +
+      'of its parameters.<br><br>' +
+      'Even r = 1 recovered 90.2% of the gain, with 9.8% of the parameters.<br><br>' +
+      'r = 16 is not better than r = 8 (73.8%). Rank is a hyperparameter to be tuned.<br><br>' +
+      'Because B starts at zero, attaching an adapter does not damage the model at all.',
+  },
+  {
+    t:'What it means at real scale',
+    goal:'You will see what the same arithmetic produces on a model with billions of parameters.',
+    todo:'Pick a model and a rank. The numbers in this step are arithmetic, not measurements.',
+    kind:'controls', viz:'lrOlcek', h:760, xp:50,
+    controls:[{k:'model', lb:'MODEL', min:0, max:2, step:1, val:0,
+               fmt:v=>['7B','13B','70B'][Math.round(v)]},
+              {k:'rank', lb:'RANK', min:0, max:5, step:1, val:3,
+               fmt:v=>'r = '+[1,2,4,8,16,64][Math.round(v)]}],
+    body:'<p>The numbers in this step are not a measurement but <b>integer arithmetic</b>. The ' +
+      'attention matrices in a transformer layer are d×d, and LoRA is usually applied to the ' +
+      'query (Q) and value (V) matrices.</p>' +
+      '<p>The ratio reduces to a single expression. For two matrices per layer, full ' +
+      'fine-tuning trains 2d² parameters and LoRA trains 2r·2d. Dividing, the d² cancels:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">LoRA / full = 2r / d</p>' +
+      '<p>So the ratio depends <b>only on the ratio of rank to hidden size</b>; the number of ' +
+      'layers does not enter at all.</p>' +
+      '<p>For a model with 7 billion parameters (d = 4096, 32 layers):</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;r &nbsp;&nbsp;trained &nbsp;&nbsp;&nbsp;ratio<br>' +
+      '&nbsp;&nbsp;1 &nbsp;&nbsp;&nbsp;0.52M &nbsp;&nbsp;0.0488%<br>' +
+      '&nbsp;&nbsp;2 &nbsp;&nbsp;&nbsp;1.05M &nbsp;&nbsp;0.0977%<br>' +
+      '&nbsp;&nbsp;4 &nbsp;&nbsp;&nbsp;2.10M &nbsp;&nbsp;0.1953%<br>' +
+      '&nbsp;&nbsp;8 &nbsp;&nbsp;&nbsp;<b>4.19M</b> &nbsp;&nbsp;<b>0.3906%</b><br>' +
+      '16 &nbsp;&nbsp;&nbsp;8.39M &nbsp;&nbsp;0.7813%<br>' +
+      '64 &nbsp;&nbsp;33.55M &nbsp;&nbsp;3.1250%</p>' +
+      '<p>Fine-tuning all the Q and V matrices means training 1,073.7M parameters. LoRA with ' +
+      'r = 8 trains 4.19M. <b>256 times fewer.</b></p>' +
+      '<p>Where that really shows is memory. During training, each trained parameter needs a ' +
+      'weight, a gradient and Adam\'s two momenta, roughly 12 bytes per parameter. For full ' +
+      'fine-tuning that is <b>12.88 GB</b>, for LoRA r = 8 it is <b>50 MB</b>. That is exactly ' +
+      'the difference between fitting on a single GPU and not.</p>' +
+      '<p>Two more practical consequences explain why LoRA became so widespread.</p>' +
+      '<p><b>No added latency at inference.</b> Once training finishes, the product BA can be ' +
+      'computed and added into W. What comes out is a single matrix and the shape of the model ' +
+      'does not change at all. Unlike methods that insert adapter layers, LoRA is free at ' +
+      'runtime.</p>' +
+      '<p><b>Adapters can be plugged in and out.</b> The base model sits there as a single ' +
+      'copy and only a few megabytes of A and B are stored per task. Ten tasks means one model ' +
+      'plus ten small files, not ten full models.</p>' +
+      '<p>Finally, <b>QLoRA</b> takes this one step further: the frozen base model is quantised ' +
+      'to 4 bits while the adapters are trained at full precision. Because the base is frozen ' +
+      'anyway, the damage quantisation does not disturb training. The idea in the ' +
+      '<i>quantisation</i> lesson and the idea here meet at the same place.</p>',
+    learned:'<b>LoRA\'s ratio equals 2r/d, and the number of layers does not enter.</b><br><br>' +
+      'For a 7B model (d = 4096, 32 layers), on Q and V: full fine-tuning trains 1,073.7M ' +
+      'parameters, LoRA with r = 8 trains 4.19M. <b>256 times fewer.</b><br><br>' +
+      'Optimizer state memory drops from 12.88 GB to 50 MB.<br><br>' +
+      'No added latency at inference, because W + BA collapses into a single matrix. Adapters ' +
+      'plug in and out: one base model plus a few MB per task.',
+  },
+  ],
+};
+DERS_ADI_EN['lora'] = 'LoRA: adapting a model without training all of it';

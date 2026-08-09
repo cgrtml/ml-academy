@@ -109,6 +109,7 @@ const ROTALAR = [
     {id:'halusinasyon',ad:'Halüsinasyon neden olur',              sure:14, durum:'hazir'},
     {id:'rag',       ad:'RAG boru hattı',                         sure:16, durum:'hazir'},
     {id:'kvcache',   ad:'Bağlam penceresi ve KV cache',           sure:14, durum:'hazir'},
+    {id:'lora',      ad:'LoRA: modeli tamamen eğitmeden uyarlamak', sure:16, durum:'hazir'},
     {id:'cot',            ad:'Chain-of-Thought: cevaptan önce düşünmek',       sure:16, durum:'hazir'},
     {id:'self-cons',      ad:'Self-consistency: çoğunluğa güvenmek',           sure:16, durum:'hazir'},
     {id:'oz-gozetim',     ad:'Kendi kendine gözetim: etiketi veriden üretmek',  sure:17, durum:'hazir'},
@@ -14142,6 +14143,202 @@ DERSLER['bilgi-kurami'] = {
       'Entropi kodlamanın en az bedeli, KL yanlış modelin fazladan bedeli, karşılıklı bilgi ' +
       'ise bir gözlemin kazandırdığı miktardır.',
     xp:45,
+  },
+  ],
+};
+
+DERSLER['lora'] = {
+  ad:'LoRA: modeli tamamen eğitmeden uyarlamak',
+  alt:'Transformer dersi "LoRA ve nicemlemenin varlık sebebi budur" demişti. Sebebi burada ölçülüyor.',
+  kaynaklar:[
+    {"y":"Hu, E. J. et al.", "t":"2021", "b":"LoRA: Low-Rank Adaptation of Large Language Models", "n":"arXiv:2106.09685 · ICLR 2022"},
+    {"y":"Aghajanyan, A., Zettlemoyer, L. & Gupta, S.", "t":"2021", "b":"Intrinsic Dimensionality Explains the Effectiveness of Language Model Fine-Tuning", "n":"ACL 2021"},
+    {"y":"Dettmers, T. et al.", "t":"2023", "b":"QLoRA: Efficient Finetuning of Quantized LLMs", "n":"NeurIPS 2023"},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'İnce ayar neden gerekiyor',
+    goal:'Bir görevde eğitilmiş modelin akraba bir görevde ne kadar kaybettiğini ölçeceksin.',
+    todo:'Kaydırıcıyı ilerlet. Önce boşluğu, sonra tam ince ayarın bedelini gör.',
+    kind:'controls', viz:'lrBosluk', h:760,
+    controls:[{k:'asama', lb:'AŞAMA', min:0, max:2, step:1, val:0,
+               fmt:v=>['boşluk','tam ince ayar','bedeli'][Math.round(v)]}],
+    live:s => { const o = LORA.olc();
+      return [['GÖREV A', '%'+(100*o.onA).toFixed(1)],
+              ['UYARLANMADAN', '%'+(100*o.onB).toFixed(1), K.red],
+              ['TAM İNCE AYAR', '%'+(100*o.tamB).toFixed(1), K.green]]; },
+    body:'<p>Düzenek şu: 48×48 boyutunda bir ara katman matrisi, önce <b>görev A</b> üzerinde ' +
+      'eğitiliyor. Görev A, üç gizli özelliğin ağırlıklı toplamına göre üç sınıfa ayırmak.</p>' +
+      '<p>Sonra aynı model <b>görev B</b> ile sınanıyor. Görev B akraba ama aynı değil: ' +
+      'aynı üç özellik <b>artı iki tanesi daha</b> etiketi belirliyor.</p>' +
+      '<p>Ölçüm:</p>' +
+      '<p style="font-family:var(--mono)">görev A da doğruluk &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>%80.0</b><br>' +
+      'görev B, uyarlanmadan &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>%58.8</b><br>' +
+      'görev B, tam ince ayar &nbsp;&nbsp;&nbsp;&nbsp;<b>%74.2</b></p>' +
+      '<p>Üç sınıf olduğu için rastgele tahmin %33.3 verir. Uyarlanmamış modelin %58.8\'i ' +
+      'ondan iyi, yani ön eğitim <b>bir şey öğretmiş</b> ve o bilgi kısmen taşınıyor. ' +
+      'Ama tam ince ayar 15.4 puan daha ekliyor.</p>' +
+      '<p>Buraya kadarki sonuç şaşırtıcı değil. Asıl mesele ikinci kısımda: bu 15.4 puanı ' +
+      'kazanmak için <b>2.448 parametrenin tamamı</b> eğitildi ve saklandı.</p>' +
+      '<p>Bu küçük modelde sorun değil. Ama 7 milyar parametreli bir modelde aynı işlem, ' +
+      'tek bir görev için modelin <b>tam bir kopyasını</b> daha saklamak demektir. ' +
+      'On görev, on kopya. Ve eğitim sırasında optimizer durumu için gereken bellek, ' +
+      'modelin kendisinden birkaç kat büyüktür.</p>' +
+      '<p>Sorulacak soru şu: bu 15.4 puanı, parametrelerin <b>hepsini</b> oynatmadan ' +
+      'kazanmak mümkün mü?</p>',
+    learned:'<b>Akraba bir göreve geçince model kaybeder, ince ayar o kaybı geri alır.</b><br><br>' +
+      'Görev A da %80.0, görev B de uyarlanmadan %58.8, tam ince ayardan sonra %74.2. ' +
+      'Rastgele tahmin %33.3 olduğuna göre ön eğitim işe yarıyor ama yetmiyor.<br><br>' +
+      'Bedel: 15.4 puan için 2.448 parametrenin tamamı eğitildi.',
+    xp:45,
+  },
+  {
+    t:'Değişiklik düşük ranklıdır',
+    goal:'İnce ayarın ağırlıklarda yaptığı değişikliğin kaç boyuta sığdığını ölçeceksin.',
+    todo:'Rank kaydırıcısını oynat. Yeşil çubuklar tutulan, gri olanlar atılan bileşenler.',
+    kind:'controls', viz:'lrRank', h:760,
+    controls:[{k:'rank', lb:'RANK', min:1, max:48, step:1, val:8, fmt:v=>String(Math.round(v))}],
+    live:s => { const o = LORA.olc(), r = Math.max(1,Math.min(48,Math.round(s.rank===undefined?8:s.rank)));
+      const oran = LORA.kesmeOrani(o.sv, r);
+      return [['RANK', String(r)], ['TUTULAN NORM', '%'+(100*oran).toFixed(1), oran>0.9?K.green:K.orange],
+              ['ETKİN RANK', String(o.etkinRank)]]; },
+    body:'<p>Önceki adımda iki matris elde edildi: ön eğitimden çıkan W ve ince ayardan çıkan ' +
+      'W\'. Aradaki fark <b>ΔW = W\' − W</b>, yani ince ayarın tam olarak ne değiştirdiği.</p>' +
+      '<p>Bu adımdaki soru şu: ΔW gerçekten 48 boyutlu bir değişiklik mi, yoksa daha az ' +
+      'boyuta mı sığıyor? Bunu ölçmenin yolu <b>tekil değerlere</b> bakmak. Bir matrisin ' +
+      'tekil değerleri, onun kaç bağımsız yönde ne kadar iş yaptığını söyler.</p>' +
+      '<p>ΔW nin ilk on tekil değeri:</p>' +
+      '<p style="font-family:var(--mono)">2.756 &nbsp;2.286 &nbsp;2.111 &nbsp;2.081 &nbsp;1.726<br>' +
+      '1.652 &nbsp;1.343 &nbsp;1.327 &nbsp;<b>0.465</b> &nbsp;0.445</p>' +
+      '<p>Sekizinciden dokuzuncuya geçerken <b>1.327\'den 0.465\'e</b> düşüyor, yani üçte bire. ' +
+      'Bu ani düşüş rastgele bir matriste görülmez.</p>' +
+      '<p>Aynı şeyi kümülatif olarak ölçmek daha okunaklı. İlk r tekil değerin, matrisin ' +
+      'Frobenius normunun ne kadarını tuttuğu:</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;r &nbsp;&nbsp;tutulan norm<br>' +
+      '&nbsp;1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%46.9<br>' +
+      '&nbsp;2 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%60.9<br>' +
+      '&nbsp;4 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%79.1<br>' +
+      '&nbsp;8 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>%94.5</b><br>' +
+      '16 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%96.5<br>' +
+      '48 &nbsp;&nbsp;&nbsp;&nbsp;%100.0</p>' +
+      '<p>Matris 48×48, yani tam rank 48. Ama <b>8 bileşen normun %94.5\'ini taşıyor</b>. ' +
+      'Normun %90\'ını tutmak için gereken en küçük rank <b>7</b>.</p>' +
+      '<p>Bunun anlamı şu: ince ayarın yaptığı iş 48 boyutlu bir değişiklik gibi ' +
+      'görünüyor ama aslında kabaca 8 boyutlu. Geri kalan 40 yön neredeyse hiç ' +
+      'kullanılmıyor.</p>' +
+      '<p>LoRA\'nın dayandığı gözlem tam olarak budur. Aghajanyan ve arkadaşları bunu ' +
+      '2021\'de "içsel boyut" adıyla ölçmüş, Hu ve arkadaşları aynı yıl bunu bir ' +
+      'eğitim yöntemine çevirmiştir.</p>',
+    learned:'<b>İnce ayarın ağırlıklarda yaptığı değişiklik düşük ranklıdır.</b><br><br>' +
+      'ΔW 48×48 olmasına rağmen ilk 8 tekil değer Frobenius normunun %94.5 ini tutuyor. ' +
+      'Tekil değerler sekizinciden dokuzuncuya 1.327 den 0.465 e düşüyor.<br><br>' +
+      'Normun %90 ını tutmak için gereken en küçük rank yalnızca 7.<br><br>' +
+      'Yani model 48 boyutta değişmiş gibi görünse de gerçekte kabaca 8 boyutta değişmiş.',
+    xp:55,
+  },
+  {
+    t:'LoRA: yalnızca iki küçük matris',
+    goal:'Donmuş bir modele takılan düşük ranklı uyarlayıcının kaliteyi ne kadar geri aldığını ölçeceksin.',
+    todo:'Rank seç. Yeşil kesikli çizgi tam ince ayarın, kırmızı olan uyarlanmamış modelin seviyesi.',
+    kind:'controls', viz:'lrTara', h:760,
+    controls:[{k:'secim', lb:'RANK', min:0, max:4, step:1, val:3,
+               fmt:v=>'r = '+[1,2,4,8,16][Math.round(v)]}],
+    live:s => { const o = LORA.olc(), q = o.rank[Math.max(0,Math.min(4,Math.round(s.secim===undefined?3:s.secim)))];
+      return [['RANK', String(q.r)], ['DOĞRULUK', '%'+(100*q.dogruluk).toFixed(1), K.green],
+              ['EĞİTİLEN', q.egitilen.toLocaleString('tr'), K.yellow]]; },
+    body:'<p>Fikir şu: ΔW düşük ranklı olduğuna göre, onu <b>baştan düşük ranklı olmaya ' +
+      'zorlayarak</b> öğrenelim. W donmuş kalır, öğrenilen şey iki küçük matristir:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">W<sub>etkin</sub> = W + (α/r) · B A</p>' +
+      '<p>Burada A rank×48, B 48×rank boyutundadır. Çarpımları 48×48 olur ama ' +
+      'rankı en fazla r dir. Eğitilen parametre sayısı 48² = 2.304 yerine ' +
+      '<b>r · 96</b> olur.</p>' +
+      '<p>Bir ayrıntı önemli: <b>B sıfırla başlar</b>, A ise küçük rastgele değerlerle. ' +
+      'Böylece eğitimin ilk anında BA = 0 olur ve model tam olarak ön eğitimli hâlindedir. ' +
+      'Yani uyarlayıcı takmak modeli <b>hiç bozmaz</b>, sıfırdan başlayıp iyileştirir.</p>' +
+      '<p>Ölçüm (referanslar: uyarlanmadan %58.8, tam ince ayar %74.2):</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;r &nbsp;&nbsp;doğruluk &nbsp;&nbsp;eğitilen &nbsp;&nbsp;tam ayarın<br>' +
+      '&nbsp;&nbsp;1 &nbsp;&nbsp;&nbsp;%72.7 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;240 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%9.8<br>' +
+      '&nbsp;&nbsp;2 &nbsp;&nbsp;&nbsp;%73.2 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;336 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%13.7<br>' +
+      '&nbsp;&nbsp;4 &nbsp;&nbsp;&nbsp;%73.8 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;528 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%21.6<br>' +
+      '&nbsp;&nbsp;8 &nbsp;&nbsp;&nbsp;<b>%74.2</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;912 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%37.3<br>' +
+      '16 &nbsp;&nbsp;&nbsp;%73.8 &nbsp;&nbsp;&nbsp;&nbsp;1.680 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%68.6</p>' +
+      '<p>İki şey okunuyor.</p>' +
+      '<p>Birincisi: <b>r = 8, tam ince ayarın doğruluğuna birebir oturuyor</b> (%74.2 = %74.2). ' +
+      'Bu tesadüf değil; önceki adımda ölçülen etkin rank 7 idi ve tekil değerler tam ' +
+      'orada düşüyordu.</p>' +
+      '<p>İkincisi ve daha çarpıcı olanı: <b>r = 1 bile</b>, yani 48×48 matrise tek bir yön ' +
+      'ekleyerek, kazancın <b>%90.2</b>\'sini geri alıyor. Ve bunu tam ayarın ' +
+      '%9.8 parametresiyle yapıyor.</p>' +
+      '<p>Bir de dürüst olmak gereken bir nokta var: r = 16, r = 8\'den <b>daha iyi değil</b>, ' +
+      'hatta biraz daha kötü (%73.8 karşı %74.2). Daha çok parametre otomatik olarak daha ' +
+      'iyi sonuç vermiyor. Aynı veriyle daha çok parametre eğitmek, optimizasyonu ' +
+      'zorlaştırıyor ve aşırı uyum riskini artırıyor. Rank ayarlanması gereken bir ' +
+      'hiperparametredir ve "büyüt gitsin" doğru strateji değildir.</p>',
+    learned:'<b>Donmuş bir modele takılan düşük ranklı uyarlayıcı, tam ince ayarı yakalıyor.</b><br><br>' +
+      'r = 8 tam ince ayarın doğruluğuna birebir oturdu: %74.2 = %74.2, ama tam ayarın ' +
+      'yalnızca %37.3 parametresiyle.<br><br>' +
+      'r = 1 bile kazancın %90.2 sini geri aldı, tam ayarın %9.8 parametresiyle.<br><br>' +
+      'r = 16, r = 8 den daha iyi değil (%73.8). Rank ayarlanacak bir hiperparametredir.<br><br>' +
+      'B sıfırla başladığı için uyarlayıcı takmak modeli hiç bozmaz.',
+    xp:60,
+  },
+  {
+    t:'Gerçek ölçekte ne anlama geliyor',
+    goal:'Aynı aritmetiğin milyar parametreli modelde ne ürettiğini göreceksin.',
+    todo:'Model ve rank seç. Bu adımdaki sayılar ölçüm değil, tam sayı aritmetiğidir.',
+    kind:'controls', viz:'lrOlcek', h:760,
+    controls:[{k:'model', lb:'MODEL', min:0, max:2, step:1, val:0,
+               fmt:v=>['7B','13B','70B'][Math.round(v)]},
+              {k:'rank', lb:'RANK', min:0, max:5, step:1, val:3,
+               fmt:v=>'r = '+[1,2,4,8,16,64][Math.round(v)]}],
+    live:s => { const M=[[4096,32],[5120,40],[8192,80]][Math.max(0,Math.min(2,Math.round(s.model===undefined?0:s.model)))];
+      const r=[1,2,4,8,16,64][Math.max(0,Math.min(5,Math.round(s.rank===undefined?3:s.rank)))];
+      const o=LORA.olcek(M[0],M[1],r);
+      return [['TAM', (o.tam/1e6).toFixed(0)+'M', K.red],
+              ['LoRA', (o.lora/1e6).toFixed(2)+'M', K.green],
+              ['KAT FARK', (o.tam/o.lora).toFixed(0)+'×', K.yellow]]; },
+    body:'<p>Bu adımdaki sayılar bir ölçüm değil, <b>tam sayı aritmetiğidir</b>. Bir ' +
+      'transformer katmanındaki dikkat matrisleri d×d boyutundadır ve LoRA genelde ' +
+      'sorgu (Q) ile değer (V) matrislerine uygulanır.</p>' +
+      '<p>Oran tek bir ifadeye iniyor. Katman başına iki matris için tam ince ayar ' +
+      '2d² parametre eğitir, LoRA ise 2r·2d eğitir. Bölünce d² ler sadeleşir:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">LoRA / tam = 2r / d</p>' +
+      '<p>Yani oran <b>yalnızca rank ile gizli boyutun oranına bağlıdır</b>, katman ' +
+      'sayısı hiç girmez.</p>' +
+      '<p>7 milyar parametreli bir model için (d = 4096, 32 katman):</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;r &nbsp;&nbsp;eğitilen &nbsp;&nbsp;&nbsp;oran<br>' +
+      '&nbsp;&nbsp;1 &nbsp;&nbsp;&nbsp;0.52M &nbsp;&nbsp;%0.0488<br>' +
+      '&nbsp;&nbsp;2 &nbsp;&nbsp;&nbsp;1.05M &nbsp;&nbsp;%0.0977<br>' +
+      '&nbsp;&nbsp;4 &nbsp;&nbsp;&nbsp;2.10M &nbsp;&nbsp;%0.1953<br>' +
+      '&nbsp;&nbsp;8 &nbsp;&nbsp;&nbsp;<b>4.19M</b> &nbsp;&nbsp;<b>%0.3906</b><br>' +
+      '16 &nbsp;&nbsp;&nbsp;8.39M &nbsp;&nbsp;%0.7813<br>' +
+      '64 &nbsp;&nbsp;33.55M &nbsp;&nbsp;%3.1250</p>' +
+      '<p>Q ve V matrislerinin tamamını ince ayarlamak 1.073,7M parametre eğitmek demek. ' +
+      'LoRA r = 8 ile 4,19M. <b>256 kat az.</b></p>' +
+      '<p>Bunun asıl karşılığı bellekte görünür. Eğitim sırasında her eğitilen parametre ' +
+      'için ağırlık, gradyan ve Adam\'ın iki momentumu tutulur; kabaca parametre başına ' +
+      '12 bayt. Tam ince ayar için bu <b>12,88 GB</b>, LoRA r = 8 için <b>50 MB</b>. ' +
+      'Tek bir GPU\'ya sığmakla sığmamak arasındaki fark tam olarak budur.</p>' +
+      '<p>İki pratik sonuç daha var ve ikisi de LoRA\'nın neden bu kadar yaygınlaştığını ' +
+      'açıklıyor.</p>' +
+      '<p><b>Çıkarımda ek gecikme yok.</b> Eğitim bitince BA çarpımı hesaplanıp W\'ye ' +
+      'eklenebilir. Ortaya çıkan tek bir matristir ve modelin şekli hiç değişmez. ' +
+      'Adaptör katmanı ekleyen yöntemlerin aksine LoRA çalışma zamanında ücretsizdir.</p>' +
+      '<p><b>Uyarlayıcılar takılıp çıkarılabilir.</b> Taban model tek kopya olarak durur, ' +
+      'her görev için yalnızca birkaç megabaytlık A ve B saklanır. On görev için on tam ' +
+      'model değil, bir model artı on küçük dosya.</p>' +
+      '<p>Son olarak <b>QLoRA</b> bunun bir adım ötesidir: donmuş taban model 4 bite ' +
+      'nicemlenir, uyarlayıcılar tam duyarlıkta eğitilir. Taban zaten donmuş olduğu için ' +
+      'nicemlemenin verdiği hasar eğitimi bozmaz. <i>Nicemleme</i> dersindeki fikirle ' +
+      'buradaki fikir aynı yerde buluşuyor.</p>',
+    learned:'<b>LoRA nın oranı 2r/d ye eşittir, katman sayısı hiç girmez.</b><br><br>' +
+      '7B model (d = 4096, 32 katman), Q ve V için: tam ince ayar 1.073,7M parametre, ' +
+      'LoRA r = 8 ile 4,19M. <b>256 kat az.</b><br><br>' +
+      'Optimizer durumu için bellek 12,88 GB yerine 50 MB.<br><br>' +
+      'Çıkarımda ek gecikme yok, çünkü W + BA tek bir matrise toplanır. ' +
+      'Uyarlayıcılar takılıp çıkarılabilir: bir taban model artı görev başına birkaç MB.',
+    xp:50,
   },
   ],
 };

@@ -48,10 +48,20 @@ En yüksek öncelik: beklentiyi dersin kendisi yaratıyor, karşılığı yok.
       Kapsanmayan: maliyete duyarlı öğrenme, odak kaybı (focal loss),
       tek sınıf yöntemleri, aşırı dengesizlik (%0.1 altı).
 
-- [ ] **LoRA / PEFT** · düşük ranklı uyarlama
-      `transformer[2]` birebir şunu diyor: "LoRA ve nicemlemenin varlık sebebi budur".
-      O ders yok. `transfer[2]` ve `kuantizasyon[1]` de anıyor.
-      Widget: rank kaydırıcısı, eğitilen parametre sayısı ve kalite yan yana.
+- [x] **LoRA / PEFT** · düşük ranklı uyarlama  ✔ 8 Ağustos 2026
+      `DERSLER['lora']`, Rota 3 (`kvcache` sonrası), 4 adım, 210 XP.
+      Ölçülen: 48×48 matris görev A da eğitildi (%80.0), görev B de uyarlanmadan
+      %58.8, tam ince ayarla %74.2. ΔW nin tekil değerleri sekizinciden dokuzuncuya
+      1.327 den 0.465 e düşüyor; ilk 8 bileşen Frobenius normunun %94.5 ini tutuyor,
+      etkin rank 7.
+      Gerçekten LoRA eğitimi yapıldı (W donmuş, yalnızca A ve B öğrenildi):
+      r = 8 tam ince ayara birebir oturdu (%74.2 = %74.2), r = 1 bile kazancın
+      %90.2 sini geri aldı. r = 16, r = 8 den daha iyi çıkmadı.
+      Ölçek kısmı ölçüm değil tam sayı aritmetiği ve derste böyle etiketlendi:
+      oran 2r/d, 7B modelde 256 kat.
+      Kapsanmayan: prefix/prompt tuning ve BitFit yalnızca anlatımda anılıyor,
+      DoRA ve rank-adaptif yöntemler yok, QLoRA nicemleme tarafı `kuantizasyon`
+      dersine bırakıldı.
 
 ## B · Hiç geçmeyenler
 
@@ -127,7 +137,7 @@ başlanmamalı.
 3. ~~Dengesiz veri~~ ✔ tamamlandı
 4. ~~A/B testi~~ ✔ tamamlandı
 5. ~~Bilgi kuramı~~ ✔ tamamlandı
-6. LoRA / PEFT
+6. ~~LoRA / PEFT~~ ✔ tamamlandı
 7. Üretimde izleme
 8. Gizlilik
 
