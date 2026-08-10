@@ -704,6 +704,17 @@ var ARAYUZ_EN = {
   "ÖLÜ": "DEAD",
   "top-k": "top-k",
   "ÇALIŞAN": "RUNNING",
+  "eğitimsiz": "untrained",
+  "kontrastif": "contrastive",
+  "eğitilmiş": "trained",
+  "sıcaklık": "temperature",
+  "negatif sayısı": "negatives",
+  "ŞANS": "CHANCE",
+  "EŞLEŞEN": "MATCHED",
+  "GÖRSEL-GÖRSEL": "IMAGE-IMAGE",
+  "AYIRMA": "SEPARATION",
+  "AYAR": "SETTING",
+  "SIFIR-ATIŞ": "ZERO-SHOT",
 /*SON*/
 };
 

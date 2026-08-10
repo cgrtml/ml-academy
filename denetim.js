@@ -4104,6 +4104,71 @@ console.log('═══ DENGESİZ VERİ ═══');
 }
 
 console.log('');
+console.log('═══ ÇOK KİPLİ ═══');
+{
+  const K2 = COK.olc();
+  iddia('kavram sayısı',6,K2.KAVRAM);
+  iddia('ortak boyut',8,K2.OD);
+  iddia('çift sayısı',900,K2.N);
+
+  /* 1 · ortak uzay */
+  iddia('eğitimsiz sıfır-atış %',5.56,100*K2.ham.sifir,2);
+  iddia('eğitilmiş sıfır-atış %',77.33,100*K2.egitilmis.sifir,2);
+  iddia('sıfır-atış şans %',16.67,100/K2.KAVRAM,2);
+  /* dersin iddiası: eğitimsiz hâl ŞANSIN ALTINDA */
+  if (K2.ham.sifir >= 1/K2.KAVRAM)
+    console.log('  ✗ eğitimsiz sıfır-atış şansın altında değil, ders yanlış');
+  /* ve eğitim büyük bir sıçrama yapmalı */
+  if (K2.egitilmis.sifir < 0.5)
+    console.log('  ✗ kontrastif eğitim yeterince öğrenmedi');
+
+  /* 2 · geri getirme tavanı */
+  iddia('eğitimsiz top1 %',0.00,100*K2.ham.getirme.top1,2);
+  iddia('eğitimsiz top5 %',1.00,100*K2.ham.getirme.top5,2);
+  iddia('eğitilmiş top1 %',2.00,100*K2.egitilmis.getirme.top1,2);
+  iddia('eğitilmiş top5 %',10.00,100*K2.egitilmis.getirme.top5,2);
+  iddia('getirme şansı %',0.33,100*K2.ham.getirme.sans,2);
+  /* dersin ana iddiası: ölçülen değer kuramsal TAVANA birebir oturuyor */
+  iddia('top1 tavanı',1/50,K2.egitilmis.getirme.top1,10);
+  iddia('top5 tavanı',5/50,K2.egitilmis.getirme.top5,10);
+
+  /* 3 · kiplik boşluğu */
+  const B = K2.egitilmis.bosluk;
+  iddia('eşleşen benzerlik',0.1499,B.esles,4);
+  iddia('görsel-görsel benzerlik',0.2128,B.gIci,4);
+  iddia('metin-metin benzerlik',0.0116,B.mIci,4);
+  iddia('merkez uzaklığı',0.4672,B.merkezUzak,4);
+  iddia('ayırma oranı',1.0000,B.ayirma,4);
+  /* dersin iki aykırı iddiası */
+  if (B.gIci <= B.esles)
+    console.log('  ✗ görsel-görsel benzerliği eşleşenden düşük çıktı, ders yanlış');
+  if (B.ayirma < 0.99)
+    console.log('  ✗ kipler tek yönle kusursuz ayrılmadı, ders yanlış');
+
+  /* 4 · sıcaklık ve negatif sayısı */
+  [[0,0.01,76.00],[1,0.03,76.00],[2,0.07,77.33],
+   [3,0.20,83.22],[4,0.50,83.67],[5,1.00,81.33]].forEach(([i,t,v])=>{
+    iddia('τ['+i+']',t,K2.sicaklik[i].t,2);
+    iddia('τ='+t+' sıfır-atış %',v,100*K2.sicaklik[i].sifir,2);
+  });
+  [[0,8,75.78],[1,16,76.56],[2,32,79.78],[3,64,77.33],[4,128,83.11]].forEach(([i,b,v])=>{
+    iddia('toplu['+i+']',b,K2.toplu[i].b);
+    iddia('toplu='+b+' sıfır-atış %',v,100*K2.toplu[i].sifir,2);
+  });
+  /* dersin iddiası: en büyük toplu iş en iyi sonucu veriyor */
+  {
+    const enIyi = K2.toplu.reduce((a,b) => b.sifir > a.sifir ? b : a);
+    if (enIyi !== K2.toplu[K2.toplu.length-1])
+      console.log('  ✗ en büyük toplu iş en iyi çıkmadı, ders yanlış');
+  }
+  /* ve sıcaklıkta CLIP in tersine YÜKSEK τ kazanıyor */
+  {
+    const enIyi = K2.sicaklik.reduce((a,b) => b.sifir > a.sifir ? b : a);
+    if (enIyi.t < 0.1)
+      console.log('  ✗ düşük sıcaklık kazandı, ders yanlış');
+  }
+}
+
 console.log('═══ UZMAN KARIŞIMI (MoE) ═══');
 {
   const M = MOE.olc();

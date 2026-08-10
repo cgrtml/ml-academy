@@ -19446,3 +19446,452 @@ VIZ.moeKarsilastirma = s => {
         (100*t.dogruluk).toFixed(2)+'  ·  yoğun model %'+(100*yog.dogruluk).toFixed(2),
         t.dogruluk > yog.dogruluk ? K.green : K.mut);
 };
+
+/* ═══════════════ ÇOK KİPLİ MODELLER ═══════════════
+   R3 görsel-dil tarafına hiç değinmiyordu. Bu motor CLIP'in çekirdeğini
+   gerçekten eğitiyor ve dört iddiayı ölçüyor:
+     1. Kontrastif eğitim iki kipi ortak uzayda hizalar
+     2. Hizalanmış uzay SIFIR-ATIŞ sınıflandırma yapar
+     3. Ama kipler tam olarak KARIŞMAZ: kiplik boşluğu ölçülebilir
+     4. Sıcaklık ve toplu iş boyutu sonucu belirler                         */
+const COK = (() => {
+  const KAVRAM = 6;      // ortak gizli kavram sayısı (sınıf)
+  const GD = 16;         // görsel ham boyut
+  const MD = 20;         // metin ham boyut
+  const OD = 8;          // ortak gömme boyutu
+  const N  = 900;        // çift sayısı
+
+  /* ── veri: her çift ortak bir kavramdan üretiliyor ──
+     Görsel ve metin ham uzayları TAMAMEN FARKLI; tek bağ gizli kavram. */
+  function veri(tohum){
+    const R = rng(tohum), G = [], M = [], k = [];
+    /* her kavram için iki ayrı imza */
+    const gImza = Array.from({length:KAVRAM}, (_,c) =>
+      Array.from({length:GD}, (_,j) => Math.cos((c+1)*(j+1)*0.9)*1.2));
+    const mImza = Array.from({length:KAVRAM}, (_,c) =>
+      Array.from({length:MD}, (_,j) => Math.sin((c+2)*(j+3)*0.7)*1.2));
+    for (let i=0;i<N;i++){
+      const c = Math.floor(R()*KAVRAM);
+      G.push(gImza[c].map(v => v + (R()-0.5)*0.85));
+      M.push(mImza[c].map(v => v + (R()-0.5)*0.85));
+      k.push(c);
+    }
+    return { G, M, k, gImza, mImza };
+  }
+
+  const birim = v => { const n = Math.hypot(...v) || 1e-9; return v.map(x => x/n); };
+  const nokta = (a,b) => a.reduce((s,v,i)=>s+v*b[i],0);
+
+  /* ── iki kodlayıcı: ham boyuttan ortak boyuta doğrusal izdüşüm ── */
+  function kodla(W, x){
+    return birim(W.map(w => nokta(w, x)));
+  }
+
+  /* ── InfoNCE kontrastif kayıp ile eğitim ──
+     Aynı çift birbirine yaklaşsın, farklı çiftler uzaklaşsın.
+
+     İki ayrıntı önemli ve ikisi de ilk yazımda atlanmıştı:
+       · L2 normalizasyonun türevi ihmal edilemez. u = x/‖x‖ için
+         du/dx = (I − u uᵀ)/‖x‖ ve bu izdüşüm olmadan gradyan yanlış yöne gider.
+       · Kayıp 1/sıcaklık ile ölçeklendiği için düşük sıcaklıkta adım patlar.
+         RMSProp benzeri uyarlamalı adım bunu düzeltir ve bütün sıcaklıkların
+         karşılaştırılabilir olmasını sağlar. */
+  function egit(V, sicaklik, toplu, tur, tohum){
+    const R = rng(tohum || 29);
+    let Wg = Array.from({length:OD}, () => Array.from({length:GD}, () => (R()-0.5)*0.5));
+    let Wm = Array.from({length:OD}, () => Array.from({length:MD}, () => (R()-0.5)*0.5));
+    const vg = Wg.map(r=>r.map(()=>0)), vm = Wm.map(r=>r.map(()=>0));
+
+    /* ham izdüşüm ve normu birlikte döndür: normalizasyon türevi için gerekli */
+    const ileri = (W, x) => {
+      const z = W.map(w => nokta(w, x));
+      const n = Math.hypot(...z) || 1e-9;
+      return { z, n, u: z.map(v => v/n) };
+    };
+
+    for (let t=0;t<tur;t++){
+      const bas = (t*toplu) % (N - toplu);
+      const dilim = [];
+      for (let i=bas;i<bas+toplu;i++) dilim.push(i);
+
+      const G = dilim.map(i => ileri(Wg, V.G[i]));
+      const M = dilim.map(i => ileri(Wm, V.M[i]));
+      const gGrad = Wg.map(r=>r.map(()=>0));
+      const mGrad = Wm.map(r=>r.map(()=>0));
+      /* birim vektörlere gelen gradyan, önce burada toplanır */
+      const dG = dilim.map(() => new Array(OD).fill(0));
+      const dM = dilim.map(() => new Array(OD).fill(0));
+
+      /* iki yön: görsel→metin ve metin→görsel */
+      [0,1].forEach(yon => {
+        dilim.forEach((_,a) => {
+          const skor = dilim.map((_,b) =>
+            (yon===0 ? nokta(G[a].u, M[b].u) : nokta(M[a].u, G[b].u)) / sicaklik);
+          const mx = Math.max(...skor);
+          const e = skor.map(v => Math.exp(v-mx));
+          const top = e.reduce((x,y)=>x+y,0);
+          const p = e.map(v => v/top);
+          dilim.forEach((_,b) => {
+            const d = (p[b] - (a===b?1:0)) / sicaklik / 2;   // iki yön ortalaması
+            for (let o=0;o<OD;o++){
+              if (yon === 0){ dG[a][o] += d*M[b].u[o]; dM[b][o] += d*G[a].u[o]; }
+              else          { dM[a][o] += d*G[b].u[o]; dG[b][o] += d*M[a].u[o]; }
+            }
+          });
+        });
+      });
+
+      /* normalizasyon türevi: (I − u uᵀ)/‖z‖ , sonra zincir kuralı ile W'ye */
+      const gecir = (H, du, Grad, ham) => {
+        const iz = nokta(du, H.u);
+        for (let o=0;o<OD;o++){
+          const dz = (du[o] - iz*H.u[o]) / H.n;
+          for (let j=0;j<ham.length;j++) Grad[o][j] += dz*ham[j];
+        }
+      };
+      dilim.forEach((idx,a) => {
+        gecir(G[a], dG[a], gGrad, V.G[idx]);
+        gecir(M[a], dM[a], mGrad, V.M[idx]);
+      });
+
+      /* RMSProp: sıcaklıktan gelen ölçek farkını nötrler */
+      const adim = (W, Grad, v) => {
+        for (let o=0;o<OD;o++) for (let j=0;j<W[o].length;j++){
+          const g2 = Grad[o][j]/toplu;
+          v[o][j] = 0.9*v[o][j] + 0.1*g2*g2;
+          W[o][j] -= 0.05 * g2 / (Math.sqrt(v[o][j]) + 1e-8);
+        }
+      };
+      adim(Wg, gGrad, vg);
+      adim(Wm, mGrad, vm);
+    }
+    return { Wg, Wm };
+  }
+
+  /* ── geri getirme doğruluğu: görselden doğru metni bulma ── */
+  function getirme(Mo, V, adet){
+    const n = Math.min(adet || 300, N);
+    const g = [], m = [];
+    for (let i=0;i<n;i++){ g.push(kodla(Mo.Wg, V.G[i])); m.push(kodla(Mo.Wm, V.M[i])); }
+    let top1 = 0, top5 = 0;
+    for (let i=0;i<n;i++){
+      const skor = m.map((mm,j) => [nokta(g[i], mm), j]).sort((a,b)=>b[0]-a[0]);
+      if (skor[0][1] === i) top1++;
+      if (skor.slice(0,5).some(([,j]) => j===i)) top5++;
+    }
+    return { top1: top1/n, top5: top5/n, sans: 1/n };
+  }
+
+  /* ── sıfır-atış sınıflandırma ──
+     Sınıf başına tek bir "metin şablonu" (o kavramın metin imzası) alınır,
+     görsel ona en yakın sınıfa atanır. Sınıflandırıcı EĞİTİLMEZ. */
+  function sifirAtis(Mo, V){
+    const sinifVek = V.mImza.map(v => kodla(Mo.Wm, v));
+    let dogru = 0;
+    for (let i=0;i<N;i++){
+      const gi = kodla(Mo.Wg, V.G[i]);
+      let en = -Infinity, secim = 0;
+      sinifVek.forEach((sv,c) => { const s = nokta(gi, sv); if (s > en){ en = s; secim = c; } });
+      if (secim === V.k[i]) dogru++;
+    }
+    return dogru/N;
+  }
+
+  /* ── kiplik boşluğu ──
+     Liang ve arkadaşlarının 2022'de ölçtüğü olgu: eğitim sonrasında bile
+     iki kip ortak uzayda AYNI bölgeye düşmez, ayrı koniler oluşturur. */
+  function bosluk(Mo, V){
+    const g = [], m = [];
+    for (let i=0;i<N;i++){ g.push(kodla(Mo.Wg, V.G[i])); m.push(kodla(Mo.Wm, V.M[i])); }
+    const ort = A => { const o = new Array(OD).fill(0);
+      A.forEach(v => v.forEach((x,j)=>o[j]+=x)); return o.map(x=>x/A.length); };
+    const gO = ort(g), mO = ort(m);
+    /* merkezler arası uzaklık */
+    const merkezUzak = Math.hypot(...gO.map((v,j)=>v-mO[j]));
+    /* eşleşen çiftin ortalama benzerliği */
+    let esles = 0; for (let i=0;i<N;i++) esles += nokta(g[i], m[i]);
+    esles /= N;
+    /* kip İÇİ ortalama benzerlik */
+    let gIci = 0, mIci = 0, say = 0;
+    for (let i=0;i<200;i++) for (let j=i+1;j<200;j++){
+      gIci += nokta(g[i], g[j]); mIci += nokta(m[i], m[j]); say++;
+    }
+    gIci /= say; mIci /= say;
+    /* doğrusal ayrılabilirlik: tek bir yön iki kipi ayırabiliyor mu */
+    const yon = birim(gO.map((v,j)=>v-mO[j]));
+    let ayirma = 0;
+    for (let i=0;i<N;i++) ayirma += (nokta(g[i],yon) > nokta(m[i],yon) ? 1 : 0);
+    return { merkezUzak, esles, gIci, mIci, ayirma: ayirma/N };
+  }
+
+  const C = {};
+  function olc(){
+    if (C.hazir) return C;
+    const V = veri(53);
+    C.V = V; C.KAVRAM = KAVRAM; C.OD = OD; C.N = N;
+
+    /* eğitimsiz taban: rastgele izdüşüm */
+    const R0 = rng(29);
+    const ham = {
+      Wg: Array.from({length:OD}, () => Array.from({length:GD}, () => (R0()-0.5)*0.5)),
+      Wm: Array.from({length:OD}, () => Array.from({length:MD}, () => (R0()-0.5)*0.5)),
+    };
+    C.ham = { getirme: getirme(ham, V), sifir: sifirAtis(ham, V), bosluk: bosluk(ham, V) };
+
+    /* eğitilmiş */
+    const M1 = egit(V, 0.07, 64, 1200, 29);
+    C.egitilmis = { getirme: getirme(M1, V), sifir: sifirAtis(M1, V), bosluk: bosluk(M1, V) };
+
+    /* sıcaklık taraması */
+    C.sicaklik = [0.01, 0.03, 0.07, 0.2, 0.5, 1.0].map(t => {
+      const M = egit(V, t, 64, 1200, 29);
+      return { t, top1: getirme(M, V).top1, sifir: sifirAtis(M, V) };
+    });
+    /* toplu iş boyutu taraması: negatif örnek sayısı */
+    C.toplu = [8, 16, 32, 64, 128].map(b => {
+      const M = egit(V, 0.07, b, 1200, 29);
+      return { b, top1: getirme(M, V).top1, sifir: sifirAtis(M, V) };
+    });
+    C.hazir = true;
+    return C;
+  }
+
+  return { KAVRAM, GD, MD, OD, N, veri, egit, getirme, sifirAtis, bosluk, kodla, olc };
+})();
+
+/* ── 1 · ortak uzay ── */
+VIZ.ckOrtak = s => {
+  clear();
+  const o = COK.olc();
+  const egitildi = Math.round(s.egitim === undefined ? 0 : s.egitim) >= 1;
+  const r = egitildi ? o.egitilmis : o.ham;
+  baslikSerit('İKİ KİPİ ORTAK UZAYDA BULUŞTURMAK',
+    'Görsel ve metin ham uzayları tamamen farklı. Tek bağ, ikisinin aynı kavramdan üretilmiş olması.',
+    [['DURUM', egitildi ? 'kontrastif eğitim' : 'eğitimsiz', egitildi?K.green:K.red],
+     ['SIFIR-ATIŞ', (100*r.sifir).toFixed(2)+'%', r.sifir>0.5?K.green:K.red],
+     ['ŞANS', (100/o.KAVRAM).toFixed(2)+'%', K.mut]]);
+
+  const P = plot(rect(160, 250, 620, 290), -0.5, 1.5, 0, 1.0);
+  txt('SIFIR-ATIŞ SINIFLANDIRMA', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'doğruluk', [], [0, 0.5, 1.0]);
+  cx.setLineDash([6,6]); cx.strokeStyle = K.mut; cx.lineWidth = 2;
+  cx.beginPath(); cx.moveTo(P.R.x, P.sy(1/o.KAVRAM)); cx.lineTo(P.R.x+P.R.w, P.sy(1/o.KAVRAM)); cx.stroke();
+  cx.setLineDash([]);
+  txt('şans  %'+(100/o.KAVRAM).toFixed(1), P.R.x+P.R.w-12, P.sy(1/o.KAVRAM)-10, K.mut, 15, 'right');
+  [['eğitimsiz', o.ham.sifir, K.red], ['kontrastif eğitim', o.egitilmis.sifir, K.green]]
+    .forEach(([ad, v, renk], k) => {
+      if (k === 1 && !egitildi) return;
+      const x = P.sx(k), gen = 150;
+      box(x-gen/2, P.sy(v), gen, P.sy(0)-P.sy(v), renk+'cc', null);
+      txt((100*v).toFixed(2)+'%', x, P.sy(v)-14, renk, 21);
+      txt(ad, x, P.R.y+P.R.h+30, K.mut, 16);
+    });
+
+  const bx = 830;
+  box(bx, 250, 560, 220, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('DÜZENEK', bx+280, 288, K.mut, 19);
+  txt('Görsel ham boyut '+COK.GD+', metin ham boyut '+COK.MD+'.', bx+24, 326, K.mut, 16, 'left');
+  txt('İki uzayın ortak hiçbir ekseni yok.', bx+24, 350, K.mut, 16, 'left');
+  txt('Her çift '+o.KAVRAM+' gizli kavramdan birinden üretiliyor', bx+24, 382, K.txt, 16, 'left');
+  txt('ve modele kavram etiketi HİÇ verilmiyor.', bx+24, 406, K.txt, 16, 'left');
+  txt('Tek sinyal: "bu görsel bu metinle eşleşiyor".', bx+280, 442, K.green, 16);
+
+  box(bx, 490, 560, 220, egitildi ? 'rgba(34,211,160,.06)' : 'rgba(7,10,15,.6)',
+      egitildi ? 'rgba(34,211,160,.4)' : K.axis, 2);
+  if (egitildi){
+    txt('KONTRASTİF KAYIP', bx+280, 528, K.green, 18);
+    txt('Eşleşen çift birbirine yaklaşsın,', bx+24, 564, K.mut, 16, 'left');
+    txt('eşleşmeyen çiftler uzaklaşsın.', bx+24, 588, K.mut, 16, 'left');
+    txt('Sıfır-atış %'+(100*o.ham.sifir).toFixed(2)+' den %'+
+        (100*o.egitilmis.sifir).toFixed(2)+' ye çıktı.', bx+24, 622, K.green, 17, 'left');
+    txt('Sınıflandırıcı hiç eğitilmedi: sınıf başına', bx+24, 656, K.txt, 16, 'left');
+    txt('tek bir metin yeterli oldu.', bx+24, 680, K.txt, 16, 'left');
+  } else {
+    txt('Eğitimsiz hâlde şansın bile ALTINDA:', bx+280, 560, K.red, 18);
+    txt('%'+(100*o.ham.sifir).toFixed(2)+' karşı %'+(100/o.KAVRAM).toFixed(2), bx+280, 596, K.red, 20);
+    txt('Rastgele izdüşüm iki kipi hizalamıyor.', bx+280, 632, K.mut, 16);
+    txt('Anahtarı çevir.', bx+280, 668, K.mut, 17);
+  }
+
+  durum(egitildi
+    ? 'kontrastif eğitim sonrası sıfır-atış %'+(100*o.egitilmis.sifir).toFixed(2)+
+      '  ·  şans %'+(100/o.KAVRAM).toFixed(2)+'  ·  sınıflandırıcı hiç eğitilmedi'
+    : 'eğitimsiz sıfır-atış %'+(100*o.ham.sifir).toFixed(2)+
+      '  ·  şans %'+(100/o.KAVRAM).toFixed(2)+' den bile düşük',
+    egitildi ? K.green : K.red);
+};
+
+/* ── 2 · geri getirme tavanı ── */
+VIZ.ckGetirme = s => {
+  clear();
+  const o = COK.olc();
+  const r = o.egitilmis.getirme, h = o.ham.getirme;
+  const TAVAN1 = 1/50, TAVAN5 = 5/50;
+  baslikSerit('MODEL KURAMSAL TAVANA OTURDU',
+    '300 aday arasından doğru metni bulmak. Ama aynı kavramda 50 aday var ve aralarında fark yok.',
+    [['top-1', (100*r.top1).toFixed(2)+'%', K.green],
+     ['KURAMSAL TAVAN', (100*TAVAN1).toFixed(2)+'%', K.yellow],
+     ['ŞANS', (100*h.sans).toFixed(2)+'%', K.mut]]);
+
+  const P = plot(rect(160, 250, 640, 300), -0.5, 1.5, 0, 0.14);
+  txt('GERİ GETİRME · ölçülen ve tavan', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'doğruluk', [], [0, 0.05, 0.10]);
+  [['top-1', r.top1, TAVAN1, h.top1], ['top-5', r.top5, TAVAN5, h.top5]]
+    .forEach(([ad, v, tavan, ham], k) => {
+      const x = P.sx(k), gen = 130;
+      box(x-gen/2, P.sy(v), gen, P.sy(0)-P.sy(v), K.green+'cc', null);
+      cx.strokeStyle = K.yellow; cx.lineWidth = 4;
+      cx.beginPath(); cx.moveTo(x-gen/2-14, P.sy(tavan)); cx.lineTo(x+gen/2+14, P.sy(tavan)); cx.stroke();
+      txt((100*v).toFixed(2)+'%', x, P.sy(v)-14, K.green, 20);
+      txt(ad, x, P.R.y+P.R.h+30, K.mut, 16);
+      txt('eğitimsiz %'+(100*ham).toFixed(2), x, P.R.y+P.R.h+54, K.red, 15);
+    });
+  txt('■ sarı çizgi: kuramsal tavan', P.R.x+16, P.R.y+30, K.yellow, 16, 'left');
+
+  const bx = 850;
+  box(bx, 250, 540, 250, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('TAVAN NEDEN VAR', bx+270, 288, K.mut, 19);
+  txt('300 aday, '+o.KAVRAM+' kavram → kavram başına 50 aday.', bx+24, 326, K.mut, 16, 'left');
+  txt('Aynı kavramdaki 50 çift arasındaki tek fark', bx+24, 358, K.txt, 16, 'left');
+  txt('BAĞIMSIZ gürültü. Görsel gürültüsü metin', bx+24, 382, K.txt, 16, 'left');
+  txt('gürültüsü hakkında hiçbir şey söylemez.', bx+24, 406, K.txt, 16, 'left');
+  txt('Yani hangi 50 den hangisi olduğu bilgisi', bx+24, 438, K.orange, 16, 'left');
+  txt('veride HİÇ YOK. En iyi tahmin 1/50.', bx+24, 462, K.orange, 16, 'left');
+
+  box(bx, 520, 540, 190, 'rgba(34,211,160,.06)', 'rgba(34,211,160,.4)', 2);
+  txt('ÖLÇÜM', bx+270, 558, K.green, 18);
+  txt('top-1  ölçülen '+(100*r.top1).toFixed(2)+'%   tavan '+(100*TAVAN1).toFixed(2)+'%',
+      bx+270, 596, K.txt, 18);
+  txt('top-5  ölçülen '+(100*r.top5).toFixed(2)+'%   tavan '+(100*TAVAN5).toFixed(2)+'%',
+      bx+270, 626, K.txt, 18);
+  txt('İkisi de birebir oturuyor.', bx+270, 662, K.green, 18);
+  txt('Düşük sayı model zayıf demek değil.', bx+270, 692, K.mut, 16);
+
+  durum('top-1 %'+(100*r.top1).toFixed(2)+' = kuramsal tavan %'+(100*TAVAN1).toFixed(2)+
+        '  ·  top-5 %'+(100*r.top5).toFixed(2)+' = tavan %'+(100*TAVAN5).toFixed(2)+
+        '  ·  model tavanda', K.green);
+};
+
+/* ── 3 · kiplik boşluğu ── */
+VIZ.ckBosluk = s => {
+  clear();
+  const o = COK.olc();
+  const egitildi = Math.round(s.egitim === undefined ? 1 : s.egitim) >= 1;
+  const b = egitildi ? o.egitilmis.bosluk : o.ham.bosluk;
+  baslikSerit('KİPLİK BOŞLUĞU',
+    'Eğitim iki kipi hizaladı. Peki aynı bölgeye mi koydu?',
+    [['DURUM', egitildi ? 'eğitilmiş' : 'eğitimsiz', egitildi?K.green:K.mut],
+     ['AYIRMA', (100*b.ayirma).toFixed(2)+'%', b.ayirma>0.9?K.red:K.orange],
+     ['EŞLEŞEN BENZERLİK', b.esles.toFixed(4), K.blue]]);
+
+  const P = plot(rect(150, 250, 640, 300), -0.5, 2.5, -0.05, 0.30);
+  txt('ORTALAMA KOSİNÜS BENZERLİĞİ', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'benzerlik', [], [0, 0.1, 0.2]);
+  cx.setLineDash([5,5]); cx.strokeStyle = K.mut; cx.lineWidth = 2;
+  cx.beginPath(); cx.moveTo(P.R.x, P.sy(0)); cx.lineTo(P.R.x+P.R.w, P.sy(0)); cx.stroke();
+  cx.setLineDash([]);
+  [['görsel ↔ kendi metni', b.esles, K.blue],
+   ['görsel ↔ başka görsel', b.gIci, K.orange],
+   ['metin ↔ başka metin', b.mIci, K.purple]].forEach(([ad, v, renk], k) => {
+    const x = P.sx(k), gen = 120;
+    const y0 = P.sy(0), y1 = P.sy(v);
+    box(x-gen/2, Math.min(y0,y1), gen, Math.abs(y0-y1), renk+'cc', null);
+    txt(v.toFixed(4), x, y1 + (v>=0 ? -12 : 20), renk, 18);
+    ad.split(' ↔ ').forEach((sat,q) =>
+      txt(q===0?sat+' ↔':sat, x, P.R.y+P.R.h+28+q*22, K.mut, 15));
+  });
+
+  const bx = 840;
+  box(bx, 250, 550, 200, 'rgba(248,113,113,.06)', 'rgba(248,113,113,.4)', 2);
+  txt('BEKLENMEDİK KARŞILAŞTIRMA', bx+275, 288, K.red, 19);
+  txt('Bir görsel, KENDİ metnine ' + b.esles.toFixed(4) + ' benziyor.', bx+24, 328, K.blue, 17, 'left');
+  txt('Aynı görsel, BAŞKA bir görsele ' + b.gIci.toFixed(4) + '.', bx+24, 358, K.orange, 17, 'left');
+  txt(b.gIci > b.esles
+      ? 'Yani görsel, eşleştiği metinden çok'
+      : 'Eşleşme kip içi benzerliği geçebilmiş.', bx+24, 396, K.txt, 16, 'left');
+  txt(b.gIci > b.esles ? 'başka görsellere benziyor.' : '', bx+24, 420, K.txt, 16, 'left');
+
+  box(bx, 470, 550, 240, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('TEK BİR YÖN İKİSİNİ AYIRIYOR', bx+275, 508, K.mut, 18);
+  txt('Merkezler arası uzaklık: ' + b.merkezUzak.toFixed(4), bx+24, 546, K.mut, 16, 'left');
+  txt('Bu yöne göre doğru tarafta kalan oran:', bx+24, 578, K.mut, 16, 'left');
+  txt('%' + (100*b.ayirma).toFixed(2), bx+275, 618, b.ayirma>0.9?K.red:K.orange, 32);
+  txt(b.ayirma > 0.99
+      ? 'Kusursuz ayrılıyorlar: kipler ortak uzayda'
+      : 'Büyük ölçüde ayrılıyorlar.', bx+24, 656, K.red, 16, 'left');
+  txt(b.ayirma > 0.99 ? 'buluşmuyor, yan yana duruyor.' : '', bx+24, 680, K.red, 16, 'left');
+
+  durum('eşleşen benzerlik ' + b.esles.toFixed(4) + '  ·  görsel-görsel ' + b.gIci.toFixed(4) +
+        '  ·  tek yön ayırma %' + (100*b.ayirma).toFixed(2) +
+        '  ·  kipler ortak uzayda karışmıyor',
+        b.ayirma > 0.9 ? K.red : K.orange);
+};
+
+/* ── 4 · sıcaklık ve negatif sayısı ── */
+VIZ.ckAyar = s => {
+  clear();
+  const o = COK.olc();
+  const hangi = Math.round(s.eksen === undefined ? 0 : s.eksen) >= 1 ? 'toplu' : 'sicaklik';
+  const dizi = o[hangi];
+  const i = Math.max(0, Math.min(dizi.length-1, Math.round(s.deger === undefined ? 2 : s.deger)));
+  const se = dizi[i];
+  const enIyi = dizi.reduce((a,b) => b.sifir > a.sifir ? b : a);
+  baslikSerit('SICAKLIK ve NEGATİF SAYISI',
+    'Kontrastif eğitimin iki ayarı. Biri keskinliği, diğeri kaç rakiple yarışıldığını belirler.',
+    [['AYAR', hangi === 'sicaklik' ? 'sıcaklık τ' : 'toplu iş', K.blue],
+     ['DEĞER', String(hangi === 'sicaklik' ? se.t : se.b), K.yellow],
+     ['SIFIR-ATIŞ', (100*se.sifir).toFixed(2)+'%', se===enIyi?K.green:K.mut]]);
+
+  const P = plot(rect(160, 250, 640, 310), -0.4, dizi.length-0.6, 0.72, 0.87);
+  txt(hangi === 'sicaklik' ? 'SICAKLIK ARTTIKÇA SIFIR-ATIŞ' : 'NEGATİF SAYISI ARTTIKÇA SIFIR-ATIŞ',
+      P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'sıfır-atış', [], [0.75, 0.80, 0.85]);
+  cx.strokeStyle = K.green; cx.lineWidth = 4; cx.beginPath();
+  dizi.forEach((q,k) => k===0 ? cx.moveTo(P.sx(k), P.sy(q.sifir))
+                              : cx.lineTo(P.sx(k), P.sy(q.sifir)));
+  cx.stroke();
+  dizi.forEach((q,k) => {
+    dot(P.sx(k), P.sy(q.sifir), k===i?9:6, k===i?K.yellow:K.green);
+    txt(String(hangi === 'sicaklik' ? q.t : q.b), P.sx(k), P.R.y+P.R.h+30,
+        k===i?K.yellow:K.mut, 16);
+    txt((100*q.sifir).toFixed(2)+'%', P.sx(k), P.sy(q.sifir)-18, k===i?K.yellow:K.green, 15);
+  });
+  txt(hangi === 'sicaklik' ? 'sıcaklık τ' : 'toplu iş boyutu (negatif sayısı)',
+      P.R.x+P.R.w/2, P.R.y+P.R.h+58, K.mut, 17);
+
+  const bx = 850;
+  box(bx, 250, 540, 246, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('TAM TABLO', bx+270, 288, K.mut, 19);
+  txt(hangi === 'sicaklik' ? 'τ' : 'toplu', bx+120, 320, K.mut, 15);
+  txt('sıfır-atış', bx+330, 320, K.mut, 15);
+  dizi.forEach((q,k) => {
+    const y = 350+k*22, vur = k===i;
+    txt(String(hangi === 'sicaklik' ? q.t : q.b), bx+120, y, vur?K.yellow:K.mut, 15);
+    txt((100*q.sifir).toFixed(2)+'%', bx+330, y,
+        vur?K.yellow:(q===enIyi?K.green:K.mut), 15);
+  });
+  txt('en iyi: ' + String(hangi === 'sicaklik' ? enIyi.t : enIyi.b) +
+      '  ·  %' + (100*enIyi.sifir).toFixed(2), bx+270, 484, K.green, 16);
+
+  box(bx, 512, 540, 198, 'rgba(7,10,15,.6)', K.axis, 2);
+  if (hangi === 'sicaklik'){
+    txt('SICAKLIK NE YAPIYOR', bx+270, 548, K.mut, 18);
+    txt('Düşük τ: benzerlikler keskinleşir, model', bx+24, 582, K.mut, 16, 'left');
+    txt('en yakın rakibe odaklanır.', bx+24, 604, K.mut, 16, 'left');
+    txt('Yüksek τ: dağılım yumuşar, bütün', bx+24, 632, K.mut, 16, 'left');
+    txt('negatifler benzer ağırlık alır.', bx+24, 654, K.mut, 16, 'left');
+    txt('Burada yüksek τ kazandı, CLIP in tersine.', bx+270, 690, K.orange, 16);
+  } else {
+    txt('NEGATİF SAYISI NE YAPIYOR', bx+270, 548, K.mut, 18);
+    txt('Toplu iş büyüdükçe her örnek daha çok', bx+24, 582, K.mut, 16, 'left');
+    txt('rakiple yarışır: görev zorlaşır.', bx+24, 604, K.mut, 16, 'left');
+    txt('Zor görev daha iyi temsil üretir, bu yüzden', bx+24, 632, K.green, 16, 'left');
+    txt('CLIP 32.768 lik toplu işlerle eğitilmiştir.', bx+24, 654, K.green, 16, 'left');
+    txt('Ölçüm de aynı yönü gösteriyor.', bx+270, 690, K.green, 16);
+  }
+
+  durum((hangi === 'sicaklik' ? 'sıcaklık τ = '+se.t : 'toplu iş = '+se.b) +
+        '  ·  sıfır-atış %' + (100*se.sifir).toFixed(2) +
+        '  ·  en iyi ' + String(hangi === 'sicaklik' ? enIyi.t : enIyi.b) +
+        ' ile %' + (100*enIyi.sifir).toFixed(2), K.green);
+};

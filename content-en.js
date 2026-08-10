@@ -9697,3 +9697,180 @@ DERSLER_EN['moe'] = {
   ],
 };
 DERS_ADI_EN['moe'] = 'Mixture of experts: the cheap way to add parameters';
+
+DERSLER_EN['cokkipli'] = {
+  ad:'Multimodal models: bringing image and text into one space',
+  alt:'CLIP\'s core is genuinely trained here. Two of the three results do not come out as expected.',
+  adimlar:[
+  {
+    t:'Bringing two modalities into one space',
+    goal:'You will measure how two spaces with no shared axis get aligned.',
+    todo:'Flip the switch. Note that no classifier is ever trained.',
+    kind:'controls', viz:'ckOrtak', h:760, xp:55,
+    controls:[{k:'egitim', lb:'TRAINING', min:0, max:1, step:1, val:0,
+               fmt:v=>Math.round(v)?'contrastive':'untrained'}],
+    body:'<p>Every model so far has been <b>single-modality</b>: text, or numbers, or images. ' +
+      'A multimodal model represents two different kinds of data <b>in the same space</b>, and ' +
+      'if it manages that, they become comparable to each other.</p>' +
+      '<p>The setup is deliberately hard: the image raw dimension is 16, the text raw dimension ' +
+      'is 20, and the two spaces share <b>no axis at all</b>. Every pair is generated from one ' +
+      'of 6 hidden concepts, but the model is <b>never given a concept label</b>. Its only ' +
+      'signal is "this image goes with this text".</p>' +
+      '<p>The loss used is <b>InfoNCE</b>, the contrastive loss. Its idea takes two sentences: ' +
+      'within a batch, matching pairs should move closer and all non-matching pairs should move ' +
+      'apart. It learns to <b>pick</b> an image\'s correct text from among the other texts in ' +
+      'the same batch.</p>' +
+      '<p>The measurement uses <b>zero-shot classification</b>. The method: take one text per ' +
+      'class, and assign an image to whichever it is closest to. <b>No classifier is ever ' +
+      'trained.</b></p>' +
+      '<p style="font-family:var(--mono)">untrained &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>5.56%</b><br>' +
+      'contrastive &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>77.33%</b><br>' +
+      'chance &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;16.67%</p>' +
+      '<p>Untrained, the result is <b>below chance</b>: 5.56% against 16.67%. A random projection ' +
+      'does not align the two modalities; it misaligns them systematically.</p>' +
+      '<p>After contrastive training, <b>77.33%</b>. And that means solving a six-class problem ' +
+      'from a single text example.</p>' +
+      '<p>This is what CLIP did in 2021: train this loss on 400 million image-text pairs, then ' +
+      'produce class vectors for <b>completely untrained</b> classification tasks with a ' +
+      'template like "a photo of a {class}". It is how classification gets done without ' +
+      'collecting labelled data.</p>',
+    learned:'<b>A contrastive loss can align two spaces with no shared axis.</b><br><br>' +
+      'The model was never given a concept label; its only signal was "this image goes with this ' +
+      'text".<br><br>' +
+      'Zero-shot classification is <b>5.56%</b> untrained (below the 16.67% chance level) and ' +
+      '<b>77.33%</b> after contrastive training.<br><br>' +
+      'No classifier was trained: one text per class was enough.',
+  },
+  {
+    t:'The model hit the theoretical ceiling',
+    goal:'You will see why a low number does not mean failure.',
+    todo:'The yellow line is the theoretical ceiling. Look at the gap to the green bar.',
+    kind:'viz', viz:'ckGetirme', h:760, xp:55,
+    body:'<p>The second standard metric for multimodal models is <b>retrieval</b>: given an ' +
+      'image, find the correct text among 300 candidates.</p>' +
+      '<p>Measured:</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;untrained &nbsp;&nbsp;trained &nbsp;&nbsp;chance<br>' +
+      'top-1 &nbsp;&nbsp;&nbsp;&nbsp;0.00% &nbsp;&nbsp;&nbsp;&nbsp;<b>2.00%</b> &nbsp;&nbsp;0.33%<br>' +
+      'top-5 &nbsp;&nbsp;&nbsp;&nbsp;1.00% &nbsp;&nbsp;&nbsp;<b>10.00%</b> &nbsp;&nbsp;1.67%</p>' +
+      '<p>2.00% looks low. But looking at that number and concluding "the model does not work" ' +
+      'would be wrong, and the reason lies in the setup.</p>' +
+      '<p>There are 300 candidates and 6 concepts, so <b>50 candidates per concept</b>. The only ' +
+      'difference between the 50 pairs within a concept is noise added <b>independently</b> to ' +
+      'the image and to the text. The image\'s noise says nothing about the text\'s noise.</p>' +
+      '<p>So the answer to "which of these 50" is <b>simply not in the data</b>. Even the best ' +
+      'possible model has to find the concept and then guess at random among 50. The theoretical ' +
+      'ceiling is <b>1/50 = 2.00%</b>, and for top-5 <b>5/50 = 10.00%</b>.</p>' +
+      '<p>The measured values are <b>2.00% and 10.00%</b>. Both land exactly on the ceiling.</p>' +
+      '<p>The lesson matters more than the number: <b>a low metric does not mean a bad model.</b> ' +
+      'The first thing to ask is what the highest value that metric could reach is. This is the ' +
+      'sharpest form of the "know the ceiling" warning from the <i>building an eval set</i> ' +
+      'lesson.</p>' +
+      '<p>Real datasets have the same problem and it is usually ignored. In an image-text dataset ' +
+      'more than one caption may fit an image; failing to find the single one designated ' +
+      '"correct" may not be the model\'s fault. This is why retrieval scores are <b>not ' +
+      'comparable</b> across datasets.</p>',
+    learned:'<b>A low score may not mean the model is bad.</b><br><br>' +
+      'There are 300 candidates and 6 concepts, so 50 candidates per concept. The information ' +
+      'separating those 50 is <b>not in the data</b>; the best guess is 1/50.<br><br>' +
+      'The theoretical ceiling is 2.00% for top-1 and 10.00% for top-5. The measured values are ' +
+      '<b>2.00% and 10.00%</b>: both land exactly on the ceiling.<br><br>' +
+      'Before reading a metric you have to know the highest value it could reach.',
+  },
+  {
+    t:'The modality gap',
+    goal:'You will measure that training aligns two modalities without putting them in the same place.',
+    todo:'Flip the switch. Note which of the three bars is highest.',
+    kind:'controls', viz:'ckBosluk', h:760, xp:60,
+    controls:[{k:'egitim', lb:'TRAINING', min:0, max:1, step:1, val:1,
+               fmt:v=>Math.round(v)?'trained':'untrained'}],
+    body:'<p>The first two steps showed that training works. This one asks: <b>did the two ' +
+      'modalities really land in the same place?</b></p>' +
+      '<p>The phrase "shared space" implies they did. The intuition is that a photo of a cat and ' +
+      'the text "a cat" should sit near the same point in the shared space.</p>' +
+      '<p>Average cosine similarities in the trained model:</p>' +
+      '<p style="font-family:var(--mono)">image ↔ its own text &nbsp;&nbsp;&nbsp;&nbsp;<b>0.1499</b><br>' +
+      'image ↔ another image &nbsp;&nbsp;<b>0.2128</b><br>' +
+      'text ↔ another text &nbsp;&nbsp;&nbsp;&nbsp;0.0116</p>' +
+      '<p>Put the first two side by side. An image is 0.1499 similar to <b>its own matching ' +
+      'text</b>. The same image is 0.2128 similar to <b>a random other image</b>.</p>' +
+      '<p>So an image resembles <b>other images</b> more than it resembles its own caption. ' +
+      'Training achieved the alignment but did <b>not mix</b> the modalities.</p>' +
+      '<p>A sharper way to measure it: take the direction between the two modalities\' centroids ' +
+      'and check which side each embedding falls on. The result:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">separation = <b>100.00%</b></p>' +
+      '<p><b>A single direction separates the two modalities perfectly.</b> Every image embedding ' +
+      'on one side, every text embedding on the other. They do not meet in the shared space, ' +
+      'they <b>sit next to each other</b>.</p>' +
+      '<p>This is not an implementation error. Liang and colleagues measured the same phenomenon ' +
+      'in real CLIP models in 2022 and named it the <b>modality gap</b>. They showed it has two ' +
+      'causes: two randomly initialised encoders already fall into separate narrow cones in a ' +
+      'high-dimensional space, and the contrastive loss <b>does not try to close</b> that gap ' +
+      'because closing it serves no purpose. The loss only cares about <b>ranking</b>: the ' +
+      'correct match must score higher than the incorrect ones, and absolute position is ' +
+      'irrelevant.</p>' +
+      '<p>This has practical consequences. Searching a database of text embeddings with an image ' +
+      'embedding works, because the ranking is right. But <b>mixing</b> image and text ' +
+      'embeddings in the same index and searching does not behave as expected: every query ' +
+      'returns results from its own modality. Anyone who has built cross-modal search has met ' +
+      'this problem.</p>',
+    learned:'<b>Training aligns two modalities without mixing them.</b><br><br>' +
+      'An image is 0.1499 similar to its own text and <b>0.2128</b> to another image. It ' +
+      'resembles other images more than its own caption.<br><br>' +
+      'A single direction separates the two modalities with <b>100.00%</b> accuracy: the ' +
+      'embeddings do not meet in the shared space, they sit next to it.<br><br>' +
+      'This is the modality gap. Its cause is that the contrastive loss cares only about ' +
+      '<b>ranking</b>, not absolute position.',
+  },
+  {
+    t:'Temperature and the number of negatives',
+    goal:'You will measure how contrastive training\'s two settings determine the result.',
+    todo:'Sweep the temperature first, then switch the axis and look at the number of negatives.',
+    kind:'controls', viz:'ckAyar', h:760, xp:55,
+    controls:[{k:'eksen', lb:'SETTING', min:0, max:1, step:1, val:0,
+               fmt:v=>Math.round(v)?'negatives':'temperature'},
+              {k:'deger', lb:'VALUE', min:0, max:5, step:1, val:2,
+               fmt:v=>'step '+Math.round(v)}],
+    body:'<p>The contrastive loss has two settings and both determine the outcome.</p>' +
+      '<p><b>Temperature τ</b> is the number the similarity scores are divided by. A small τ ' +
+      'sharpens the distribution and the model focuses on the nearest rival; a large τ softens ' +
+      'it and all negatives get similar weight. It is the same mathematics as the temperature ' +
+      'in the <i>temperature, top-k, top-p</i> lesson, only used in <b>training</b> rather than ' +
+      'generation.</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;&nbsp;τ &nbsp;&nbsp;zero-shot<br>' +
+      '0.01 &nbsp;&nbsp;&nbsp;76.00%<br>' +
+      '0.03 &nbsp;&nbsp;&nbsp;76.00%<br>' +
+      '0.07 &nbsp;&nbsp;&nbsp;77.33%<br>' +
+      '0.20 &nbsp;&nbsp;&nbsp;83.22%<br>' +
+      '0.50 &nbsp;&nbsp;&nbsp;<b>83.67%</b><br>' +
+      '1.00 &nbsp;&nbsp;&nbsp;81.33%</p>' +
+      '<p>Here <b>the high temperature wins</b>, which is the opposite of the 0.07 CLIP uses. To ' +
+      'be honest, that is a consequence of the setup: there are only 6 concepts, so a batch of ' +
+      '64 contains on average <b>10 examples from the same concept</b>. The contrastive loss ' +
+      'treats them as "negatives" and pushes them apart, even though they share a concept. A low ' +
+      'temperature sharpens that wrong push and does harm. In real data the number of concepts ' +
+      'far exceeds the batch size, so this collision is rare and low temperature wins.</p>' +
+      '<p><b>The number of negatives</b> is set by the batch size: each example competes with ' +
+      'every other example in the same batch.</p>' +
+      '<p style="font-family:var(--mono)">batch &nbsp;&nbsp;zero-shot<br>' +
+      '&nbsp;&nbsp;&nbsp;8 &nbsp;&nbsp;&nbsp;75.78%<br>' +
+      '&nbsp;&nbsp;16 &nbsp;&nbsp;&nbsp;76.56%<br>' +
+      '&nbsp;&nbsp;32 &nbsp;&nbsp;&nbsp;79.78%<br>' +
+      '&nbsp;&nbsp;64 &nbsp;&nbsp;&nbsp;77.33%<br>' +
+      '&nbsp;128 &nbsp;&nbsp;&nbsp;<b>83.11%</b></p>' +
+      '<p>This sweep goes the expected way: <b>more negatives, better representation</b>. The ' +
+      'reason is that the task gets harder. Picking the right one out of 8 is easy and a crude ' +
+      'representation suffices; picking out of 128 demands finer distinctions.</p>' +
+      '<p>This is why CLIP was trained with batches of <b>32,768</b>, and that number is not a ' +
+      'hardware preference but a <b>requirement of the method</b>. The price of contrastive ' +
+      'learning working at scale is fitting very large batches into memory.</p>',
+    learned:'<b>Temperature sets sharpness, batch size sets the number of rivals.</b><br><br>' +
+      'The negatives sweep went the expected way: 75.78% at batch 8 and <b>83.11%</b> at 128. ' +
+      'More rivals, harder task, better representation. This is why CLIP used batches of ' +
+      '32,768.<br><br>' +
+      'For temperature, <b>the high τ won</b> (83.67%), the opposite of CLIP\'s 0.07. The cause ' +
+      'is the setup: with 6 concepts and a batch of 64, about 10 same-concept examples get ' +
+      'treated as negatives. In real data that collision is rare.',
+  },
+  ],
+};
+DERS_ADI_EN['cokkipli'] = 'Multimodal models: bringing image and text into one space';

@@ -132,7 +132,27 @@ Tarama sonucu: müfredatta tek bir kez bile geçmiyor.
       paylaşılan uzman tasarımı, all-to-all iletişim maliyeti ve MoE ince
       ayarının kırılganlığı yalnızca anlatımda anılıyor.
 
-- [ ] **Çok kipli modeller (görsel-dil)**
+- [x] **Çok kipli modeller (görsel-dil)**  ✔ 9 Ağustos 2026
+      `DERSLER['cokkipli']`, Rota 3 (`temel-model` sonrası), 4 adım, 225 XP.
+      CLIP'in çekirdeği (InfoNCE kontrastif kayıp) gerçekten eğitildi.
+      Ölçülen: görsel ham boyut 16, metin 20, ortak eksen yok, 6 gizli kavram ve
+      modele kavram etiketi hiç verilmedi. Sıfır-atış sınıflandırma eğitimsiz
+      %5.56 (şans %16.67'nin ALTINDA), kontrastif eğitimden sonra %77.33.
+      Geri getirme top-1 %2.00 ve top-5 %10.00 çıktı; bunlar tam olarak kuramsal
+      tavan (1/50 ve 5/50), çünkü aynı kavramdaki 50 çifti ayıran bilgi veride
+      yok. Model tavana birebir oturuyor.
+      Kiplik boşluğu ölçüldü: bir görsel kendi metnine 0.1499, başka bir görsele
+      0.2128 benziyor. Tek bir yön iki kipi %100.00 doğrulukla ayırıyor. Liang
+      2022'nin CLIP'te ölçtüğü olgu burada da çıktı.
+      Sıcaklıkta CLIP'in tersine yüksek τ kazandı (%83.67) ve ders bunun sebebini
+      açıkça veriyor: 6 kavram ve 64'lük toplu işta ortalama 10 yanlış negatif var.
+      Negatif sayısı ise beklenen yönde: toplu iş 8'de %75.78, 128'de %83.11.
+      Uygulamada bir hata bulunup düzeltildi: ilk yazımda L2 normalizasyonun
+      türevi ihmal edilmişti ve düşük sıcaklıkta adım patlıyordu. Doğru izdüşüm
+      ve RMSProp eklendikten sonra sıfır-atış %33.67'den %77.33'e çıktı.
+      Kapsanmayan: gerçek görsel kodlayıcı (ViT) ve metin kodlayıcı yok, alt
+      yazı üretimi yok, SigLIP gibi ikili kayıp alternatifleri ve boşluk kapatma
+      yöntemleri yalnızca anlatımda anılıyor.
 
 - [~] **Grafik sinir ağları (GNN)** · BİLİNÇLİ OLARAK KAPSAM DIŞI  ·  9 Ağustos 2026
       Karar: bu müfredata girmeyecek. Gerekçe, omurganın tablo verisi, görüntü ve

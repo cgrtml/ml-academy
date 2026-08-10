@@ -126,6 +126,7 @@ const ROTALAR = [
     {id:'cokdilli',       ad:'Çok dilli modellerin kör noktası',               sure:14, durum:'hazir'},
     {id:'alan-model',     ad:'Alana özel modeller: genelci mi, uzman mı',      sure:16, durum:'hazir'},
     {id:'temel-model',    ad:'Temel modeller: tek modelden her şeye',          sure:16, durum:'hazir'},
+    {id:'cokkipli',       ad:'Çok kipli modeller: görsel ile metni buluşturmak', sure:17, durum:'hazir'},
     {id:'llm-siniflandirici',  ad:'LLM\'i sınıflandırıcıya çevirmek',                sure:12, durum:'hazir'},
     {id:'konu-kesif',     ad:'Gömmelerden konuya: kümeleme ile konu bulmak',   sure:16, durum:'hazir'},
   ],
@@ -15180,6 +15181,205 @@ DERSLER['moe'] = {
       'top-1 de her uzman tek bir kümenin kuralını net öğreniyor.<br><br>' +
       'Bu sonuç veri gerçekten ayrık kümelerden oluştuğu için çıkıyor. Paylaşılan bilgi çok ' +
       'olduğunda yoğun model kazanabilir.',
+    xp:55,
+  },
+  ],
+};
+
+DERSLER['cokkipli'] = {
+  ad:'Çok kipli modeller: görsel ile metni aynı uzayda buluşturmak',
+  alt:'CLIP\'in çekirdeği burada gerçekten eğitiliyor. Üç sonucun ikisi beklendiği gibi çıkmıyor.',
+  kaynaklar:[
+    {"y":"Radford, A. et al.", "t":"2021", "b":"Learning Transferable Visual Models From Natural Language Supervision", "n":"ICML 2021 · CLIP"},
+    {"y":"Liang, W. et al.", "t":"2022", "b":"Mind the Gap: Understanding the Modality Gap in Multi-modal Contrastive Representation Learning", "n":"NeurIPS 2022"},
+    {"y":"Oord, A. van den, Li, Y. & Vinyals, O.", "t":"2018", "b":"Representation Learning with Contrastive Predictive Coding", "n":"arXiv:1807.03748 · InfoNCE"},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'İki kipi ortak uzayda buluşturmak',
+    goal:'Ortak hiçbir ekseni olmayan iki uzayın nasıl hizalandığını ölçeceksin.',
+    todo:'Anahtarı çevir. Sınıflandırıcının hiç eğitilmediğine dikkat et.',
+    kind:'controls', viz:'ckOrtak', h:760,
+    controls:[{k:'egitim', lb:'EĞİTİM', min:0, max:1, step:1, val:0,
+               fmt:v=>Math.round(v)?'kontrastif':'eğitimsiz'}],
+    live:s => { const o = COK.olc();
+      const e = Math.round(s.egitim===undefined?0:s.egitim) >= 1;
+      const r = e ? o.egitilmis : o.ham;
+      return [['DURUM', e?'eğitildi':'ham', e?K.green:K.red],
+              ['SIFIR-ATIŞ', '%'+(100*r.sifir).toFixed(2), r.sifir>0.5?K.green:K.red],
+              ['ŞANS', '%'+(100/o.KAVRAM).toFixed(2), K.mut]]; },
+    body:'<p>Şimdiye kadarki bütün modeller <b>tek kipliydi</b>: ya metin ya sayı ya görüntü. ' +
+      'Çok kipli model iki farklı türden veriyi <b>aynı uzayda</b> temsil eder, ve bunu ' +
+      'yapabilirse aralarında karşılaştırma yapılabilir hâle gelir.</p>' +
+      '<p>Düzenek bilinçli olarak zor: görsel ham boyut 16, metin ham boyut 20 ve iki uzayın ' +
+      '<b>ortak hiçbir ekseni yok</b>. Her çift 6 gizli kavramdan birinden üretiliyor ama ' +
+      'modele kavram etiketi <b>hiç verilmiyor</b>. Elindeki tek sinyal şu: "bu görsel bu ' +
+      'metinle eşleşiyor".</p>' +
+      '<p>Kullanılan kayıp <b>InfoNCE</b>, yani kontrastif kayıp. Fikri iki cümlelik: bir toplu ' +
+      'işteki eşleşen çiftler birbirine yaklaşsın, eşleşmeyen bütün çiftler uzaklaşsın. ' +
+      'Bir görselin doğru metnini, aynı toplu iştaki diğer metinler arasından <b>seçmeyi</b> ' +
+      'öğreniyor.</p>' +
+      '<p>Ölçüm için <b>sıfır-atış sınıflandırma</b> kullanıldı. Yöntem şu: her sınıf için ' +
+      'tek bir metin alınır, görsel hangisine daha yakınsa o sınıfa atanır. ' +
+      '<b>Sınıflandırıcı diye bir şey eğitilmez.</b></p>' +
+      '<p style="font-family:var(--mono)">eğitimsiz &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>%5.56</b><br>' +
+      'kontrastif eğitim &nbsp;&nbsp;<b>%77.33</b><br>' +
+      'şans &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%16.67</p>' +
+      '<p>Eğitimsiz hâlde sonuç <b>şansın bile altında</b>: %5.56 karşı %16.67. Rastgele bir ' +
+      'izdüşüm iki kipi hizalamıyor, hatta sistematik olarak yanlış hizalıyor.</p>' +
+      '<p>Kontrastif eğitimden sonra <b>%77.33</b>. Ve bu, altı sınıflık bir problemi tek bir ' +
+      'metin örneğiyle çözmek demek.</p>' +
+      '<p>CLIP\'in 2021\'de yaptığı şey buydu: 400 milyon görsel-metin çifti üzerinde bu kaybı ' +
+      'eğitip, sonra <b>hiç eğitilmemiş</b> sınıflandırma görevlerinde "a photo of a {sınıf}" ' +
+      'şablonuyla sınıf vektörleri üretmek. Etiketli veri toplamadan sınıflandırma yapmanın ' +
+      'yolu budur.</p>',
+    learned:'<b>Kontrastif kayıp, ortak ekseni olmayan iki uzayı hizalayabilir.</b><br><br>' +
+      'Modele kavram etiketi hiç verilmedi; tek sinyal "bu görsel bu metinle eşleşiyor" idi.<br><br>' +
+      'Sıfır-atış sınıflandırma eğitimsiz hâlde <b>%5.56</b> (şans %16.67 den bile düşük), ' +
+      'kontrastif eğitimden sonra <b>%77.33</b>.<br><br>' +
+      'Sınıflandırıcı hiç eğitilmedi: sınıf başına tek bir metin yeterli oldu.',
+    xp:55,
+  },
+  {
+    t:'Model kuramsal tavana oturdu',
+    goal:'Düşük bir sayının neden başarısızlık anlamına gelmediğini göreceksin.',
+    todo:'Sarı çizgi kuramsal tavan. Yeşil çubukla arasındaki farka bak.',
+    kind:'viz', viz:'ckGetirme', h:760,
+    body:'<p>Çok kipli modellerin ikinci standart ölçütü <b>geri getirmedir</b>: bir görsel ' +
+      'verilir, 300 aday metin arasından doğru olanı bulması istenir.</p>' +
+      '<p>Ölçüm:</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;eğitimsiz &nbsp;&nbsp;eğitilmiş &nbsp;&nbsp;şans<br>' +
+      'top-1 &nbsp;&nbsp;&nbsp;&nbsp;%0.00 &nbsp;&nbsp;&nbsp;&nbsp;<b>%2.00</b> &nbsp;&nbsp;%0.33<br>' +
+      'top-5 &nbsp;&nbsp;&nbsp;&nbsp;%1.00 &nbsp;&nbsp;&nbsp;<b>%10.00</b> &nbsp;&nbsp;%1.67</p>' +
+      '<p>%2.00 düşük görünüyor. Ama bu sayıya bakıp "model çalışmıyor" demek yanlış olur, ve ' +
+      'sebebi düzenekte.</p>' +
+      '<p>300 aday var ve 6 kavram var, yani <b>kavram başına 50 aday</b>. Aynı kavramdaki 50 ' +
+      'çift arasındaki tek fark, görsele ve metne <b>ayrı ayrı</b> eklenen bağımsız gürültü. ' +
+      'Görselin gürültüsü, metnin gürültüsü hakkında hiçbir şey söylemez.</p>' +
+      '<p>Yani "bu 50 taneden hangisi" sorusunun cevabı <b>veride hiç yok</b>. En iyi olası ' +
+      'model bile kavramı doğru bulup sonra 50 arasından rastgele seçmek zorundadır. ' +
+      'Kuramsal tavan <b>1/50 = %2.00</b>, top-5 için <b>5/50 = %10.00</b>.</p>' +
+      '<p>Ölçülen değerler <b>%2.00 ve %10.00</b>. İkisi de tavana birebir oturuyor.</p>' +
+      '<p>Buradan çıkan ders sayının kendisinden daha önemli: <b>bir ölçütün düşük çıkması, ' +
+      'modelin kötü olduğu anlamına gelmez.</b> Önce sorulması gereken şey o ölçütün ' +
+      'ulaşabileceği en yüksek değerin ne olduğudur. Bu, <i>Eval seti kurmak</i> dersindeki ' +
+      '"tavanı bil" uyarısının en net hâlidir.</p>' +
+      '<p>Gerçek veri kümelerinde de aynı problem vardır ve genelde görmezden gelinir. Bir ' +
+      'görsel-metin veri kümesinde birden fazla metin aynı görsele uyabilir; "doğru" sayılan ' +
+      'tek eşleşmeyi bulamamak modelin hatası olmayabilir. Bu yüzden geri getirme skorları ' +
+      'veri kümeleri arasında <b>karşılaştırılamaz</b>.</p>',
+    learned:'<b>Düşük bir skor, modelin kötü olduğu anlamına gelmeyebilir.</b><br><br>' +
+      '300 aday ve 6 kavram var, yani kavram başına 50 aday. Aynı kavramdaki 50 çifti ayıran ' +
+      'bilgi veride <b>hiç yok</b>; en iyi tahmin 1/50.<br><br>' +
+      'Kuramsal tavan top-1 için %2.00, top-5 için %10.00. Ölçülen değerler <b>%2.00 ve ' +
+      '%10.00</b>: ikisi de tavana birebir oturuyor.<br><br>' +
+      'Bir ölçüte bakmadan önce ulaşabileceği en yüksek değeri bilmek gerekir.',
+    xp:55,
+  },
+  {
+    t:'Kiplik boşluğu',
+    goal:'Eğitimin iki kipi hizalasa bile aynı bölgeye koymadığını ölçeceksin.',
+    todo:'Anahtarı çevir. Üç çubuğun hangisinin en yüksek olduğuna dikkat et.',
+    kind:'controls', viz:'ckBosluk', h:760,
+    controls:[{k:'egitim', lb:'EĞİTİM', min:0, max:1, step:1, val:1,
+               fmt:v=>Math.round(v)?'eğitilmiş':'eğitimsiz'}],
+    live:s => { const o = COK.olc();
+      const b = (Math.round(s.egitim===undefined?1:s.egitim)>=1 ? o.egitilmis : o.ham).bosluk;
+      return [['EŞLEŞEN', b.esles.toFixed(4), K.blue],
+              ['GÖRSEL-GÖRSEL', b.gIci.toFixed(4), K.orange],
+              ['AYIRMA', '%'+(100*b.ayirma).toFixed(2), b.ayirma>0.9?K.red:K.orange]]; },
+    body:'<p>Önceki iki adım eğitimin işe yaradığını gösterdi. Bu adım şunu soruyor: ' +
+      '<b>iki kip gerçekten aynı yere mi düştü?</b></p>' +
+      '<p>"Ortak uzay" ifadesi bunu ima eder. Sezgi şudur: bir kedi fotoğrafı ile "bir kedi" ' +
+      'metni, ortak uzayda aynı noktaya yakın durmalıdır.</p>' +
+      '<p>Eğitilmiş modelde ortalama kosinüs benzerlikleri:</p>' +
+      '<p style="font-family:var(--mono)">görsel ↔ kendi metni &nbsp;&nbsp;&nbsp;&nbsp;<b>0.1499</b><br>' +
+      'görsel ↔ başka görsel &nbsp;&nbsp;<b>0.2128</b><br>' +
+      'metin ↔ başka metin &nbsp;&nbsp;&nbsp;&nbsp;0.0116</p>' +
+      '<p>İlk iki satırı yan yana koy. Bir görsel, <b>eşleştiği kendi metnine</b> 0.1499 ' +
+      'benziyor. Aynı görsel, <b>rastgele başka bir görsele</b> 0.2128 benziyor.</p>' +
+      '<p>Yani bir görsel, kendi açıklamasından çok <b>başka görsellere</b> benziyor. ' +
+      'Eğitim hizalamayı sağladı ama kipleri <b>birbirine karıştırmadı</b>.</p>' +
+      '<p>Bunu daha keskin ölçmenin yolu şu: iki kipin merkezleri arasındaki yön alınır ve ' +
+      'her gömme o yöne göre hangi tarafta kaldığına bakılır. Sonuç:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">ayırma = <b>%100.00</b></p>' +
+      '<p><b>Tek bir yön iki kipi kusursuz ayırıyor.</b> Bütün görsel gömmeleri bir tarafta, ' +
+      'bütün metin gömmeleri diğer tarafta. Ortak uzayda buluşmuyorlar, ' +
+      '<b>yan yana duruyorlar</b>.</p>' +
+      '<p>Bu bir uygulama hatası değil. Liang ve arkadaşları 2022\'de aynı olguyu gerçek CLIP ' +
+      'modellerinde ölçtü ve <b>kiplik boşluğu</b> (modality gap) adını verdi. İki sebebi ' +
+      'olduğunu gösterdiler: yüksek boyutlu uzayda rastgele başlatılan iki kodlayıcı zaten ' +
+      'ayrı dar konilere düşer, ve kontrastif kayıp bu boşluğu <b>kapatmaya çalışmaz</b> ' +
+      'çünkü işine yaramaz. Kayıp yalnızca <b>sıralamayı</b> umursar: doğru eşleşme yanlış ' +
+      'eşleşmelerden daha yüksek skor alsın yeter, mutlak konum önemsizdir.</p>' +
+      '<p>Pratikte bunun sonuçları var. Bir görsel gömmesini metin gömmeleri veritabanında ' +
+      'aramak işe yarar, çünkü sıralama doğrudur. Ama görsel ve metin gömmelerini <b>aynı ' +
+      'indekse karıştırıp</b> arama yapmak beklendiği gibi çalışmaz: her sorgu kendi kipinden ' +
+      'sonuçlar getirir. Kiplikler arası arama kuran herkesin karşılaştığı sorun budur.</p>',
+    learned:'<b>Eğitim iki kipi hizalar ama karıştırmaz.</b><br><br>' +
+      'Bir görsel kendi metnine 0.1499 benziyor, başka bir görsele <b>0.2128</b>. Yani ' +
+      'kendi açıklamasından çok başka görsellere benziyor.<br><br>' +
+      'Tek bir yön iki kipi <b>%100.00</b> doğrulukla ayırıyor: gömmeler ortak uzayda ' +
+      'buluşmuyor, yan yana duruyor.<br><br>' +
+      'Buna kiplik boşluğu denir. Sebebi kontrastif kaybın yalnızca <b>sıralamayı</b> ' +
+      'umursaması, mutlak konumu değil.',
+    xp:60,
+  },
+  {
+    t:'Sıcaklık ve negatif sayısı',
+    goal:'Kontrastif eğitimin iki ayarının sonucu nasıl belirlediğini ölçeceksin.',
+    todo:'Önce sıcaklığı gez, sonra ekseni değiştirip negatif sayısına bak.',
+    kind:'controls', viz:'ckAyar', h:760,
+    controls:[{k:'eksen', lb:'AYAR', min:0, max:1, step:1, val:0,
+               fmt:v=>Math.round(v)?'negatif sayısı':'sıcaklık'},
+              {k:'deger', lb:'DEĞER', min:0, max:5, step:1, val:2,
+               fmt:v=>'kademe '+Math.round(v)}],
+    live:s => { const o = COK.olc();
+      const h = Math.round(s.eksen===undefined?0:s.eksen)>=1 ? 'toplu' : 'sicaklik';
+      const d = o[h], q = d[Math.max(0,Math.min(d.length-1,Math.round(s.deger===undefined?2:s.deger)))];
+      return [['AYAR', h==='sicaklik'?'sıcaklık':'negatif'],
+              ['DEĞER', String(h==='sicaklik'?q.t:q.b), K.yellow],
+              ['SIFIR-ATIŞ', '%'+(100*q.sifir).toFixed(2), K.green]]; },
+    body:'<p>Kontrastif kaybın iki ayarı var ve ikisi de sonucu belirliyor.</p>' +
+      '<p><b>Sıcaklık τ</b> benzerlik skorlarını bölen sayıdır. Küçük τ dağılımı keskinleştirir ' +
+      've model en yakın rakibe odaklanır; büyük τ yumuşatır ve bütün negatifler benzer ağırlık ' +
+      'alır. <i>Sıcaklık, top-k, top-p</i> dersindeki sıcaklıkla aynı matematiktir, yalnızca ' +
+      'burada üretimde değil <b>eğitimde</b> kullanılıyor.</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;&nbsp;τ &nbsp;&nbsp;sıfır-atış<br>' +
+      '0.01 &nbsp;&nbsp;&nbsp;%76.00<br>' +
+      '0.03 &nbsp;&nbsp;&nbsp;%76.00<br>' +
+      '0.07 &nbsp;&nbsp;&nbsp;%77.33<br>' +
+      '0.20 &nbsp;&nbsp;&nbsp;%83.22<br>' +
+      '0.50 &nbsp;&nbsp;&nbsp;<b>%83.67</b><br>' +
+      '1.00 &nbsp;&nbsp;&nbsp;%81.33</p>' +
+      '<p>Burada <b>yüksek sıcaklık kazanıyor</b>, ve bu CLIP\'in kullandığı 0.07 değerinin ' +
+      'tersi. Dürüst olmak gerekirse bu, düzeneğin bir sonucudur: yalnızca 6 kavram var ve ' +
+      '64 kişilik bir toplu işta aynı kavramdan <b>ortalama 10 örnek</b> bulunur. Kontrastif ' +
+      'kayıp onları "negatif" sayıp iter, oysa aynı kavramdalar. Düşük sıcaklık bu yanlış ' +
+      'itmeyi keskinleştirir ve zarar verir. Gerçek veride kavram sayısı toplu iş boyutundan ' +
+      'çok büyük olduğu için bu çakışma nadirdir ve düşük sıcaklık kazanır.</p>' +
+      '<p><b>Negatif sayısı</b> ise toplu iş boyutuyla belirlenir: her örnek, aynı toplu iştaki ' +
+      'diğer bütün örneklerle yarışır.</p>' +
+      '<p style="font-family:var(--mono)">toplu &nbsp;&nbsp;sıfır-atış<br>' +
+      '&nbsp;&nbsp;&nbsp;8 &nbsp;&nbsp;&nbsp;%75.78<br>' +
+      '&nbsp;&nbsp;16 &nbsp;&nbsp;&nbsp;%76.56<br>' +
+      '&nbsp;&nbsp;32 &nbsp;&nbsp;&nbsp;%79.78<br>' +
+      '&nbsp;&nbsp;64 &nbsp;&nbsp;&nbsp;%77.33<br>' +
+      '&nbsp;128 &nbsp;&nbsp;&nbsp;<b>%83.11</b></p>' +
+      '<p>Bu tarama beklenen yönde: <b>daha çok negatif, daha iyi temsil</b>. Sebebi görevin ' +
+      'zorlaşmasıdır. 8 aday arasından doğruyu seçmek kolaydır ve kaba bir temsil yeter; ' +
+      '128 aday arasından seçmek ince ayrımlar gerektirir.</p>' +
+      '<p>CLIP\'in <b>32.768</b> kişilik toplu işlerle eğitilmiş olmasının sebebi budur, ve bu ' +
+      'sayı bir donanım tercihi değil <b>yöntemin gereğidir</b>. Kontrastif öğrenmenin büyük ' +
+      'ölçekte çalışmasının bedeli, çok büyük toplu işleri belleğe sığdırabilmektir.</p>',
+    learned:'<b>Sıcaklık keskinliği, toplu iş boyutu rakip sayısını belirler.</b><br><br>' +
+      'Negatif sayısı beklenen yönde çıktı: toplu iş 8 iken %75.78, 128 iken <b>%83.11</b>. ' +
+      'Daha çok rakip, daha zor görev, daha iyi temsil. CLIP in 32.768 lik toplu işleri bu ' +
+      'yüzden.<br><br>' +
+      'Sıcaklıkta ise <b>yüksek τ kazandı</b> (%83.67), CLIP in 0.07 sinin tersine. Sebep ' +
+      'düzenek: 6 kavram ve 64 lük toplu işta aynı kavramdan ortalama 10 örnek "negatif" ' +
+      'sayılıyor. Gerçek veride bu çakışma nadirdir.',
     xp:55,
   },
   ],
