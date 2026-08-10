@@ -115,6 +115,7 @@ const ROTALAR = [
     {id:'self-cons',      ad:'Self-consistency: çoğunluğa güvenmek',           sure:16, durum:'hazir'},
     {id:'oz-gozetim',     ad:'Kendi kendine gözetim: etiketi veriden üretmek',  sure:17, durum:'hazir'},
     {id:'olcek-yasalari',  ad:'Ölçek yasaları: büyütmenin getirisi ve bedeli',  sure:16, durum:'hazir'},
+    {id:'moe',            ad:'Uzman karışımı: parametre büyütmenin ucuz yolu', sure:16, durum:'hazir'},
     {id:'perplexity',     ad:'Perplexity: bir modelin şaşkınlığını ölçmek',    sure:16, durum:'hazir'},
     {id:'talimat-ayar',   ad:'İtaat öğretmek: talimat ince ayarı',             sure:16, durum:'hazir'},
     {id:'icl',            ad:'Örnekle öğretmek: in-context learning',          sure:17, durum:'hazir'},
@@ -14985,6 +14986,201 @@ DERSLER['nedensellik'] = {
       'RCT nin kanıt hiyerarşisinin tepesinde olmasının sebebi budur. <i>A/B testi</i> ' +
       'dersinde yaptığın şey tam olarak buydu.',
     xp:60,
+  },
+  ],
+};
+
+DERSLER['moe'] = {
+  ad:'Uzman karışımı: parametre büyütmenin ucuz yolu',
+  alt:'Ölçek yasaları dersi büyütmenin bedelini anlatmıştı. MoE tam olarak o bedeli kırmak için var.',
+  kaynaklar:[
+    {"y":"Shazeer, N. et al.", "t":"2017", "b":"Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer", "n":"ICLR 2017"},
+    {"y":"Fedus, W., Zoph, B. & Shazeer, N.", "t":"2022", "b":"Switch Transformers: Scaling to Trillion Parameter Models with Simple and Efficient Sparsity", "n":"JMLR, 23(120)"},
+    {"y":"Jacobs, R. A. et al.", "t":"1991", "b":"Adaptive Mixtures of Local Experts", "n":"Neural Computation, 3(1)"},
+  ],
+  rota:3,
+  adimlar:[
+  {
+    t:'Seyrek etkinleştirme',
+    goal:'Kapasite ile işlem yükü arasındaki bağın nasıl koparıldığını göreceksin.',
+    todo:'Uzman sayısını değiştir. Aktif sütununa dikkat et.',
+    kind:'controls', viz:'moeSeyrek', h:760,
+    controls:[{k:'uzman', lb:'UZMAN', min:0, max:3, step:1, val:3,
+               fmt:v=>[8,16,64,128][Math.round(v)]+' uzman'}],
+    live:s => { const o = MOE.olc(), e = o.olcekler[Math.max(0,Math.min(3,Math.round(s.uzman===undefined?3:s.uzman)))];
+      return [['TOPLAM', (e.toplam/1e9).toFixed(1)+'B', K.orange],
+              ['AKTİF', (e.aktif/1e9).toFixed(2)+'B', K.green],
+              ['KAT', e.kat.toFixed(0)+'×', K.yellow]]; },
+    body:'<p><i>Ölçek yasaları</i> dersinde büyütmenin getirisini ve bedelini görmüştün. Bedel ' +
+      'şuydu: yoğun bir modelde parametre eklemek, <b>her girdi için yapılan işi de</b> ' +
+      'artırır. İki katı parametre, iki katı hesap.</p>' +
+      '<p>Uzman karışımı bu bağı koparır. İleri besleme bloğunu tek bir ağ yerine ' +
+      '<b>çok sayıda uzmana</b> böler, ve bir <b>yönlendirici</b> her girdi için ' +
+      'yalnızca birkaçını seçer. Seçilmeyenler hiç çalışmaz.</p>' +
+      '<p>Aritmetik (d = 4096, 32 katman, top-2, bu bir ölçüm değil tam sayı hesabı):</p>' +
+      '<p style="font-family:var(--mono)">uzman &nbsp;&nbsp;&nbsp;toplam &nbsp;&nbsp;&nbsp;aktif &nbsp;&nbsp;&nbsp;&nbsp;oran<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;8 &nbsp;&nbsp;&nbsp;34.4B &nbsp;&nbsp;8.59B &nbsp;&nbsp;%25.00<br>' +
+      '&nbsp;&nbsp;&nbsp;16 &nbsp;&nbsp;&nbsp;68.7B &nbsp;&nbsp;8.59B &nbsp;&nbsp;%12.50<br>' +
+      '&nbsp;&nbsp;&nbsp;64 &nbsp;&nbsp;274.9B &nbsp;&nbsp;8.59B &nbsp;&nbsp;&nbsp;%3.13<br>' +
+      '&nbsp;&nbsp;128 &nbsp;&nbsp;549.8B &nbsp;&nbsp;8.59B &nbsp;&nbsp;&nbsp;<b>%1.56</b></p>' +
+      '<p>Tablodaki asıl mesele <b>aktif sütununun hiç değişmemesi</b>. Toplam parametre ' +
+      '34.4 milyardan 549.8 milyara çıkarken, her girdi için çalışan miktar ' +
+      '<b>8.59 milyarda sabit</b> kalıyor.</p>' +
+      '<p>Oran da sade: <b>top-k / uzman sayısı</b>. 128 uzman ve top-2 için 2/128 = %1.56, ' +
+      'yani <b>64 kat</b> az işlem.</p>' +
+      '<p>Ama dürüst olmak gereken bir nokta var: <b>bellek bu oranla azalmaz</b>. Tüm ' +
+      'uzmanların ağırlıkları bir yerde durmak zorundadır, çünkü hangisinin seçileceği ' +
+      'önceden bilinmez. Kazanılan şey hesaplama, kaybedilen şey bellek. Bu yüzden MoE ' +
+      'modelleri "hesabı ucuz ama yüklemesi pahalı" modellerdir.</p>' +
+      '<p>Bir bedel daha var ve dağıtık eğitimde asıl darboğaz odur: uzmanlar farklı ' +
+      'cihazlara dağıtıldığında, her girdinin seçtiği uzmana <b>gönderilmesi</b> gerekir. ' +
+      'Bu iletişim maliyeti, kazanılan hesabın bir kısmını geri alır.</p>',
+    learned:'<b>MoE, kapasite ile işlem yükü arasındaki bağı koparır.</b><br><br>' +
+      'd = 4096, 32 katman, top-2 ile: uzman sayısı 8 den 128 e çıkarken toplam parametre ' +
+      '34.4B den 549.8B ye çıkıyor ama <b>aktif parametre 8.59B de sabit kalıyor</b>.<br><br>' +
+      'Oran tam olarak top-k / uzman sayısı: 2/128 = %1.56, yani 64 kat az işlem.<br><br>' +
+      'Bellek bu oranla azalmaz: tüm uzmanlar yüklü durmak zorundadır. Kazanılan hesap, ' +
+      'kaybedilen bellek ve iletişimdir.',
+    xp:50,
+  },
+  {
+    t:'Uzmanlar gerçekten uzmanlaşır',
+    goal:'Yönlendiricinin, kimse söylemeden verideki yapıyı bulduğunu göreceksin.',
+    todo:'Tabloyu oku. Yönlendiriciye hangi kümenin olduğu hiç söylenmedi.',
+    kind:'viz', viz:'moeUzmanlik', h:760,
+    body:'<p>Buraya kadar "uzman" kelimesi kullanıldı ama bir soru cevaplanmadı: gerçekten ' +
+      'uzmanlaşıyorlar mı, yoksa bu sadece bir isim mi?</p>' +
+      '<p>Düzenek: veride <b>4 gizli küme</b> var ve her kümenin kendine ait bir etiket kuralı ' +
+      'var. 8 uzman ve bir yönlendirici eğitiliyor. Yönlendiriciye <b>hangi kümenin hangisi ' +
+      'olduğu hiç söylenmiyor</b>; yalnızca "seçtiğim uzmanla kayıp düşüyor mu" sinyaliyle ' +
+      'eğitiliyor.</p>' +
+      '<p>Eğitim bitince her kümenin hangi uzmana gittiği sayıldı:</p>' +
+      '<p style="font-family:var(--mono)">küme 0 &nbsp;→ &nbsp;uzman 0 &nbsp;&nbsp;<b>%100.0</b><br>' +
+      'küme 1 &nbsp;→ &nbsp;uzman 2 &nbsp;&nbsp;&nbsp;%99.8<br>' +
+      'küme 2 &nbsp;→ &nbsp;uzman 1 &nbsp;&nbsp;<b>%100.0</b><br>' +
+      'küme 3 &nbsp;→ &nbsp;uzman 5 &nbsp;&nbsp;<b>%100.0</b></p>' +
+      '<p>Eşleşme neredeyse mükemmel. Her küme <b>tek bir uzmana</b> gidiyor ve hiçbir uzman ' +
+      'iki kümeyi paylaşmıyor.</p>' +
+      '<p>Bu bir <b>gözetimsiz işbölümüdür</b>. Kimse "sen şu tip girdilere bak" demedi; ' +
+      'yönlendirici bunu yalnızca kayıp sinyalinden çıkardı. Fikrin kökeni 1991\'e, Jacobs ve ' +
+      'arkadaşlarının "yerel uzman karışımları" çalışmasına dayanır; seyrek yönlendirmeyle ' +
+      'büyük ölçeğe taşınması 2017\'de Shazeer ve arkadaşlarıyla oldu.</p>' +
+      '<p>Bir de tabloda göze çarpan başka bir şey var: <b>8 uzmandan yalnızca 4\'ü ' +
+      'kullanılıyor</b>. Diğer 4\'ü hiç seçilmedi.</p>' +
+      '<p>Bu, MoE literatüründe "uzman çöküşü" diye anılan ve genelde <b>bir arıza</b> olarak ' +
+      'ele alınan durumdur. Ama buradaki veride tam olarak 4 küme var. Yani boşta duran ' +
+      'kapasite yönlendiricinin hatası değil, <b>verinin yapısı</b>. Sonraki adım bunu ' +
+      'ölçüyor ve sonuç şaşırtıcı.</p>' +
+      '<p>Gerçek dil modellerinde uzmanlaşmanın bu kadar temiz olmadığını da söylemek ' +
+      'gerekiyor. Orada uzmanlar konuya göre değil, çoğu zaman <b>yüzeysel özelliklere</b> ' +
+      'göre bölünür: noktalama işaretleri, sayılar, belirli diller, belirli sözdizimsel ' +
+      'kalıplar. "Şu uzman hukuk metinlerine bakıyor" gibi temiz bir yorum genelde ' +
+      'bulunmaz.</p>',
+    learned:'<b>Uzmanlar kimse söylemeden uzmanlaşır.</b><br><br>' +
+      'Veride 4 gizli küme var ve yönlendiriciye hangisinin hangisi olduğu hiç söylenmedi. ' +
+      'Eğitim sonunda her küme <b>tek bir uzmana %100 e yakın</b> eşleşti.<br><br>' +
+      'Bu gözetimsiz bir işbölümüdür ve yalnızca kayıp sinyalinden çıkar.<br><br>' +
+      '8 uzmandan 4 ü hiç kullanılmadı. Veride de tam olarak 4 küme var: boşta duran kapasite ' +
+      'yönlendiricinin hatası değil, verinin yapısı.',
+    xp:55,
+  },
+  {
+    t:'Ölü uzman her zaman arıza değildir',
+    goal:'Yük dengeleme kaybının ne yaptığını ve ne zaman zarar verdiğini ölçeceksin.',
+    todo:'Denge ağırlığını artır. Ölü uzman sayısına ve doğruluğa aynı anda bak.',
+    kind:'controls', viz:'moeCokus', h:760,
+    controls:[{k:'denge', lb:'DENGE', min:0, max:4, step:1, val:0,
+               fmt:v=>[0,0.3,0.6,1.0,2.0][Math.round(v)].toFixed(1)}],
+    live:s => { const o = MOE.olc(), t = o.tarama[Math.max(0,Math.min(4,Math.round(s.denge===undefined?0:s.denge)))];
+      return [['DENGE', t.agirlik.toFixed(1)],
+              ['ÖLÜ', t.olu+'/'+o.U, t.olu?K.orange:K.green],
+              ['DOĞRULUK', '%'+(100*t.dogruluk).toFixed(2), K.green]]; },
+    body:'<p>Uzman çöküşü gerçek bir problemdir. Yönlendirici birkaç uzmanı seçmeye başlarsa, ' +
+      'o uzmanlar daha çok eğitilir, daha iyi olurlar, daha çok seçilirler. Kendini besleyen ' +
+      'bir döngüdür ve sonunda modelin kapasitesinin çoğu boşa gider.</p>' +
+      '<p>Standart çözüm <b>yük dengeleme kaybıdır</b>: uzmanlara düşen yükün düzgün ' +
+      'dağılımdan sapması cezalandırılır. Switch Transformer\'daki biçim, uzman başına düşen ' +
+      'örnek payı ile yönlendiricinin verdiği olasılık payının çarpımını cezalandırır.</p>' +
+      '<p>Bu adım o kaybı açıp kapatıyor ve sonuç beklenen gibi çıkmıyor:</p>' +
+      '<p style="font-family:var(--mono)">ağırlık &nbsp;&nbsp;ölü &nbsp;&nbsp;doğruluk<br>' +
+      '&nbsp;&nbsp;&nbsp;0.0 &nbsp;&nbsp;&nbsp;&nbsp;4 &nbsp;&nbsp;&nbsp;<b>%96.33</b><br>' +
+      '&nbsp;&nbsp;&nbsp;0.3 &nbsp;&nbsp;&nbsp;&nbsp;4 &nbsp;&nbsp;&nbsp;%96.33<br>' +
+      '&nbsp;&nbsp;&nbsp;0.6 &nbsp;&nbsp;&nbsp;&nbsp;4 &nbsp;&nbsp;&nbsp;%96.21<br>' +
+      '&nbsp;&nbsp;&nbsp;1.0 &nbsp;&nbsp;&nbsp;&nbsp;4 &nbsp;&nbsp;&nbsp;<b>%96.13</b><br>' +
+      '&nbsp;&nbsp;&nbsp;2.0 &nbsp;&nbsp;&nbsp;&nbsp;3 &nbsp;&nbsp;&nbsp;%96.17</p>' +
+      '<p>İki şey görünüyor.</p>' +
+      '<p><b>Bir.</b> Denge kaybı çöküşü <b>açamıyor</b>. Ağırlık 2.0\'a çıkarıldığında bile ' +
+      'yalnızca bir uzman canlanıyor, üçü hâlâ ölü.</p>' +
+      '<p><b>İki.</b> Bastırdıkça doğruluk <b>düşüyor</b>: %96.33\'ten %96.13\'e. Küçük bir ' +
+      'düşüş ama yönü net ve tekrarlanabilir.</p>' +
+      '<p>Sebep bir önceki adımda ölçüldü: bu veride <b>gerçekten 4 küme var</b>. Yönlendirici ' +
+      'doğru yapıyı bulmuş durumda. Denge kaybı ise onu, olmayan bir çeşitliliği taklit ' +
+      'etmeye zorluyor; yani <b>gerçek yapıya karşı savaşıyor</b>.</p>' +
+      '<p>Buradan çıkarılacak sonuç "denge kaybı gereksizdir" değildir. Gerçek dil modellerinde ' +
+      'girdi çeşitliliği uzman sayısından çok daha fazladır ve orada çöküş <b>gerçekten</b> ' +
+      'kapasite israfıdır. Ayrıca dağıtık eğitimde yük dengesizliği doğrudan bir ' +
+      '<b>donanım</b> problemidir: bir cihaz tıkanırken diğerleri boş bekler.</p>' +
+      '<p>Çıkarılacak sonuç şudur: <b>ölü uzman bir semptomdur, teşhis değil.</b> Önce ' +
+      'sorulması gereken soru "verideki çeşitlilik uzman sayısını hak ediyor mu" olmalıdır. ' +
+      'Cevap hayırsa, doğru çözüm denge kaybını artırmak değil <b>uzman sayısını ' +
+      'azaltmaktır</b>.</p>',
+    learned:'<b>Ölü uzman bir semptomdur, teşhis değil.</b><br><br>' +
+      'Denge kaybı bu veride çöküşü açamadı: ağırlık 2.0 da bile yalnızca bir uzman canlandı, ' +
+      'üçü ölü kaldı.<br><br>' +
+      'Ve bastırdıkça doğruluk düştü: %96.33 ten %96.13 e. Çünkü veride gerçekten 4 küme var ' +
+      've denge kaybı <b>gerçek yapıya karşı savaşıyor</b>.<br><br>' +
+      'Gerçek dil modellerinde çeşitlilik çok daha fazladır ve orada denge kaybı gereklidir. ' +
+      'Ama önce sorulacak soru: veri bu kadar uzmanı hak ediyor mu?',
+    xp:60,
+  },
+  {
+    t:'Seyrek, yoğundan iyi çıktı',
+    goal:'Kaç uzmanın çalıştığını değiştirip kalite ile maliyeti birlikte ölçeceksin.',
+    todo:'top-k yi büyüt. Daha çok uzman çalışınca doğruluğa ne olduğuna bak.',
+    kind:'controls', viz:'moeKarsilastirma', h:760,
+    controls:[{k:'k', lb:'top-k', min:0, max:3, step:1, val:0,
+               fmt:v=>'top-'+[1,2,4,8][Math.round(v)]}],
+    live:s => { const o = MOE.olc(), t = o.topk[Math.max(0,Math.min(3,Math.round(s.k===undefined?0:s.k)))];
+      return [['top-k', String(t.k)],
+              ['ÇALIŞAN', '%'+(100*t.aktifOran).toFixed(1), K.orange],
+              ['DOĞRULUK', '%'+(100*t.dogruluk).toFixed(2), K.green]]; },
+    body:'<p>Son soru şu: seyreklik bir <b>ödün</b> mü? Yani ucuzluk için kaliteden mi ' +
+      'vazgeçiyoruz?</p>' +
+      '<p>Ölçüm için aynı uzmanlar, aynı veri ve aynı tur sayısıyla yalnızca top-k ' +
+      'değiştirildi. top-8, 8 uzmanın hepsinin her girdide çalışması demek, yani ' +
+      '<b>yoğun modelin kendisi</b>.</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;k &nbsp;&nbsp;doğruluk &nbsp;&nbsp;çalışan<br>' +
+      '&nbsp;&nbsp;1 &nbsp;&nbsp;<b>%96.33</b> &nbsp;&nbsp;&nbsp;%12.5<br>' +
+      '&nbsp;&nbsp;2 &nbsp;&nbsp;&nbsp;%95.75 &nbsp;&nbsp;&nbsp;%25.0<br>' +
+      '&nbsp;&nbsp;4 &nbsp;&nbsp;&nbsp;%95.63 &nbsp;&nbsp;&nbsp;%50.0<br>' +
+      '&nbsp;&nbsp;8 &nbsp;&nbsp;<b>%94.50</b> &nbsp;&nbsp;%100.0</p>' +
+      '<p>Cevap hayır, hatta tersi. <b>top-1 hem en ucuz hem en doğru.</b> Uzmanların ' +
+      'yalnızca %12.5\'i çalışarak %96.33 veriyor. Yoğun model %100 çalışıp %94.50 ' +
+      'veriyor.</p>' +
+      '<p>Sebep uzmanlaşmadır. top-8\'de her uzman <b>her</b> girdiden gradyan alır, yani ' +
+      'dört kümenin ortalamasını öğrenmeye çalışır. Kümelerin kuralları farklı olduğu için ' +
+      'bu ortalama hiçbirine tam uymaz. top-1\'de ise her uzman yalnızca kendi kümesini ' +
+      'görür ve o kümenin kuralını net öğrenir.</p>' +
+      '<p>Bu, <i>Karışım yoğunluk ağı</i> dersindeki fikirle aynı ailedendir: tek bir model ' +
+      'çok tepeli bir yapıya zorlanınca, tepelerin ortasında hiçbir yere uymayan bir cevap ' +
+      'üretir. Çözüm her iki derste de aynı: <b>parçalara böl ve her parçaya kendi ' +
+      'modelini ver.</b></p>' +
+      '<p>Bu sonucun genellenmesi konusunda dikkatli olmak gerekiyor. Burada veri ' +
+      '<b>gerçekten</b> ayrık kümelerden oluşuyor ve kümeler birbirinden bağımsız. Girdiler ' +
+      'birbirine benzediğinde ve paylaşılan bilgi çok olduğunda, tek uzmana düşmek bilgi ' +
+      'paylaşımını engeller ve yoğun model kazanır. Pratikte top-1 ve top-2 en yaygın ' +
+      'seçimlerdir, ve hangisinin daha iyi olduğu veriye bağlıdır.</p>' +
+      '<p>Son olarak: MoE ile <i>LoRA</i> arasında düşünmeye değer bir paralellik var. İkisi de ' +
+      '"her parametreyi her zaman kullanmak zorunda değilsin" fikrinin farklı biçimleri. ' +
+      'LoRA <b>eğitim</b> tarafında, MoE <b>çıkarım</b> tarafında bu bağı gevşetiyor.</p>',
+    learned:'<b>Seyreklik burada bir ödün değil, avantaj çıktı.</b><br><br>' +
+      'Aynı uzmanlar ve aynı veriyle: top-1 uzmanların %12.5 ini çalıştırıp %96.33 veriyor, ' +
+      'yoğun model (top-8) %100 çalışıp %94.50 veriyor.<br><br>' +
+      'Sebep uzmanlaşma: top-8 de her uzman dört kümenin ortalamasını öğrenmeye çalışıyor, ' +
+      'top-1 de her uzman tek bir kümenin kuralını net öğreniyor.<br><br>' +
+      'Bu sonuç veri gerçekten ayrık kümelerden oluştuğu için çıkıyor. Paylaşılan bilgi çok ' +
+      'olduğunda yoğun model kazanabilir.',
+    xp:55,
   },
   ],
 };

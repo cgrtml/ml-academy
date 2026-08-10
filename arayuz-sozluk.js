@@ -695,6 +695,15 @@ var ARAYUZ_EN = {
   "TOPLAM A": "TOTAL A",
   "GÖZLEMSEL": "OBSERVATIONAL",
   "DENEYSEL": "EXPERIMENTAL",
+  "# uzman": "# experts",
+  "top#": "top#",
+  "TOPLAM": "TOTAL",
+  "AKTİF": "ACTIVE",
+  "KAT": "FACTOR",
+  "DENGE": "BALANCE",
+  "ÖLÜ": "DEAD",
+  "top-k": "top-k",
+  "ÇALIŞAN": "RUNNING",
 /*SON*/
 };
 

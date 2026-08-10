@@ -4104,6 +4104,82 @@ console.log('═══ DENGESİZ VERİ ═══');
 }
 
 console.log('');
+console.log('═══ UZMAN KARIŞIMI (MoE) ═══');
+{
+  const M = MOE.olc();
+  iddia('uzman sayısı',8,M.U);
+  iddia('gizli boyut',24,M.D);
+  iddia('verideki küme',4,M.SINIF);
+
+  /* 1 · seyrek etkinleştirme aritmetiği */
+  [[0,8,34.4,8.59,25.00,4],[1,16,68.7,8.59,12.50,8],
+   [2,64,274.9,8.59,3.13,32],[3,128,549.8,8.59,1.56,64]].forEach(([i,u,top,akt,oran,kat])=>{
+    iddia(u+' uzman toplam B',top,M.olcekler[i].toplam/1e9,1);
+    iddia(u+' uzman aktif B',akt,M.olcekler[i].aktif/1e9,2);
+    iddia(u+' uzman oran %',oran,100*M.olcekler[i].oran,2);
+    iddia(u+' uzman kat',kat,M.olcekler[i].kat,0);
+    iddia(u+' uzman sayısı',u,M.olcekler[i].uzman);
+  });
+  /* aktif parametre uzman sayısından BAĞIMSIZ olmalı: dersin ana iddiası */
+  {
+    const akt = M.olcekler.map(x => x.aktif);
+    if (new Set(akt).size !== 1)
+      console.log('  ✗ aktif parametre uzman sayısıyla değişti, ders yanlış');
+  }
+  /* oran tam olarak topK/uzman olmalı */
+  M.olcekler.forEach(x => iddia('oran = k/u · '+x.uzman, x.topK/x.uzman, x.oran, 10));
+
+  /* 2 · uzmanlaşma */
+  iddia('top-1 doğruluk %',96.33,100*M.tek.dogruluk,2);
+  iddia('top-1 ölü uzman',4,M.tek.olu);
+  iddia('top-1 yük entropisi',1.999,M.tek.H,3);
+  /* her küme TEK bir uzmana gitmeli: dersin ana iddiası */
+  M.tek.kumeUzman.forEach((row,k) => {
+    const t = row.reduce((a,b)=>a+b,0);
+    const en = Math.max(...row);
+    if (en/t < 0.99) console.log('  ✗ küme '+k+' tek uzmana eşleşmedi, ders yanlış');
+  });
+  /* iki küme AYNI uzmana düşmemeli */
+  {
+    const baskin = M.tek.kumeUzman.map(r => r.indexOf(Math.max(...r)));
+    if (new Set(baskin).size !== M.SINIF)
+      console.log('  ✗ iki küme aynı uzmanı paylaştı, ders yanlış');
+  }
+  /* kullanılan uzman sayısı küme sayısına eşit olmalı */
+  iddia('kullanılan uzman',M.SINIF,M.U-M.tek.olu);
+
+  /* 3 · denge kaybı */
+  [[0,0.0,4,96.33],[1,0.3,4,96.33],[2,0.6,4,96.21],
+   [3,1.0,4,96.13],[4,2.0,3,96.17]].forEach(([i,a,olu,d])=>{
+    iddia('denge['+i+'] ağırlık',a,M.tarama[i].agirlik,1);
+    iddia('denge['+i+'] ölü',olu,M.tarama[i].olu);
+    iddia('denge['+i+'] doğruluk %',d,100*M.tarama[i].dogruluk,2);
+  });
+  /* dersin aykırı iddiası: denge kaybı çöküşü açamıyor ve doğruluğu düşürüyor */
+  if (M.tarama[3].dogruluk >= M.tarama[0].dogruluk)
+    console.log('  ✗ denge kaybı doğruluğu düşürmedi, ders yanlış');
+  if (M.tarama[3].olu < M.tarama[0].olu - 1)
+    console.log('  ✗ denge kaybı çöküşü açtı, ders yanlış');
+
+  /* 4 · top-k taraması */
+  [[0,1,96.33,12.5],[1,2,95.75,25.0],[2,4,95.63,50.0],[3,8,94.50,100.0]].forEach(([i,k,d,a])=>{
+    iddia('topk['+i+'] k',k,M.topk[i].k);
+    iddia('topk['+i+'] doğruluk %',d,100*M.topk[i].dogruluk,2);
+    iddia('topk['+i+'] aktif oran %',a,100*M.topk[i].aktifOran,1);
+  });
+  /* dersin ana iddiası: top-1 hem en ucuz hem EN DOĞRU */
+  {
+    const enIyi = M.topk.reduce((a,b) => b.dogruluk > a.dogruluk ? b : a);
+    if (enIyi !== M.topk[0])
+      console.log('  ✗ en yüksek doğruluk top-1 de değil, ders yanlış');
+    if (M.topk[0].dogruluk <= M.topk[3].dogruluk)
+      console.log('  ✗ seyrek model yoğunu geçmedi, ders yanlış');
+  }
+  /* yoğun model (top-8) hiç ölü uzman içermemeli ve entropisi tam log2(8)=3 olmalı */
+  iddia('yoğun yük entropisi',3.000,M.yogun.H,3);
+  iddia('yoğun ölü uzman',0,M.yogun.olu);
+}
+
 console.log('═══ NEDENSELLİK ═══');
 {
   const D = NED.olc();

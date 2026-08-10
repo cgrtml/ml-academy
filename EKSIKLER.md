@@ -110,12 +110,39 @@ Tarama sonucu: müfredatta tek bir kez bile geçmiyor.
       anılıyor, özellik deposu (feature store) yok, eğitim-servis tutarsızlığı
       (training-serving skew) ayrı bir ders olarak ele alınmadı.
 
-- [ ] **MoE (uzman karışımı)**
-      R3 güncel mimari gerçekliğini kaçırıyor.
+- [x] **MoE (uzman karışımı)**  ✔ 9 Ağustos 2026
+      `DERSLER['moe']`, Rota 3 (`olcek-yasalari` sonrası), 4 adım, 220 XP.
+      Yerleştirme kararı: ölçek yasaları dersi büyütmenin bedelini anlatıyor,
+      MoE tam olarak o bedeli kıran yöntem. Bu yüzden hemen ardından geliyor.
+      Ölçülen: 8 uzman, 24 boyut, veride 4 gizli küme. Yönlendiriciye küme
+      etiketi HİÇ verilmedi ve eğitim sonunda her küme tek bir uzmana %100'e
+      yakın eşleşti (0→u0, 1→u2, 2→u1, 3→u5). Gözetimsiz işbölümü.
+      8 uzmandan 4'ü hiç seçilmedi, ve veride tam olarak 4 küme var.
+      Denge kaybı bu çöküşü açamadı: ağırlık 2.0'da bile yalnızca bir uzman
+      canlandı, ve bastırdıkça doğruluk %96.33'ten %96.13'e düştü. Yani denge
+      kaybı burada gerçek yapıya karşı savaşıyor.
+      top-k taraması: top-1 hem en ucuz hem en doğru (%12.5 çalışma, %96.33),
+      yoğun model (top-8) %100 çalışıp %94.50 veriyor.
+      Ölçek kısmı ölçüm değil tam sayı aritmetiği ve derste böyle etiketlendi:
+      128 uzman top-2 ile toplam 549.8B, aktif 8.59B, oran %1.56 (64 kat).
+      Denetim dört aykırı sonucu ayrıca sınıyor: aktif parametrenin uzman
+      sayısından bağımsız olması, her kümenin tek uzmana eşleşmesi, denge
+      kaybının doğruluğu düşürmesi ve seyreğin yoğunu geçmesi.
+      Kapsanmayan: gürültülü yönlendirme, kapasite faktörü ve token düşürme,
+      paylaşılan uzman tasarımı, all-to-all iletişim maliyeti ve MoE ince
+      ayarının kırılganlığı yalnızca anlatımda anılıyor.
 
 - [ ] **Çok kipli modeller (görsel-dil)**
 
-- [ ] **Grafik sinir ağları (GNN)**
+- [~] **Grafik sinir ağları (GNN)** · BİLİNÇLİ OLARAK KAPSAM DIŞI  ·  9 Ağustos 2026
+      Karar: bu müfredata girmeyecek. Gerekçe, omurganın tablo verisi, görüntü ve
+      metin üzerine kurulu olması. Grafik ayrı bir veri tipi ailesi ve tek derste
+      anlatılırsa yüzeysel kalır: komşuluk toplama, mesaj geçirme, aşırı düzleşme
+      (over-smoothing) ve örnekleme stratejileri en az dört adım ister, ve öncesinde
+      grafik gösterimi diye ayrı bir temel gerekir.
+      Yarım anlatmaktansa dışarıda bırakmak daha dürüst. Bu satır kararın kendisidir,
+      atlanmış bir madde değil. İleride grafik verisi kendi rotasını hak ederse
+      yeniden açılır.
 
 ## C · Kullanılıyor ama öğretilmiyor
 

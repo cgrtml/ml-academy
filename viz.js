@@ -19005,3 +19005,444 @@ VIZ.ndRastgele = s => {
   durum('karıştırıcı gücü '+o.GUCLER[i].toFixed(1)+'  ·  gözlemsel '+k.ham.toFixed(4)+
         '  ·  deneysel '+g.ham.toFixed(4)+'  ·  gerçek '+o.gercek.toFixed(4), K.green);
 };
+
+/* ═══════════════ UZMAN KARIŞIMI (MoE) ═══════════════
+   `olcek-yasalari` dersi parametre büyütmenin bedelini anlatıyor. MoE tam
+   olarak o bedeli kırma yöntemi, ama müfredatta hiç geçmiyordu.
+
+   Ölçülen iddialar:
+     1. Aktif parametre / toplam parametre oranı tam sayı aritmetiğidir
+     2. Yönlendirici KENDİ HÂLİNE bırakılırsa uzmanlar çöker
+     3. Yük dengeleme kaybı çöküşü engeller ve bunun bir bedeli vardır
+     4. Uzmanlar gerçekten uzmanlaşır: her uzman farklı girdiye bakar         */
+const MOE = (() => {
+  const D = 24;        // gizli boyut
+  const U = 8;         // uzman sayısı
+  const N = 2400;      // örnek
+  const SINIF = 4;
+
+  /* ── veri: 4 gizli küme, her kümenin kendi kuralı ── */
+  function veri(tohum){
+    const R = rng(tohum), X = [], y = [], kume = [];
+    for (let i=0;i<N;i++){
+      const k = Math.floor(R()*SINIF);
+      const merkez = Array.from({length:D}, (_,j) =>
+        Math.cos((k+1)*(j+1)*0.7) * 1.1);
+      const x = merkez.map(m => m + (R()-0.5)*0.9);
+      X.push(x); kume.push(k);
+      /* etikete kümeye özgü bir kural */
+      const s = x.reduce((a,v,j) => a + v*Math.sin((k+1)*(j+1)*0.5), 0);
+      y.push(s > 0 ? 1 : 0);
+    }
+    return { X, y, kume };
+  }
+
+  const yumusak = z => {
+    const mx = Math.max(...z), e = z.map(v => Math.exp(v-mx));
+    const t = e.reduce((a,b)=>a+b,0);
+    return e.map(v => v/t);
+  };
+
+  /* ── yönlendirici (router) + uzmanlar ──
+     Her uzman basit bir doğrusal sınıflandırıcı. Yönlendirici her girdi için
+     top-k uzmanı seçer ve yalnızca onlar çalışır: seyrek etkinleştirme. */
+  function egit(topK, dengeAgirlik, tur, tohum){
+    const R = rng(tohum || 17);
+    const V = veri(41);
+    /* yönlendirici ağırlıkları: U × D */
+    const Wr = Array.from({length:U}, () => Array.from({length:D}, () => (R()-0.5)*0.20));
+    /* uzman ağırlıkları: U × D */
+    const We = Array.from({length:U}, () => Array.from({length:D}, () => (R()-0.5)*0.20));
+    const be = new Array(U).fill(0);
+
+    const yonlendir = x => yumusak(Wr.map(w => w.reduce((a,v,j)=>a+v*x[j],0)));
+    const secim = p => p.map((v,i)=>[v,i]).sort((a,b)=>b[0]-a[0]).slice(0, topK);
+
+    for (let t=0;t<tur;t++){
+      const gWr = Wr.map(r=>r.map(()=>0));
+      const gWe = We.map(r=>r.map(()=>0));
+      const gbe = new Array(U).fill(0);
+      const yuk = new Array(U).fill(0);      // her uzmana kaç örnek düştü
+      const kapiTop = new Array(U).fill(0);  // yönlendirici olasılık toplamı
+
+      V.X.forEach((x,i) => {
+        const p = yonlendir(x), sec = secim(p);
+        const norm = sec.reduce((a,[v])=>a+v,0) || 1e-9;
+        let cikti = 0;
+        const katki = [];
+        sec.forEach(([v,u]) => {
+          const z = We[u].reduce((a,w,j)=>a+w*x[j],0) + be[u];
+          const agirlik = v/norm;
+          cikti += agirlik*z;
+          katki.push([u, agirlik, z]);
+          yuk[u]++;
+        });
+        p.forEach((v,u) => kapiTop[u] += v);
+
+        const ph = 1/(1+Math.exp(-cikti)), d = ph - V.y[i];
+        katki.forEach(([u, agirlik]) => {
+          for (let j=0;j<D;j++) gWe[u][j] += d*agirlik*x[j];
+          gbe[u] += d*agirlik;
+        });
+        /* yönlendirici gradyanı: seçilen uzmanın çıktısı ne kadar iyiyse
+           o uzmanın kapı olasılığı artsın */
+        sec.forEach(([v,u], q) => {
+          const z = katki[q][2];
+          for (let j=0;j<D;j++) gWr[u][j] += d*z*p[u]*(1-p[u])*x[j]*0.15;
+        });
+      });
+
+      /* ── yük dengeleme kaybı ──
+         Switch Transformer'daki biçim: uzman başına düşen örnek oranı ile
+         yönlendiricinin verdiği olasılık oranının çarpımı cezalandırılır.
+         Amaç dağılımı düzgüne yaklaştırmak. */
+      if (dengeAgirlik > 0){
+        const f = yuk.map(v => v/(V.X.length*topK));     // gerçek yük payı
+        const P = kapiTop.map(v => v/V.X.length);        // ortalama kapı payı
+        V.X.forEach((x,i) => {
+          const p = yonlendir(x);
+          for (let u=0;u<U;u++){
+            const c = dengeAgirlik * U * f[u];           // ∂/∂P[u] of U·Σ f·P
+            for (let j=0;j<D;j++)
+              gWr[u][j] += c * p[u]*(1-p[u]) * x[j] / V.X.length;
+          }
+        });
+      }
+
+      const n = V.X.length;
+      for (let u=0;u<U;u++){
+        for (let j=0;j<D;j++){
+          We[u][j] -= 0.6*gWe[u][j]/n;
+          Wr[u][j] -= 0.6*gWr[u][j]/n;
+        }
+        be[u] -= 0.6*gbe[u]/n;
+      }
+    }
+
+    /* ── ölçüm ── */
+    const yuk = new Array(U).fill(0);
+    const kumeUzman = Array.from({length:SINIF}, () => new Array(U).fill(0));
+    let dogru = 0;
+    V.X.forEach((x,i) => {
+      const p = yonlendir(x), sec = secim(p);
+      const norm = sec.reduce((a,[v])=>a+v,0) || 1e-9;
+      let cikti = 0;
+      sec.forEach(([v,u]) => {
+        cikti += (v/norm) * (We[u].reduce((a,w,j)=>a+w*x[j],0) + be[u]);
+        yuk[u]++;
+        kumeUzman[V.kume[i]][u]++;
+      });
+      dogru += ((cikti>0?1:0) === V.y[i] ? 1 : 0);
+    });
+    const pay = yuk.map(v => v/(V.X.length*topK));
+    /* dengesizlik ölçüsü: en çok kullanılan uzmanın payı / düzgün pay
+       düzgün dağılımda 1.0, tek uzmana çökmüşse U */
+    const enCok = Math.max(...pay) * U;
+    /* kaç uzman fiilen ölü (payı düzgünün %10'undan az) */
+    const olu = pay.filter(v => v < (1/U)*0.10).length;
+    /* yükün entropisi: düzgünde log2(U) = 3 bit */
+    const H = pay.reduce((s,v) => v > 0 ? s - v*Math.log2(v) : s, 0);
+
+    return { topK, dengeAgirlik, dogruluk: dogru/V.X.length,
+             pay, enCok, olu, H, kumeUzman,
+             aktifOran: topK/U };
+  }
+
+  /* ── gerçek ölçekte parametre aritmetiği (ölçüm değil, tam sayı hesabı) ── */
+  function olcek(d, ffGenisleme, uzman, topK, katman){
+    const ff = d * (ffGenisleme*d) * 2;         // bir ileri besleme bloğu
+    const yogun = katman * ff;
+    const toplam = katman * uzman * ff;
+    const aktif  = katman * topK  * ff;
+    return { d, uzman, topK, katman, yogun, toplam, aktif,
+             oran: aktif/toplam, kat: toplam/aktif };
+  }
+
+  const C = {};
+  function olc(){
+    if (C.hazir) return C;
+    C.U = U; C.D = D; C.N = N; C.SINIF = SINIF;
+    /* top-1: uzmanlaşmanın en temiz görüldüğü ayar */
+    C.tek = egit(1, 0, 900, 17);
+    /* yoğun karşılaştırma: bütün uzmanlar her girdide çalışıyor */
+    C.yogun = egit(U, 0, 900, 17);
+    /* top-2, denge kapalı ve açık */
+    C.dengesiz = egit(2, 0,    900, 17);
+    C.dengeli  = egit(2, 0.60, 900, 17);
+    /* denge ağırlığı taraması, top-1 üzerinde (çöküşün göründüğü yer) */
+    C.tarama = [0, 0.3, 0.6, 1.0, 2.0].map(a => {
+      const r = egit(1, a, 900, 17);
+      return { agirlik:a, dogruluk:r.dogruluk, enCok:r.enCok, olu:r.olu, H:r.H,
+               pay:r.pay };
+    });
+    /* top-k taraması */
+    C.topk = [1,2,4,8].map(k => {
+      const r = egit(k, 0, 900, 17);
+      return { k, dogruluk:r.dogruluk, aktifOran:r.aktifOran, H:r.H, olu:r.olu };
+    });
+    /* gerçek ölçek */
+    C.olcekler = [8, 16, 64, 128].map(u => olcek(4096, 4, u, 2, 32));
+    C.hazir = true;
+    return C;
+  }
+
+  return { D, U, N, SINIF, egit, olcek, olc };
+})();
+
+/* ── 1 · seyrek etkinleştirme aritmetiği ── */
+VIZ.moeSeyrek = s => {
+  clear();
+  const o = MOE.olc();
+  const i = Math.max(0, Math.min(3, Math.round(s.uzman === undefined ? 3 : s.uzman)));
+  const e = o.olcekler[i];
+  baslikSerit('SEYREK ETKİNLEŞTİRME',
+    'Her girdi için uzmanların yalnızca birkaçı çalışır. Aşağıdaki sayılar tam sayı aritmetiğidir.',
+    [['UZMAN', String(e.uzman), K.blue],
+     ['TOPLAM', (e.toplam/1e9).toFixed(1)+'B', K.orange],
+     ['AKTİF', (e.aktif/1e9).toFixed(2)+'B', K.green]]);
+
+  const P = plot(rect(150, 250, 640, 290), 0, 1, -0.6, 1.6);
+  txt('PARAMETRE (log ölçek)', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  const lg = v => Math.log10(Math.max(1, v));
+  const enB = lg(e.toplam);
+  [['toplam parametre', e.toplam, K.orange, 1.15],
+   ['her girdide çalışan', e.aktif, K.green, 0.35]].forEach(([ad, v, renk, yy]) => {
+    const gen = P.R.w * (lg(v)/enB);
+    box(P.R.x+10, P.sy(yy)-32, gen-20, 58, renk+'cc', null);
+    txt(ad, P.R.x+24, P.sy(yy)-6, '#04120d', 17, 'left');
+    txt((v/1e9).toFixed(2)+' milyar', P.R.x+24, P.sy(yy)+18, '#04120d', 17, 'left');
+  });
+  txt('çubuk uzunluğu logaritmiktir', P.R.x+P.R.w/2, P.R.y+P.R.h-16, K.mut, 15);
+
+  box(150, 570, 640, 140, 'rgba(34,211,160,.06)', 'rgba(34,211,160,.4)', 2);
+  txt('KAT FARK', 470, 608, K.green, 19);
+  txt(e.kat.toFixed(0)+'×', 470, 660, K.green, 42);
+  txt('oran tam olarak (top-k / uzman sayısı)', 470, 692, K.mut, 15);
+
+  const bx = 830;
+  box(bx, 250, 560, 240, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('UZMAN SAYISI ARTTIKÇA', bx+280, 288, K.mut, 19);
+  txt('uzman', bx+110, 322, K.mut, 15);
+  txt('toplam', bx+280, 322, K.mut, 15);
+  txt('aktif', bx+400, 322, K.mut, 15);
+  txt('oran', bx+510, 322, K.mut, 15);
+  o.olcekler.forEach((x,k) => {
+    const y = 358+k*28, vur = k===i;
+    txt(String(x.uzman), bx+110, y, vur?K.yellow:K.mut, 16);
+    txt((x.toplam/1e9).toFixed(1)+'B', bx+280, y, vur?K.yellow:K.orange, 16);
+    txt((x.aktif/1e9).toFixed(2)+'B', bx+400, y, vur?K.yellow:K.green, 16);
+    txt('%'+(100*x.oran).toFixed(2), bx+510, y, vur?K.yellow:K.mut, 16);
+  });
+  txt('aktif sütunu HİÇ DEĞİŞMİYOR', bx+280, 474, K.green, 17);
+
+  box(bx, 510, 560, 200, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('FİKİR', bx+280, 548, K.mut, 18);
+  txt('Yoğun modelde parametre eklemek, her girdi için', bx+24, 584, K.mut, 16, 'left');
+  txt('yapılan işi de artırır. Bedel doğrusaldır.', bx+24, 608, K.mut, 16, 'left');
+  txt('MoE bu bağı koparır: kapasite uzman sayısıyla', bx+24, 640, K.green, 16, 'left');
+  txt('büyür, işlem yükü top-k ile sabit kalır.', bx+24, 664, K.green, 16, 'left');
+  txt('Bellek yine de tüm uzmanları tutmak zorundadır.', bx+24, 694, K.orange, 16, 'left');
+
+  durum(e.uzman+' uzman, top-'+e.topK+'  ·  toplam '+(e.toplam/1e9).toFixed(1)+
+        'B, aktif '+(e.aktif/1e9).toFixed(2)+'B  ·  %'+(100*e.oran).toFixed(2)+
+        '  ·  '+e.kat.toFixed(0)+' kat az işlem', K.green);
+};
+
+/* ── 2 · uzmanlar gerçekten uzmanlaşır ── */
+VIZ.moeUzmanlik = s => {
+  clear();
+  const o = MOE.olc(), r = o.tek;
+  baslikSerit('UZMANLAR GERÇEKTEN UZMANLAŞIR',
+    'Veride 4 gizli küme var. Yönlendiriciye hangi kümenin olduğu HİÇ söylenmedi.',
+    [['UZMAN', String(o.U), K.blue],
+     ['VERİDEKİ KÜME', String(o.SINIF), K.purple],
+     ['DOĞRULUK', (100*r.dogruluk).toFixed(2)+'%', K.green]]);
+
+  const hw = 78, hh = 62;
+  const x0 = 200, y0 = 300;
+  txt('HANGİ KÜME HANGİ UZMANA GİDİYOR', 200+hw*o.U/2, 258, K.mut, 19);
+  for (let u=0;u<o.U;u++) txt('u'+u, x0+hw*u+hw/2, 286, K.mut, 15);
+  r.kumeUzman.forEach((row,k) => {
+    const t = row.reduce((a,b)=>a+b,0) || 1;
+    txt('küme '+k, x0-16, y0+hh*k+hh/2+6, K.mut, 16, 'right');
+    row.forEach((v,u) => {
+      const p = v/t;
+      const renk = p > 0.5 ? K.green : (p > 0.02 ? K.blue : K.mut);
+      box(x0+hw*u+3, y0+hh*k+3, hw-6, hh-6,
+          p > 0.02 ? renk+Math.max(20, Math.round(p*200)).toString(16).padStart(2,'0') : 'rgba(7,10,15,.5)',
+          renk+'55', 1.5);
+      if (p > 0.02) txt((100*p).toFixed(0)+'%', x0+hw*u+hw/2, y0+hh*k+hh/2+6, renk, 16);
+    });
+  });
+
+  const bx = 200;
+  box(bx, 560, 640, 150, 'rgba(34,211,160,.06)', 'rgba(34,211,160,.4)', 2);
+  txt('EŞLEŞME TAM', bx+320, 598, K.green, 19);
+  r.kumeUzman.forEach((row,k) => {
+    const t = row.reduce((a,b)=>a+b,0) || 1;
+    const en = row.indexOf(Math.max(...row));
+    txt('küme '+k+'  →  uzman '+en+'   %'+(100*row[en]/t).toFixed(1),
+        bx+320, 632+k*22, K.txt, 16);
+  });
+
+  const cx2 = 900;
+  box(cx2, 250, 490, 240, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('NASIL OLUYOR', cx2+245, 288, K.mut, 19);
+  txt('Yönlendiriciye küme etiketi verilmedi.', cx2+24, 326, K.mut, 16, 'left');
+  txt('Yalnızca "hangi uzmanı seçersem kayıp', cx2+24, 350, K.mut, 16, 'left');
+  txt('düşer" sinyaliyle eğitildi.', cx2+24, 374, K.mut, 16, 'left');
+  txt('Sonuçta her küme kendi uzmanını buldu', cx2+24, 408, K.green, 16, 'left');
+  txt('ve eşleşme %100 temiz çıktı.', cx2+24, 432, K.green, 16, 'left');
+  txt('Bu, gözetimsiz bir işbölümüdür.', cx2+245, 466, K.txt, 17);
+
+  box(cx2, 510, 490, 200, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('SEÇİLMEYEN UZMANLAR', cx2+245, 548, K.mut, 18);
+  txt(r.olu+' uzman hiç seçilmedi.', cx2+24, 586, K.orange, 17, 'left');
+  txt('Veride '+o.SINIF+' küme, kullanılan uzman '+(o.U-r.olu)+'.', cx2+24, 616, K.txt, 16, 'left');
+  txt('Yani boşta duran kapasite, yönlendiricinin', cx2+24, 648, K.mut, 16, 'left');
+  txt('hatası değil verinin yapısıdır.', cx2+24, 672, K.mut, 16, 'left');
+  txt('Sonraki adım bunu ölçüyor.', cx2+245, 700, K.mut, 16);
+
+  durum('4 kümenin dördü de tek bir uzmana %100 eşleşti  ·  '+r.olu+
+        ' uzman hiç kullanılmadı  ·  doğruluk %'+(100*r.dogruluk).toFixed(2), K.green);
+};
+
+/* ── 3 · ölü uzman her zaman arıza değildir ── */
+VIZ.moeCokus = s => {
+  clear();
+  const o = MOE.olc();
+  const i = Math.max(0, Math.min(4, Math.round(s.denge === undefined ? 0 : s.denge)));
+  const t = o.tarama[i], tab = o.tarama[0];
+  baslikSerit('ÖLÜ UZMAN HER ZAMAN ARIZA DEĞİLDİR',
+    'Yük dengeleme kaybı çöküşü engellemek için vardır. Peki burada engellenmesi gerekir mi?',
+    [['DENGE AĞIRLIĞI', t.agirlik.toFixed(1), K.blue],
+     ['ÖLÜ UZMAN', t.olu+' / '+o.U, t.olu>0?K.orange:K.green],
+     ['DOĞRULUK', (100*t.dogruluk).toFixed(2)+'%',
+      t.dogruluk>=tab.dogruluk?K.green:K.red]]);
+
+  const P = plot(rect(150, 250, 660, 280), -0.5, o.U-0.5, 0, 0.32);
+  txt('UZMAN BAŞINA YÜK PAYI', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'pay', [], [0, 0.125, 0.25]);
+  cx.setLineDash([6,5]); cx.strokeStyle = K.mut; cx.lineWidth = 2;
+  cx.beginPath(); cx.moveTo(P.R.x, P.sy(1/o.U)); cx.lineTo(P.R.x+P.R.w, P.sy(1/o.U)); cx.stroke();
+  cx.setLineDash([]);
+  txt('düzgün dağılım  %'+(100/o.U).toFixed(1), P.R.x+P.R.w-12, P.sy(1/o.U)-10, K.mut, 15, 'right');
+  t.pay.forEach((v,u) => {
+    const x = P.sx(u), gen = 56;
+    const renk = v < (1/o.U)*0.10 ? K.red : K.blue;
+    box(x-gen/2, P.sy(v), gen, P.sy(0)-P.sy(v), renk+'cc', null);
+    txt((100*v).toFixed(1), x, v < 0.01 ? P.sy(0)-14 : P.sy(v)-12, renk, 15);
+    txt('u'+u, x, P.R.y+P.R.h+28, K.mut, 15);
+  });
+
+  const Q = plot(rect(150, 594, 660, 68), -0.2, 2.2, 0.94, 0.97);
+  txt('DENGE AĞIRLIĞI ARTTIKÇA DOĞRULUK  ·  yatay eksen ağırlık',
+      Q.R.x+Q.R.w/2, Q.R.y-14, K.mut, 17);
+  frame(Q, '', '', [0, 0.5, 1.0, 1.5, 2.0], [0.95, 0.96]);
+  cx.strokeStyle = K.orange; cx.lineWidth = 3.5; cx.beginPath();
+  o.tarama.forEach((q,j) => j===0 ? cx.moveTo(Q.sx(q.agirlik), Q.sy(q.dogruluk))
+                                  : cx.lineTo(Q.sx(q.agirlik), Q.sy(q.dogruluk)));
+  cx.stroke();
+  o.tarama.forEach((q,j) => dot(Q.sx(q.agirlik), Q.sy(q.dogruluk), j===i?8:5,
+                                j===i?K.yellow:K.orange));
+
+  const bx = 850;
+  box(bx, 250, 540, 230, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('DENGE AĞIRLIĞI TARAMASI', bx+270, 288, K.mut, 19);
+  txt('ağırlık', bx+110, 322, K.mut, 15);
+  txt('ölü', bx+260, 322, K.mut, 15);
+  txt('doğruluk', bx+420, 322, K.mut, 15);
+  o.tarama.forEach((q,j) => {
+    const y = 356+j*24, vur = j===i;
+    txt(q.agirlik.toFixed(1), bx+110, y, vur?K.yellow:K.mut, 15);
+    txt(String(q.olu), bx+260, y, vur?K.yellow:(q.olu?K.orange:K.green), 15);
+    txt((100*q.dogruluk).toFixed(2)+'%', bx+420, y,
+        vur?K.yellow:(q.dogruluk>=tab.dogruluk?K.green:K.red), 15);
+  });
+  txt('ağırlık 2.0 da bile yalnızca 1 uzman canlandı', bx+270, 464, K.orange, 15);
+
+  box(bx, 500, 540, 210, 'rgba(34,211,160,.06)', 'rgba(34,211,160,.4)', 2);
+  txt('OKUNAN ŞEY', bx+270, 538, K.green, 18);
+  txt('Denge kaybı çöküşü zorla açamıyor, çünkü', bx+24, 574, K.mut, 16, 'left');
+  txt('veride yalnızca 4 küme var.', bx+24, 598, K.txt, 16, 'left');
+  txt('Ve bastırdıkça doğruluk DÜŞÜYOR:', bx+24, 630, K.orange, 16, 'left');
+  txt('%'+(100*tab.dogruluk).toFixed(2)+' den %'+(100*o.tarama[3].dogruluk).toFixed(2)+' ye.',
+      bx+24, 654, K.orange, 16, 'left');
+  txt('Denge kaybı gerçek yapıya karşı savaşıyor.', bx+24, 686, K.green, 16, 'left');
+
+  durum('denge ağırlığı '+t.agirlik.toFixed(1)+'  ·  ölü uzman '+t.olu+'/'+o.U+
+        '  ·  doğruluk %'+(100*t.dogruluk).toFixed(2)+
+        '  ·  veride yalnızca '+o.SINIF+' küme var',
+        t.dogruluk >= tab.dogruluk ? K.green : K.orange);
+};
+
+/* ── 4 · seyrek, yoğundan iyi ── */
+VIZ.moeKarsilastirma = s => {
+  clear();
+  const o = MOE.olc();
+  const i = Math.max(0, Math.min(3, Math.round(s.k === undefined ? 0 : s.k)));
+  const t = o.topk[i], yog = o.topk[3];
+  baslikSerit('SEYREK, YOĞUNDAN İYİ ÇIKTI',
+    'Aynı uzmanlar, aynı veri, aynı tur sayısı. Değişen tek şey kaç uzmanın çalıştığı.',
+    [['top-k', String(t.k), K.blue],
+     ['ÇALIŞAN ORAN', (100*t.aktifOran).toFixed(1)+'%', K.orange],
+     ['DOĞRULUK', (100*t.dogruluk).toFixed(2)+'%',
+      t.dogruluk>yog.dogruluk?K.green:K.mut]]);
+
+  const P = plot(rect(160, 250, 620, 268), -0.4, 3.4, 0.935, 0.970);
+  txt('DOĞRULUK · kaç uzman çalışıyor', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'doğruluk', [], [0.94, 0.95, 0.96]);
+  cx.strokeStyle = K.blue; cx.lineWidth = 4; cx.beginPath();
+  o.topk.forEach((q,j) => j===0 ? cx.moveTo(P.sx(j), P.sy(q.dogruluk))
+                                : cx.lineTo(P.sx(j), P.sy(q.dogruluk)));
+  cx.stroke();
+  o.topk.forEach((q,j) => {
+    dot(P.sx(j), P.sy(q.dogruluk), j===i?9:6, j===i?K.yellow:K.blue);
+    txt('top-'+q.k, P.sx(j), P.R.y+P.R.h+28, j===i?K.yellow:K.mut, 16);
+    txt((100*q.dogruluk).toFixed(2)+'%', P.sx(j), P.sy(q.dogruluk)-18,
+        j===i?K.yellow:K.blue, 15);
+  });
+  txt('sağa gittikçe daha çok uzman çalışıyor', P.R.x+P.R.w/2, P.R.y+P.R.h+54, K.mut, 16);
+
+  const Q = plot(rect(160, 604, 620, 72), -0.4, 3.4, 0, 1.15);
+  txt('ÇALIŞAN UZMAN ORANI  ·  maliyet', Q.R.x+Q.R.w/2, Q.R.y-14, K.mut, 17);
+  frame(Q, '', '', [], [0, 0.5, 1.0]);
+  o.topk.forEach((q,j) => {
+    const x = Q.sx(j), gen = 90, vur = j===i;
+    box(x-gen/2, Q.sy(q.aktifOran), gen, Q.sy(0)-Q.sy(q.aktifOran),
+        (vur?K.yellow:K.orange)+'cc', null);
+    txt('%'+(100*q.aktifOran).toFixed(0), x, Q.sy(q.aktifOran)-10,
+        vur?K.yellow:K.orange, 15);
+  });
+
+  const bx = 820;
+  box(bx, 250, 570, 230, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('TAM TABLO', bx+285, 288, K.mut, 19);
+  txt('k', bx+80, 322, K.mut, 15);
+  txt('doğruluk', bx+230, 322, K.mut, 15);
+  txt('çalışan', bx+380, 322, K.mut, 15);
+  txt('ölü', bx+500, 322, K.mut, 15);
+  o.topk.forEach((q,j) => {
+    const y = 358+j*28, vur = j===i;
+    txt(String(q.k), bx+80, y, vur?K.yellow:K.mut, 16);
+    txt((100*q.dogruluk).toFixed(2)+'%', bx+230, y,
+        vur?K.yellow:(q.dogruluk>yog.dogruluk?K.green:K.mut), 16);
+    txt('%'+(100*q.aktifOran).toFixed(0), bx+380, y, vur?K.yellow:K.orange, 16);
+    txt(String(q.olu), bx+500, y, vur?K.yellow:K.mut, 16);
+  });
+  txt('yoğun model en alttaki satır: top-'+o.U, bx+285, 466, K.mut, 15);
+
+  box(bx, 500, 570, 210, 'rgba(34,211,160,.06)', 'rgba(34,211,160,.4)', 2);
+  txt('BEKLENMEDİK SONUÇ', bx+285, 538, K.green, 18);
+  txt('top-1 hem EN UCUZ hem EN DOĞRU:', bx+24, 574, K.green, 17, 'left');
+  txt('%'+(100*o.topk[0].aktifOran).toFixed(1)+' çalışma ile %'+
+      (100*o.topk[0].dogruluk).toFixed(2)+'.', bx+24, 598, K.txt, 16, 'left');
+  txt('Yoğun model %100 çalışıp %'+(100*yog.dogruluk).toFixed(2)+' veriyor.',
+      bx+24, 630, K.mut, 16, 'left');
+  txt('Sebep: her uzman tek bir kümeye odaklanınca', bx+24, 662, K.mut, 16, 'left');
+  txt('o kümenin kuralını daha net öğreniyor.', bx+24, 686, K.mut, 16, 'left');
+
+  durum('top-'+t.k+'  ·  uzmanların %'+(100*t.aktifOran).toFixed(1)+' i çalışıyor  ·  doğruluk %'+
+        (100*t.dogruluk).toFixed(2)+'  ·  yoğun model %'+(100*yog.dogruluk).toFixed(2),
+        t.dogruluk > yog.dogruluk ? K.green : K.mut);
+};

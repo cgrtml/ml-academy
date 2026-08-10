@@ -9522,3 +9522,178 @@ DERSLER_EN['nedensellik'] = {
   ],
 };
 DERS_ADI_EN['nedensellik'] = 'Correlation is not causation, so what is';
+
+DERSLER_EN['moe'] = {
+  ad:'Mixture of experts: the cheap way to add parameters',
+  alt:'The scaling laws lesson showed the price of growing. MoE exists precisely to break that price.',
+  adimlar:[
+  {
+    t:'Sparse activation',
+    goal:'You will see how the link between capacity and compute is broken.',
+    todo:'Change the number of experts. Watch the active column.',
+    kind:'controls', viz:'moeSeyrek', h:760, xp:50,
+    controls:[{k:'uzman', lb:'EXPERTS', min:0, max:3, step:1, val:3,
+               fmt:v=>[8,16,64,128][Math.round(v)]+' experts'}],
+    body:'<p>In the <i>scaling laws</i> lesson you saw both the return and the price of growing. ' +
+      'The price was this: in a dense model, adding parameters also increases <b>the work done ' +
+      'for every input</b>. Twice the parameters, twice the compute.</p>' +
+      '<p>Mixture of experts breaks that link. It splits the feed-forward block into <b>many ' +
+      'experts</b> instead of one network, and a <b>router</b> picks only a few of them per ' +
+      'input. The rest never run.</p>' +
+      '<p>The arithmetic (d = 4096, 32 layers, top-2; integer arithmetic, not a measurement):</p>' +
+      '<p style="font-family:var(--mono)">experts &nbsp;&nbsp;&nbsp;total &nbsp;&nbsp;&nbsp;active &nbsp;&nbsp;&nbsp;ratio<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8 &nbsp;&nbsp;&nbsp;34.4B &nbsp;&nbsp;8.59B &nbsp;&nbsp;25.00%<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;16 &nbsp;&nbsp;&nbsp;68.7B &nbsp;&nbsp;8.59B &nbsp;&nbsp;12.50%<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;64 &nbsp;&nbsp;274.9B &nbsp;&nbsp;8.59B &nbsp;&nbsp;&nbsp;3.13%<br>' +
+      '&nbsp;&nbsp;&nbsp;128 &nbsp;&nbsp;549.8B &nbsp;&nbsp;8.59B &nbsp;&nbsp;&nbsp;<b>1.56%</b></p>' +
+      '<p>The real point of the table is that <b>the active column never changes</b>. Total ' +
+      'parameters go from 34.4 billion to 549.8 billion while the amount that runs for any ' +
+      'given input stays fixed at <b>8.59 billion</b>.</p>' +
+      '<p>The ratio is simple too: <b>top-k divided by the number of experts</b>. For 128 experts ' +
+      'and top-2 that is 2/128 = 1.56%, meaning <b>64 times</b> less compute.</p>' +
+      '<p>But something needs saying honestly: <b>memory does not fall by that ratio</b>. Every ' +
+      'expert\'s weights have to sit somewhere, because which one gets picked is not known in ' +
+      'advance. What you gain is compute; what you lose is memory. This is why MoE models are ' +
+      '"cheap to run but expensive to load".</p>' +
+      '<p>There is one more cost, and in distributed training it is the real bottleneck: when ' +
+      'experts are spread across devices, every input has to be <b>sent</b> to the expert it ' +
+      'chose. That communication cost takes back part of the compute you saved.</p>',
+    learned:'<b>MoE breaks the link between capacity and compute.</b><br><br>' +
+      'With d = 4096, 32 layers and top-2: going from 8 to 128 experts takes total parameters ' +
+      'from 34.4B to 549.8B while <b>active parameters stay at 8.59B</b>.<br><br>' +
+      'The ratio is exactly top-k over the number of experts: 2/128 = 1.56%, so 64 times less ' +
+      'compute.<br><br>' +
+      'Memory does not fall by that ratio: every expert must stay loaded. The gain is compute; ' +
+      'the loss is memory and communication.',
+  },
+  {
+    t:'The experts really do specialise',
+    goal:'You will see the router find the structure in the data with nobody telling it.',
+    todo:'Read the table. The router was never told which cluster is which.',
+    kind:'viz', viz:'moeUzmanlik', h:760, xp:55,
+    body:'<p>The word "expert" has been used so far without answering a question: do they really ' +
+      'specialise, or is it just a name?</p>' +
+      '<p>The setup: the data holds <b>4 hidden clusters</b> and each cluster has its own label ' +
+      'rule. Eight experts and a router are trained. The router is <b>never told which cluster ' +
+      'is which</b>; it is trained only on the signal "does the loss fall with the expert I ' +
+      'picked".</p>' +
+      '<p>After training, which cluster went to which expert was counted:</p>' +
+      '<p style="font-family:var(--mono)">cluster 0 &nbsp;→ &nbsp;expert 0 &nbsp;&nbsp;<b>100.0%</b><br>' +
+      'cluster 1 &nbsp;→ &nbsp;expert 2 &nbsp;&nbsp;&nbsp;99.8%<br>' +
+      'cluster 2 &nbsp;→ &nbsp;expert 1 &nbsp;&nbsp;<b>100.0%</b><br>' +
+      'cluster 3 &nbsp;→ &nbsp;expert 5 &nbsp;&nbsp;<b>100.0%</b></p>' +
+      '<p>The match is nearly perfect. Every cluster goes to <b>a single expert</b> and no ' +
+      'expert is shared between two clusters.</p>' +
+      '<p>This is an <b>unsupervised division of labour</b>. Nobody said "you handle inputs of ' +
+      'this type"; the router derived it from the loss signal alone. The idea goes back to 1991 ' +
+      'and Jacobs and colleagues\' work on local expert mixtures; carrying it to large scale ' +
+      'with sparse routing happened in 2017 with Shazeer and colleagues.</p>' +
+      '<p>Something else stands out in the table: <b>only 4 of the 8 experts are used</b>. The ' +
+      'other 4 were never picked.</p>' +
+      '<p>In the MoE literature this is called "expert collapse" and is usually treated as ' +
+      '<b>a fault</b>. But this data has exactly 4 clusters. So the idle capacity is not the ' +
+      'router\'s mistake but <b>the structure of the data</b>. The next step measures that, and ' +
+      'the result is surprising.</p>' +
+      '<p>It also needs saying that specialisation is nowhere near this clean in real language ' +
+      'models. There, experts divide not by topic but usually by <b>surface features</b>: ' +
+      'punctuation, numbers, particular languages, particular syntactic patterns. A clean ' +
+      'reading like "this expert handles legal text" is rarely available.</p>',
+    learned:'<b>Experts specialise with nobody telling them to.</b><br><br>' +
+      'The data holds 4 hidden clusters and the router was never told which is which. After ' +
+      'training, every cluster matched <b>a single expert at close to 100%</b>.<br><br>' +
+      'This is an unsupervised division of labour, derived from the loss signal alone.<br><br>' +
+      '4 of the 8 experts were never used. The data has exactly 4 clusters: the idle capacity is ' +
+      'not the router\'s mistake but the structure of the data.',
+  },
+  {
+    t:'A dead expert is not always a fault',
+    goal:'You will measure what the load balancing loss does and when it hurts.',
+    todo:'Increase the balance weight. Watch the dead expert count and the accuracy together.',
+    kind:'controls', viz:'moeCokus', h:760, xp:60,
+    controls:[{k:'denge', lb:'BALANCE', min:0, max:4, step:1, val:0,
+               fmt:v=>[0,0.3,0.6,1.0,2.0][Math.round(v)].toFixed(1)}],
+    body:'<p>Expert collapse is a real problem. If the router starts favouring a few experts, ' +
+      'those get trained more, become better, and get picked more. It is a self-feeding loop ' +
+      'and it ends with most of the model\'s capacity going to waste.</p>' +
+      '<p>The standard answer is a <b>load balancing loss</b>: deviation of the load per expert ' +
+      'from a uniform distribution is penalised. The form used in Switch Transformer penalises ' +
+      'the product of the share of examples an expert receives and the probability share the ' +
+      'router assigns it.</p>' +
+      '<p>This step switches that loss on and off, and the result is not what is expected:</p>' +
+      '<p style="font-family:var(--mono)">weight &nbsp;&nbsp;dead &nbsp;&nbsp;accuracy<br>' +
+      '&nbsp;&nbsp;&nbsp;0.0 &nbsp;&nbsp;&nbsp;&nbsp;4 &nbsp;&nbsp;&nbsp;<b>96.33%</b><br>' +
+      '&nbsp;&nbsp;&nbsp;0.3 &nbsp;&nbsp;&nbsp;&nbsp;4 &nbsp;&nbsp;&nbsp;96.33%<br>' +
+      '&nbsp;&nbsp;&nbsp;0.6 &nbsp;&nbsp;&nbsp;&nbsp;4 &nbsp;&nbsp;&nbsp;96.21%<br>' +
+      '&nbsp;&nbsp;&nbsp;1.0 &nbsp;&nbsp;&nbsp;&nbsp;4 &nbsp;&nbsp;&nbsp;<b>96.13%</b><br>' +
+      '&nbsp;&nbsp;&nbsp;2.0 &nbsp;&nbsp;&nbsp;&nbsp;3 &nbsp;&nbsp;&nbsp;96.17%</p>' +
+      '<p>Two things are visible.</p>' +
+      '<p><b>One.</b> The balance loss <b>cannot open the collapse</b>. Even pushed to a weight ' +
+      'of 2.0, only one expert revives and three remain dead.</p>' +
+      '<p><b>Two.</b> The harder it pushes, the more accuracy <b>falls</b>: from 96.33% to ' +
+      '96.13%. A small drop, but the direction is clear and reproducible.</p>' +
+      '<p>The reason was measured in the previous step: this data really does have <b>4 ' +
+      'clusters</b>. The router has found the right structure. The balance loss is forcing it to ' +
+      'imitate a diversity that does not exist, meaning it is <b>fighting the true ' +
+      'structure</b>.</p>' +
+      '<p>The conclusion is not "balance loss is unnecessary". In real language models the ' +
+      'diversity of inputs far exceeds the number of experts, and collapse there <b>really is</b> ' +
+      'wasted capacity. On top of that, load imbalance in distributed training is directly a ' +
+      '<b>hardware</b> problem: one device saturates while the others wait idle.</p>' +
+      '<p>The conclusion is this: <b>a dead expert is a symptom, not a diagnosis.</b> The first ' +
+      'question should be "does the diversity in the data justify this many experts". If the ' +
+      'answer is no, the right fix is not more balance loss but <b>fewer experts</b>.</p>',
+    learned:'<b>A dead expert is a symptom, not a diagnosis.</b><br><br>' +
+      'The balance loss could not open the collapse in this data: even at weight 2.0 only one ' +
+      'expert revived and three stayed dead.<br><br>' +
+      'And the harder it pushed, the more accuracy fell: 96.33% to 96.13%. Because the data ' +
+      'really has 4 clusters and the balance loss is <b>fighting the true structure</b>.<br><br>' +
+      'In real language models diversity is far greater and the balance loss is needed. But the ' +
+      'first question is whether the data justifies that many experts.',
+  },
+  {
+    t:'Sparse beat dense',
+    goal:'You will change how many experts run and measure quality and cost together.',
+    todo:'Increase top-k. Watch what happens to accuracy as more experts run.',
+    kind:'controls', viz:'moeKarsilastirma', h:760, xp:55,
+    controls:[{k:'k', lb:'top-k', min:0, max:3, step:1, val:0,
+               fmt:v=>'top-'+[1,2,4,8][Math.round(v)]}],
+    body:'<p>The last question: is sparsity a <b>compromise</b>? Are we giving up quality for ' +
+      'cheapness?</p>' +
+      '<p>For the measurement, the same experts, the same data and the same number of epochs ' +
+      'were used and only top-k was changed. top-8 means all 8 experts run on every input, ' +
+      'which is <b>the dense model itself</b>.</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;k &nbsp;&nbsp;accuracy &nbsp;&nbsp;running<br>' +
+      '&nbsp;&nbsp;1 &nbsp;&nbsp;<b>96.33%</b> &nbsp;&nbsp;&nbsp;12.5%<br>' +
+      '&nbsp;&nbsp;2 &nbsp;&nbsp;&nbsp;95.75% &nbsp;&nbsp;&nbsp;25.0%<br>' +
+      '&nbsp;&nbsp;4 &nbsp;&nbsp;&nbsp;95.63% &nbsp;&nbsp;&nbsp;50.0%<br>' +
+      '&nbsp;&nbsp;8 &nbsp;&nbsp;<b>94.50%</b> &nbsp;&nbsp;100.0%</p>' +
+      '<p>The answer is no, in fact the reverse. <b>top-1 is both the cheapest and the most ' +
+      'accurate.</b> Running only 12.5% of the experts gives 96.33%. The dense model runs 100% ' +
+      'and gives 94.50%.</p>' +
+      '<p>The reason is specialisation. At top-8 every expert receives gradient from <b>every</b> ' +
+      'input, so it tries to learn the average of four clusters. Since the clusters have ' +
+      'different rules, that average fits none of them well. At top-1 each expert sees only its ' +
+      'own cluster and learns that cluster\'s rule cleanly.</p>' +
+      '<p>This belongs to the same family as the idea in the <i>mixture density network</i> ' +
+      'lesson: when a single model is forced onto a multi-peaked structure it produces an answer ' +
+      'in the middle of the peaks that fits nowhere. The solution in both lessons is the same: ' +
+      '<b>split into parts and give each part its own model.</b></p>' +
+      '<p>Care is needed in generalising this result. Here the data really does consist of ' +
+      'separate clusters that are independent of one another. When inputs resemble each other ' +
+      'and there is a lot of shared knowledge, dropping to a single expert prevents sharing and ' +
+      'the dense model wins. In practice top-1 and top-2 are the most common choices, and which ' +
+      'is better depends on the data.</p>' +
+      '<p>Finally, there is a parallel with <i>LoRA</i> worth thinking about. Both are forms of ' +
+      'the idea "you do not have to use every parameter every time". LoRA loosens that link on ' +
+      'the <b>training</b> side, MoE on the <b>inference</b> side.</p>',
+    learned:'<b>Sparsity turned out to be an advantage here, not a compromise.</b><br><br>' +
+      'With the same experts and the same data: top-1 runs 12.5% of the experts for 96.33%, ' +
+      'while the dense model (top-8) runs 100% for 94.50%.<br><br>' +
+      'The reason is specialisation: at top-8 every expert tries to learn the average of four ' +
+      'clusters, at top-1 each learns one cluster\'s rule cleanly.<br><br>' +
+      'This holds because the data really consists of separate clusters. With a lot of shared ' +
+      'knowledge the dense model can win.',
+  },
+  ],
+};
+DERS_ADI_EN['moe'] = 'Mixture of experts: the cheap way to add parameters';
