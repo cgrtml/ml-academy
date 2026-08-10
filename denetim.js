@@ -4104,6 +4104,77 @@ console.log('═══ DENGESİZ VERİ ═══');
 }
 
 console.log('');
+console.log('═══ GİZLİLİK ═══');
+{
+  const G = GIZ.olc();
+  iddia('nüfus',20000,G.N);
+
+  /* 1 · yeniden kimliklendirme */
+  [[1,0.0],[2,0.0],[3,44.9],[4,93.6],[5,99.8],[6,100.0]].forEach(([a,v])=>
+    iddia(a+' alan tekil %',v,100*G.tekil[a-1].tekil,1));
+  iddia('3 alan teorik kombinasyon',25200,G.tekil[2].teorik);
+  iddia('3 alan grup sayısı',13799,G.tekil[2].grup);
+  /* tekil oranı alan sayısıyla ARTMALI */
+  for (let i=1;i<G.tekil.length;i++)
+    if (G.tekil[i].tekil < G.tekil[i-1].tekil)
+      console.log('  ✗ alan eklenince tekil oranı düştü');
+
+  /* 2 · k-anonimlik */
+  [[0,1,19975,100.0],[1,1,17044,97.8],[2,1,2518,78.4],
+   [3,31,240,54.9],[4,1409,8,20.7]].forEach(([sv,k,grup,bilgi])=>{
+    iddia('sv'+sv+' k',k,G.kSeviye[sv].k);
+    iddia('sv'+sv+' grup',grup,G.kSeviye[sv].grup);
+    iddia('sv'+sv+' kalan bilgi %',bilgi,100*G.kSeviye[sv].kalanBilgi,1);
+  });
+  iddia('sv2 ortalama grup',7.9,G.kSeviye[2].ortBoyut,1);
+  iddia('sv2 k≥5 uyum %',95.6,100*G.kSeviye[2].kBesUyum,1);
+  /* dersin iddiası: sv2 de ortalama iyi ama en küçük grup hâlâ 1 */
+  if (G.kSeviye[2].k !== 1)
+    console.log('  ✗ sv2 de en küçük grup 1 değil, ders yanlış');
+  /* genelleme arttıkça bilgi AZALMALI */
+  for (let i=1;i<G.kSeviye.length;i++)
+    if (G.kSeviye[i].kalanBilgi > G.kSeviye[i-1].kalanBilgi)
+      console.log('  ✗ genelleme artarken bilgi arttı');
+
+  /* 3 · üyelik çıkarımı */
+  iddia('özellik sayısı',200,G.OZ);
+  iddia('taban eğitim örneği',200,G.taban.n);
+  iddia('taban eğitim doğruluk %',100.0,100*G.taban.egitimDogruluk,1);
+  iddia('taban test doğruluk %',73.7,100*G.taban.testDogruluk,1);
+  iddia('taban saldırı AUC',0.7384,G.taban.auc,4);
+  /* saldırı rastgeleden belirgin şekilde iyi olmalı */
+  if (G.taban.auc < 0.6) console.log('  ✗ saldırı çalışmıyor, ders yanlış');
+
+  /* 4 · üç savunma */
+  [[0,0.7384,73.7],[2,0.6908,70.7],[4,0.6427,66.0],[6,0.6651,65.0]].forEach(([i,a,t])=>{
+    iddia('gürültü['+i+'] AUC',a,G.gurultu[i].auc,4);
+    iddia('gürültü['+i+'] test %',t,100*G.gurultu[i].testDogruluk,1);
+  });
+  [[0,0.7384,73.7],[3,0.7577,73.2],[4,0.7602,72.0],[5,0.7481,70.7]].forEach(([i,a,t])=>{
+    iddia('düzen['+i+'] AUC',a,G.duzen[i].auc,4);
+    iddia('düzen['+i+'] test %',t,100*G.duzen[i].testDogruluk,1);
+  });
+  [[0,0.7384,73.7],[1,0.5907,80.3],[2,0.5424,85.5],
+   [3,0.5222,91.8],[4,0.5168,94.3]].forEach(([i,a,t])=>{
+    iddia('veri['+i+'] AUC',a,G.veri[i].auc,4);
+    iddia('veri['+i+'] test %',t,100*G.veri[i].testDogruluk,1);
+  });
+  /* dersin üç aykırı iddiası, ayrıca sınanıyor */
+  if (G.duzen[4].auc <= G.duzen[0].auc)
+    console.log('  ✗ düzenlileştirme saldırıyı azalttı, ders yanlış');
+  if (Math.min(...G.gurultu.map(x=>x.auc)) < 0.55)
+    console.log('  ✗ gürültü saldırıyı 0.55 altına indirdi, ders yanlış');
+  {
+    const s0 = G.veri[0], s4 = G.veri[G.veri.length-1];
+    if (!(s4.auc < s0.auc && s4.testDogruluk > s0.testDogruluk))
+      console.log('  ✗ veri artışı ikisini birden düzeltmedi, ders yanlış');
+  }
+  /* veri arttıkça saldırı MONOTON düşmeli */
+  for (let i=1;i<G.veri.length;i++)
+    if (G.veri[i].auc > G.veri[i-1].auc)
+      console.log('  ✗ veri artarken saldırı AUC yükseldi');
+}
+
 console.log('═══ ÜRETİMDE İZLEME ═══');
 {
   const Z = IZL.olc();

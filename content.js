@@ -148,6 +148,7 @@ const ROTALAR = [
     {id:'ai-vs-ml',       ad:'AI mühendisliği klasik ML\'den nasıl ayrışır',    sure:10, durum:'hazir'},
     {id:'proje-karari',   ad:'Bir AI projesine nasıl karar verilir',           sure:16, durum:'hazir'},
     {id:'adillik',        ad:'Modelin aynadaki yüzü: adillik ve şeffaflık',    sure:16, durum:'hazir'},
+    {id:'gizlilik',       ad:'Gizlilik: veriyi anonim sanmak',                  sure:17, durum:'hazir'},
     {id:'automl',         ad:'AutoML: modelini seçen model',                   sure:16, durum:'hazir'},
     {id:'aktif-ogrenme',  ad:'Aktif öğrenme: hangi örneği etiketleyelim',      sure:16, durum:'hazir'},
     {id:'leaderboard',    ad:'Yarışma yanılsaması: skor tablosuna ne kadar güvenilir',  sure:16, durum:'hazir'},
@@ -14545,6 +14546,230 @@ DERSLER['izleme'] = {
       'n = 25 te %80.0 görünüyor, gerçek değer %66.7. Erken bakmak burada da yanıltır.<br><br>' +
       'Üretim asgarisi: model kaydı, kademeli dağıtım, otomatik geri alma, vekil sinyal izleme.',
     xp:55,
+  },
+  ],
+};
+
+DERSLER['gizlilik'] = {
+  ad:'Gizlilik: veriyi anonim sanmak',
+  alt:'İsmi silmek anonimleştirmez, ve modelin kendisi eğitim verisini sızdırır. Dördü de ölçülüyor.',
+  kaynaklar:[
+    {"y":"Sweeney, L.", "t":"2002", "b":"k-Anonymity: A Model for Protecting Privacy", "n":"Int. J. of Uncertainty, Fuzziness and Knowledge-Based Systems, 10(5)"},
+    {"y":"Shokri, R. et al.", "t":"2017", "b":"Membership Inference Attacks Against Machine Learning Models", "n":"IEEE S&P 2017"},
+    {"y":"Dwork, C. & Roth, A.", "t":"2014", "b":"The Algorithmic Foundations of Differential Privacy", "n":"Foundations and Trends in Theoretical Computer Science, 9(3-4)"},
+  ],
+  rota:4,
+  adimlar:[
+  {
+    t:'"İsmi sildik, artık anonim"',
+    goal:'Birkaç sıradan alanın birleşiminin kaç kişiyi tek başına ayırt ettiğini ölçeceksin.',
+    todo:'Bilinen alan sayısını artır. Tabloda hiç isim olmadığına dikkat et.',
+    kind:'controls', viz:'gzKimlik', h:760,
+    controls:[{k:'alan', lb:'BİLİNEN ALAN', min:1, max:6, step:1, val:3,
+               fmt:v=>String(Math.round(v))+' alan'}],
+    live:s => { const o = GIZ.olc(), t = o.tekil[Math.max(0,Math.min(5,Math.round((s.alan===undefined?3:s.alan))-1))];
+      return [['ALAN', String(t.alan)],
+              ['TEK KALAN', '%'+(100*t.tekil).toFixed(1), t.tekil>0.5?K.red:K.green],
+              ['GRUP', t.grup.toLocaleString('tr')]]; },
+    body:'<p>Veri paylaşırken en yaygın uygulama isim, TC kimlik numarası ve telefon gibi ' +
+      '<b>doğrudan tanımlayıcıları</b> silmektir. Sonra veri "anonim" sayılır ve paylaşılır.</p>' +
+      '<p>Bu adım o varsayımı sınıyor. 20.000 kişilik sentetik bir nüfusta, geriye kalan ' +
+      'sıradan alanların kaç kişiyi <b>tek başına</b> ayırt ettiği sayılıyor.</p>' +
+      '<p style="font-family:var(--mono)">eklenen alan &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tek kalan<br>' +
+      'doğum yılı &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%0.0<br>' +
+      '+ cinsiyet &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%0.0<br>' +
+      '+ ilçe &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>%44.9</b><br>' +
+      '+ doğum ayı &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%93.6<br>' +
+      '+ doğum günü &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%99.8<br>' +
+      '+ meslek &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>%100.0</b></p>' +
+      '<p>Doğum yılı tek başına kimseyi ayırt etmiyor: 20.000 kişi 70 yıla dağılıyor, her yılda ' +
+      'ortalama 285 kişi var. Cinsiyet eklenince de bir şey değişmiyor.</p>' +
+      '<p>Ama <b>ilçe eklendiği anda nüfusun %44.9\'u tek başına kalıyor</b>. Doğum tarihinin ' +
+      'tamamı bilindiğinde oran <b>%99.8</b>.</p>' +
+      '<p>Sebep çarpımsal: 70 × 2 × 180 = 25.200 olası kombinasyon var ama nüfus 20.000. ' +
+      'Kombinasyon sayısı nüfusu geçtiği anda çoğu kutu ya boş kalır ya da tek kişilik olur. ' +
+      'Buna <b>yarı-tanımlayıcı</b> problemi denir: hiçbir alan tek başına kimlik değildir, ' +
+      'ama birleşimleri parmak izidir.</p>' +
+      '<p>Bu bir kuram değil, ölçülmüş bir olgudur. Latanya Sweeney 1990\'larda ABD nüfus ' +
+      'sayımı verisiyle aynı hesabı yapmış ve posta kodu, doğum tarihi ve cinsiyetin ' +
+      'birleşiminin nüfusun büyük çoğunluğunu tekilleştirdiğini göstermiştir. Aynı yıllarda ' +
+      'Massachusetts eyaleti "anonimleştirilmiş" hastane kayıtlarını yayımlamıştı; Sweeney ' +
+      'bu kayıtları halka açık seçmen listesiyle eşleştirerek eyalet valisinin tıbbi ' +
+      'dosyasını bulup <b>kendisine postalamıştı</b>.</p>' +
+      '<p>Buradan çıkan kural şu: <b>anonimlik verinin bir özelliği değil, verinin ' +
+      'eşleştirilebileceği diğer verilere göre tanımlı bir özelliktir.</b> Bugün anonim olan ' +
+      'bir tablo, yarın yayımlanan başka bir tabloyla birleşince anonim olmaktan çıkabilir.</p>',
+    learned:'<b>İsmi silmek anonimleştirmez.</b><br><br>' +
+      '20.000 kişilik nüfusta doğum yılı ve cinsiyet kimseyi ayırt etmiyor. İlçe eklenince ' +
+      '<b>%44.9</b>, doğum tarihinin tamamı eklenince <b>%99.8</b> tek başına kalıyor.<br><br>' +
+      'Sebep çarpımsal: 70 × 2 × 180 = 25.200 kombinasyon, 20.000 kişi. Kombinasyon sayısı ' +
+      'nüfusu geçince kutular tek kişilik olur.<br><br>' +
+      'Anonimlik verinin değil, <b>eşleştirilebileceği diğer verilerin</b> bir fonksiyonudur.',
+    xp:50,
+  },
+  {
+    t:'k-anonimlik ve bedeli',
+    goal:'Herkesi en az k kişilik gruplara sokmanın ne kadar bilgiye mal olduğunu ölçeceksin.',
+    todo:'Genelleme seviyesini artır. İki eğrinin ters yönde gittiğine dikkat et.',
+    kind:'controls', viz:'gzKanonim', h:760,
+    controls:[{k:'seviye', lb:'GENELLEME', min:0, max:4, step:1, val:2,
+               fmt:v=>'seviye '+Math.round(v)}],
+    live:s => { const o = GIZ.olc(), q = o.kSeviye[Math.max(0,Math.min(4,Math.round(s.seviye===undefined?2:s.seviye)))];
+      return [['k', String(q.k), q.k>=5?K.green:K.red],
+              ['KALAN BİLGİ', '%'+(100*q.kalanBilgi).toFixed(1), K.blue],
+              ['k ≥ 5 UYUM', '%'+(100*q.kBesUyum).toFixed(1)]]; },
+    body:'<p>Sweeney\'nin önerdiği çözüm <b>k-anonimlik</b>tir: veri öyle genelleştirilir ki ' +
+      'her kayıt, yarı-tanımlayıcıları açısından <b>en az k kişiyle aynı</b> görünsün. ' +
+      'Doğum yılı 5 yıllık aralığa, ilçe bölgeye çevrilir; gerekirse alanlar tamamen atılır.</p>' +
+      '<p>Ama genelleme bedava değildir. Ölçüm, gizliliği ve bilgi kaybını yan yana koyuyor. ' +
+      '"Kalan bilgi" burada grup dağılımının entropisinin, ham verinin entropisine oranıdır; ' +
+      '<i>Bilgi kuramı</i> dersindeki bit hesabının doğrudan uygulaması.</p>' +
+      '<p style="font-family:var(--mono)">sv &nbsp;&nbsp;&nbsp;&nbsp;k &nbsp;&nbsp;&nbsp;&nbsp;grup &nbsp;&nbsp;kalan bilgi<br>' +
+      '&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;1 &nbsp;&nbsp;19.975 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%100.0<br>' +
+      '&nbsp;1 &nbsp;&nbsp;&nbsp;&nbsp;1 &nbsp;&nbsp;17.044 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%97.8<br>' +
+      '&nbsp;2 &nbsp;&nbsp;&nbsp;&nbsp;1 &nbsp;&nbsp;&nbsp;2.518 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%78.4<br>' +
+      '&nbsp;3 &nbsp;&nbsp;&nbsp;31 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;240 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>%54.9</b><br>' +
+      '&nbsp;4 &nbsp;1409 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%20.7</p>' +
+      '<p>Seviye 2\'de ilginç bir şey oluyor. Ortalama grup büyüklüğü 7.9 kişi ve nüfusun ' +
+      '<b>%95.6</b>\'sı k ≥ 5 kuralına uyuyor. Rapora "verimiz k-anonim" yazmak isteyen biri ' +
+      'için yeterince iyi görünüyor.</p>' +
+      '<p>Ama <b>en küçük grup hâlâ 1 kişilik</b>. k-anonimlik bir ortalama değil, bir ' +
+      '<b>en küçük</b> güvencesidir: tek bir kişi bile yalnız kaldıysa, o kişi için hiçbir ' +
+      'koruma yoktur. Gizlilik en zayıf halka kadar güçlüdür.</p>' +
+      '<p>Gerçek k ≥ 5 ancak seviye 3\'te geliyor (k = 31) ve bedeli ağır: bilginin ' +
+      '<b>%45.1\'i</b> kayboluyor. Seviye 4\'te ise elde bilginin yalnızca %20.7\'si kalıyor ' +
+      've veri çoğu analiz için işe yaramaz hâle geliyor.</p>' +
+      '<p>Bir de k-anonimliğin <b>kapatmadığı</b> bir açık var. Aynı grupta 10 kişi olabilir ' +
+      'ama onuncusu da dahil <b>hepsinin hassas değeri aynıysa</b>, saldırganın kişiyi ayırt ' +
+      'etmesine gerek kalmaz; grubu bilmek yeter. Buna <b>homojenlik saldırısı</b> denir ve ' +
+      'l-çeşitlilik (l-diversity) ile t-yakınlık (t-closeness) bu açığı kapatmak için ' +
+      'önerilmiştir. Her biri koruma ekler ve her biri daha fazla bilgi götürür.</p>',
+    learned:'<b>k-anonimliğin bedeli bilgidir, ve ortalama değil en küçük grup önemlidir.</b><br><br>' +
+      'Seviye 2 de ortalama grup 7.9 kişi ve nüfusun %95.6 sı k ≥ 5 e uyuyor, ama en küçük grup ' +
+      'hâlâ <b>1 kişilik</b>. O kişi için hiçbir koruma yok.<br><br>' +
+      'Gerçek k ≥ 5 seviye 3 te geliyor (k = 31) ve bilginin %45.1 i kayboluyor. Seviye 4 te ' +
+      'geriye yalnızca %20.7 kalıyor.<br><br>' +
+      'k-anonimlik homojenlik saldırısını kapatmaz; l-çeşitlilik ve t-yakınlık bunun içindir.',
+    xp:55,
+  },
+  {
+    t:'Model eğitim verisini sızdırır',
+    goal:'Bir modelin çıktısına bakarak "bu kayıt eğitimde miydi" sorusunun cevaplanabildiğini ölçeceksin.',
+    todo:'Kaydırıcıyı ilerlet. Saldırgan modelin ağırlıklarını değil, yalnızca çıktısını görüyor.',
+    kind:'controls', viz:'gzUyelik', h:760,
+    controls:[{k:'asama', lb:'AŞAMA', min:0, max:2, step:1, val:0,
+               fmt:v=>['aşırı uyum','saldırı','hukuki sonuç'][Math.round(v)]}],
+    live:s => { const o = GIZ.olc(), t = o.taban;
+      return [['EĞİTİM', '%'+(100*t.egitimDogruluk).toFixed(1), K.blue],
+              ['TEST', '%'+(100*t.testDogruluk).toFixed(1), K.orange],
+              ['SALDIRI AUC', t.auc.toFixed(4), K.red]]; },
+    body:'<p>Şimdiye kadarki iki adım <b>veriyi</b> paylaşmakla ilgiliydi. Bu adım şunu soruyor: ' +
+      'veriyi hiç paylaşmayıp yalnızca <b>modeli</b> paylaşsak, gizlilik korunur mu?</p>' +
+      '<p>Düzenek bilinçli olarak aşırı uyum üretecek şekilde kuruldu: 200 özellik ama yalnızca ' +
+      '200 eğitim örneği. Model eğitim verisini tamamen ezberliyor.</p>' +
+      '<p style="font-family:var(--mono)">eğitim verisinde doğruluk &nbsp;&nbsp;<b>%100.0</b><br>' +
+      'görülmemiş veride &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>%73.7</b></p>' +
+      '<p>Saldırı şöyle işliyor. Saldırgan bir kaydı modele verir ve modelin <b>kaybına</b> ' +
+      'bakar. Model o kaydı eğitimde gördüyse ezberlemiş olduğu için kayıp düşük çıkar; ' +
+      'görmediyse yüksek. Saldırganın modelin ağırlıklarına erişmesi gerekmez, yalnızca ' +
+      'çıktısına bakması yeter.</p>' +
+      '<p>Saldırının başarısı AUC ile ölçülüyor. 0.5 saldırının işe yaramadığı, 1.0 ise ' +
+      'üyeliğin tamamen okunabildiği anlamına gelir.</p>' +
+      '<p style="font-family:var(--mono);text-align:center">saldırı AUC = <b>0.7384</b></p>' +
+      '<p>Yani saldırgan, rastgele bir eğitim kaydı ile rastgele bir yabancı kaydı yan yana ' +
+      'koyduğunda, hangisinin eğitimde olduğunu <b>%73.8 oranında</b> doğru biliyor.</p>' +
+      '<p>Bunun neden ciddi olduğunu görmek için içeriği düşünmek gerekiyor. Model bir kanser ' +
+      'taraması veri kümesiyle eğitildiyse, "bu kişi eğitim kümesindeydi" bilgisi doğrudan ' +
+      '"bu kişi taramaya girdi" demektir. Model borç yapılandırma başvurularıyla eğitildiyse, ' +
+      'üyelik bilgisi kişinin mali durumunu ifşa eder. <b>Üyeliğin kendisi hassas bir ' +
+      'bilgidir.</b></p>' +
+      '<p>Hukuki sonucu da açık: modelin içinde kişisel veri kalıyorsa, model artık yalnızca ' +
+      'bir yazılım nesnesi değil, <b>bir kişisel veri taşıyıcısıdır</b>. Silme talebi ' +
+      '(GDPR 17, KVKK 7) geldiğinde kaydı veritabanından silmek yetmeyebilir; o kayıtla ' +
+      'eğitilmiş model hâlâ bilgiyi taşıyor olabilir. "Makine unutturma" (machine unlearning) ' +
+      'diye bir araştırma alanının doğma sebebi tam olarak budur.</p>' +
+      '<p>Bir de şunu söylemek gerekiyor: bu saldırı <b>aşırı uyumdan besleniyor</b>. Ezberlemeyen ' +
+      'bir modelde eğitim ve test kayıpları birbirine yakın olur, dolayısıyla ayırt edici ' +
+      'sinyal kalmaz. Sonraki adım tam olarak bunu ölçüyor.</p>',
+    learned:'<b>Veriyi paylaşmasan bile model onu sızdırabilir.</b><br><br>' +
+      '200 özellik ve 200 örnekle eğitilen model eğitim verisinde %100.0, görülmemiş veride ' +
+      '%73.7 doğruluk veriyor: tam ezber.<br><br>' +
+      'Yalnızca modelin çıktısına bakan bir saldırgan, üyeliği <b>AUC 0.7384</b> ile tahmin ' +
+      'ediyor. Rastgele tahmin 0.5 olurdu.<br><br>' +
+      'Üyeliğin kendisi hassas bilgidir ve bu, modeli hukuken bir kişisel veri taşıyıcısı ' +
+      'yapar. Saldırı aşırı uyumdan beslenir.',
+    xp:60,
+  },
+  {
+    t:'Üç savunma, biri takassız',
+    goal:'Saldırıyı azaltan üç yöntemin faydaya ne yaptığını ayrı ayrı ölçeceksin.',
+    todo:'Savunmayı ve derecesini değiştir. Kırmızı eğri düşerken yeşile ne olduğuna bak.',
+    kind:'controls', viz:'gzSavunma', h:760,
+    controls:[{k:'savunma', lb:'SAVUNMA', min:0, max:2, step:1, val:2,
+               fmt:v=>['gürültü','düzenlileştirme','daha çok veri'][Math.round(v)]},
+              {k:'derece', lb:'DERECE', min:0, max:6, step:1, val:4,
+               fmt:v=>'kademe '+Math.round(v)}],
+    live:s => { const o = GIZ.olc();
+      const k = ['gurultu','duzen','veri'][Math.max(0,Math.min(2,Math.round(s.savunma===undefined?2:s.savunma)))];
+      const d = o[k], q = d[Math.max(0,Math.min(d.length-1,Math.round(s.derece===undefined?d.length-1:s.derece)))];
+      return [['DEĞER', String(q.deger)],
+              ['SALDIRI AUC', q.auc.toFixed(4), q.auc<0.55?K.green:K.red],
+              ['TEST', '%'+(100*q.testDogruluk).toFixed(1), K.green]]; },
+    body:'<p>Başlangıç noktası önceki adım: saldırı AUC <b>0.7384</b>, test doğruluğu ' +
+      '<b>%73.7</b>. Üç savunma ayrı ayrı ölçüldü.</p>' +
+      '<p><b>Bir · Gradyana gürültü.</b> Diferansiyel gizliliğin pratikteki uygulaması olan ' +
+      'DP-SGD\'nin çekirdeği budur: her eğitim adımında gradyana Gauss gürültüsü eklenir.</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;&nbsp;σ &nbsp;&nbsp;&nbsp;&nbsp;AUC &nbsp;&nbsp;&nbsp;&nbsp;test<br>' +
+      '&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;0.7384 &nbsp;&nbsp;%73.7<br>' +
+      '0.01 &nbsp;&nbsp;0.6908 &nbsp;&nbsp;%70.7<br>' +
+      '0.05 &nbsp;&nbsp;<b>0.6427</b> &nbsp;&nbsp;<b>%66.0</b><br>' +
+      '0.20 &nbsp;&nbsp;0.6651 &nbsp;&nbsp;%65.0</p>' +
+      '<p>Gürültü işe yarıyor ama iki sınırı var. Saldırı 0.5\'e <b>hiç inmiyor</b>, en iyi ' +
+      'durumda 0.6427\'de tıkanıyor. Ve bunun karşılığında test doğruluğu %73.7\'den ' +
+      '%66.0\'a düşüyor. Daha fazla gürültü ise artık gizliliği iyileştirmiyor, yalnızca ' +
+      'faydayı yiyor.</p>' +
+      '<p><b>İki · Düzenlileştirme.</b> Aşırı uyum saldırıyı besliyorsa, L2 cezası onu ' +
+      'azaltmalı diye düşünülür. Ölçüm bunu doğrulamıyor:</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;&nbsp;λ &nbsp;&nbsp;&nbsp;&nbsp;AUC &nbsp;&nbsp;&nbsp;&nbsp;test<br>' +
+      '&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;0.7384 &nbsp;&nbsp;%73.7<br>' +
+      '0.02 &nbsp;&nbsp;0.7577 &nbsp;&nbsp;%73.2<br>' +
+      '0.05 &nbsp;&nbsp;<b>0.7602</b> &nbsp;&nbsp;%72.0<br>' +
+      '0.20 &nbsp;&nbsp;0.7481 &nbsp;&nbsp;%70.7</p>' +
+      '<p>Saldırı <b>azalmıyor, artıyor</b>. Bu bu kurstaki en aykırı ölçümlerden biri, ama ' +
+      'sebebi anlaşılabilir: bu ölçekte L2, modelin ezberlemesini engelleyecek kadar güçlü ' +
+      'değil (eğitim doğruluğu hâlâ %100), buna karşılık kayıp dağılımını sıkıştırarak ' +
+      'eğitim ile test kayıplarını <b>daha kolay ayrılır</b> hâle getiriyor. ' +
+      '<b>Genelleme için iyi olan, gizlilik için otomatik olarak iyi değildir.</b></p>' +
+      '<p><b>Üç · Daha çok veri.</b></p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;&nbsp;&nbsp;n &nbsp;&nbsp;&nbsp;&nbsp;AUC &nbsp;&nbsp;&nbsp;&nbsp;test<br>' +
+      '&nbsp;&nbsp;200 &nbsp;&nbsp;0.7384 &nbsp;&nbsp;%73.7<br>' +
+      '&nbsp;&nbsp;400 &nbsp;&nbsp;0.5907 &nbsp;&nbsp;%80.3<br>' +
+      '&nbsp;&nbsp;800 &nbsp;&nbsp;0.5424 &nbsp;&nbsp;%85.5<br>' +
+      '&nbsp;1600 &nbsp;&nbsp;0.5222 &nbsp;&nbsp;%91.8<br>' +
+      '&nbsp;3200 &nbsp;&nbsp;<b>0.5168</b> &nbsp;&nbsp;<b>%94.3</b></p>' +
+      '<p>Bu tek takassız savunma. Veri arttıkça saldırı 0.7384\'ten <b>0.5168</b>\'e, yani ' +
+      'neredeyse rastgeleye iniyor, <b>ve aynı anda</b> test doğruluğu %73.7\'den %94.3\'e ' +
+      'çıkıyor. İki eğri de doğru yöne gidiyor.</p>' +
+      '<p>Sebep basit: model ezberleyemeyecek kadar çok örnek görürse ezberleyecek bir şey ' +
+      'kalmaz. Üyelik sinyalinin kaynağı aşırı uyumdu; aşırı uyum yoksa sinyal de yok.</p>' +
+      '<p>Pratikte çıkarılacak sıralama şu. Önce <b>veriyi hiç toplama</b>: toplanmayan veri ' +
+      'sızmaz. Sonra <b>yeterli veriyle eğit</b>, çünkü hem gizliliği hem kaliteyi düzeltir. ' +
+      'Formel garanti gerekiyorsa <b>DP-SGD kullan</b>, ama bedelini bilerek. ' +
+      'Düzenlileştirmeyi gizlilik önlemi olarak <b>sayma</b>.</p>' +
+      '<p>Son bir dürüstlük notu: buradaki gürültü ölçümü DP-SGD\'nin mekanizmasını ' +
+      'gösteriyor ama <b>ε garantisi hesaplamıyor</b>. Gerçek diferansiyel gizlilik, gradyan ' +
+      'kırpma ve dikkatli bir muhasebe gerektirir; "gürültü ekledim, demek ki gizli" demek ' +
+      'yeterli değildir.</p>',
+    learned:'<b>Saldırıyı azaltmak kolay, faydayı kaybetmeden azaltmak zor.</b><br><br>' +
+      'Başlangıç: AUC 0.7384, test %73.7.<br><br>' +
+      '<b>Gürültü</b> AUC yi 0.6427 ye indiriyor ama test %66.0 a düşüyor, ve saldırı 0.5 e ' +
+      'hiç inmiyor.<br><br>' +
+      '<b>Düzenlileştirme saldırıyı azaltmıyor</b>, 0.7602 ye çıkarıyor. Genelleme için iyi ' +
+      'olan gizlilik için otomatik olarak iyi değil.<br><br>' +
+      '<b>Daha çok veri</b> tek takassız savunma: AUC 0.5168 e inerken test %94.3 e çıkıyor.<br><br>' +
+      'Sıralama: veriyi hiç toplama, yeterli veriyle eğit, gerekirse DP-SGD, ' +
+      'düzenlileştirmeyi gizlilik önlemi sayma.',
+    xp:60,
   },
   ],
 };

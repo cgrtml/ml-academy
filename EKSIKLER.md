@@ -76,9 +76,22 @@ Tarama sonucu: müfredatta tek bir kez bile geçmiyor.
       Kapsanmayan: çok kollu testler, katmanlı deney altyapısı, CUPED gibi
       varyans azaltma, ağ etkisi olan ortamlarda birim seçimi.
 
-- [ ] **Gizlilik ve kişisel veri** · PII, anonimleştirme, diferansiyel gizlilik
-      `adillik` var, gizlilik yok. R4 için ciddi bir eksik.
-      Widget: k-anonimlik, yeniden kimliklendirme riski.
+- [x] **Gizlilik ve kişisel veri** · PII, anonimleştirme, diferansiyel gizlilik  ✔ 9 Ağustos 2026
+      `DERSLER['gizlilik']`, Rota 4 (`adillik` sonrası), 4 adım, 225 XP.
+      Ölçülen: 20.000 kişilik nüfusta doğum yılı ve cinsiyet kimseyi ayırt etmiyor,
+      ilçe eklenince %44.9, doğum tarihinin tamamı eklenince %99.8 tekil.
+      k-anonimlik seviye 2'de ortalama grup 7.9 kişi ve %95.6 uyum var ama en küçük
+      grup hâlâ 1 kişilik; gerçek k ≥ 5 seviye 3'te geliyor ve bilginin %45.1'i gidiyor.
+      Üyelik çıkarımı saldırısı gerçekten kuruldu: 200 özellik / 200 örnekle eğitilen
+      model eğitimde %100.0, testte %73.7 veriyor ve saldırı AUC 0.7384.
+      Üç savunma ayrı ayrı ölçüldü ve ikisi beklendiği gibi çıkmadı: gürültü AUC'yi
+      0.6427'ye indiriyor ama testi %66.0'a düşürüyor ve 0.5'e hiç inmiyor;
+      düzenlileştirme saldırıyı AZALTMIYOR, 0.7602'ye çıkarıyor; yalnızca daha çok
+      veri ikisini birden düzeltiyor (AUC 0.5168, test %94.3). Denetim bu üç aykırı
+      sonucu ayrıca sınıyor, ters çıkarlarsa hata veriyor.
+      Kapsanmayan: ε hesabı yapılmıyor ve ders bunu açıkça söylüyor; gradyan kırpma,
+      gizlilik muhasebesi, federe öğrenme, gölge modelli saldırı ve makine unutturma
+      yalnızca anlatımda anılıyor.
 
 - [x] **MLOps ve üretimde izleme** · yeniden eğitim kararı, geri alma, model kaydı  ✔ 8 Ağustos 2026
       `DERSLER['izleme']`, Rota 4 (`ab-testi` sonrası), 4 adım, 220 XP.
@@ -152,7 +165,7 @@ başlanmamalı.
 5. ~~Bilgi kuramı~~ ✔ tamamlandı
 6. ~~LoRA / PEFT~~ ✔ tamamlandı
 7. ~~Üretimde izleme~~ ✔ tamamlandı
-8. Gizlilik
+8. ~~Gizlilik~~ ✔ tamamlandı
 
 Bu sekizi widget formatına iyi oturuyor ve toplam 25-30 adım eder
 (konu anlatımı ve İngilizcesiyle birlikte).

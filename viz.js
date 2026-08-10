@@ -18160,3 +18160,447 @@ VIZ.izGeri = s => {
         (100*(g.adayCevrimdisi-g.adayCanli)).toFixed(1)+' puanlık uçurum  ·  '+
         'gölgede n='+se.n+' ile %'+(100*se.dogruluk).toFixed(1)+' görünüyor', K.red);
 };
+
+/* ═══════════════ GİZLİLİK ve KİŞİSEL VERİ ═══════════════
+   `adillik` dersi var, gizlilik yoktu. Bu motor dört iddiayı ölçüyor:
+     1. "İsmi sildik, artık anonim" yanlıştır  (yeniden kimliklendirme)
+     2. k-anonimliğin bir bedeli vardır        (bilgi kaybı)
+     3. Model eğitim verisini sızdırır         (üyelik çıkarımı saldırısı)
+     4. Gürültü korur ama bedava değildir      (diferansiyel gizlilik takası) */
+const GIZ = (() => {
+  const N = 20000;      // nüfus
+
+  /* ── yarı-tanımlayıcılar: tek başına kimse değil, birlikte parmak izi ──
+     Aralıklar gerçek nüfus yapısına yakın seçildi, ama veri sentetiktir. */
+  function nufus(tohum){
+    const R = rng(tohum), K = [];
+    for (let i=0;i<N;i++){
+      K.push({
+        dogumYili: 1940 + Math.floor(R()*70),          // 70 değer
+        dogumAyi:  1 + Math.floor(R()*12),             // 12 değer
+        dogumGunu: 1 + Math.floor(R()*28),             // 28 değer
+        cinsiyet:  Math.floor(R()*2),                  //  2 değer
+        ilce:      Math.floor(R()*180),                // 180 değer
+        meslek:    Math.floor(R()*40),                 // 40 değer
+      });
+    }
+    return K;
+  }
+
+  const ALAN = [
+    { k:'dogumYili', ad:'doğum yılı',  n:70  },
+    { k:'cinsiyet',  ad:'cinsiyet',    n:2   },
+    { k:'ilce',      ad:'ilçe',        n:180 },
+    { k:'dogumAyi',  ad:'doğum ayı',   n:12  },
+    { k:'dogumGunu', ad:'doğum günü',  n:28  },
+    { k:'meslek',    ad:'meslek',      n:40  },
+  ];
+
+  /* ── kaç kişi kendi kombinasyonunda YALNIZ ── */
+  function tekilOran(K, alanSayisi){
+    const alanlar = ALAN.slice(0, alanSayisi).map(a => a.k);
+    const say = new Map();
+    K.forEach(k => {
+      const anahtar = alanlar.map(a => k[a]).join('|');
+      say.set(anahtar, (say.get(anahtar)||0) + 1);
+    });
+    let tek = 0, kucuk = 0;
+    K.forEach(k => {
+      const c = say.get(alanlar.map(a => k[a]).join('|'));
+      if (c === 1) tek++;
+      if (c < 5) kucuk++;
+    });
+    return { tekil: tek/K.length, kBesAlti: kucuk/K.length,
+             grup: say.size, teorik: ALAN.slice(0,alanSayisi).reduce((a,b)=>a*b.n,1) };
+  }
+
+  /* ── k-anonimlik: genelleme ile k kişilik gruplara indir ──
+     Genelleme seviyesi arttıkça bilgi kaybolur; ikisini birlikte ölçüyoruz. */
+  function genelle(k, seviye){
+    /* seviye 0: ham · 1: yıl→5 yıllık · 2: yıl→10 · 3: yıl→20, ilçe→bölge
+       4: yıl→20, ilçe→şehir, ay/gün at */
+    const y = k.dogumYili;
+    if (seviye === 0) return [y, k.dogumAyi, k.dogumGunu, k.cinsiyet, k.ilce].join('|');
+    if (seviye === 1) return [Math.floor(y/5),  k.dogumAyi, k.cinsiyet, k.ilce].join('|');
+    if (seviye === 2) return [Math.floor(y/10), k.cinsiyet, k.ilce].join('|');
+    if (seviye === 3) return [Math.floor(y/20), k.cinsiyet, Math.floor(k.ilce/6)].join('|');
+    return [Math.floor(y/20), k.cinsiyet].join('|');
+  }
+  /* bilgi kaybı: kalan ayırt edici bitlerin oranı, entropi cinsinden ölçülür */
+  function kAnonim(K, seviye){
+    const say = new Map();
+    K.forEach(k => { const a = genelle(k, seviye); say.set(a, (say.get(a)||0)+1); });
+    const boyut = [...say.values()];
+    const enKucuk = Math.min(...boyut);
+    /* kalan entropi: grup dağılımının bit cinsinden bilgisi */
+    const H = boyut.reduce((s,c) => { const p = c/K.length; return s - p*Math.log2(p); }, 0);
+    /* ham hâldeki entropi tavanı */
+    const hamH = Math.log2(K.length);
+    return { seviye, k: enKucuk, grup: say.size,
+             ortBoyut: K.length/say.size, H, kalanBilgi: H/hamH,
+             kBesUyum: boyut.filter(c=>c>=5).reduce((a,b)=>a+b,0)/K.length };
+  }
+
+  /* ══ ÜYELİK ÇIKARIMI SALDIRISI ══
+     Aşırı uyan bir model, eğitimde GÖRDÜĞÜ örneklere daha emin cevap verir.
+     Saldırgan yalnızca modelin çıktısına bakarak "bu kayıt eğitimde miydi"
+     sorusunu cevaplamaya çalışır. Bu, GDPR anlamında kişisel veri sızıntısıdır. */
+  /* Boyutlar bilinçli olarak aşırı uyum üretecek şekilde seçildi: 200 özellik,
+     200 eğitim örneği. Saldırı ancak model ezberlediğinde çalışır; ezberlemeyen
+     bir modelde AUC 0.5'te kalır. Bu, dersin ölçtüğü ilk sonuç. */
+  const OZ = 200, TEST = 600;
+
+  function veriUret(tohum, egt){
+    const R = rng(tohum), X = [], y = [];
+    const w = Array.from({length:OZ}, () => (R()-0.5)*1.2);
+    for (let i=0;i<egt+TEST;i++){
+      const x = Array.from({length:OZ}, () => R()*2-1);
+      const s = x.reduce((a,v,k)=>a+v*w[k],0) + (R()-0.5)*1.4;
+      X.push(x); y.push(s>0?1:0);
+    }
+    return { X, y };
+  }
+
+  /* düzenlileştirmesiz ve gürültüsüz eğitim: aşırı uyum serbest */
+  function egitMI(X, y, n, tur, lam, gurultu, tohum){
+    const R = rng(tohum || 3);
+    let w = new Array(OZ).fill(0), b = 0;
+    for (let t=0;t<tur;t++){
+      const g = new Array(OZ).fill(0); let gb = 0;
+      for (let i=0;i<n;i++){
+        const z = X[i].reduce((a,v,k)=>a+v*w[k],0) + b;
+        const p = 1/(1+Math.exp(-z)), d = p - y[i];
+        for (let k=0;k<OZ;k++) g[k] += d*X[i][k];
+        gb += d;
+      }
+      for (let k=0;k<OZ;k++){
+        /* DP-SGD benzeri: gradyana Gauss gürültüsü eklenir */
+        let gk = g[k]/n + lam*w[k];
+        if (gurultu > 0){
+          const u1 = Math.max(1e-9, R()), u2 = R();
+          gk += gurultu * Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2);
+        }
+        w[k] -= 2.0*gk;
+      }
+      b -= 2.0*gb/n;
+    }
+    return { w, b };
+  }
+  const kayip = (m, x, yy) => {
+    const z = x.reduce((a,v,k)=>a+v*m.w[k],0) + m.b;
+    const p = Math.min(1-1e-9, Math.max(1e-9, 1/(1+Math.exp(-z))));
+    return -(yy*Math.log(p) + (1-yy)*Math.log(1-p));
+  };
+  const dogrulukMI = (m, X, y, bas, son) => {
+    let n=0;
+    for (let i=bas;i<son;i++){
+      const z = X[i].reduce((a,v,k)=>a+v*m.w[k],0) + m.b;
+      n += ((z>0?1:0) === y[i] ? 1 : 0);
+    }
+    return n/(son-bas);
+  };
+
+  /* Saldırı: eşik tabanlı. Kayıp düşükse "eğitimdeydi" de.
+     Başarı ölçüsü AUC: 0.5 saldırı işe yaramıyor, 1.0 tam sızıntı demek. */
+  function saldiriAUC(m, X, y, egt){
+    const uye = [], uyeDegil = [];
+    for (let i=0;i<egt;i++)            uye.push(-kayip(m, X[i], y[i]));
+    for (let i=egt;i<egt+TEST;i++)     uyeDegil.push(-kayip(m, X[i], y[i]));
+    /* AUC = P(üye skoru > üye olmayan skoru) */
+    let iyi = 0, esit = 0;
+    uye.forEach(a => uyeDegil.forEach(b => { if (a>b) iyi++; else if (a===b) esit++; }));
+    return (iyi + 0.5*esit) / (uye.length*uyeDegil.length);
+  }
+
+  const C = {};
+  function olc(){
+    if (C.hazir) return C;
+    const K = nufus(11);
+    C.N = N;
+    C.tekil = ALAN.map((_,i) => ({ alan: i+1, ad: ALAN[i].ad, ...tekilOran(K, i+1) }));
+    C.kSeviye = [0,1,2,3,4].map(sv => kAnonim(K, sv));
+
+    /* ── üyelik çıkarımı ── */
+    const TABAN = 200;
+    const olcMI = (egt, lam, gur) => {
+      const V = veriUret(23, egt);
+      const m = egitMI(V.X, V.y, egt, 4000, lam, gur, 7);
+      return { auc: saldiriAUC(m, V.X, V.y, egt),
+               egitimDogruluk: dogrulukMI(m, V.X, V.y, 0, egt),
+               testDogruluk:   dogrulukMI(m, V.X, V.y, egt, egt+TEST) };
+    };
+    C.taban = { n: TABAN, ...olcMI(TABAN, 0, 0) };
+
+    /* üç savunma, üçü de ayrı ayrı ölçüldü */
+    C.gurultu = [0, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2].map(g =>
+      ({ deger: g, ...olcMI(TABAN, 0, g) }));
+    C.duzen = [0, 0.001, 0.005, 0.02, 0.05, 0.2].map(l =>
+      ({ deger: l, ...olcMI(TABAN, l, 0) }));
+    C.veri = [200, 400, 800, 1600, 3200].map(n =>
+      ({ deger: n, ...olcMI(n, 0, 0) }));
+
+    C.TABAN = TABAN; C.TEST = TEST; C.OZ = OZ;
+    C.ALAN = ALAN; C.hazir = true;
+    return C;
+  }
+
+  return { N, ALAN, nufus, tekilOran, kAnonim, genelle, saldiriAUC, olc };
+})();
+
+/* ── 1 · "ismi sildik, anonim oldu" yanlıştır ── */
+VIZ.gzKimlik = s => {
+  clear();
+  const o = GIZ.olc();
+  const a = Math.max(1, Math.min(6, Math.round(s.alan === undefined ? 3 : s.alan)));
+  const t = o.tekil[a-1];
+  baslikSerit('"İSMİ SİLDİK, ARTIK ANONİM"',
+    'İsim değil, birkaç sıradan alanın birleşimi kimliklendirir. '+o.N.toLocaleString('tr')+' kişilik nüfus.',
+    [['ALAN SAYISI', String(a), K.blue],
+     ['TEK BAŞINA KALAN', (100*t.tekil).toFixed(1)+'%', t.tekil>0.5?K.red:K.green],
+     ['5 KİŞİDEN AZ GRUPTA', (100*t.kBesAlti).toFixed(1)+'%', K.orange]]);
+
+  const P = plot(rect(140, 250, 640, 300), 0.6, 6.4, 0, 1.05);
+  txt('KENDİ KOMBİNASYONUNDA YALNIZ KALANLAR', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'oran', [], [0, 0.5, 1.0]);
+  cx.strokeStyle = K.red; cx.lineWidth = 4; cx.beginPath();
+  o.tekil.forEach((q,k) => k===0 ? cx.moveTo(P.sx(k+1), P.sy(q.tekil))
+                                 : cx.lineTo(P.sx(k+1), P.sy(q.tekil)));
+  cx.stroke();
+  o.tekil.forEach((q,k) => {
+    dot(P.sx(k+1), P.sy(q.tekil), (k+1)===a?9:6, (k+1)===a?K.yellow:K.red);
+    txt(String(k+1), P.sx(k+1), P.R.y+P.R.h+28, (k+1)===a?K.yellow:K.mut, 15);
+  });
+  txt('kaç alan biliniyor', P.R.x+P.R.w/2, P.R.y+P.R.h+56, K.mut, 17);
+
+  const bx = 830;
+  box(bx, 250, 560, 250, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('BİLİNEN ALANLAR', bx+280, 288, K.mut, 19);
+  o.ALAN.forEach((f,k) => {
+    const y = 324+k*28, acik = k < a;
+    txt((acik?'✓  ':'·  ')+f.ad, bx+40, y, acik?K.txt:K.mut, 16, 'left');
+    txt(f.n+' değer', bx+520, y, acik?K.blue:K.mut, 15, 'right');
+  });
+  txt('olası kombinasyon: '+t.teorik.toLocaleString('tr'), bx+280, 492, K.mut, 16);
+
+  box(bx, 520, 560, 190, 'rgba(248,113,113,.06)', 'rgba(248,113,113,.4)', 2);
+  txt('SONUÇ', bx+280, 558, K.red, 18);
+  txt(t.tekil > 0.9
+      ? 'Bu üç alanı bilen biri, neredeyse herkesi'
+      : (t.tekil > 0.3 ? 'Bu alanları bilen biri, nüfusun büyük'
+                       : 'Bu kadar alan tek başına ayırt etmiyor.'),
+      bx+24, 596, K.txt, 16, 'left');
+  txt(t.tekil > 0.9
+      ? 'tek tek ayırt edebilir.'
+      : (t.tekil > 0.3 ? 'bir kısmını tek tek ayırt edebilir.' : 'Gruplar hâlâ kalabalık.'),
+      bx+24, 620, K.txt, 16, 'left');
+  txt('Tekil olan kişi sayısı: '+Math.round(t.tekil*o.N).toLocaleString('tr'),
+      bx+280, 660, t.tekil>0.5?K.red:K.green, 19);
+  txt('Bu tabloda hiç isim yok.', bx+280, 692, K.mut, 16);
+
+  durum(a+' alan biliniyor  ·  nüfusun %'+(100*t.tekil).toFixed(1)+
+        ' i kendi kombinasyonunda yalnız  ·  '+t.grup.toLocaleString('tr')+' ayrı grup',
+        t.tekil > 0.5 ? K.red : K.orange);
+};
+
+/* ── 2 · k-anonimlik ve bedeli ── */
+VIZ.gzKanonim = s => {
+  clear();
+  const o = GIZ.olc();
+  const i = Math.max(0, Math.min(4, Math.round(s.seviye === undefined ? 2 : s.seviye)));
+  const q = o.kSeviye[i];
+  const AD = ['ham veri', 'yıl → 5 yıllık', 'yıl → 10 yıllık', 'yıl 20 + bölge',
+              'yıl 20, ilçe yok'];
+  const AD_UZUN = ['ham veri', 'doğum yılı 5 yıllık aralığa',
+                   'doğum yılı 10 yıllık aralığa, gün ve ay atıldı',
+                   'doğum yılı 20 yıllık aralığa, ilçe bölgeye',
+                   'doğum yılı 20 yıllık aralığa, ilçe tamamen atıldı'];
+  baslikSerit('k-ANONİMLİK ve BEDELİ',
+    'Herkesi en az k kişilik bir gruba sokmak mümkün. Ama karşılığında bilgi ödersin.',
+    [['GENELLEME', AD[i], K.blue],
+     ['EN KÜÇÜK GRUP  k', String(q.k), q.k>=5?K.green:K.red],
+     ['KALAN BİLGİ', (100*q.kalanBilgi).toFixed(1)+'%', q.kalanBilgi<0.4?K.red:K.orange]]);
+
+  const P = plot(rect(140, 262, 640, 288), -0.4, 4.4, 0, 1.05);
+  txt('GİZLİLİK ARTARKEN BİLGİ AZALIYOR', P.R.x+P.R.w/2, P.R.y-38, K.mut, 19);
+  txt(AD_UZUN[i], P.R.x+P.R.w/2, P.R.y-14, K.blue, 16);
+  frame(P, '', 'oran', [], [0, 0.5, 1.0]);
+  cx.strokeStyle = K.blue; cx.lineWidth = 4; cx.beginPath();
+  o.kSeviye.forEach((x,k) => k===0 ? cx.moveTo(P.sx(k), P.sy(x.kalanBilgi))
+                                   : cx.lineTo(P.sx(k), P.sy(x.kalanBilgi)));
+  cx.stroke();
+  cx.strokeStyle = K.green; cx.lineWidth = 4; cx.beginPath();
+  o.kSeviye.forEach((x,k) => k===0 ? cx.moveTo(P.sx(k), P.sy(x.kBesUyum))
+                                   : cx.lineTo(P.sx(k), P.sy(x.kBesUyum)));
+  cx.stroke();
+  o.kSeviye.forEach((x,k) => {
+    dot(P.sx(k), P.sy(x.kalanBilgi), k===i?9:6, k===i?K.yellow:K.blue);
+    dot(P.sx(k), P.sy(x.kBesUyum),   k===i?9:6, k===i?K.yellow:K.green);
+    txt(String(k), P.sx(k), P.R.y+P.R.h+28, k===i?K.yellow:K.mut, 15);
+  });
+  txt('genelleme seviyesi', P.R.x+P.R.w/2, P.R.y+P.R.h+56, K.mut, 17);
+  txt('■ kalan bilgi', P.R.x+16, P.R.y+30, K.blue, 16, 'left');
+  txt('■ k ≥ 5 kuralına uyan kişi oranı', P.R.x+16, P.R.y+54, K.green, 16, 'left');
+
+  const bx = 830;
+  box(bx, 250, 560, 230, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('SEVİYELER', bx+280, 288, K.mut, 19);
+  txt('sv', bx+60, 320, K.mut, 15);
+  txt('k', bx+150, 320, K.mut, 15);
+  txt('grup', bx+270, 320, K.mut, 15);
+  txt('kalan bilgi', bx+450, 320, K.mut, 15);
+  o.kSeviye.forEach((x,k) => {
+    const y = 354+k*24, vur = k===i;
+    txt(String(k), bx+60, y, vur?K.yellow:K.mut, 15);
+    txt(String(x.k), bx+150, y, vur?K.yellow:(x.k>=5?K.green:K.red), 15);
+    txt(x.grup.toLocaleString('tr'), bx+270, y, vur?K.yellow:K.mut, 15);
+    txt((100*x.kalanBilgi).toFixed(1)+'%', bx+450, y, vur?K.yellow:K.blue, 15);
+  });
+
+  box(bx, 500, 560, 210, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('ORTALAMA DEĞİL, EN KÜÇÜK ÖNEMLİ', bx+280, 538, K.mut, 18);
+  txt('Bu seviyede ortalama grup '+q.ortBoyut.toFixed(1)+' kişi.', bx+24, 574, K.mut, 16, 'left');
+  txt('Ama en küçük grup '+q.k+' kişi.', bx+24, 598, q.k>=5?K.green:K.red, 17, 'left');
+  txt(q.k >= 5
+      ? 'k ≥ 5 sağlanıyor: kimse tek başına kalmıyor.'
+      : 'Ortalama iyi görünse de, en küçük gruptaki',
+      bx+24, 632, q.k>=5?K.green:K.orange, 16, 'left');
+  txt(q.k >= 5
+      ? 'Bedeli: bilginin %'+(100*(1-q.kalanBilgi)).toFixed(1)+' i gitti.'
+      : 'kişiler hâlâ ifşa. Gizlilik en zayıf halkadır.',
+      bx+24, 656, q.k>=5?K.orange:K.red, 16, 'left');
+  txt('k ≥ 5 kuralına uyan: %'+(100*q.kBesUyum).toFixed(1), bx+280, 692, K.txt, 17);
+
+  durum('seviye '+i+'  ·  en küçük grup k = '+q.k+'  ·  kalan bilgi %'+
+        (100*q.kalanBilgi).toFixed(1)+'  ·  k ≥ 5 uyumu %'+(100*q.kBesUyum).toFixed(1),
+        q.k >= 5 ? K.green : K.red);
+};
+
+/* ── 3 · model eğitim verisini sızdırır ── */
+VIZ.gzUyelik = s => {
+  clear();
+  const o = GIZ.olc(), t = o.taban;
+  const goster = Math.max(0, Math.min(2, Math.round(s.asama === undefined ? 0 : s.asama)));
+  baslikSerit('MODEL EĞİTİM VERİSİNİ SIZDIRIR',
+    'Saldırgan yalnızca modelin çıktısına bakıyor. Sorusu: "bu kayıt eğitimde miydi?"',
+    [['EĞİTİM DOĞRULUK', (100*t.egitimDogruluk).toFixed(1)+'%', K.blue],
+     ['TEST DOĞRULUK', (100*t.testDogruluk).toFixed(1)+'%', K.orange],
+     ['SALDIRI AUC', goster>=1 ? t.auc.toFixed(4) : '?', goster>=1?K.red:K.mut]]);
+
+  const P = plot(rect(160, 256, 620, 284), -0.5, 1.5, 0, 1.22);
+  txt('AŞIRI UYUM: EZBERLENEN ve GENELLENEN', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'doğruluk', [], [0, 0.5, 1.0]);
+  [['eğitim verisi', t.egitimDogruluk, K.blue], ['görülmemiş veri', t.testDogruluk, K.orange]]
+    .forEach(([ad, v, renk], k) => {
+      const x = P.sx(k), gen = 150;
+      box(x-gen/2, P.sy(v), gen, P.sy(0)-P.sy(v), renk+'cc', null);
+      txt((100*v).toFixed(1)+'%', x, P.sy(v)-14, renk, 21);
+      txt(ad, x, P.R.y+P.R.h+30, K.mut, 16);
+    });
+  cx.strokeStyle = K.red; cx.lineWidth = 3;
+  const x1 = P.sx(0.5);
+  cx.beginPath(); cx.moveTo(x1, P.sy(t.egitimDogruluk)); cx.lineTo(x1, P.sy(t.testDogruluk)); cx.stroke();
+  txt((100*(t.egitimDogruluk-t.testDogruluk)).toFixed(1)+' puan',
+      x1+12, (P.sy(t.egitimDogruluk)+P.sy(t.testDogruluk))/2+6, K.red, 16, 'left');
+
+  const bx = 830;
+  box(bx, 250, 560, 200, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('DÜZENEK', bx+280, 288, K.mut, 19);
+  txt(o.OZ+' özellik, yalnızca '+t.n+' eğitim örneği.', bx+24, 326, K.mut, 16, 'left');
+  txt('Model eğitim verisini TAM ezberliyor:', bx+24, 356, K.txt, 16, 'left');
+  txt('eğitimde %'+(100*t.egitimDogruluk).toFixed(1)+', görülmemişte %'+
+      (100*t.testDogruluk).toFixed(1)+'.', bx+24, 380, K.txt, 16, 'left');
+  txt('Ezberlenen örneğe daha emin cevap verilir.', bx+24, 412, K.orange, 16, 'left');
+
+  if (goster >= 1){
+    box(bx, 470, 560, 240, 'rgba(248,113,113,.06)', 'rgba(248,113,113,.4)', 2);
+    txt('SALDIRI', bx+280, 508, K.red, 19);
+    txt('Saldırgan kaydı modele verir ve kaybına bakar.', bx+24, 544, K.mut, 16, 'left');
+    txt('Kayıp düşükse "eğitimdeydi" der.', bx+24, 568, K.mut, 16, 'left');
+    txt('AUC = '+t.auc.toFixed(4), bx+280, 610, K.red, 30);
+    txt('0.5 saldırı işe yaramıyor  ·  1.0 tam sızıntı', bx+280, 640, K.mut, 15);
+    if (goster >= 2){
+      txt('Bu, GDPR anlamında kişisel veri sızıntısıdır:', bx+24, 672, K.txt, 16, 'left');
+      txt('modelin kendisi bir kişisel veri taşıyıcısıdır.', bx+24, 696, K.txt, 16, 'left');
+    }
+  } else {
+    box(bx, 470, 560, 240, 'rgba(7,10,15,.4)', K.axis, 2);
+    txt('Kaydırıcıyı ilerlet', bx+280, 596, K.mut, 20);
+  }
+
+  durum(goster === 0
+    ? 'eğitimde %'+(100*t.egitimDogruluk).toFixed(1)+', görülmemişte %'+
+      (100*t.testDogruluk).toFixed(1)+'  ·  model ezberliyor'
+    : 'saldırı AUC '+t.auc.toFixed(4)+'  ·  rastgele tahmin 0.5 olurdu  ·  model üyeliği sızdırıyor',
+    goster === 0 ? K.orange : K.red);
+};
+
+/* ── 4 · üç savunma ── */
+VIZ.gzSavunma = s => {
+  clear();
+  const o = GIZ.olc();
+  const SAV = [
+    { k:'gurultu', ad:'gradyana gürültü', birim:'σ', renk:K.orange },
+    { k:'duzen',   ad:'düzenlileştirme',  birim:'λ', renk:K.purple },
+    { k:'veri',    ad:'daha çok veri',    birim:'n', renk:K.green  },
+  ];
+  const si = Math.max(0, Math.min(2, Math.round(s.savunma === undefined ? 2 : s.savunma)));
+  const S = SAV[si], dizi = o[S.k];
+  const di = Math.max(0, Math.min(dizi.length-1,
+    Math.round(s.derece === undefined ? dizi.length-1 : s.derece)));
+  const se = dizi[di], tab = dizi[0];
+  baslikSerit('ÜÇ SAVUNMA, BİRİ TAKASSIZ',
+    'Saldırıyı azaltmak kolay. Faydayı kaybetmeden azaltmak zor.',
+    [['SAVUNMA', S.ad, S.renk],
+     ['SALDIRI AUC', se.auc.toFixed(4), se.auc<0.55?K.green:(se.auc>0.7?K.red:K.orange)],
+     ['TEST DOĞRULUK', (100*se.testDogruluk).toFixed(1)+'%',
+      se.testDogruluk>=tab.testDogruluk?K.green:K.red]]);
+
+  const P = plot(rect(150, 250, 640, 300), -0.4, dizi.length-0.6, 0.45, 1.0);
+  txt('SALDIRI ve FAYDA, BİRLİKTE', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', '', [], [0.5, 0.75, 1.0]);
+  cx.setLineDash([6,6]); cx.strokeStyle = K.mut; cx.lineWidth = 2;
+  cx.beginPath(); cx.moveTo(P.R.x, P.sy(0.5)); cx.lineTo(P.R.x+P.R.w, P.sy(0.5)); cx.stroke();
+  cx.setLineDash([]);
+  txt('AUC 0.5 · saldırı ölü', P.R.x+P.R.w-12, P.sy(0.5)-10, K.mut, 15, 'right');
+  [['auc', K.red], ['testDogruluk', K.green]].forEach(([alan, renk]) => {
+    cx.strokeStyle = renk; cx.lineWidth = 4; cx.beginPath();
+    dizi.forEach((x,k) => k===0 ? cx.moveTo(P.sx(k), P.sy(x[alan]))
+                                : cx.lineTo(P.sx(k), P.sy(x[alan])));
+    cx.stroke();
+    dizi.forEach((x,k) => dot(P.sx(k), P.sy(x[alan]), k===di?9:6, k===di?K.yellow:renk));
+  });
+  dizi.forEach((x,k) => txt(String(x.deger), P.sx(k), P.R.y+P.R.h+28,
+                            k===di?K.yellow:K.mut, 15));
+  txt(S.birim, P.R.x+P.R.w/2, P.R.y+P.R.h+56, K.mut, 17);
+  txt('■ saldırı AUC · düşük iyi', P.R.x+16, P.R.y+30, K.red, 16, 'left');
+  txt('■ test doğruluk · yüksek iyi', P.R.x+16, P.R.y+54, K.green, 16, 'left');
+
+  const bx = 840;
+  box(bx, 250, 550, 230, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('ÜÇ SAVUNMANIN SONU', bx+275, 288, K.mut, 19);
+  txt('savunma', bx+150, 320, K.mut, 15);
+  txt('AUC', bx+330, 320, K.mut, 15);
+  txt('test', bx+470, 320, K.mut, 15);
+  SAV.forEach((f,k) => {
+    const son = o[f.k][o[f.k].length-1], y = 356+k*30, vur = k===si;
+    txt(f.ad, bx+24, y, vur?K.yellow:K.mut, 16, 'left');
+    txt(son.auc.toFixed(3), bx+330, y, vur?K.yellow:(son.auc<0.55?K.green:K.red), 16);
+    txt((100*son.testDogruluk).toFixed(1)+'%', bx+470, y,
+        vur?K.yellow:(son.testDogruluk>=o[f.k][0].testDogruluk?K.green:K.red), 16);
+  });
+  txt('başlangıç: AUC '+o.taban.auc.toFixed(3)+' · test %'+
+      (100*o.taban.testDogruluk).toFixed(1), bx+275, 458, K.mut, 15);
+
+  box(bx, 500, 550, 210, 'rgba(34,211,160,.06)', 'rgba(34,211,160,.4)', 2);
+  txt('OKUNAN ŞEY', bx+275, 538, K.green, 18);
+  txt('Gürültü saldırıyı azaltır ama faydayı yer', bx+24, 574, K.orange, 16, 'left');
+  txt('ve 0.5 e hiç inmez.', bx+24, 596, K.mut, 16, 'left');
+  txt('Düzenlileştirme saldırıyı AZALTMIYOR.', bx+24, 626, K.purple, 16, 'left');
+  txt('Veri ise ikisini birden düzeltiyor:', bx+24, 656, K.green, 16, 'left');
+  txt('tek takassız savunma budur.', bx+24, 678, K.green, 16, 'left');
+
+  durum(S.ad+'  ·  '+S.birim+' = '+se.deger+'  ·  saldırı AUC '+se.auc.toFixed(4)+
+        '  ·  test doğruluk %'+(100*se.testDogruluk).toFixed(1)+
+        '  (başlangıç '+tab.auc.toFixed(4)+' / %'+(100*tab.testDogruluk).toFixed(1)+')',
+        se.auc < 0.55 ? K.green : K.orange);
+};

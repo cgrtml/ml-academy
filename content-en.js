@@ -9135,3 +9135,205 @@ DERSLER_EN['izleme'] = {
   ],
 };
 DERS_ADI_EN['izleme'] = 'Monitoring in production: when to retrain';
+
+DERSLER_EN['gizlilik'] = {
+  ad:'Privacy: thinking data is anonymous',
+  alt:'Removing names does not anonymise, and the model itself leaks its training data. All four claims are measured.',
+  adimlar:[
+  {
+    t:'"We removed the names, so it is anonymous"',
+    goal:'You will measure how many people a handful of ordinary fields single out on their own.',
+    todo:'Increase the number of known fields. Note that there is no name anywhere in the table.',
+    kind:'controls', viz:'gzKimlik', h:760, xp:50,
+    controls:[{k:'alan', lb:'KNOWN FIELDS', min:1, max:6, step:1, val:3,
+               fmt:v=>String(Math.round(v))+' fields'}],
+    body:'<p>The most common practice when sharing data is to delete the <b>direct ' +
+      'identifiers</b>: name, national ID number, phone. The data is then considered ' +
+      '"anonymous" and shared.</p>' +
+      '<p>This step tests that assumption. In a synthetic population of 20,000 people, it ' +
+      'counts how many are singled out <b>on their own</b> by the ordinary fields that remain.</p>' +
+      '<p style="font-family:var(--mono)">field added &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;unique<br>' +
+      'birth year &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0%<br>' +
+      '+ sex &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0%<br>' +
+      '+ district &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>44.9%</b><br>' +
+      '+ birth month &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;93.6%<br>' +
+      '+ birth day &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;99.8%<br>' +
+      '+ occupation &nbsp;&nbsp;&nbsp;&nbsp;<b>100.0%</b></p>' +
+      '<p>Birth year alone singles out nobody: 20,000 people spread over 70 years, an average ' +
+      'of 285 per year. Adding sex changes nothing either.</p>' +
+      '<p>But <b>the moment district is added, 44.9% of the population stands alone</b>. With ' +
+      'the full birth date known the figure is <b>99.8%</b>.</p>' +
+      '<p>The reason is multiplicative: 70 × 2 × 180 = 25,200 possible combinations against a ' +
+      'population of 20,000. Once the number of combinations exceeds the population, most ' +
+      'cells are either empty or hold a single person. This is the <b>quasi-identifier</b> ' +
+      'problem: no field is an identifier by itself, but their combination is a fingerprint.</p>' +
+      '<p>This is not a theory but a measured fact. Latanya Sweeney ran the same calculation on ' +
+      'US census data in the 1990s and showed that the combination of ZIP code, birth date and ' +
+      'sex singles out the large majority of the population. In those same years the state of ' +
+      'Massachusetts published "anonymised" hospital records; Sweeney matched them against the ' +
+      'public voter roll, found the state governor\'s medical file and <b>mailed it to him</b>.</p>' +
+      '<p>The rule that follows: <b>anonymity is not a property of a dataset but a property ' +
+      'defined relative to whatever other data it can be matched against.</b> A table that is ' +
+      'anonymous today can stop being anonymous tomorrow when another table is published.</p>',
+    learned:'<b>Removing names does not anonymise.</b><br><br>' +
+      'In a population of 20,000, birth year and sex single out nobody. Adding district makes ' +
+      '<b>44.9%</b> unique; adding the full birth date makes <b>99.8%</b> unique.<br><br>' +
+      'The reason is multiplicative: 70 × 2 × 180 = 25,200 combinations against 20,000 people. ' +
+      'Once combinations exceed the population the cells hold one person each.<br><br>' +
+      'Anonymity is a function not of the data but of <b>what else it can be matched against</b>.',
+  },
+  {
+    t:'k-anonymity and its price',
+    goal:'You will measure what putting everyone into groups of at least k costs in information.',
+    todo:'Increase the generalisation level. Notice the two curves moving in opposite directions.',
+    kind:'controls', viz:'gzKanonim', h:760, xp:55,
+    controls:[{k:'seviye', lb:'GENERALISATION', min:0, max:4, step:1, val:2,
+               fmt:v=>'level '+Math.round(v)}],
+    body:'<p>Sweeney\'s proposed answer is <b>k-anonymity</b>: generalise the data until every ' +
+      'record looks identical to <b>at least k other people</b> in terms of its ' +
+      'quasi-identifiers. Birth year becomes a 5-year band, district becomes a region, and if ' +
+      'necessary fields are dropped entirely.</p>' +
+      '<p>But generalisation is not free. The measurement puts privacy and information loss ' +
+      'side by side. "Information kept" here is the ratio of the group distribution\'s entropy ' +
+      'to the raw data\'s entropy, a direct application of the bit arithmetic from the ' +
+      '<i>information theory</i> lesson.</p>' +
+      '<p style="font-family:var(--mono)">lvl &nbsp;&nbsp;&nbsp;&nbsp;k &nbsp;&nbsp;&nbsp;groups &nbsp;&nbsp;info kept<br>' +
+      '&nbsp;&nbsp;0 &nbsp;&nbsp;&nbsp;&nbsp;1 &nbsp;&nbsp;19,975 &nbsp;&nbsp;&nbsp;&nbsp;100.0%<br>' +
+      '&nbsp;&nbsp;1 &nbsp;&nbsp;&nbsp;&nbsp;1 &nbsp;&nbsp;17,044 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;97.8%<br>' +
+      '&nbsp;&nbsp;2 &nbsp;&nbsp;&nbsp;&nbsp;1 &nbsp;&nbsp;&nbsp;2,518 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;78.4%<br>' +
+      '&nbsp;&nbsp;3 &nbsp;&nbsp;&nbsp;31 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;240 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>54.9%</b><br>' +
+      '&nbsp;&nbsp;4 &nbsp;1409 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;8 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;20.7%</p>' +
+      '<p>Something interesting happens at level 2. The average group holds 7.9 people and ' +
+      '<b>95.6%</b> of the population satisfies k ≥ 5. To someone who wants to write "our data ' +
+      'is k-anonymous" in a report, it looks good enough.</p>' +
+      '<p>But <b>the smallest group is still one person</b>. k-anonymity is not an average but ' +
+      'a <b>minimum</b> guarantee: if even one person is left alone, there is no protection at ' +
+      'all for that person. Privacy is only as strong as its weakest link.</p>' +
+      '<p>Real k ≥ 5 only arrives at level 3 (k = 31) and the price is heavy: <b>45.1%</b> of ' +
+      'the information is gone. At level 4 only 20.7% remains and the data becomes useless for ' +
+      'most analysis.</p>' +
+      '<p>There is also a hole k-anonymity <b>does not close</b>. A group may hold 10 people, ' +
+      'but if <b>all ten share the same sensitive value</b>, the attacker does not need to ' +
+      'single anyone out; knowing the group is enough. This is the <b>homogeneity attack</b>, ' +
+      'and l-diversity and t-closeness were proposed to close it. Each adds protection and each ' +
+      'takes away more information.</p>',
+    learned:'<b>k-anonymity is paid for in information, and it is the minimum group that matters, not the average.</b><br><br>' +
+      'At level 2 the average group holds 7.9 people and 95.6% of the population satisfies ' +
+      'k ≥ 5, yet the smallest group is still <b>one person</b>. That person has no protection.<br><br>' +
+      'Real k ≥ 5 arrives at level 3 (k = 31) and costs 45.1% of the information. At level 4 ' +
+      'only 20.7% is left.<br><br>' +
+      'k-anonymity does not close the homogeneity attack; that is what l-diversity and ' +
+      't-closeness are for.',
+  },
+  {
+    t:'The model leaks its training data',
+    goal:'You will measure that "was this record in the training set?" can be answered from the model\'s output alone.',
+    todo:'Advance the slider. The attacker sees only the output, not the weights.',
+    kind:'controls', viz:'gzUyelik', h:760, xp:60,
+    controls:[{k:'asama', lb:'STAGE', min:0, max:2, step:1, val:0,
+               fmt:v=>['overfitting','the attack','legal consequence'][Math.round(v)]}],
+    body:'<p>The first two steps were about sharing <b>data</b>. This one asks: if we never ' +
+      'share the data and share only the <b>model</b>, is privacy preserved?</p>' +
+      '<p>The setup is built deliberately to overfit: 200 features but only 200 training ' +
+      'examples. The model memorises the training data completely.</p>' +
+      '<p style="font-family:var(--mono)">accuracy on training data &nbsp;&nbsp;<b>100.0%</b><br>' +
+      'on unseen data &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>73.7%</b></p>' +
+      '<p>The attack works like this. The attacker feeds a record to the model and looks at its ' +
+      '<b>loss</b>. If the model saw that record in training it has memorised it, so the loss ' +
+      'is low; if not, it is high. The attacker does not need access to the weights, only to ' +
+      'the output.</p>' +
+      '<p>The attack\'s success is measured by AUC. 0.5 means the attack does not work, 1.0 ' +
+      'means membership is fully readable.</p>' +
+      '<p style="font-family:var(--mono);text-align:center">attack AUC = <b>0.7384</b></p>' +
+      '<p>So when the attacker puts a random training record next to a random outsider record, ' +
+      'they correctly identify which one was in training <b>73.8% of the time</b>.</p>' +
+      '<p>To see why this is serious, think about the content. If the model was trained on a ' +
+      'cancer screening dataset, "this person was in the training set" means directly "this ' +
+      'person had a screening". If it was trained on debt restructuring applications, ' +
+      'membership exposes the person\'s finances. <b>Membership itself is sensitive ' +
+      'information.</b></p>' +
+      '<p>The legal consequence is clear too: if personal data remains inside the model, the ' +
+      'model is no longer just a software object but <b>a carrier of personal data</b>. When a ' +
+      'deletion request arrives (GDPR 17), deleting the record from the database may not be ' +
+      'enough; a model trained on that record may still carry the information. This is exactly ' +
+      'why a research field called "machine unlearning" exists.</p>' +
+      '<p>One more thing needs saying: this attack <b>feeds on overfitting</b>. In a model that ' +
+      'does not memorise, training and test losses are close together, so no distinguishing ' +
+      'signal remains. The next step measures precisely that.</p>',
+    learned:'<b>Even if you never share the data, the model can leak it.</b><br><br>' +
+      'A model trained with 200 features on 200 examples reaches 100.0% on the training data ' +
+      'and 73.7% on unseen data: pure memorisation.<br><br>' +
+      'An attacker looking only at the model\'s output predicts membership with ' +
+      '<b>AUC 0.7384</b>. Random guessing would be 0.5.<br><br>' +
+      'Membership itself is sensitive, which makes the model a carrier of personal data in law. ' +
+      'The attack feeds on overfitting.',
+  },
+  {
+    t:'Three defences, one without a trade-off',
+    goal:'You will measure separately what three attack-reducing methods do to utility.',
+    todo:'Change the defence and its strength. Watch what happens to the green curve as the red one falls.',
+    kind:'controls', viz:'gzSavunma', h:760, xp:60,
+    controls:[{k:'savunma', lb:'DEFENCE', min:0, max:2, step:1, val:2,
+               fmt:v=>['noise','regularisation','more data'][Math.round(v)]},
+              {k:'derece', lb:'STRENGTH', min:0, max:6, step:1, val:4,
+               fmt:v=>'step '+Math.round(v)}],
+    body:'<p>The starting point is the previous step: attack AUC <b>0.7384</b>, test accuracy ' +
+      '<b>73.7%</b>. Three defences were measured separately.</p>' +
+      '<p><b>One · Noise on the gradient.</b> This is the core of DP-SGD, the practical ' +
+      'implementation of differential privacy: Gaussian noise is added to the gradient at ' +
+      'every training step.</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;&nbsp;σ &nbsp;&nbsp;&nbsp;&nbsp;AUC &nbsp;&nbsp;&nbsp;&nbsp;test<br>' +
+      '&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;0.7384 &nbsp;&nbsp;73.7%<br>' +
+      '0.01 &nbsp;&nbsp;0.6908 &nbsp;&nbsp;70.7%<br>' +
+      '0.05 &nbsp;&nbsp;<b>0.6427</b> &nbsp;&nbsp;<b>66.0%</b><br>' +
+      '0.20 &nbsp;&nbsp;0.6651 &nbsp;&nbsp;65.0%</p>' +
+      '<p>Noise works but has two limits. The attack <b>never reaches 0.5</b>, stalling at ' +
+      '0.6427 at best. And in exchange test accuracy falls from 73.7% to 66.0%. Beyond that, ' +
+      'more noise no longer improves privacy and only eats utility.</p>' +
+      '<p><b>Two · Regularisation.</b> If overfitting feeds the attack, an L2 penalty ought to ' +
+      'reduce it. The measurement does not agree:</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;&nbsp;λ &nbsp;&nbsp;&nbsp;&nbsp;AUC &nbsp;&nbsp;&nbsp;&nbsp;test<br>' +
+      '&nbsp;&nbsp;&nbsp;0 &nbsp;&nbsp;0.7384 &nbsp;&nbsp;73.7%<br>' +
+      '0.02 &nbsp;&nbsp;0.7577 &nbsp;&nbsp;73.2%<br>' +
+      '0.05 &nbsp;&nbsp;<b>0.7602</b> &nbsp;&nbsp;72.0%<br>' +
+      '0.20 &nbsp;&nbsp;0.7481 &nbsp;&nbsp;70.7%</p>' +
+      '<p>The attack <b>does not fall, it rises</b>. This is one of the most counter-intuitive ' +
+      'measurements in this course, but the reason is understandable: at this scale L2 is not ' +
+      'strong enough to stop the model memorising (training accuracy is still 100%), while it ' +
+      'compresses the loss distribution and makes training and test losses <b>easier to ' +
+      'separate</b>. <b>What is good for generalisation is not automatically good for ' +
+      'privacy.</b></p>' +
+      '<p><b>Three · More data.</b></p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;&nbsp;&nbsp;n &nbsp;&nbsp;&nbsp;&nbsp;AUC &nbsp;&nbsp;&nbsp;&nbsp;test<br>' +
+      '&nbsp;&nbsp;200 &nbsp;&nbsp;0.7384 &nbsp;&nbsp;73.7%<br>' +
+      '&nbsp;&nbsp;400 &nbsp;&nbsp;0.5907 &nbsp;&nbsp;80.3%<br>' +
+      '&nbsp;&nbsp;800 &nbsp;&nbsp;0.5424 &nbsp;&nbsp;85.5%<br>' +
+      '&nbsp;1600 &nbsp;&nbsp;0.5222 &nbsp;&nbsp;91.8%<br>' +
+      '&nbsp;3200 &nbsp;&nbsp;<b>0.5168</b> &nbsp;&nbsp;<b>94.3%</b></p>' +
+      '<p>This is the only defence without a trade-off. As data grows the attack falls from ' +
+      '0.7384 to <b>0.5168</b>, nearly random, <b>and at the same time</b> test accuracy rises ' +
+      'from 73.7% to 94.3%. Both curves move the right way.</p>' +
+      '<p>The reason is simple: if the model sees too many examples to memorise, there is ' +
+      'nothing left to memorise. The membership signal came from overfitting; with no ' +
+      'overfitting there is no signal.</p>' +
+      '<p>The practical ordering that follows. First, <b>do not collect the data at all</b>: ' +
+      'data never collected cannot leak. Then <b>train with enough data</b>, because it fixes ' +
+      'both privacy and quality. If a formal guarantee is required, <b>use DP-SGD</b>, knowing ' +
+      'the price. And do <b>not</b> count regularisation as a privacy measure.</p>' +
+      '<p>A final honesty note: the noise measurement here demonstrates the mechanism of DP-SGD ' +
+      'but <b>does not compute an ε guarantee</b>. Real differential privacy requires gradient ' +
+      'clipping and careful accounting; "I added noise, therefore it is private" is not enough.</p>',
+    learned:'<b>Reducing the attack is easy, reducing it without losing utility is hard.</b><br><br>' +
+      'Starting point: AUC 0.7384, test 73.7%.<br><br>' +
+      '<b>Noise</b> brings AUC to 0.6427 but test falls to 66.0%, and the attack never reaches ' +
+      '0.5.<br><br>' +
+      '<b>Regularisation does not reduce the attack</b>, it raises it to 0.7602. What is good ' +
+      'for generalisation is not automatically good for privacy.<br><br>' +
+      '<b>More data</b> is the only defence without a trade-off: AUC falls to 0.5168 while test ' +
+      'accuracy rises to 94.3%.<br><br>' +
+      'The ordering: do not collect it, train with enough data, use DP-SGD if needed, and do ' +
+      'not count regularisation as privacy.',
+  },
+  ],
+};
+DERS_ADI_EN['gizlilik'] = 'Privacy: thinking data is anonymous';

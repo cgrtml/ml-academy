@@ -668,6 +668,21 @@ var ARAYUZ_EN = {
   "ÇEVRİMDIŞI": "OFFLINE",
   "CANLI": "LIVE",
   "GÖLGEDE n=#": "IN SHADOW n=#",
+  "# alan": "# fields",
+  "seviye #": "level #",
+  "aşırı uyum": "overfitting",
+  "saldırı": "the attack",
+  "hukuki sonuç": "legal consequence",
+  "düzenlileştirme": "regularisation",
+  "daha çok veri": "more data",
+  "kademe #": "step #",
+  "ALAN": "FIELDS",
+  "TEK KALAN": "UNIQUE",
+  "GRUP": "GROUPS",
+  "KALAN BİLGİ": "INFO KEPT",
+  "k ≥ # UYUM": "k ≥ # COMPLIANCE",
+  "SALDIRI AUC": "ATTACK AUC",
+  "DEĞER": "VALUE",
 /*SON*/
 };
 
