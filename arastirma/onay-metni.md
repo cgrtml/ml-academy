@@ -1,6 +1,6 @@
 # Araştırma rızası · gösterilecek metin
 
-**Sürüm:** `2026-08-08.1`
+**Sürüm:** `2026-08-09.1`
 Bu sürüm numarası `consent.text_version` alanına yazılır. Metin değişirse sürüm artar
 ve eski rıza geçersiz sayılıp yeniden sorulur.
 
@@ -76,10 +76,12 @@ Bunlar kozmetik değil, rızayı geçerli kılan şartlar:
 > · Yayınlanan hiçbir sonuçta tek bir kişi tanınamaz; yalnızca toplu sayılar paylaşılır.
 > · Verini istediğin an silebilirsin. Anahtarı kapattığın anda kayıtlar silinir.
 > · Saklama süresi en fazla **24 ay**. Sonunda ya silinir ya geri döndürülemez şekilde anonimleştirilir.
-> · Veri Türkiye ve Amerika Birleşik Devletleri'ndeki sunucularda saklanır.
-> · Veri sorumlusu: *(ad ve iletişim adresi buraya)*
-> · Soruların ya da şikâyetin için: *(e-posta)*
+> · Veri Amerika Birleşik Devletleri'ndeki sunucularda saklanır.
+> · Veri sorumlusu: **Hezarfen LLC** (Amerika Birleşik Devletleri).
+> · Soruların ya da şikâyetin için: **cagritemelusa@gmail.com**
 > · 18 yaşından küçüksen bu çalışmaya katılamazsın.
+> · Avrupa Birliği'ndeysen bu ekran sana hiç gösterilmez ve senden araştırma
+>   verisi toplanmaz; dersleri tam olarak kullanabilirsin.
 >
 > `[ Şimdi değil ]`  `[ Seçimimi kaydet ]`
 
@@ -137,27 +139,53 @@ Bunlar kozmetik değil, rızayı geçerli kılan şartlar:
 > · No published result can identify a single person; only aggregate numbers are shared.
 > · You can delete your data at any time. Turning a switch off deletes the records.
 > · Retention is at most **24 months**, after which data is deleted or irreversibly anonymised.
-> · Data is stored on servers in Türkiye and the United States.
-> · Data controller: *(name and contact address here)*
-> · Questions or complaints: *(email)*
+> · Data is stored on servers in the United States.
+> · Data controller: **Hezarfen LLC** (United States).
+> · Questions or complaints: **cagritemelusa@gmail.com**
 > · You cannot take part if you are under 18.
+> · If you are in the European Union this screen is never shown to you and no
+>   research data is collected from you; the lessons work in full.
 >
 > `[ Not now ]`  `[ Save my choices ]`
 
 ---
 
-## Doldurulması gereken boşluklar
+## Kararlar
 
-Metin bu hâliyle yayına hazır değil. Şunlar netleşmeden gösterilmemeli:
+9 Ağustos 2026'da netleşti:
 
-- [ ] Veri sorumlusunun kimliği: şahıs mı, TR şirketi mi, ABD şirketi mi?
-- [ ] İletişim ve şikâyet adresi
-- [ ] Saklama süresi 24 ay uygun mu, IRB başka bir süre isteyebilir
-- [ ] Veri nerede duracak: Supabase bölgesi seçimi (AB bölgesi seçilirse ayrı sonuçları var)
-- [ ] Yaş eşiği 18 mi 13 mü? ABD'de 13 altı için ayrı rejim var, 18 en güvenlisi.
-- [ ] AB'den kullanıcı kabul edilecek mi? Edilecekse ek maddeler ve muhtemelen
-      bir AB temsilcisi gerekir. Edilmeyecekse coğrafi engelleme gerekir; sadece
-      metne yazmak yetmez.
+- [x] **Veri sorumlusu:** Hezarfen LLC, Amerika Birleşik Devletleri.
+- [x] **İletişim ve şikâyet:** cagritemelusa@gmail.com
+- [x] **Saklama süresi:** 24 ay. IRB başka bir süre isterse metin ve
+      `arastirma/sema.sql` birlikte güncellenir, sürüm numarası artar.
+- [x] **Bölge:** Supabase projesi ABD. Metindeki "Türkiye ve ABD" ifadesi
+      kaldırıldı, yalnızca ABD yazıyor.
+- [x] **Yaş eşiği: 18.** Gerekçe: ABD'de 13 yaş altı COPPA rejimine giriyor,
+      13-17 arası eyalet düzeyinde ek yükümlülük doğuruyor (California AADC gibi).
+      Bu platform davranış profili çıkardığı için reşit olmayanların profillenmesi
+      en yüksek risk kalemi. Ayrıca etik kurul tarafında reşit olmayanlarla
+      araştırma veli onayı ve çocuk muvafakati gerektiriyor. 18 bu kitlede
+      neredeyse hiçbir şey kaybettirmiyor.
+- [x] **AB kullanıcıları:** siteye girer, tüm dersleri tamamlar, ama **araştırma
+      verisi toplanmaz**. Bu yalnızca metinle değil **kodla** sağlanıyor:
+      `ONAY.bolgeUygun()` AB/EEA saat dilimindeki kullanıcıya rıza ekranını hiç
+      göstermiyor ve `event` tablosuna hiçbir satır yazılmıyor.
+
+## AB konusunda dürüst not
+
+"AB'den veri kullanmıyoruz" demek GDPR'ı tamamen devre dışı bırakmaz. AB'deki
+kişilere hizmet sunuyorsan, **hesap ve ilerleme verisi** için GDPR yine geçerlidir;
+kapsam dışı kalan şey yalnızca araştırma telemetrisidir. Kalan küme çok küçük
+(e-posta, ders ilerlemesi) ve düşük risklidir, ama şunlar yine de gerekir:
+
+- gizlilik bildirimi ve işleme için hukuki dayanak (sözleşmenin ifası yeterli olur)
+- erişim, düzeltme ve silme taleplerine cevap verebilme
+- AB temsilcisi (Madde 27) gerekip gerekmediği: işleme arızi, düşük riskli ve
+  özel nitelikli veri içermiyorsa muafiyet uygulanabilir. Bu bir avukat sorusudur.
+
+Coğrafi tespit saat dilimine bakıyor ve **kesin değildir**; VPN ya da yanlış
+ayarlanmış cihaz yanıltabilir. Bu yüzden rıza ekranında kullanıcıya nerede
+olduğu ayrıca sorulur ve beyanı esas alınır.
 
 ## Hukuki not
 

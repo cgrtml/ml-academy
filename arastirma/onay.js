@@ -12,7 +12,7 @@
 
 const ONAY = (() => {
 
-  const SURUM = '2026-08-08.1';
+  const SURUM = '2026-08-09.1';
   const AMACLAR = ['telemetry', 'learning_profile', 'contact'];
 
   /* ── metinler ── */
@@ -113,10 +113,50 @@ const ONAY = (() => {
     return o;
   }
 
+  /* ══ AB / EEA AYRIMI ══
+     Karar: AB'deki kullanıcılar siteye girer ve tüm dersleri tamamlar, ama
+     onlardan ARAŞTIRMA VERİSİ TOPLANMAZ. Bunu yalnızca rıza metnine yazmak
+     yetmez; burada koda bağlanıyor. Bölge AB ise:
+       · rıza ekranı hiç gösterilmez
+       · `event` tablosuna tek satır yazılmaz
+     Hesap ve ilerleme verisi işlenmeye devam eder ve o veri için GDPR
+     yükümlülükleri geçerlidir. Ayrıntı: arastirma/onay-metni.md
+
+     Tespit saat dilimine bakar ve KESİN DEĞİLDİR: VPN ya da yanlış ayarlanmış
+     bir cihaz yanıltabilir. Bu yüzden yanlış taraf hangisiyse ona düşülür:
+     şüphede kalırsak AB varsayıp veri toplamayız. */
+  const AB_BOLGE = [
+    'Europe/', 'Atlantic/Azores', 'Atlantic/Madeira', 'Atlantic/Canary',
+    'Atlantic/Reykjavik',
+  ];
+  /* AB/EEA dışında kalan Avrupa saat dilimleri: bunlar AB sayılmaz */
+  const AB_DISI = [
+    'Europe/Istanbul', 'Europe/Moscow', 'Europe/Kaliningrad', 'Europe/Samara',
+    'Europe/Volgograd', 'Europe/Saratov', 'Europe/Ulyanovsk', 'Europe/Astrakhan',
+    'Europe/Kirov', 'Europe/Minsk', 'Europe/Kiev', 'Europe/Kyiv',
+    'Europe/Uzhgorod', 'Europe/Zaporozhye', 'Europe/Simferopol',
+    'Europe/London', 'Europe/Belfast', 'Europe/Jersey', 'Europe/Guernsey',
+    'Europe/Isle_of_Man', 'Europe/Gibraltar', 'Europe/Zurich', 'Europe/Vaduz',
+    'Europe/Belgrade', 'Europe/Sarajevo', 'Europe/Skopje', 'Europe/Podgorica',
+    'Europe/Tirane', 'Europe/Chisinau', 'Europe/Andorra', 'Europe/Monaco',
+    'Europe/San_Marino', 'Europe/Vatican',
+  ];
+  function abBolgesinde(){
+    let tz = '';
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; }
+    catch (e) { return false; }        // tespit edemiyorsak AB saymayız
+    if (!tz) return false;
+    if (AB_DISI.indexOf(tz) >= 0) return false;
+    return AB_BOLGE.some(p => tz.indexOf(p) === 0);
+  }
+  /* Araştırma verisi toplanabilir mi. Telemetri yazan her yer bunu sormalı. */
+  function bolgeUygun(){ return !abBolgesinde(); }
+
   /* Ekran yalnızca hiç cevap verilmemişse gösterilir. "Şimdi değil" de bir
      cevaptır: üç amaç için de false yazılır, böylece tekrar tekrar sorulmaz. */
   async function gerekli(sb, uid){
     if (!sb || !uid) return false;
+    if (!bolgeUygun()) return false;          // AB: ekran hiç gösterilmez
     const { data, error } = await sb
       .from('consent').select('id').eq('user_id', uid).eq('text_version', SURUM).limit(1);
     if (error) return false;
@@ -124,6 +164,8 @@ const ONAY = (() => {
   }
 
   async function yaz(sb, uid, secim, kaynak){
+    /* AB'de rıza ekranı zaten gösterilmiyor; bu bir güvenlik ağı. */
+    if (!bolgeUygun()) return;
     const satirlar = AMACLAR.map(a => ({
       user_id: uid, purpose: a, granted: !!secim[a],
       text_version: SURUM, source: kaynak || 'after_signup',
@@ -240,7 +282,7 @@ const ONAY = (() => {
     });
   }
 
-  return { SURUM, AMACLAR, durum, gerekli, goster, yaz };
+  return { SURUM, AMACLAR, durum, gerekli, goster, yaz, bolgeUygun, abBolgesinde };
 })();
 
 if (typeof module !== 'undefined') module.exports = ONAY;

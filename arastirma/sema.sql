@@ -7,6 +7,22 @@
 --
 -- Identifiers are English so the schema can be shared: published datasets,
 -- ethics board data dictionaries and outside collaborators all expect it.
+--
+-- DECIDED 2026-08-09:
+--   Data controller : Hezarfen LLC (United States)
+--   Contact         : cagritemelusa@gmail.com
+--   Region          : United States (Supabase project region)
+--   Retention       : 24 months maximum
+--   Age threshold   : 18
+--   EU / EEA users  : may use the site and complete every lesson, but NO research
+--                     data is collected from them. This is enforced in code, not
+--                     merely stated in the consent text: ONAY.bolgeUygun() in
+--                     arastirma/onay.js returns false in the EU/EEA, which
+--                     suppresses the consent screen entirely.
+--
+-- ANY code that writes to `event` MUST first check ONAY.bolgeUygun().
+-- As of 2026-08-09 no telemetry writer exists yet, so nothing is being collected.
+-- When one is written, that check is the first line it needs.
 
 -- ═══════════════════════════════════════════════════════════
 -- 1 · SERVICE LAYER  (lawful basis: performance of a contract)
