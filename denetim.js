@@ -4104,6 +4104,73 @@ console.log('═══ DENGESİZ VERİ ═══');
 }
 
 console.log('');
+console.log('═══ NEDENSELLİK ═══');
+{
+  const D = NED.olc();
+  iddia('örnek sayısı',4000,D.N);
+  iddia('gerçek nedensel etki',-0.60,D.gercek,2);
+
+  /* 1 · karıştırıcı işareti çeviriyor */
+  [[0,-0.6066],[1,-0.0732],[2,0.5776],[3,0.9247],[4,1.1004],[5,1.2185]].forEach(([i,v])=>{
+    iddia('karıştırıcı['+i+'] ham',v,D.karistirici[i].ham,4);
+    /* Z kontrol edilince her güçte AYNI ve doğru cevap */
+    iddia('karıştırıcı['+i+'] düzelt',-0.6065,D.karistirici[i].duzelt,4);
+  });
+  /* dersin ana iddiası: güç 0.6 dan itibaren İŞARET ters */
+  if (!(D.karistirici[0].ham < 0 && D.karistirici[2].ham > 0))
+    console.log('  ✗ karıştırıcı işareti çevirmedi, ders yanlış');
+  /* karıştırıcı güçlendikçe ham katsayı MONOTON artmalı */
+  for (let i=1;i<D.karistirici.length;i++)
+    if (D.karistirici[i].ham < D.karistirici[i-1].ham)
+      console.log('  ✗ karıştırıcı artarken ham katsayı düşmedi beklendiği gibi');
+  /* karıştırıcı yokken ham katsayı zaten doğru olmalı */
+  if (Math.abs(D.karistirici[0].ham - D.gercek) > 0.02)
+    console.log('  ✗ karıştırıcısız durumda ham katsayı doğru değil');
+
+  /* 2 · Simpson */
+  const S = D.simpson;
+  [['A','hafif',93.1],['B','hafif',86.7],['A','agir',73.0],['B','agir',68.8],
+   ['A','toplam',78.0],['B','toplam',82.6]].forEach(([t,g,v])=>
+    iddia('Simpson '+t+' '+g+' %',v,100*S[t][g],1));
+  iddia('Simpson A hafif pay',81,S.A.hafifSayi[0]);
+  iddia('Simpson A hafif payda',87,S.A.hafifSayi[1]);
+  iddia('Simpson A ağır pay',192,S.A.agirSayi[0]);
+  iddia('Simpson A ağır payda',263,S.A.agirSayi[1]);
+  iddia('Simpson B hafif pay',234,S.B.hafifSayi[0]);
+  iddia('Simpson B hafif payda',270,S.B.hafifSayi[1]);
+  iddia('Simpson B ağır pay',55,S.B.agirSayi[0]);
+  iddia('Simpson B ağır payda',80,S.B.agirSayi[1]);
+  iddia('Simpson A toplam payda',350,S.A.toplamSayi[1]);
+  iddia('Simpson B toplam payda',350,S.B.toplamSayi[1]);
+  /* paradoksun kendisi: A her grupta kazanıyor ama toplamda kaybediyor */
+  if (!(S.A.hafif > S.B.hafif && S.A.agir > S.B.agir && S.A.toplam < S.B.toplam))
+    console.log('  ✗ Simpson paradoksu oluşmadı, ders yanlış');
+
+  /* 3 · çarpışıcı */
+  iddia('çarpışıcı ham',0.0052,D.carpisici.ham,4);
+  iddia('çarpışıcı kontrollü',-0.9603,D.carpisici.kontrol,4);
+  /* ham katsayı sıfıra yakın, kontrollü katsayı güçlü olmalı */
+  if (Math.abs(D.carpisici.ham) > 0.05)
+    console.log('  ✗ bağımsız üretilen X,Y ham veride ilişkili çıktı');
+  if (Math.abs(D.carpisici.kontrol) < 0.5)
+    console.log('  ✗ çarpışıcı kontrolü sahte ilişki üretmedi, ders yanlış');
+
+  /* 4 · rastgeleleştirme */
+  [[0,-0.5953],[1,-0.5912],[2,-0.5870],[3,-0.5829],[4,-0.5787],[5,-0.5732]].forEach(([i,v])=>
+    iddia('rastgele['+i+'] ham',v,D.rastgele[i].ham,4));
+  /* deneysel katsayı her güçte gerçek değere yakın kalmalı */
+  D.rastgele.forEach((r,i) => {
+    if (Math.abs(r.ham - D.gercek) > 0.05)
+      console.log('  ✗ rastgele['+i+'] gerçek etkiden uzaklaştı');
+  });
+  /* ve gözlemselden belirgin şekilde iyi olmalı */
+  {
+    const g = Math.abs(D.karistirici[4].ham - D.gercek);
+    const d = Math.abs(D.rastgele[4].ham - D.gercek);
+    if (!(d < g/5)) console.log('  ✗ rastgeleleştirme gözlemselden yeterince iyi değil');
+  }
+}
+
 console.log('═══ GİZLİLİK ═══');
 {
   const G = GIZ.olc();

@@ -50,6 +50,7 @@ const ROTALAR = [
     {id:'softmax',        ad:'Softmax ve çapraz entropi',                      sure:15, durum:'hazir'},
     {id:'kalibrasyon',    ad:'Kalibrasyon: "%70" gerçekten %70 mü?',           sure:15, durum:'hazir'},
     {id:'dengesiz',       ad:'Dengesiz veri: eşik, ağırlık, örnekleme',        sure:15, durum:'hazir'},
+    {id:'nedensellik',    ad:'Korelasyon nedensellik değildir, peki nedir',      sure:17, durum:'hazir'},
     {id:'dagilim-kaymasi',  ad:'Zemin kayınca: dağılım kayması',                 sure:15, durum:'hazir'},
     {id:'zaman-serisi',     ad:'Zaman serisi: rastgele bölmenin yalanı',         sure:14, durum:'hazir'},
     {id:'hiper-arama',    ad:'Hiperparametre arama: ızgara, rastgele, eleme',  sure:16, durum:'hazir'},
@@ -14769,6 +14770,220 @@ DERSLER['gizlilik'] = {
       '<b>Daha çok veri</b> tek takassız savunma: AUC 0.5168 e inerken test %94.3 e çıkıyor.<br><br>' +
       'Sıralama: veriyi hiç toplama, yeterli veriyle eğit, gerekirse DP-SGD, ' +
       'düzenlileştirmeyi gizlilik önlemi sayma.',
+    xp:60,
+  },
+  ],
+};
+
+DERSLER['nedensellik'] = {
+  ad:'Korelasyon nedensellik değildir, peki nedir',
+  alt:'Bu cümle herkesin bildiği ama kimsenin ölçmediği bir şey. Burada dört kere ölçülüyor.',
+  kaynaklar:[
+    {"y":"Pearl, J. & Mackenzie, D.", "t":"2018", "b":"The Book of Why: The New Science of Cause and Effect", "n":"Basic Books"},
+    {"y":"Charig, C. R. et al.", "t":"1986", "b":"Comparison of treatment of renal calculi by open surgery, percutaneous nephrolithotomy, and extracorporeal shockwave lithotripsy", "n":"British Medical Journal, 292"},
+    {"y":"Cinelli, C., Forney, A. & Pearl, J.", "t":"2022", "b":"A Crash Course in Good and Bad Controls", "n":"Sociological Methods & Research"},
+  ],
+  rota:1,
+  adimlar:[
+  {
+    t:'Karıştırıcı işareti çevirebilir',
+    goal:'Bir karıştırıcının katsayıyı yalnızca kaydırmakla kalmayıp yönünü de ters çevirebildiğini ölçeceksin.',
+    todo:'Karıştırıcı gücünü artır. Yeşil çizgi gerçek etki, kırmızı olan regresyonun söylediği.',
+    kind:'controls', viz:'ndKaristirici', h:760,
+    controls:[{k:'guc', lb:'KARIŞTIRICI', min:0, max:5, step:1, val:4,
+               fmt:v=>[0,0.3,0.6,0.9,1.2,1.6][Math.round(v)].toFixed(1)}],
+    live:s => { const o = NED.olc(), k = o.karistirici[Math.max(0,Math.min(5,Math.round(s.guc===undefined?4:s.guc)))];
+      return [['HAM', k.ham.toFixed(4), (k.ham>0)!==(o.gercek>0)?K.red:K.orange],
+              ['Z KONTROLLÜ', k.duzelt.toFixed(4), K.green],
+              ['GERÇEK', o.gercek.toFixed(4), K.yellow]]; },
+    body:'<p>"Korelasyon nedensellik değildir" cümlesi doğru ama yetersizdir, çünkü ' +
+      '<b>ne kadar değildir</b> sorusunu cevaplamaz. Bu adım onu ölçüyor.</p>' +
+      '<p>Avantaj şu: veriyi biz ürettiğimiz için doğru cevabı <b>biliyoruz</b>. X in Y ' +
+      'üzerindeki gerçek nedensel etkisi <b>−0.60</b> olarak kuruldu. Gerçek hayatta bu ' +
+      'lüksün olmaz; burada var, çünkü amaç yöntemi sınamak.</p>' +
+      '<p>Düzenek üç oktan ibaret:</p>' +
+      '<p style="font-family:var(--mono)">Z → X &nbsp;&nbsp;&nbsp;karıştırıcı X i etkiliyor<br>' +
+      'Z → Y &nbsp;&nbsp;&nbsp;aynı karıştırıcı Y yi de etkiliyor<br>' +
+      'X → Y &nbsp;&nbsp;&nbsp;aradığımız gerçek etki (−0.60)</p>' +
+      '<p>Ölçüm:</p>' +
+      '<p style="font-family:var(--mono)">karıştırıcı &nbsp;&nbsp;ham katsayı &nbsp;&nbsp;Z kontrollü<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.6066 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.6065<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.0732 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.6065<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.6 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.5776 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.6065<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.9 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.9247 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.6065<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>1.1004</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.6065<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.6 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2185 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.6065</p>' +
+      '<p>Karıştırıcı yokken ham regresyon zaten doğru cevabı veriyor: −0.6066. Sorun ' +
+      'regresyonun kendisinde değil.</p>' +
+      '<p>Güç 0.3 e çıkınca katsayı <b>−0.0732</b> oluyor, yani neredeyse sıfır. Bu aşamada ' +
+      'veriye bakan biri "X in Y ile ilgisi yok" der ve yanılır.</p>' +
+      '<p>Güç 0.6 da katsayı <b>pozitife dönüyor</b>. Güç 1.2 de <b>+1.1004</b>. Yani ham ' +
+      'veri "X arttıkça Y artıyor" diyor. Gerçekte X arttıkça Y <b>azalıyor</b>. ' +
+      'Sadece büyüklük değil, <b>yön</b> yanlış.</p>' +
+      '<p>Sağdaki sütun ise her satırda <b>−0.6065</b>. Z kontrol edildiği anda, karıştırıcı ' +
+      'ne kadar güçlü olursa olsun doğru cevap geri geliyor.</p>' +
+      '<p>Buradan çıkan pratik sonuç şu: bir katsayının işareti bile <b>modelden değil, ' +
+      'hangi değişkenleri koyduğundan</b> gelir. Ve hangi değişkenlerin konulacağı ' +
+      'veriden okunamaz; bu bir <b>alan bilgisi</b> kararıdır. <i>Özellik önemi</i> ' +
+      'dersinde "önemli özellik" diye gördüğün şeyin nedensel olmayabileceği uyarısının ' +
+      'kaynağı burasıdır.</p>',
+    learned:'<b>Karıştırıcı katsayıyı kaydırmakla kalmaz, işaretini çevirir.</b><br><br>' +
+      'Gerçek etki −0.60. Karıştırıcı yokken ham regresyon −0.6066 veriyor, yani doğru. ' +
+      'Güç 0.3 te −0.0732 (ilişki yok gibi görünüyor), güç 1.2 de <b>+1.1004</b> ' +
+      '(yön ters).<br><br>' +
+      'Z kontrol edilince her güçte −0.6065 çıkıyor.<br><br>' +
+      'Bir katsayının işareti modelden değil, <b>hangi değişkenleri koyduğundan</b> gelir.',
+    xp:55,
+  },
+  {
+    t:'Simpson paradoksu',
+    goal:'Her alt grupta kazanan tedavinin toplamda nasıl kaybettiğini göreceksin.',
+    todo:'Önce iki hasta grubuna bak. Sonra kaydırıcıyı ilerletip toplamı aç.',
+    kind:'controls', viz:'ndSimpson', h:760,
+    controls:[{k:'katman', lb:'GÖSTER', min:0, max:2, step:1, val:0,
+               fmt:v=>['gruplar','toplam','sebep'][Math.round(v)]}],
+    live:s => { const S = NED.olc().simpson;
+      return [['HAFİF A', '%'+(100*S.A.hafif).toFixed(1), K.green],
+              ['AĞIR A', '%'+(100*S.A.agir).toFixed(1), K.green],
+              ['TOPLAM A', '%'+(100*S.A.toplam).toFixed(1), K.red]]; },
+    body:'<p>Bu adımdaki sayılar uydurma değil. Charig ve arkadaşlarının 1986 tarihli böbrek ' +
+      'taşı çalışmasından geliyor ve Simpson paradoksunun en çok anılan örneği.</p>' +
+      '<p>İki tedavi, her birinde toplam 350 hasta:</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;B<br>' +
+      'hafif &nbsp;&nbsp;&nbsp;81/87 &nbsp;<b>%93.1</b> &nbsp;&nbsp;234/270 &nbsp;%86.7<br>' +
+      'ağır &nbsp;&nbsp;192/263 &nbsp;<b>%73.0</b> &nbsp;&nbsp;&nbsp;&nbsp;55/80 &nbsp;%68.8<br>' +
+      'toplam &nbsp;273/350 &nbsp;%78.0 &nbsp;&nbsp;289/350 &nbsp;<b>%82.6</b></p>' +
+      '<p>Hafif vakalarda A kazanıyor: %93.1 karşı %86.7. Ağır vakalarda da A kazanıyor: ' +
+      '%73.0 karşı %68.8. <b>Her iki grupta da A daha iyi.</b></p>' +
+      '<p>Ama toplamda B kazanıyor: %82.6 karşı %78.0.</p>' +
+      '<p>Aritmetikte hata yok, sayıları kendin toplayabilirsin. Paradoks görünen şey ' +
+      '<b>grup büyüklüklerinden</b> geliyor. A ağırlıklı olarak <b>ağır</b> vakalara ' +
+      'verilmiş (263 ağır, 87 hafif), B ise <b>hafif</b> vakalara (270 hafif, 80 ağır). ' +
+      'Ağır vakalar zaten daha az iyileştiği için, A nın ortalaması aşağı çekiliyor.</p>' +
+      '<p>Peki hangisi doğru cevap? <b>A.</b> Ve bu keyfî bir tercih değil, düzenekten çıkan ' +
+      'bir sonuç: vaka ağırlığı hem <b>hangi tedavinin verildiğini</b> hem de ' +
+      '<b>iyileşme olasılığını</b> etkiliyor. Yani vaka ağırlığı bir <b>karıştırıcı</b>, ' +
+      've bir önceki adımdaki kuralla aynı: karıştırıcı kontrol edilmelidir. Burada ' +
+      '"kontrol etmek", ayrı ayrı gruplara bakmak demek.</p>' +
+      '<p>Buradaki asıl ders şu: aynı veriden iki farklı ve <b>çelişen</b> sonuç ' +
+      'çıkarabilirsin, ve hangisinin doğru olduğunu <b>veri sana söylemez</b>. Karar, ' +
+      'değişkenler arasındaki ok yönlerini bilmekten gelir. İstatistik sorusu gibi görünen ' +
+      'şey aslında bir <b>alan bilgisi</b> sorusudur.</p>' +
+      '<p>Ve bu bir kenarda duran merak değil. Aynı yapı ücret farkı analizlerinde, üniversite ' +
+      'kabul oranlarında ve model karşılaştırmalarında düzenli olarak ortaya çıkar. ' +
+      'Alt gruplara bölünce tersine dönen her sonuç, bu ailedendir.</p>',
+    learned:'<b>Her alt grupta kazanan, toplamda kaybedebilir.</b><br><br>' +
+      'Charig 1986 böbrek taşı verisi: hafif vakalarda A %93.1 > B %86.7, ağır vakalarda ' +
+      'A %73.0 > B %68.8, ama toplamda A %78.0 < B %82.6.<br><br>' +
+      'Sebep grup büyüklükleri: A ağır vakalara (263/350), B hafif vakalara (270/350) ' +
+      'verilmiş.<br><br>' +
+      'Doğru cevap <b>A</b> dır, çünkü vaka ağırlığı bir karıştırıcıdır. Hangi tablonun ' +
+      'geçerli olduğunu <b>veri söylemez</b>, ok yönlerini bilmek söyler.',
+    xp:55,
+  },
+  {
+    t:'Her şeyi kontrol etmek bozar',
+    goal:'Bir değişkeni kontrol etmenin, olmayan bir ilişkiyi yoktan var edebildiğini ölçeceksin.',
+    todo:'Anahtarı çevir. X ve Y nin tamamen bağımsız üretildiğini unutma.',
+    kind:'controls', viz:'ndCarpisici', h:760,
+    controls:[{k:'kontrol', lb:'C', min:0, max:1, step:1, val:0,
+               fmt:v=>Math.round(v)?'kontrol edildi':'ham veri'}],
+    live:s => { const C = NED.olc().carpisici;
+      const k = Math.round(s.kontrol===undefined?0:s.kontrol) >= 1;
+      return [['DURUM', k?'C kontrollü':'ham', k?K.red:K.green],
+              ['KATSAYI', (k?C.kontrol:C.ham).toFixed(4), k?K.red:K.green],
+              ['GERÇEK', '0.0000', K.yellow]]; },
+    body:'<p>İlk iki adımdan çıkarılacak yanlış ders şudur: "o hâlde eline ne geçerse kontrol ' +
+      'et, ne kadar çok değişken o kadar iyi". Bu adım o dersin neden yanlış olduğunu ' +
+      'ölçüyor.</p>' +
+      '<p>Düzenek:</p>' +
+      '<p style="font-family:var(--mono)">X &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;bağımsız üretildi<br>' +
+      'Y &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;bağımsız üretildi, X ile ilgisi YOK<br>' +
+      'X → C ← Y &nbsp;&nbsp;ikisi de C yi etkiliyor</p>' +
+      '<p>Burada C bir <b>çarpışıcıdır</b> (collider): iki okun çarpıştığı düğüm. Karıştırıcıda ' +
+      'oklar Z den <b>çıkıyordu</b>; burada C ye <b>giriyor</b>. Ok yönü tersine dönünce ' +
+      'yapılacak şey de tersine dönüyor.</p>' +
+      '<p>Ölçüm:</p>' +
+      '<p style="font-family:var(--mono)">C kontrol edilmeden &nbsp;&nbsp;<b>0.0052</b><br>' +
+      'C kontrol edilince &nbsp;&nbsp;&nbsp;<b>−0.9603</b></p>' +
+      '<p>Ham veride katsayı 0.0052, yani sıfır. Doğru cevap bu; X ile Y arasında gerçekten ' +
+      'hiçbir ilişki yok.</p>' +
+      '<p>C kontrol edilince katsayı <b>−0.9603</b> oluyor. Neredeyse mükemmel bir ters ' +
+      'ilişki, ve <b>tamamen uydurma</b>. Kontrol etmek burada bir sapmayı düzeltmedi, ' +
+      'yoktan bir sapma <b>yarattı</b>.</p>' +
+      '<p>Sezgisi şöyle: C yaklaşık olarak X + Y. C yi sabit tutarsan, X in büyük olduğu ' +
+      'yerlerde Y nin küçük olması <b>zorunlu</b> hâle gelir, yoksa toplam C yi tutturamaz. ' +
+      'Yani sabitleme işleminin kendisi iki bağımsız değişkeni birbirine bağlar.</p>' +
+      '<p>Gerçek hayattaki karşılığı <b>seçim yanlılığıdır</b>. Klasik örnek: hastanede yatan ' +
+      'hastalar arasında iki hastalık negatif ilişkili görünür, çünkü hastaneye yatmak için ' +
+      'birine sahip olmak yeter. Hastaneye yatmış olmak bir çarpışıcıdır ve o gruba bakmak, ' +
+      'onu kontrol etmekle aynı şeydir.</p>' +
+      '<p>Buradan çıkan kural: <b>hangi değişkenin kontrol edileceği veriden okunamaz.</b> ' +
+      'Karıştırıcıyı kontrol etmek zorunludur, çarpışıcıyı kontrol etmek zararlıdır, ve ' +
+      'ikisi veride <b>tamamen aynı görünür</b>. Ayrımı yapan tek şey, okların yönünü ' +
+      'bilmektir. Cinelli, Forney ve Pearl bu ayrımı "iyi ve kötü kontroller" başlığı ' +
+      'altında toplamıştır.</p>',
+    learned:'<b>Bir değişkeni kontrol etmek olmayan bir ilişkiyi yoktan var edebilir.</b><br><br>' +
+      'X ve Y bağımsız üretildi. Ham katsayı 0.0052, yani doğru olarak sıfır. C kontrol ' +
+      'edilince katsayı <b>−0.9603</b> oluyor: tamamen uydurma bir ilişki.<br><br>' +
+      'C bir <b>çarpışıcıdır</b>: oklar ona giriyor, ondan çıkmıyor. Karıştırıcıyı kontrol ' +
+      'etmek zorunlu, çarpışıcıyı kontrol etmek zararlıdır.<br><br>' +
+      'İkisi veride <b>aynı görünür</b>. Ayrımı yapan tek şey ok yönlerini bilmektir.',
+    xp:60,
+  },
+  {
+    t:'Rastgeleleştirme neden çalışır',
+    goal:'Rastgele atamanın, hiç ölçülmemiş bir karıştırıcıyı bile çözdüğünü ölçeceksin.',
+    todo:'Karıştırıcı gücünü artır. Yeşil eğrinin ne yaptığına dikkat et.',
+    kind:'controls', viz:'ndRastgele', h:760,
+    controls:[{k:'guc', lb:'KARIŞTIRICI', min:0, max:5, step:1, val:4,
+               fmt:v=>[0,0.3,0.6,0.9,1.2,1.6][Math.round(v)].toFixed(1)}],
+    live:s => { const o = NED.olc(), i = Math.max(0,Math.min(5,Math.round(s.guc===undefined?4:s.guc)));
+      return [['GÖZLEMSEL', o.karistirici[i].ham.toFixed(4), K.red],
+              ['DENEYSEL', o.rastgele[i].ham.toFixed(4), K.green],
+              ['GERÇEK', o.gercek.toFixed(4), K.yellow]]; },
+    body:'<p>İlk üç adım bir çıkmaz gibi görünüyor. Karıştırıcıyı kontrol etmelisin ama ' +
+      'çarpışıcıyı kontrol etmemelisin, ikisi veride aynı görünüyor, ve <b>ölçmediğin</b> ' +
+      'bir karıştırıcı varsa hiçbir şey yapamıyorsun.</p>' +
+      '<p>Bu adımdaki çıkış yolu, veriyi <b>nasıl topladığını</b> değiştirmek.</p>' +
+      '<p>Aynı karıştırıcı, aynı güçler, tek fark X in nasıl belirlendiği. Gözlemsel veride ' +
+      'X i Z belirliyor. Deneysel veride X <b>yazı tura</b> ile atanıyor.</p>' +
+      '<p style="font-family:var(--mono)">karıştırıcı &nbsp;&nbsp;gözlemsel &nbsp;&nbsp;deneysel<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0 &nbsp;&nbsp;&nbsp;&nbsp;−0.6066 &nbsp;&nbsp;&nbsp;−0.5953<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.3 &nbsp;&nbsp;&nbsp;&nbsp;−0.0732 &nbsp;&nbsp;&nbsp;−0.5912<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.6 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.5776 &nbsp;&nbsp;&nbsp;−0.5870<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.9 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.9247 &nbsp;&nbsp;&nbsp;−0.5829<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1004 &nbsp;&nbsp;&nbsp;−0.5787<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.6 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2185 &nbsp;&nbsp;&nbsp;<b>−0.5732</b></p>' +
+      '<p>Gözlemsel sütun −0.6066 dan +1.2185 e savruluyor. Deneysel sütun ise −0.5953 ten ' +
+      '−0.5732 ye, yani <b>neredeyse hiç kıpırdamıyor</b> ve hep gerçek değer olan −0.60 ın ' +
+      'yanında duruyor.</p>' +
+      '<p>Kritik nokta şu: deneysel sütunda <b>Z hiç ölçülmedi</b>. Modele konulmadı, ' +
+      'kontrol edilmedi, hatta var olduğu bile bilinmiyor olabilirdi.</p>' +
+      '<p>Sebep düzenekte görünüyor. Gözlemsel veride <b>Z → X</b> diye bir ok vardır. ' +
+      'Rastgele atama o oku <b>keser</b>: X artık Z den değil, yazı turadan geliyor. Ok ' +
+      'kesildiği anda Z ile X ilişkisiz kalır ve Z, katsayıyı saptıramaz hâle gelir.</p>' +
+      '<p>Bu, rastgeleleştirilmiş kontrollü denemenin (RCT) neden kanıt hiyerarşisinin ' +
+      'tepesinde olduğunun tek cümlelik açıklamasıdır: <b>ölçemediğin, adını bile ' +
+      'bilmediğin karıştırıcıları da çözer.</b> Hiçbir istatistiksel düzeltme bunu ' +
+      'yapamaz, çünkü düzeltme yapabilmek için değişkeni ölçmüş olman gerekir.</p>' +
+      '<p>Bunun bu kurstaki karşılığını zaten gördün. <i>A/B testi</i> dersinde yaptığın şey ' +
+      'tam olarak buydu: kullanıcıları kollara rastgele atamak. O dersin istatistiği bu ' +
+      'dersin nedenselliği üzerine kuruludur; rastgele atama olmasaydı, kazanan kolun ' +
+      'gerçekten daha iyi mi olduğu yoksa daha iyi kullanıcılara mı denk geldiği ' +
+      'ayrılamazdı.</p>' +
+      '<p>Ve deney her zaman mümkün olmaz: etik değildir, pahalıdır ya da geçmişe dönüktür. ' +
+      'O durumlarda araç değişkeni, süreksizlik tasarımı ve fark-içinde-fark gibi ' +
+      'yöntemler kullanılır. Hepsi aynı şeyi yapmaya çalışır: <b>rastgeleleştirmenin ' +
+      'olmadığı yerde onun yerine geçecek bir şey bulmak.</b></p>',
+    learned:'<b>Rastgele atama, ölçmediğin karıştırıcıyı bile çözer.</b><br><br>' +
+      'Aynı karıştırıcı gücünde gözlemsel katsayı −0.6066 dan +1.2185 e savrulurken, ' +
+      'deneysel katsayı −0.5953 ile −0.5732 arasında kalıyor ve hep gerçek değer −0.60 ın ' +
+      'yanında duruyor.<br><br>' +
+      'Deneyde <b>Z hiç ölçülmedi</b>. Rastgele atama Z → X okunu keser, Z ile X ilişkisiz ' +
+      'kalır.<br><br>' +
+      'RCT nin kanıt hiyerarşisinin tepesinde olmasının sebebi budur. <i>A/B testi</i> ' +
+      'dersinde yaptığın şey tam olarak buydu.',
     xp:60,
   },
   ],

@@ -141,8 +141,27 @@ Tarama sonucu: müfredatta tek bir kez bile geçmiyor.
       Kapsanmayan: mevsimsellik ayrıştırma (trendden arındırma), ARIMA/ETS
       gibi klasik yöntemler, çok değişkenli seriler.
 
-- [ ] **Nedensellik** · korelasyon-nedensellik, karıştırıcı, Simpson paradoksu
-      Yalnızca `ozellik-onemi[4]` içinde bir cümle.
+- [x] **Nedensellik** · korelasyon-nedensellik, karıştırıcı, Simpson paradoksu  ✔ 9 Ağustos 2026
+      `DERSLER['nedensellik']`, **Rota 1** (`dagilim-kaymasi` öncesi), 4 adım, 230 XP.
+      Yerleştirme kararı: R4 değil R1. Sebep, Simpson paradoksu ve karıştırıcının
+      istatistiksel temel olması; R4'e konsaydı kullanıcı R1'deki regresyon
+      derslerinde yanlış sezgiyi çoktan kurmuş olurdu.
+      Ölçülen: gerçek nedensel etki −0.60 olarak kuruldu. Karıştırıcı yokken ham
+      regresyon −0.6066 veriyor (yani sorun regresyonda değil), güç 0.3'te
+      −0.0732 (ilişki yok gibi görünüyor), güç 1.2'de +1.1004 (işaret ters).
+      Z kontrol edilince her güçte −0.6065.
+      Simpson: Charig 1986 böbrek taşı verisi. A her iki grupta kazanıyor
+      (%93.1 > %86.7 ve %73.0 > %68.8) ama toplamda kaybediyor (%78.0 < %82.6).
+      Çarpışıcı: X ve Y bağımsız üretildi, ham katsayı 0.0052. C kontrol edilince
+      −0.9603 doğuyor, yani kontrol etmek sapmayı düzeltmedi, yarattı.
+      Rastgeleleştirme: aynı karıştırıcı gücünde gözlemsel katsayı −0.6066'dan
+      +1.2185'e savrulurken deneysel katsayı −0.5953 ile −0.5732 arasında kalıyor,
+      ve deneyde Z hiç ölçülmedi.
+      Denetim dört aykırı sonucu ayrıca sınıyor: işaret çevrilmesi, Simpson'ın
+      gerçekten oluşması, çarpışıcının sahte ilişki üretmesi ve rastgeleleştirmenin
+      gözlemselden en az beş kat iyi olması.
+      Kapsanmayan: do-operatörü gösterimi, DAG çizimi ve d-ayrımı, araç değişkeni,
+      süreksizlik tasarımı ve fark-içinde-fark yalnızca anlatımda anılıyor.
 
 ## D · Kavramsal delik, ama bu formata zor oturuyor
 

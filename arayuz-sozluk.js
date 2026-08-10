@@ -683,6 +683,18 @@ var ARAYUZ_EN = {
   "k ≥ # UYUM": "k ≥ # COMPLIANCE",
   "SALDIRI AUC": "ATTACK AUC",
   "DEĞER": "VALUE",
+  "gruplar": "groups",
+  "toplam": "the total",
+  "sebep": "the cause",
+  "kontrol edildi": "controlled",
+  "HAM": "RAW",
+  "Z KONTROLLÜ": "Z-CONTROLLED",
+  "KATSAYI": "COEFFICIENT",
+  "HAFİF A": "MILD A",
+  "AĞIR A": "SEVERE A",
+  "TOPLAM A": "TOTAL A",
+  "GÖZLEMSEL": "OBSERVATIONAL",
+  "DENEYSEL": "EXPERIMENTAL",
 /*SON*/
 };
 

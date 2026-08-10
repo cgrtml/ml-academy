@@ -9337,3 +9337,188 @@ DERSLER_EN['gizlilik'] = {
   ],
 };
 DERS_ADI_EN['gizlilik'] = 'Privacy: thinking data is anonymous';
+
+DERSLER_EN['nedensellik'] = {
+  ad:'Correlation is not causation, so what is',
+  alt:'Everyone knows the sentence and nobody measures it. Here it gets measured four times.',
+  adimlar:[
+  {
+    t:'A confounder can flip the sign',
+    goal:'You will measure that a confounder does not just shift a coefficient but can reverse its direction.',
+    todo:'Increase the confounder strength. Green is the true effect, red is what regression says.',
+    kind:'controls', viz:'ndKaristirici', h:760, xp:55,
+    controls:[{k:'guc', lb:'CONFOUNDER', min:0, max:5, step:1, val:4,
+               fmt:v=>[0,0.3,0.6,0.9,1.2,1.6][Math.round(v)].toFixed(1)}],
+    body:'<p>"Correlation is not causation" is true but insufficient, because it never answers ' +
+      '<b>by how much</b> it is not. This step measures that.</p>' +
+      '<p>The advantage here is that we generated the data, so we <b>know</b> the right answer. ' +
+      'X\'s true causal effect on Y was set to <b>−0.60</b>. In real life you never have that ' +
+      'luxury; here you do, because the point is to test the method.</p>' +
+      '<p>The setup is three arrows:</p>' +
+      '<p style="font-family:var(--mono)">Z → X &nbsp;&nbsp;&nbsp;the confounder affects X<br>' +
+      'Z → Y &nbsp;&nbsp;&nbsp;the same confounder also affects Y<br>' +
+      'X → Y &nbsp;&nbsp;&nbsp;the true effect we are after (−0.60)</p>' +
+      '<p>Measured:</p>' +
+      '<p style="font-family:var(--mono)">confounder &nbsp;&nbsp;raw coef &nbsp;&nbsp;Z-controlled<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0 &nbsp;&nbsp;&nbsp;&nbsp;−0.6066 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.6065<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.3 &nbsp;&nbsp;&nbsp;&nbsp;−0.0732 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.6065<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.6 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.5776 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.6065<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.9 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.9247 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.6065<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>1.1004</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.6065<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.6 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2185 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.6065</p>' +
+      '<p>With no confounder the raw regression already gives the right answer: −0.6066. The ' +
+      'problem is not regression itself.</p>' +
+      '<p>At strength 0.3 the coefficient becomes <b>−0.0732</b>, essentially zero. At this ' +
+      'point someone reading the data would say "X has nothing to do with Y" and be wrong.</p>' +
+      '<p>At strength 0.6 the coefficient <b>turns positive</b>. At 1.2 it is <b>+1.1004</b>. ' +
+      'So the raw data says "as X rises Y rises". In reality as X rises Y <b>falls</b>. Not ' +
+      'just the magnitude but the <b>direction</b> is wrong.</p>' +
+      '<p>The right-hand column, meanwhile, reads <b>−0.6065</b> in every row. The moment Z is ' +
+      'controlled for, the right answer comes back no matter how strong the confounder is.</p>' +
+      '<p>The practical consequence: even the sign of a coefficient comes not from the model but ' +
+      'from <b>which variables you put in</b>. And which variables to put in cannot be read off ' +
+      'the data; that is a <b>domain knowledge</b> decision. This is the source of the warning ' +
+      'in the <i>feature importance</i> lesson that an "important feature" need not be causal.</p>',
+    learned:'<b>A confounder does not just shift a coefficient, it flips its sign.</b><br><br>' +
+      'The true effect is −0.60. With no confounder the raw regression gives −0.6066, which is ' +
+      'right. At strength 0.3 it gives −0.0732 (looks like no relationship), at 1.2 it gives ' +
+      '<b>+1.1004</b> (the wrong direction).<br><br>' +
+      'Controlling for Z gives −0.6065 at every strength.<br><br>' +
+      'The sign of a coefficient comes not from the model but from <b>which variables you put in</b>.',
+  },
+  {
+    t:'Simpson\'s paradox',
+    goal:'You will see the treatment that wins in every subgroup lose overall.',
+    todo:'Look at the two patient groups first. Then advance the slider to reveal the total.',
+    kind:'controls', viz:'ndSimpson', h:760, xp:55,
+    controls:[{k:'katman', lb:'SHOW', min:0, max:2, step:1, val:0,
+               fmt:v=>['groups','the total','the cause'][Math.round(v)]}],
+    body:'<p>The numbers in this step are not invented. They come from Charig and colleagues\' ' +
+      '1986 kidney stone study and are the most cited example of Simpson\'s paradox.</p>' +
+      '<p>Two treatments, 350 patients each:</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;B<br>' +
+      'mild &nbsp;&nbsp;&nbsp;&nbsp;81/87 &nbsp;<b>93.1%</b> &nbsp;&nbsp;234/270 &nbsp;86.7%<br>' +
+      'severe &nbsp;192/263 &nbsp;<b>73.0%</b> &nbsp;&nbsp;&nbsp;&nbsp;55/80 &nbsp;68.8%<br>' +
+      'total &nbsp;&nbsp;273/350 &nbsp;78.0% &nbsp;&nbsp;289/350 &nbsp;<b>82.6%</b></p>' +
+      '<p>In mild cases A wins: 93.1% against 86.7%. In severe cases A wins too: 73.0% against ' +
+      '68.8%. <b>A is better in both groups.</b></p>' +
+      '<p>But overall B wins: 82.6% against 78.0%.</p>' +
+      '<p>There is no arithmetic error; add the numbers yourself. What looks like a paradox comes ' +
+      'from the <b>group sizes</b>. A was mostly given to <b>severe</b> cases (263 severe, 87 ' +
+      'mild), B to <b>mild</b> ones (270 mild, 80 severe). Since severe cases recover less ' +
+      'often anyway, A\'s average is dragged down.</p>' +
+      '<p>So which is the right answer? <b>A.</b> And that is not an arbitrary preference but a ' +
+      'consequence of the setup: case severity affects both <b>which treatment was given</b> ' +
+      'and <b>the chance of recovery</b>. Severity is a <b>confounder</b>, and the rule from the ' +
+      'previous step applies: a confounder must be controlled for. Here "controlling for it" ' +
+      'means looking at the groups separately.</p>' +
+      '<p>The real lesson: you can draw two <b>contradictory</b> conclusions from the same data, ' +
+      'and <b>the data will not tell you</b> which is right. The decision comes from knowing the ' +
+      'direction of the arrows between the variables. What looks like a statistics question is ' +
+      'really a <b>domain knowledge</b> question.</p>' +
+      '<p>And this is not a curiosity on the sidelines. The same structure turns up routinely in ' +
+      'pay gap analyses, university admission rates and model comparisons. Every result that ' +
+      'reverses when you split into subgroups belongs to this family.</p>',
+    learned:'<b>The winner in every subgroup can lose overall.</b><br><br>' +
+      'Charig 1986 kidney stone data: in mild cases A 93.1% > B 86.7%, in severe cases A 73.0% > ' +
+      'B 68.8%, but overall A 78.0% < B 82.6%.<br><br>' +
+      'The cause is group sizes: A went to severe cases (263/350), B to mild ones (270/350).<br><br>' +
+      'The right answer is <b>A</b>, because severity is a confounder. <b>The data does not tell ' +
+      'you</b> which table is valid; knowing the arrows does.',
+  },
+  {
+    t:'Controlling for everything breaks it',
+    goal:'You will measure that controlling for a variable can conjure a relationship out of nothing.',
+    todo:'Flip the switch. Remember that X and Y were generated completely independently.',
+    kind:'controls', viz:'ndCarpisici', h:760, xp:60,
+    controls:[{k:'kontrol', lb:'C', min:0, max:1, step:1, val:0,
+               fmt:v=>Math.round(v)?'controlled':'raw data'}],
+    body:'<p>The wrong lesson to draw from the first two steps is: "so control for whatever you ' +
+      'can get, the more variables the better". This step measures why that is wrong.</p>' +
+      '<p>The setup:</p>' +
+      '<p style="font-family:var(--mono)">X &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;generated independently<br>' +
+      'Y &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;generated independently, NO link to X<br>' +
+      'X → C ← Y &nbsp;&nbsp;both of them affect C</p>' +
+      '<p>C here is a <b>collider</b>: the node where two arrows collide. With a confounder the ' +
+      'arrows <b>left</b> Z; here they <b>enter</b> C. When the arrow direction reverses, so does ' +
+      'what you should do.</p>' +
+      '<p>Measured:</p>' +
+      '<p style="font-family:var(--mono)">without controlling for C &nbsp;&nbsp;<b>0.0052</b><br>' +
+      'controlling for C &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>−0.9603</b></p>' +
+      '<p>In the raw data the coefficient is 0.0052, which is zero. That is the right answer; ' +
+      'there really is no relationship between X and Y.</p>' +
+      '<p>Controlling for C makes the coefficient <b>−0.9603</b>. An almost perfect inverse ' +
+      'relationship, and <b>entirely fabricated</b>. Controlling here did not correct a bias, it ' +
+      '<b>created</b> one.</p>' +
+      '<p>The intuition: C is roughly X + Y. If you hold C fixed, then wherever X is large Y ' +
+      '<b>has to</b> be small, or the sum could not reach C. The act of holding it fixed is what ' +
+      'ties two independent variables together.</p>' +
+      '<p>Its real-world counterpart is <b>selection bias</b>. The classic example: among ' +
+      'hospitalised patients two diseases appear negatively related, because having either one ' +
+      'is enough to get you admitted. Being hospitalised is a collider, and looking only at that ' +
+      'group is the same as controlling for it.</p>' +
+      '<p>The rule that follows: <b>which variable to control for cannot be read off the data.</b> ' +
+      'Controlling for a confounder is mandatory, controlling for a collider is harmful, and the ' +
+      'two look <b>exactly the same</b> in the data. The only thing that separates them is ' +
+      'knowing the direction of the arrows. Cinelli, Forney and Pearl collected this distinction ' +
+      'under the heading "good and bad controls".</p>',
+    learned:'<b>Controlling for a variable can conjure a relationship out of nothing.</b><br><br>' +
+      'X and Y were generated independently. The raw coefficient is 0.0052, correctly zero. ' +
+      'Controlling for C makes it <b>−0.9603</b>: an entirely fabricated relationship.<br><br>' +
+      'C is a <b>collider</b>: arrows enter it rather than leaving it. Controlling for a ' +
+      'confounder is mandatory, controlling for a collider is harmful.<br><br>' +
+      'The two look <b>the same</b> in the data. Only knowing the arrows separates them.',
+  },
+  {
+    t:'Why randomisation works',
+    goal:'You will measure that random assignment solves even a confounder you never measured.',
+    todo:'Increase the confounder strength. Watch what the green curve does.',
+    kind:'controls', viz:'ndRastgele', h:760, xp:60,
+    controls:[{k:'guc', lb:'CONFOUNDER', min:0, max:5, step:1, val:4,
+               fmt:v=>[0,0.3,0.6,0.9,1.2,1.6][Math.round(v)].toFixed(1)}],
+    body:'<p>The first three steps look like a dead end. You must control for confounders but not ' +
+      'for colliders, the two look identical in the data, and if a confounder is ' +
+      '<b>unmeasured</b> there is nothing you can do.</p>' +
+      '<p>The way out in this step is to change <b>how you collect the data</b>.</p>' +
+      '<p>Same confounder, same strengths, the only difference being how X is determined. In the ' +
+      'observational data Z determines X. In the experimental data X is assigned by a ' +
+      '<b>coin flip</b>.</p>' +
+      '<p style="font-family:var(--mono)">confounder &nbsp;observational &nbsp;experimental<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.6066 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.5953<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.0732 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.5912<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.6 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.5776 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.5870<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.9 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.9247 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.5829<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.1004 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;−0.5787<br>' +
+      '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.6 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1.2185 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>−0.5732</b></p>' +
+      '<p>The observational column swings from −0.6066 to +1.2185. The experimental column moves ' +
+      'from −0.5953 to −0.5732, meaning it <b>barely moves at all</b> and stays right next to ' +
+      'the true value of −0.60.</p>' +
+      '<p>The critical point: in the experimental column <b>Z was never measured</b>. It was not ' +
+      'put in the model, not controlled for, and might not even have been known to exist.</p>' +
+      '<p>The reason is visible in the setup. Observational data contains an arrow <b>Z → X</b>. ' +
+      'Random assignment <b>cuts</b> that arrow: X now comes from a coin flip, not from Z. Once ' +
+      'the arrow is cut, Z is unrelated to X and can no longer distort the coefficient.</p>' +
+      '<p>This is the one-sentence explanation for why the randomised controlled trial sits at the ' +
+      'top of the evidence hierarchy: <b>it solves confounders you cannot measure and do not ' +
+      'even know the names of.</b> No statistical adjustment can do that, because adjusting ' +
+      'requires having measured the variable.</p>' +
+      '<p>You have already seen its counterpart in this course. That is exactly what you did in ' +
+      'the <i>A/B testing</i> lesson: assigning users to arms at random. That lesson\'s ' +
+      'statistics rests on this lesson\'s causality; without random assignment you could not ' +
+      'separate whether the winning arm was genuinely better or simply got better users.</p>' +
+      '<p>And an experiment is not always possible: it may be unethical, expensive or ' +
+      'retrospective. In those cases methods like instrumental variables, regression ' +
+      'discontinuity and difference-in-differences are used. All of them try to do the same ' +
+      'thing: <b>find a substitute for randomisation where randomisation is unavailable.</b></p>',
+    learned:'<b>Random assignment solves even a confounder you never measured.</b><br><br>' +
+      'At the same confounder strength the observational coefficient swings from −0.6066 to ' +
+      '+1.2185, while the experimental one stays between −0.5953 and −0.5732, right next to the ' +
+      'true value of −0.60.<br><br>' +
+      'In the experiment <b>Z was never measured</b>. Random assignment cuts the Z → X arrow, ' +
+      'leaving Z unrelated to X.<br><br>' +
+      'This is why the RCT sits at the top of the evidence hierarchy. It is exactly what you did ' +
+      'in the <i>A/B testing</i> lesson.',
+  },
+  ],
+};
+DERS_ADI_EN['nedensellik'] = 'Correlation is not causation, so what is';

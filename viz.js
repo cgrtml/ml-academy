@@ -18604,3 +18604,404 @@ VIZ.gzSavunma = s => {
         '  (başlangıç '+tab.auc.toFixed(4)+' / %'+(100*tab.testDogruluk).toFixed(1)+')',
         se.auc < 0.55 ? K.green : K.orange);
 };
+
+/* ═══════════════ NEDENSELLİK ═══════════════
+   Müfredatta yalnızca `ozellik-onemi[4]` içinde tek cümleyle geçiyordu.
+   Dört iddia da sentetik veride GERÇEKTEN üretiliyor, hiçbiri anlatılıp
+   geçilmiyor:
+     1. Karıştırıcı, katsayının İŞARETİNİ çevirebilir
+     2. Simpson paradoksu: her alt grupta A iyi, toplamda B iyi
+     3. Her değişkeni kontrol etmek düzeltmez, BOZABİLİR (çarpışıcı)
+     4. Rastgeleleştirme karıştırıcıyı gözlemeden çözer                     */
+const NED = (() => {
+  const N = 4000;
+
+  /* ── en küçük kareler, sabit terimli ── */
+  function ekk(X, y){
+    const p = X[0].length, n = X.length;
+    const A = Array.from({length:p+1}, () => new Array(p+2).fill(0));
+    for (let i=0;i<n;i++){
+      const x = [1, ...X[i]];
+      for (let a=0;a<=p;a++){
+        for (let b=0;b<=p;b++) A[a][b] += x[a]*x[b];
+        A[a][p+1] += x[a]*y[i];
+      }
+    }
+    /* Gauss eliminasyonu */
+    for (let c=0;c<=p;c++){
+      let en = c;
+      for (let r=c+1;r<=p;r++) if (Math.abs(A[r][c]) > Math.abs(A[en][c])) en = r;
+      const t = A[c]; A[c] = A[en]; A[en] = t;
+      if (Math.abs(A[c][c]) < 1e-12) continue;
+      for (let r=0;r<=p;r++){
+        if (r === c) continue;
+        const f = A[r][c]/A[c][c];
+        for (let k=c;k<=p+1;k++) A[r][k] -= f*A[c][k];
+      }
+    }
+    /* köşegen normalize: katsayı vektörü [sabit, b1, b2, ...] */
+    return A.map((row,i) => Math.abs(row[i]) < 1e-12 ? 0 : row[p+1]/row[i]);
+  }
+
+  /* ══ 1 · KARIŞTIRICI ══
+     Z hem X'i hem Y'yi etkiliyor. X'in Y üzerindeki GERÇEK etkisi biliniyor
+     çünkü veriyi biz üretiyoruz. Z kontrol edilmeden tahmin sapıyor. */
+  const GERCEK_ETKI = -0.60;      // X'in Y üzerindeki doğru nedensel etkisi
+
+  function karistirici(guc, tohum){
+    const R = rng(tohum || 5), X = [], Y = [], Z = [];
+    for (let i=0;i<N;i++){
+      const z = R()*2-1;                          // karıştırıcı
+      const x = guc*z + (R()-0.5)*1.0;            // Z → X
+      const y = GERCEK_ETKI*x + guc*2.0*z + (R()-0.5)*0.6;   // Z → Y ve X → Y
+      Z.push(z); X.push(x); Y.push(y);
+    }
+    const ham   = ekk(X.map(v=>[v]), Y)[1];              // Z kontrol edilmedi
+    const duzelt = ekk(X.map((v,i)=>[v, Z[i]]), Y)[1];   // Z kontrol edildi
+    return { guc, ham, duzelt, X, Y, Z, gercek: GERCEK_ETKI };
+  }
+
+  /* ══ 2 · SIMPSON PARADOKSU ══
+     İki tedavi, iki hasta grubu. Her grupta A daha iyi ama toplamda B kazanıyor,
+     çünkü A ağır vakalara, B hafif vakalara veriliyor. Sayılar tam sayı. */
+  const SIMPSON = {
+    /* [iyileşen, toplam] */
+    hafif: { A:[81, 87],   B:[234, 270] },
+    agir:  { A:[192, 263], B:[55, 80]   },
+  };
+  function simpson(){
+    const o = {};
+    ['A','B'].forEach(t => {
+      const h = SIMPSON.hafif[t], a = SIMPSON.agir[t];
+      o[t] = {
+        hafif: h[0]/h[1], agir: a[0]/a[1],
+        toplam: (h[0]+a[0])/(h[1]+a[1]),
+        hafifSayi: h, agirSayi: a, toplamSayi: [h[0]+a[0], h[1]+a[1]],
+      };
+    });
+    return o;
+  }
+
+  /* ══ 3 · ÇARPIŞICI ══
+     X ve Y BAĞIMSIZ. Ama ikisi de C'yi etkiliyor. C kontrol edilirse
+     aralarında OLMAYAN bir ilişki doğar. "Her şeyi kontrol et" yanlıştır. */
+  function carpisici(tohum){
+    const R = rng(tohum || 9), X = [], Y = [], C = [];
+    for (let i=0;i<N;i++){
+      const x = R()*2-1, y = R()*2-1;       // birbirinden tamamen bağımsız
+      C.push(x + y + (R()-0.5)*0.4);        // ikisi de C'yi etkiliyor
+      X.push(x); Y.push(y);
+    }
+    const ham    = ekk(X.map(v=>[v]), Y)[1];             // C kontrol edilmedi
+    const kontrol = ekk(X.map((v,i)=>[v, C[i]]), Y)[1];  // C kontrol edildi
+    return { ham, kontrol, X, Y, C };
+  }
+
+  /* ══ 4 · RASTGELELEŞTİRME ══
+     X'i Z'ye göre değil YAZI TURA ile atarsak, Z ile X arasındaki bağ kopar
+     ve ham regresyon doğru cevabı verir. Z'yi hiç ölçmeye gerek kalmaz. */
+  function rastgele(guc, tohum){
+    const R = rng(tohum || 13), X = [], Y = [], Z = [];
+    for (let i=0;i<N;i++){
+      const z = R()*2-1;
+      const x = R()*2-1;                     // Z'den BAĞIMSIZ atandı
+      const y = GERCEK_ETKI*x + guc*2.0*z + (R()-0.5)*0.6;
+      Z.push(z); X.push(x); Y.push(y);
+    }
+    const ham    = ekk(X.map(v=>[v]), Y)[1];
+    const duzelt = ekk(X.map((v,i)=>[v, Z[i]]), Y)[1];
+    return { guc, ham, duzelt, X, Y, Z };
+  }
+
+  const C = {};
+  function olc(){
+    if (C.hazir) return C;
+    C.GUCLER = [0, 0.3, 0.6, 0.9, 1.2, 1.6];
+    C.karistirici = C.GUCLER.map(g => {
+      const r = karistirici(g);
+      return { guc:g, ham:r.ham, duzelt:r.duzelt };
+    });
+    C.gozlem = karistirici(1.2);
+    C.simpson = simpson();
+    C.carpisici = carpisici();
+    C.rastgele = C.GUCLER.map(g => {
+      const r = rastgele(g);
+      return { guc:g, ham:r.ham, duzelt:r.duzelt };
+    });
+    C.gercek = GERCEK_ETKI; C.N = N; C.hazir = true;
+    return C;
+  }
+
+  return { N, GERCEK_ETKI, ekk, karistirici, simpson, carpisici, rastgele, olc };
+})();
+
+/* ── nedensellik · ortak: saçılım çizimi ── */
+function nedSacilim(P, X, Y, renk, adet){
+  const n = Math.min(adet || 500, X.length);
+  for (let i=0;i<n;i++) dot(P.sx(X[i]), P.sy(Y[i]), 2.4, renk+'70');
+}
+function nedDogru(P, egim, sabit, renk, kalin){
+  cx.strokeStyle = renk; cx.lineWidth = kalin || 3.5;
+  const x0 = P.x0, x1 = P.x1;
+  cx.beginPath();
+  cx.moveTo(P.sx(x0), P.sy(sabit + egim*x0));
+  cx.lineTo(P.sx(x1), P.sy(sabit + egim*x1));
+  cx.stroke();
+}
+
+/* ── 1 · karıştırıcı işareti çevirebilir ── */
+VIZ.ndKaristirici = s => {
+  clear();
+  const o = NED.olc();
+  const i = Math.max(0, Math.min(5, Math.round(s.guc === undefined ? 4 : s.guc)));
+  const k = o.karistirici[i];
+  const R = NED.karistirici(o.GUCLER[i]);
+  const tersDondu = (k.ham > 0) !== (o.gercek > 0);
+  baslikSerit('KARIŞTIRICI KATSAYININ İŞARETİNİ ÇEVİREBİLİR',
+    'Veriyi biz ürettiğimiz için X in Y üzerindeki GERÇEK etkisini biliyoruz: '+o.gercek.toFixed(2),
+    [['KARIŞTIRICI GÜCÜ', o.GUCLER[i].toFixed(1), K.blue],
+     ['HAM KATSAYI', k.ham.toFixed(4), tersDondu?K.red:K.orange],
+     ['Z KONTROLLÜ', k.duzelt.toFixed(4), K.green]]);
+
+  const P = plot(rect(140, 250, 620, 272), -2.6, 2.6, -3.4, 3.4);
+  txt('X e karşı Y  ·  ham gözlem', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'Y', [-2,0,2], [-2,0,2]);
+  nedSacilim(P, R.X, R.Y, K.blue, 600);
+  nedDogru(P, k.ham, 0, tersDondu ? K.red : K.orange, 4);
+  nedDogru(P, o.gercek, 0, K.green, 3);
+  txt('■ ham regresyon', P.R.x+16, P.R.y+30, tersDondu?K.red:K.orange, 16, 'left');
+  txt('■ gerçek nedensel etki', P.R.x+16, P.R.y+54, K.green, 16, 'left');
+
+  const Q = plot(rect(140, 600, 620, 72), -0.1, 1.7, -0.9, 1.4);
+  txt('KARIŞTIRICI GÜCÜ ARTTIKÇA HAM KATSAYI  ·  yatay eksen güç',
+      Q.R.x+Q.R.w/2, Q.R.y-14, K.mut, 17);
+  frame(Q, '', '', [0, 0.5, 1.0, 1.5], [0]);
+  cx.strokeStyle = K.red; cx.lineWidth = 3.5; cx.beginPath();
+  o.karistirici.forEach((q,j) => j===0 ? cx.moveTo(Q.sx(q.guc), Q.sy(q.ham))
+                                       : cx.lineTo(Q.sx(q.guc), Q.sy(q.ham)));
+  cx.stroke();
+  cx.setLineDash([6,5]); cx.strokeStyle = K.green; cx.lineWidth = 2.5;
+  cx.beginPath(); cx.moveTo(Q.R.x, Q.sy(o.gercek)); cx.lineTo(Q.R.x+Q.R.w, Q.sy(o.gercek)); cx.stroke();
+  cx.setLineDash([]);
+  o.karistirici.forEach((q,j) => dot(Q.sx(q.guc), Q.sy(q.ham), j===i?8:5, j===i?K.yellow:K.red));
+
+  const bx = 810;
+  box(bx, 250, 580, 190, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('DÜZENEK', bx+290, 288, K.mut, 19);
+  txt('Z  →  X        (karıştırıcı X i etkiliyor)', bx+30, 328, K.mut, 17, 'left');
+  txt('Z  →  Y        (aynı karıştırıcı Y yi de etkiliyor)', bx+30, 358, K.mut, 17, 'left');
+  txt('X  →  Y        (aradığımız gerçek etki: '+o.gercek.toFixed(2)+')', bx+30, 388, K.green, 17, 'left');
+  txt('Z ölçülmezse, Z nin işi X e yazılır.', bx+290, 422, K.orange, 17);
+
+  box(bx, 460, 580, 250, tersDondu ? 'rgba(248,113,113,.06)' : 'rgba(7,10,15,.6)',
+      tersDondu ? 'rgba(248,113,113,.4)' : K.axis, 2);
+  txt('SONUÇ', bx+290, 498, tersDondu?K.red:K.mut, 18);
+  txt('gerçek etki      '+o.gercek.toFixed(4), bx+30, 538, K.green, 19, 'left');
+  txt('ham regresyon    '+(k.ham>=0?' ':'')+k.ham.toFixed(4), bx+30, 572,
+      tersDondu?K.red:K.orange, 19, 'left');
+  txt('Z kontrollü      '+k.duzelt.toFixed(4), bx+30, 606, K.green, 19, 'left');
+  txt(tersDondu
+      ? 'İşaret TERS döndü. Ham veri "X, Y yi artırıyor"'
+      : (Math.abs(k.ham-o.gercek) < 0.05
+         ? 'Karıştırıcı yok: ham katsayı zaten doğru.'
+         : 'Katsayı sapmış ama işaret henüz dönmedi.'),
+      bx+30, 646, tersDondu?K.red:K.mut, 16, 'left');
+  txt(tersDondu
+      ? 'diyor. Gerçekte azaltıyor. Yön bile yanlış.'
+      : 'Z kontrol edilince doğru cevap geri geliyor.',
+      bx+30, 670, tersDondu?K.red:K.green, 16, 'left');
+  txt('Z kontrol edilince her gücte '+k.duzelt.toFixed(4), bx+290, 700, K.green, 16);
+
+  durum('karıştırıcı gücü '+o.GUCLER[i].toFixed(1)+'  ·  ham katsayı '+k.ham.toFixed(4)+
+        '  ·  gerçek '+o.gercek.toFixed(4)+'  ·  Z kontrollü '+k.duzelt.toFixed(4),
+        tersDondu ? K.red : (Math.abs(k.ham-o.gercek)<0.05 ? K.green : K.orange));
+};
+
+/* ── 2 · Simpson paradoksu ── */
+VIZ.ndSimpson = s => {
+  clear();
+  const o = NED.olc(), S = o.simpson;
+  const goster = Math.max(0, Math.min(2, Math.round(s.katman === undefined ? 0 : s.katman)));
+  baslikSerit('SIMPSON PARADOKSU',
+    'İki tedavi, iki hasta grubu. Her grupta A daha iyi. Toplamda B kazanıyor.',
+    [['HAFİF', (100*S.A.hafif).toFixed(1)+' / '+(100*S.B.hafif).toFixed(1), K.green],
+     ['AĞIR', (100*S.A.agir).toFixed(1)+' / '+(100*S.B.agir).toFixed(1), K.green],
+     ['TOPLAM', goster>=1 ? (100*S.A.toplam).toFixed(1)+' / '+(100*S.B.toplam).toFixed(1) : '?',
+      goster>=1?K.red:K.mut]]);
+
+  const GRUP = goster >= 1
+    ? [['hafif vakalar','hafif'], ['ağır vakalar','agir'], ['TOPLAM','toplam']]
+    : [['hafif vakalar','hafif'], ['ağır vakalar','agir']];
+  const P = plot(rect(140, 250, 660, 300), -0.5, GRUP.length-0.5, 0, 1.08);
+  txt('İYİLEŞME ORANI', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'oran', [], [0, 0.5, 1.0]);
+  GRUP.forEach(([ad, anahtar], g) => {
+    ['A','B'].forEach((t,k) => {
+      const v = S[t][anahtar], gen = 62;
+      const x = P.sx(g) + (k===0 ? -gen*0.55 : gen*0.55);
+      const kazanan = S[t][anahtar] > S[t==='A'?'B':'A'][anahtar];
+      const renk = anahtar==='toplam' ? (kazanan?K.red:K.mut) : (kazanan?K.green:K.mut);
+      box(x-gen/2, P.sy(v), gen, P.sy(0)-P.sy(v), renk+'cc', null);
+      txt((100*v).toFixed(1)+'%', x, P.sy(v)-12, renk, 15);
+      txt(t, x, P.R.y+P.R.h+26, K.mut, 15);
+    });
+    txt(ad, P.sx(g), P.R.y+P.R.h+50, anahtar==='toplam'?K.red:K.mut, 16);
+  });
+
+  const bx = 840;
+  box(bx, 250, 550, 230, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('HAM SAYILAR', bx+275, 288, K.mut, 19);
+  txt('A', bx+300, 320, K.mut, 16);
+  txt('B', bx+460, 320, K.mut, 16);
+  [['hafif','hafifSayi'], ['ağır','agirSayi']].forEach(([ad,anahtar],r) => {
+    const y = 356+r*34;
+    txt(ad, bx+140, y, K.mut, 16);
+    ['A','B'].forEach((t,k) =>
+      txt(S[t][anahtar][0]+' / '+S[t][anahtar][1], bx+300+k*160, y, K.blue, 16));
+  });
+  if (goster >= 1){
+    txt('toplam', bx+140, 424, K.red, 16);
+    ['A','B'].forEach((t,k) =>
+      txt(S[t].toplamSayi[0]+' / '+S[t].toplamSayi[1], bx+300+k*160, 424, K.red, 16));
+  }
+  txt('her tedavide toplam 350 hasta', bx+275, 460, K.mut, 15);
+
+  box(bx, 500, 550, 210, goster>=2 ? 'rgba(34,211,160,.06)' : 'rgba(7,10,15,.6)',
+      goster>=2 ? 'rgba(34,211,160,.4)' : K.axis, 2);
+  if (goster >= 2){
+    txt('SEBEP: GRUP BÜYÜKLÜKLERİ', bx+275, 538, K.green, 18);
+    txt('A ağırlıklı olarak AĞIR vakalara verilmiş:', bx+24, 574, K.mut, 16, 'left');
+    txt('263 ağır, yalnızca 87 hafif.', bx+24, 598, K.txt, 16, 'left');
+    txt('B ise hafif vakalara: 270 hafif, 80 ağır.', bx+24, 628, K.txt, 16, 'left');
+    txt('Vaka ağırlığı hem tedaviyi hem sonucu', bx+24, 660, K.green, 16, 'left');
+    txt('etkiliyor: klasik bir karıştırıcı.', bx+24, 684, K.green, 16, 'left');
+  } else if (goster >= 1){
+    txt('NASIL OLUYOR', bx+275, 538, K.mut, 18);
+    txt('Her iki grupta da A kazanıyor,', bx+24, 578, K.txt, 16, 'left');
+    txt('ama toplamda B kazanıyor.', bx+24, 602, K.red, 17, 'left');
+    txt('Hangisi doğru cevap? Kaydırıcıyı ilerlet.', bx+24, 640, K.mut, 16, 'left');
+  } else {
+    txt('Her iki grupta da A daha iyi.', bx+275, 580, K.green, 18);
+    txt('Peki toplamda ne olur?', bx+275, 616, K.mut, 18);
+  }
+
+  durum(goster === 0
+    ? 'hafif vakalarda A %'+(100*S.A.hafif).toFixed(1)+' > B %'+(100*S.B.hafif).toFixed(1)+
+      '  ·  ağır vakalarda A %'+(100*S.A.agir).toFixed(1)+' > B %'+(100*S.B.agir).toFixed(1)
+    : (goster === 1
+      ? 'toplamda A %'+(100*S.A.toplam).toFixed(1)+' < B %'+(100*S.B.toplam).toFixed(1)+
+        '  ·  her iki grupta kazanan, toplamda kaybediyor'
+      : 'doğru cevap A dır  ·  toplam tabloyu vaka ağırlığı karıştırıyor'),
+    goster === 1 ? K.red : K.green);
+};
+
+/* ── 3 · her şeyi kontrol etmek yanlıştır ── */
+VIZ.ndCarpisici = s => {
+  clear();
+  const o = NED.olc(), C = o.carpisici;
+  const kontrol = Math.round(s.kontrol === undefined ? 0 : s.kontrol) >= 1;
+  const kat = kontrol ? C.kontrol : C.ham;
+  baslikSerit('HER ŞEYİ KONTROL ETMEK DÜZELTMEZ, BOZAR',
+    'X ve Y burada tamamen BAĞIMSIZ üretildi. Aralarında hiçbir ilişki yok.',
+    [['DURUM', kontrol ? 'C kontrol edildi' : 'ham veri', kontrol?K.red:K.green],
+     ['X ile Y katsayısı', kat.toFixed(4), Math.abs(kat)>0.2?K.red:K.green],
+     ['OLMASI GEREKEN', '0.0000', K.mut]]);
+
+  const P = plot(rect(140, 250, 620, 290), -1.6, 1.6, -1.6, 1.6);
+  txt(kontrol ? 'C sabitlendiğinde X e karşı Y' : 'X e karşı Y  ·  ham',
+      P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'Y', [-1,0,1], [-1,0,1]);
+  if (kontrol){
+    /* C'nin dar bir diliminde kalan noktalar: "C sabit tutuldu" */
+    const orta = 0, gen = 0.35;
+    for (let i=0;i<C.X.length && i<3000;i++)
+      if (Math.abs(C.C[i]-orta) < gen) dot(P.sx(C.X[i]), P.sy(C.Y[i]), 2.6, K.red+'80');
+    nedDogru(P, -1, 0, K.red, 4);
+  } else {
+    nedSacilim(P, C.X, C.Y, K.green, 700);
+    nedDogru(P, C.ham, 0, K.green, 4);
+  }
+  txt('yatay eksen X  ·  '+(kontrol ? 'yalnızca C ≈ 0 olan noktalar' : 'tüm noktalar'),
+      P.R.x+P.R.w/2, P.R.y+P.R.h+58, K.mut, 16);
+
+  const bx = 810;
+  box(bx, 250, 580, 200, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('DÜZENEK', bx+290, 288, K.mut, 19);
+  txt('X        (bağımsız üretildi)', bx+30, 328, K.mut, 17, 'left');
+  txt('Y        (bağımsız üretildi, X ile ilgisi YOK)', bx+30, 358, K.mut, 17, 'left');
+  txt('X → C ← Y   (ikisi de C yi etkiliyor)', bx+30, 392, K.orange, 17, 'left');
+  txt('C bir ÇARPIŞICIDIR (collider).', bx+290, 428, K.orange, 17);
+
+  box(bx, 470, 580, 240, kontrol ? 'rgba(248,113,113,.06)' : 'rgba(34,211,160,.06)',
+      kontrol ? 'rgba(248,113,113,.4)' : 'rgba(34,211,160,.4)', 2);
+  txt('ÖLÇÜM', bx+290, 508, kontrol?K.red:K.green, 18);
+  txt('C kontrol edilmeden   '+C.ham.toFixed(4), bx+30, 548, K.green, 19, 'left');
+  txt('C kontrol edilince   '+C.kontrol.toFixed(4), bx+30, 582, K.red, 19, 'left');
+  txt(kontrol
+      ? 'Yoktan bir ilişki DOĞDU. Katsayı neredeyse −1.'
+      : 'Doğru cevap bu: sıfıra çok yakın, ilişki yok.',
+      bx+30, 620, kontrol?K.red:K.green, 16, 'left');
+  txt(kontrol ? 'Sezgi: C sabitken X büyükse Y küçük olmalıdır,' : '', bx+30, 648, K.mut, 16, 'left');
+  txt(kontrol ? 'yoksa toplamları C yi tutturamaz.' : '', bx+30, 670, K.mut, 16, 'left');
+  txt(kontrol ? '"Ne bulursan kontrol et" tehlikelidir.' : 'Şimdi C yi kontrol et.',
+      bx+290, 698, kontrol?K.red:K.mut, 17);
+
+  durum(kontrol
+    ? 'C kontrol edilince X ile Y arasında '+C.kontrol.toFixed(4)+
+      ' katsayı doğdu  ·  oysa ikisi bağımsız üretilmişti'
+    : 'ham veride katsayı '+C.ham.toFixed(4)+'  ·  doğru cevap, ilişki gerçekten yok',
+    kontrol ? K.red : K.green);
+};
+
+/* ── 4 · rastgeleleştirme ── */
+VIZ.ndRastgele = s => {
+  clear();
+  const o = NED.olc();
+  const i = Math.max(0, Math.min(5, Math.round(s.guc === undefined ? 4 : s.guc)));
+  const g = o.rastgele[i], k = o.karistirici[i];
+  baslikSerit('RASTGELELEŞTİRME KARIŞTIRICIYI ÖLÇMEDEN ÇÖZER',
+    'X i Z ye göre değil YAZI TURA ile atarsak, Z yi hiç bilmemize gerek kalmaz.',
+    [['KARIŞTIRICI GÜCÜ', o.GUCLER[i].toFixed(1), K.blue],
+     ['GÖZLEMSEL · ham', k.ham.toFixed(4), Math.abs(k.ham-o.gercek)>0.1?K.red:K.green],
+     ['DENEYSEL · ham', g.ham.toFixed(4), K.green]]);
+
+  const P = plot(rect(140, 250, 680, 320), -0.1, 1.7, -0.9, 1.4);
+  txt('AYNI KARIŞTIRICI, İKİ FARKLI VERİ TOPLAMA YÖNTEMİ',
+      P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, 'karıştırıcı gücü', 'ham katsayı', [0, 0.5, 1.0, 1.5], [-0.5, 0, 0.5, 1.0]);
+  cx.setLineDash([6,5]); cx.strokeStyle = K.yellow; cx.lineWidth = 2.5;
+  cx.beginPath(); cx.moveTo(P.R.x, P.sy(o.gercek)); cx.lineTo(P.R.x+P.R.w, P.sy(o.gercek)); cx.stroke();
+  cx.setLineDash([]);
+  txt('gerçek etki '+o.gercek.toFixed(2), P.R.x+P.R.w-12, P.sy(o.gercek)-10, K.yellow, 16, 'right');
+  [['karistirici', K.red, 'gözlemsel'], ['rastgele', K.green, 'deneysel']].forEach(([alan, renk]) => {
+    cx.strokeStyle = renk; cx.lineWidth = 4; cx.beginPath();
+    o[alan].forEach((q,j) => j===0 ? cx.moveTo(P.sx(q.guc), P.sy(q.ham))
+                                   : cx.lineTo(P.sx(q.guc), P.sy(q.ham)));
+    cx.stroke();
+    o[alan].forEach((q,j) => dot(P.sx(q.guc), P.sy(q.ham), j===i?9:6, j===i?K.yellow:renk));
+  });
+  txt('■ gözlemsel · X i Z belirliyor', P.R.x+16, P.R.y+30, K.red, 16, 'left');
+  txt('■ deneysel · X i yazı tura belirliyor', P.R.x+16, P.R.y+54, K.green, 16, 'left');
+
+  const bx = 860;
+  box(bx, 250, 530, 220, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('AYNI GÜÇTE İKİ SAYI', bx+265, 288, K.mut, 19);
+  txt('gerçek etki', bx+30, 330, K.mut, 17, 'left');
+  txt(o.gercek.toFixed(4), bx+500, 330, K.yellow, 19, 'right');
+  txt('gözlemsel, ham', bx+30, 370, K.mut, 17, 'left');
+  txt((k.ham>=0?' ':'')+k.ham.toFixed(4), bx+500, 370, K.red, 19, 'right');
+  txt('deneysel, ham', bx+30, 410, K.mut, 17, 'left');
+  txt(g.ham.toFixed(4), bx+500, 410, K.green, 19, 'right');
+  txt('Deneyde Z hiç ölçülmedi.', bx+265, 448, K.green, 17);
+
+  box(bx, 490, 530, 220, 'rgba(34,211,160,.06)', 'rgba(34,211,160,.4)', 2);
+  txt('NEDEN İŞE YARIYOR', bx+265, 528, K.green, 18);
+  txt('Gözlemsel veride Z → X oku vardır.', bx+24, 564, K.mut, 16, 'left');
+  txt('Rastgele atama o oku KESER.', bx+24, 592, K.txt, 16, 'left');
+  txt('Ok kesilince Z, X ile ilişkisiz kalır ve', bx+24, 622, K.mut, 16, 'left');
+  txt('ham katsayıyı artık saptıramaz.', bx+24, 646, K.mut, 16, 'left');
+  txt('Ölçmediğin karıştırıcıyı bile çözer.', bx+265, 684, K.green, 17);
+
+  durum('karıştırıcı gücü '+o.GUCLER[i].toFixed(1)+'  ·  gözlemsel '+k.ham.toFixed(4)+
+        '  ·  deneysel '+g.ham.toFixed(4)+'  ·  gerçek '+o.gercek.toFixed(4), K.green);
+};
