@@ -33,8 +33,30 @@
     /* Yıldız ayrı bir renk: metin kontrastı için koyulaştırılmış sarı
        (#96690a) çamurlu duruyor, yıldız altın görünmeli. */
     --star:#e0930b;
+    /* Dolgu (yeşil/mavi/turuncu düğme) üstündeki yazı. Açık temada beyaz
+       doğru; koyu temada vurgu renkleri parlaklaştığı için koyu olmalı,
+       yoksa parlak yeşilin üstünde beyaz okunmaz. */
+    --anaTxt:#ffffff;
     --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
   }
+
+  /* ══ KOYU TEMA ══
+     Aynı sayfa, ters palet. Görsellerin tuvali her iki temada da koyu
+     kalır (viz.js temadan habersiz), koyu modda zaten sayfaya karışır.
+     Tercih localStorage'da; hiç seçim yapılmadıysa işletim sisteminin
+     ayarı kullanılır. */
+  :root[data-tema="koyu"]{
+    --bg:#080b11; --panel:#0f151e; --panel2:#141c28; --line:#1e2a3a;
+    --txt:#e6edf3; --mut:#8494a8;
+    --green:#22d3a0; --blue:#4cc4ff; --orange:#fb923c; --purple:#a78bfa;
+    --pink:#f472b6; --yellow:#facc15; --red:#f87171;
+    --star:#facc15; --anaTxt:#04120d;
+    --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  .temaDug{width:32px;height:32px;flex:none;display:grid;place-items:center;
+    border-radius:9px;border:1px solid var(--line);background:var(--panel);
+    color:var(--mut);font-size:15px;cursor:pointer;padding:0;line-height:1}
+  .temaDug:hover{color:var(--txt);border-color:var(--mut)}
   *{box-sizing:border-box}
   html,body{max-width:100%;overflow-x:hidden}
   body{margin:0;background:var(--bg);color:var(--txt);
@@ -72,7 +94,7 @@
           display:grid;place-items:center;background:var(--line);color:var(--mut);flex:none;font-weight:700}
   .mi.open,.mi.done,.mi.now{opacity:1;cursor:pointer}
   .mi.open:hover{border-color:var(--mut)}
-  .mi.done .ic,.mi.now .ic{background:var(--green);color:#fff}
+  .mi.done .ic,.mi.now .ic{background:var(--green);color:var(--anaTxt)}
   .mi.now{border-color:var(--green);background:rgba(34,211,160,.09)}
 
   h1{font-size:clamp(20px,3.2vw,28px);margin:0 0 5px;font-weight:800;letter-spacing:-.02em}
@@ -130,8 +152,8 @@
                  border:1px solid var(--line);border-radius:9px;padding:9px 15px;cursor:pointer}
   .player button:hover:not(:disabled){border-color:var(--green);color:var(--green)}
   .player button:disabled{opacity:.3;cursor:not-allowed}
-  .player .pl{background:var(--green);color:#fff;border-color:var(--green);font-weight:800;min-width:108px}
-  .player .pl:hover{color:#fff;filter:brightness(1.1)}
+  .player .pl{background:var(--green);color:var(--anaTxt);border-color:var(--green);font-weight:800;min-width:108px}
+  .player .pl:hover{color:var(--anaTxt);filter:brightness(1.1)}
   .scrub{width:100%;margin-top:11px;accent-color:var(--green)}
   .cnt{font-family:var(--mono);font-size:11px;color:var(--mut);text-align:center;margin-top:5px}
 
@@ -192,7 +214,7 @@
   .tok:hover{border-color:var(--blue);color:var(--blue);transform:translateY(-1px)}
   .tok:disabled{opacity:.3;cursor:not-allowed;transform:none}
   .runbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
-  .btn-run{font-family:var(--mono);font-size:14px;font-weight:800;background:var(--orange);color:#fff;
+  .btn-run{font-family:var(--mono);font-size:14px;font-weight:800;background:var(--orange);color:var(--anaTxt);
            border:none;border-radius:10px;padding:11px 22px;cursor:pointer;transition:.15s}
   .btn-run:hover:not(:disabled){filter:brightness(1.1)}
   .btn-run:disabled{opacity:.32;cursor:not-allowed}
@@ -205,7 +227,7 @@
 
   .nav{margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .btn{font-family:inherit;font-size:14px;font-weight:700;border-radius:10px;padding:12px 22px;
-       border:1px solid transparent;cursor:pointer;background:var(--green);color:#fff;transition:.15s}
+       border:1px solid transparent;cursor:pointer;background:var(--green);color:var(--anaTxt);transition:.15s}
   .btn:hover:not(:disabled){filter:brightness(1.12)}
   .btn:disabled{opacity:.32;cursor:not-allowed}
   .hint{font-size:12.5px;color:var(--mut)}
@@ -223,7 +245,7 @@
   .kaynak .bs{color:var(--mut);display:block;margin-top:2px}
   .kaynak .yer{font-family:var(--mono);font-size:10px;color:var(--blue);display:block;margin-top:3px}
   .kaynak a{color:var(--blue)}
-  .toast{position:fixed;right:22px;bottom:24px;background:var(--green);color:#fff;font-family:var(--mono);
+  .toast{position:fixed;right:22px;bottom:24px;background:var(--green);color:var(--anaTxt);font-family:var(--mono);
          font-size:15px;font-weight:800;padding:11px 20px;border-radius:99px;opacity:0;pointer-events:none;z-index:60}
   .toast.go{animation:pop 1.7s ease-out}
   @keyframes pop{0%{opacity:0;transform:translateY(16px)}15%{opacity:1;transform:none}
@@ -231,19 +253,42 @@
   .dilbar{display:flex;gap:5px;flex:none}
   .dilbar button{font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:5px 10px;
     border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--mut);cursor:pointer}
-  .dilbar button.on{background:var(--green);border-color:var(--green);color:#fff;font-weight:800}
+  .dilbar button.on{background:var(--green);border-color:var(--green);color:var(--anaTxt);font-weight:800}
   .dilnot{font-family:var(--mono);font-size:11px;color:var(--yellow);background:rgba(250,204,21,.07);
     border:1px solid rgba(250,204,21,.28);border-radius:9px;padding:8px 12px;margin:0 0 16px}
   .fin{text-align:center;padding:34px 20px}
   .fin .big{font-size:44px;font-family:var(--mono);font-weight:800;color:var(--green)}
 </style>
+<script>
+/* ══ TEMA ANAHTARI ══
+   Tercih localStorage'da. Hiç seçim yapılmadıysa işletim sisteminin
+   ayarı kullanılır (prefers-color-scheme). Seçim yapıldıysa o kazanır.
+   Betik <head> içinde çalışır ki sayfa yanlış temayla bir an bile
+   görünüp sonra zıplamasın. */
+const TKEY = 'mlacad_tema';
+function temaUygula(t){
+  document.documentElement.setAttribute('data-tema', t);
+  const d = document.getElementById('temaDug');
+  if (d){
+    d.textContent = t === 'koyu' ? '☀' : '☾';
+    d.title = t === 'koyu' ? 'Açık temaya geç' : 'Koyu temaya geç';
+  }
+}
+function temaOku(){
+  const kayit = localStorage.getItem(TKEY);
+  if (kayit === 'koyu' || kayit === 'acik') return kayit;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+       ? 'koyu' : 'acik';
+}
+temaUygula(temaOku());
+</script>
 </head>
 <body>
 
 <div class="top"><div class="in">
   <a class="bk" href="index.html" id="bkLink">← Tüm dersler</a>
   <div class="pbar"><div class="pfill" id="pfill"></div></div>
-  <div class="dilbar" id="dilbar"><button data-dil="tr">TR</button><button data-dil="en">EN</button></div>
+  <button class="temaDug" id="temaDug" aria-label="tema"></button><div class="dilbar" id="dilbar"><button data-dil="tr">TR</button><button data-dil="en">EN</button></div>
   <div class="xp" id="xpN">0 XP</div>
 </div></div>
 
@@ -798,7 +843,7 @@ if (KILITLI_DERS && typeof HESAP !== 'undefined'){
     '.kpDug{display:flex;gap:10px;margin-top:24px}' +
     '.kpDug button{flex:1;padding:12px 16px;border-radius:11px;font-size:14.5px;font-weight:700;' +
       'cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--txt);font-family:inherit}' +
-    '.kpDug button.ana{background:var(--green);border-color:var(--green);color:#fff}';
+    '.kpDug button.ana{background:var(--green);border-color:var(--green);color:var(--anaTxt)}';
   document.head.appendChild(st);
   document.getElementById('kpGeri').onclick = () => location.href = 'index.html';
   document.getElementById('kpGiris').onclick = () => HESAP.girisEkrani(false);
@@ -810,6 +855,16 @@ if (KILITLI_DERS && typeof HESAP !== 'undefined'){
     if (e.target.dataset && e.target.dataset.dil) HESAP.dil(e.target.dataset.dil); });
   HESAP.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL,
               saglayicilar:SUPA.saglayicilar });
+}
+
+/* tema düğmesi */
+if (document.getElementById('temaDug')){
+  temaUygula(temaOku());                       // düğme artık var, simgeyi tazele
+  document.getElementById('temaDug').onclick = () => {
+    const y = document.documentElement.getAttribute('data-tema') === 'koyu' ? 'acik' : 'koyu';
+    localStorage.setItem(TKEY, y);
+    temaUygula(y);
+  };
 }
 </script>
 </body>

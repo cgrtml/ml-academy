@@ -190,7 +190,7 @@ const HESAP = (() => {
       .hDug button{flex:1;padding:13px 16px;border-radius:11px;font-size:15px;font-weight:700;
         cursor:pointer;border:1px solid var(--line,#dde5ef);background:var(--panel2,#eef2f8);
         color:var(--txt,#0f1b2d);font-family:inherit}
-      .hDug button.ana{background:var(--blue,#1668c9);border-color:var(--blue,#1668c9);color:#fff}
+      .hDug button.ana{background:var(--blue,#1668c9);border-color:var(--blue,#1668c9);color:var(--anaTxt)}
       .hDug button.ana:hover{filter:brightness(1.08)}
       .hDug.tek button{flex:1}
       .hDug button.teh{color:var(--red,#cf2f2f);border-color:rgba(248,113,113,.4)}
@@ -221,9 +221,9 @@ const HESAP = (() => {
       .hUst button:hover{color:var(--txt,#0f1b2d);border-color:var(--mut,#586a80)}
       .hUst button.vurgu{color:var(--green,#0a8b68);border-color:rgba(34,211,160,.4)}
       /* kayıt ol: sayfadaki asıl eylem, dolu düğme */
-      .hUst button.birincil{background:var(--green,#0a8b68);border-color:var(--green,#0a8b68);
-        color:#fff;font-weight:800}
-      .hUst button.birincil:hover{filter:brightness(1.08);color:#fff}
+      .hUst button.birincil{background:var(--blue,#1668c9);border-color:var(--blue,#1668c9);
+        color:var(--anaTxt);font-weight:800}
+      .hUst button.birincil:hover{filter:brightness(1.08);color:var(--anaTxt)}
       @media(max-width:400px){ .hUst button{padding:6px 9px;font-size:10.5px} }
       .hMod{border:1px solid var(--line,#dde5ef);border-radius:12px;padding:14px 16px;margin-bottom:10px}
       .hMod .ust{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -553,13 +553,12 @@ const HESAP = (() => {
     const yer = document.getElementById('hesapCubuk');
     if (!yer) return;
     if (!kullanici){
-      /* Giriş yapmamış kullanıcıya iki yol da gösterilir. Önceden yalnızca
-         soluk bir "Giriş yap" düğmesi vardı ve kayıt olma yolu görünmüyordu. */
-      yer.innerHTML =
-        `<button id="hbGiris">${t.giris}</button>` +
-        `<button id="hbKayit" class="birincil">${t.kayitKisa}</button>`;
+      /* TEK düğme. Önce ayrı "Giriş yap" ve "Kayıt ol" düğmeleri vardı ama
+         pencerede zaten iki sekme olduğu için ikisi de gereksizdi; üst
+         çubuğu kalabalıklaştırıyordu. Düğme pencereyi giriş sekmesinde
+         açar, kayıt bir tık uzakta. */
+      yer.innerHTML = `<button id="hbGiris" class="birincil">${t.giris}</button>`;
       yer.querySelector('#hbGiris').onclick = () => girisEkrani(false);
-      yer.querySelector('#hbKayit').onclick = () => girisEkrani(true);
     } else {
       yer.innerHTML =
         `<button id="hbYorum" class="vurgu">${t.yorumBas}</button>` +

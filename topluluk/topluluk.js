@@ -91,7 +91,7 @@ const TOPLULUK = (() => {
       .tCagri b{display:block;font-size:16px;margin-bottom:3px}
       .tCagri span{color:var(--mut,#586a80);font-size:13.5px}
       .tCagri button{padding:12px 22px;border-radius:12px;font-size:14.5px;font-weight:800;
-        cursor:pointer;border:0;background:var(--green,#0a8b68);color:#fff;
+        cursor:pointer;border:0;background:var(--green,#0a8b68);color:var(--anaTxt);
         font-family:inherit;flex:none}
       .tCagri button:hover{filter:brightness(1.08)}
       .tYorumBas{font-family:var(--mono,monospace);font-size:10.5px;letter-spacing:.2em;

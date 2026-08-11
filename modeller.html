@@ -33,8 +33,30 @@
     /* Yıldız ayrı bir renk: metin kontrastı için koyulaştırılmış sarı
        (#96690a) çamurlu duruyor, yıldız altın görünmeli. */
     --star:#e0930b;
+    /* Dolgu (yeşil/mavi/turuncu düğme) üstündeki yazı. Açık temada beyaz
+       doğru; koyu temada vurgu renkleri parlaklaştığı için koyu olmalı,
+       yoksa parlak yeşilin üstünde beyaz okunmaz. */
+    --anaTxt:#ffffff;
     --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
   }
+
+  /* ══ KOYU TEMA ══
+     Aynı sayfa, ters palet. Görsellerin tuvali her iki temada da koyu
+     kalır (viz.js temadan habersiz), koyu modda zaten sayfaya karışır.
+     Tercih localStorage'da; hiç seçim yapılmadıysa işletim sisteminin
+     ayarı kullanılır. */
+  :root[data-tema="koyu"]{
+    --bg:#080b11; --panel:#0f151e; --panel2:#141c28; --line:#1e2a3a;
+    --txt:#e6edf3; --mut:#8494a8;
+    --green:#22d3a0; --blue:#4cc4ff; --orange:#fb923c; --purple:#a78bfa;
+    --pink:#f472b6; --yellow:#facc15; --red:#f87171;
+    --star:#facc15; --anaTxt:#04120d;
+    --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  .temaDug{width:32px;height:32px;flex:none;display:grid;place-items:center;
+    border-radius:9px;border:1px solid var(--line);background:var(--panel);
+    color:var(--mut);font-size:15px;cursor:pointer;padding:0;line-height:1}
+  .temaDug:hover{color:var(--txt);border-color:var(--mut)}
   *{box-sizing:border-box}
   html,body{max-width:100%;overflow-x:hidden}
   body{margin:0;background:var(--bg);color:var(--txt);
@@ -62,7 +84,7 @@
   .f{font-family:var(--mono);font-size:11px;letter-spacing:.06em;padding:8px 14px;border-radius:99px;
      border:1px solid var(--line);color:var(--mut);background:var(--panel);cursor:pointer;transition:.14s;white-space:nowrap}
   .f:hover{color:var(--txt)}
-  .f.on{color:#fff;font-weight:800}
+  .f.on{color:var(--anaTxt);font-weight:800}
   .sayac{font-family:var(--mono);font-size:12px;color:var(--mut);white-space:nowrap}
 
   .kart{background:var(--panel);border:1px solid var(--line);border-radius:15px;margin-bottom:12px;
@@ -119,11 +141,34 @@
   .yok{text-align:center;color:var(--mut);padding:50px 0;font-family:var(--mono);font-size:13px}
   .foot{text-align:center;color:var(--mut);font-size:12.5px;margin-top:40px;font-family:var(--mono)}
 </style>
+<script>
+/* ══ TEMA ANAHTARI ══
+   Tercih localStorage'da. Hiç seçim yapılmadıysa işletim sisteminin
+   ayarı kullanılır (prefers-color-scheme). Seçim yapıldıysa o kazanır.
+   Betik <head> içinde çalışır ki sayfa yanlış temayla bir an bile
+   görünüp sonra zıplamasın. */
+const TKEY = 'mlacad_tema';
+function temaUygula(t){
+  document.documentElement.setAttribute('data-tema', t);
+  const d = document.getElementById('temaDug');
+  if (d){
+    d.textContent = t === 'koyu' ? '☀' : '☾';
+    d.title = t === 'koyu' ? 'Açık temaya geç' : 'Koyu temaya geç';
+  }
+}
+function temaOku(){
+  const kayit = localStorage.getItem(TKEY);
+  if (kayit === 'koyu' || kayit === 'acik') return kayit;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+       ? 'koyu' : 'acik';
+}
+temaUygula(temaOku());
+</script>
 </head>
 <body>
 
 <!-- hesap çubuğu: index.html ile aynı yerde dursun -->
-<div class="ustBar"><div class="hUst" id="hesapCubuk"></div></div>
+<div class="ustBar"><button class="temaDug" id="temaDug" aria-label="tema"></button><div class="hUst" id="hesapCubuk"></div></div>
 
 <header>
   <div class="wrap">
@@ -262,6 +307,16 @@ if (typeof HESAP !== 'undefined' && typeof SUPA !== 'undefined' && SUPA.hazir){
   HESAP.dinle(() => { GIRISLI_M = HESAP.girisli; ciz(); });
   HESAP.kur({ url:SUPA.url, anonKey:SUPA.anonKey,
               saglayicilar:SUPA.saglayicilar });
+}
+
+/* tema düğmesi */
+if (document.getElementById('temaDug')){
+  temaUygula(temaOku());                       // düğme artık var, simgeyi tazele
+  document.getElementById('temaDug').onclick = () => {
+    const y = document.documentElement.getAttribute('data-tema') === 'koyu' ? 'acik' : 'koyu';
+    localStorage.setItem(TKEY, y);
+    temaUygula(y);
+  };
 }
 </script>
 </body>
