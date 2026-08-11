@@ -30,11 +30,11 @@ const ORNEK = {
 
 const SABLONLAR = [
   { dosya:'dogrulama.html',      ad:'Confirm signup',
-    konu:'ML Academy · e-posta adresini doğrula' },
+    konu:'ML Academy · confirm your email address' },
   { dosya:'sifirlama.html',      ad:'Reset password',
-    konu:'ML Academy · şifreni sıfırla' },
+    konu:'ML Academy · reset your password' },
   { dosya:'adres-degistir.html', ad:'Change email address',
-    konu:'ML Academy · yeni e-posta adresini onayla' },
+    konu:'ML Academy · confirm your new email address' },
 ];
 
 /* {{ .Foo }} ve {{.Foo}} yazımlarının ikisini de karşıla. */

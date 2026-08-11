@@ -2,7 +2,15 @@
   ML Academy · e-posta doğrulama şablonu
   ─────────────────────────────────────────────────────────────────────
   Supabase panelinde: Authentication → Emails → Confirm signup
-  Konu satırı: ML Academy · e-posta adresini doğrula
+  Konu satırı: ML Academy · confirm your email address
+
+  DİL SIRASI · İngilizce önde, Türkçe altta
+  10 Ağustos 2026'da ters çevrildi. Önce Türkçe gövde + altta İngilizce
+  özet vardı. Kitlenin ağırlığı ABD'de olduğu için ana metin İngilizce
+  oldu, Türkçe karşılığı altta duruyor.
+
+  Supabase her şablon türü için TEK metin tutar ve kullanıcının diline
+  göre seçim yapamaz; iki dilin aynı e-postada olmasının sebebi bu.
 
   TASARIM NOTU · neden görsel dosya yok
   Bu şablonda tek bir <img> bile yok, başlık bandı tamamen HTML ile
@@ -21,15 +29,11 @@
   çalışmaz. Bu yüzden her şey tablo ve satır içi stil. Değiştirirken
   bu kısıtı koru, yoksa Outlook'ta dağılır.
 
-  İKİ DİL · Supabase her şablon türü için TEK metin tutar, kullanıcının
-  diline göre seçim yapamaz. Bu yüzden Türkçe önde, İngilizce hemen
-  altında. Kullanıcıların bir kısmı ABD'de.
-
   DEĞİŞKENLER · {{ .TokenHash }} tek kullanımlık jeton
                 {{ .Email }} kullanıcının adresi
 -->
 <!doctype html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -42,7 +46,7 @@
 <!-- Önizleme satırı: gelen kutusunda konu başlığının yanında görünür,
      e-posta açılınca görünmez. Gizlemek için sıfır yükseklik. -->
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
-  Hesabını açmak için tek bir adım kaldı. Bağlantı 24 saat geçerli.
+  One step left to open your account. The link is valid for 24 hours.
 </div>
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
@@ -61,11 +65,11 @@
       </div>
       <div style="margin-top:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
                   font-size:25px;line-height:1.32;font-weight:700;color:#ffffff;">
-        Yapay zekâyı sıfırdan,<br>adım adım öğren
+        Learn AI from zero,<br>one step at a time
       </div>
       <div style="margin-top:9px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
                   font-size:14px;line-height:1.6;color:#8494a8;">
-        Learn AI from zero, one step at a time
+        Yapay zekâyı sıfırdan, adım adım öğren
       </div>
     </td></tr>
 
@@ -83,18 +87,19 @@
       </table>
     </td></tr>
 
-    <!-- ═══ GÖVDE ═══ -->
+    <!-- ═══ GÖVDE · İNGİLİZCE ═══ -->
     <tr><td style="background:#ffffff;padding:40px 40px 8px;
                    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
 
       <div style="font-size:21px;line-height:1.4;font-weight:700;color:#0f1b2d;">
-        Son bir adım kaldı
+        One step left
       </div>
 
       <div style="margin-top:14px;font-size:15px;line-height:1.68;color:#3d4f66;">
-        <b style="color:#0f1b2d;">{{ .Email }}</b> adresiyle ML Academy hesabı
-        açıldı. Aşağıdaki düğmeye basıp adresini doğrulayınca 123 dersin
-        tamamı açılıyor ve ilerlemen cihazlar arasında saklanmaya başlıyor.
+        An ML Academy account was created with
+        <b style="color:#0f1b2d;">{{ .Email }}</b>. Confirm your address with the
+        button below and all 123 lessons unlock, with your progress kept
+        across devices.
       </div>
 
       <!-- Düğme: <a> yerine tablo hücresi, çünkü Outlook <a> üzerindeki
@@ -105,14 +110,14 @@
              style="display:inline-block;padding:15px 34px;border-radius:11px;
                     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
                     font-size:15.5px;font-weight:700;color:#ffffff;text-decoration:none;">
-            E-posta adresimi doğrula
+            Confirm my email address
           </a>
         </td></tr>
       </table>
 
       <div style="margin-top:18px;font-size:13px;line-height:1.6;color:#586a80;">
-        Bağlantı <b>24 saat</b> geçerli. Düğme çalışmazsa bu adresi
-        tarayıcına yapıştır:
+        The link is valid for <b>24 hours</b>. If the button does not work,
+        paste this address into your browser:
       </div>
       <div style="margin-top:9px;padding:12px 14px;border-radius:9px;background:#f6f8fc;
                   border:1px solid #dde5ef;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
@@ -130,26 +135,26 @@
 
           <div style="font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
                       font-size:10.5px;font-weight:700;letter-spacing:.19em;color:#586a80;">
-            HESABINLA BİRLİKTE
+            WITH YOUR ACCOUNT
           </div>
 
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;">
             <tr>
               <td width="22" valign="top" style="font-size:15px;color:#0a8b68;line-height:1.6;">&#10003;</td>
               <td style="font-size:14.5px;line-height:1.6;color:#3d4f66;padding-bottom:11px;">
-                123 dersin tamamı açılır
+                All 123 lessons unlock
               </td>
             </tr>
             <tr>
               <td width="22" valign="top" style="font-size:15px;color:#0a8b68;line-height:1.6;">&#10003;</td>
               <td style="font-size:14.5px;line-height:1.6;color:#3d4f66;padding-bottom:11px;">
-                İlerlemen cihazlar arasında saklanır
+                Your progress is kept across devices
               </td>
             </tr>
             <tr>
               <td width="22" valign="top" style="font-size:15px;color:#0a8b68;line-height:1.6;">&#10003;</td>
               <td style="font-size:14.5px;line-height:1.6;color:#3d4f66;">
-                Hesabını istediğin zaman silebilirsin
+                You can delete your account whenever you want
               </td>
             </tr>
           </table>
@@ -157,18 +162,18 @@
       </table>
     </td></tr>
 
-    <!-- ═══ İNGİLİZCE ═══ -->
+    <!-- ═══ TÜRKÇE ═══ -->
     <tr><td style="background:#ffffff;padding:26px 40px 34px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
              style="border-top:1px solid #dde5ef;">
         <tr><td style="padding-top:22px;
                        font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
                        font-size:13.5px;line-height:1.68;color:#586a80;">
-          <b style="color:#0f1b2d;">In English ·</b> An ML Academy account was created
-          with <b style="color:#0f1b2d;">{{ .Email }}</b>. Confirm your address using the
-          button above and all 123 lessons unlock. The link is valid for 24 hours.
-          If you did not sign up, you can ignore this email; no account stays active
-          without confirmation.
+          <b style="color:#0f1b2d;">Türkçe ·</b> <b style="color:#0f1b2d;">{{ .Email }}</b>
+          adresiyle ML Academy hesabı açıldı. Yukarıdaki düğmeye basıp adresini
+          doğrulayınca 123 dersin tamamı açılıyor ve ilerlemen cihazlar arasında
+          saklanmaya başlıyor. Bağlantı 24 saat geçerli. Bu e-postayı sen
+          istemediysen görmezden gel; doğrulanmayan hesap açık kalmaz.
         </td></tr>
       </table>
     </td></tr>
@@ -177,13 +182,13 @@
     <tr><td style="background:#0f151e;padding:26px 40px;
                    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
       <div style="font-size:13px;line-height:1.65;color:#8494a8;">
-        Bu e-postayı sen istemediysen görmezden gel. Doğrulanmayan hesap
-        açık kalmaz, kimse adresinle giriş yapamaz.
+        If you did not sign up, you can ignore this email. An unconfirmed
+        account stays closed and nobody can sign in with your address.
       </div>
       <div style="margin-top:16px;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
                   font-size:11px;letter-spacing:.13em;color:#586a80;">
         <a href="https://mltraining.org" style="color:#22d3a0;text-decoration:none;">MLTRAINING.ORG</a>
-        &nbsp;·&nbsp; ÜCRETSİZ &nbsp;·&nbsp; REKLAMSIZ
+        &nbsp;·&nbsp; FREE &nbsp;·&nbsp; NO ADS
       </div>
     </td></tr>
 

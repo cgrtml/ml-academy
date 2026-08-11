@@ -30,9 +30,9 @@ etkilemiyor.
 
 | Dosya | Supabase'deki şablon | Konu satırı |
 |---|---|---|
-| `dogrulama.html` | Confirm signup | `ML Academy · e-posta adresini doğrula` |
-| `sifirlama.html` | Reset password | `ML Academy · şifreni sıfırla` |
-| `adres-degistir.html` | Change email address | `ML Academy · yeni e-posta adresini onayla` |
+| `dogrulama.html` | Confirm signup | `ML Academy · confirm your email address` |
+| `sifirlama.html` | Reset password | `ML Academy · reset your password` |
+| `adres-degistir.html` | Change email address | `ML Academy · confirm your new email address` |
 
 Önce nasıl göründüklerine bak:
 
