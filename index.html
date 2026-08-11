@@ -205,6 +205,69 @@
   .reset{background:none;border:1px solid var(--line);color:var(--mut);font-family:var(--mono);
          font-size:11px;padding:6px 13px;border-radius:8px;cursor:pointer}
   .reset:hover{color:var(--red);border-color:var(--red)}
+
+  /* ══════════════════════════════════════════════════════════════════
+     TASARIM A · "laboratuvar"
+     ─────────────────────────────────────────────────────────────────
+     demo/a.html'de karara bağlanan görsel dil. Buraya YENİDEN YAZMAK
+     yerine üstüne yazan bir katman olarak eklendi: yukarıdaki kuralların
+     hepsi yerinde duruyor, yalnızca görünüş değişiyor. Sebep, kartları
+     ve rotaları üreten JavaScript'e hiç dokunmamak; sınıf adları ve
+     kimlikler aynı kaldığı için hiçbir davranış kırılmıyor.
+
+     Fikir: sitenin zaten sahip olduğu renk sistemini öne çıkarmak.
+     Beş rota, beş renk. Sayılar süs değil kanıt, o yüzden hero'nun
+     hemen altında kendi şeridinde duruyorlar.
+     ══════════════════════════════════════════════════════════════════ */
+
+  .wrap{max-width:1060px}
+
+  header{padding:74px 0 30px}
+  .rozetUst{display:inline-flex;align-items:center;gap:8px;padding:6px 15px;border-radius:100px;
+    border:1px solid var(--line);background:var(--panel);font-family:var(--mono);
+    font-size:11.5px;letter-spacing:.04em;color:var(--mut)}
+  .rozetUst b{color:var(--green);font-weight:700}
+  h1{font-size:clamp(34px,6vw,60px);margin:26px 0 0;letter-spacing:-.035em;line-height:1.08}
+  .sub{margin:22px auto 0;font-size:18px;max-width:660px}
+  header > div:not(.rozetUst):not(.stats):not(.heroSat){margin-top:34px}
+  .heroSat{margin-top:18px;font-family:var(--mono);font-size:11px;letter-spacing:.13em;
+    color:var(--mut);opacity:.85}
+
+  /* Birincil eylem mavi: yeşil sitede "ölçüldü / doğru" anlamına geliyor,
+     eylem rengi olarak kullanılınca o anlam sulanıyordu. */
+  .cta{background:var(--blue);border-radius:11px;padding:15px 28px;font-size:15.5px;font-weight:700}
+  .cta2{font-size:14.5px}
+
+  /* Kanıt şeridi: dört kutu yerine tek bir çerçeve, aralarında ince çizgi. */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-top:52px}
+  .sb{background:var(--panel);border:0;border-radius:0;padding:22px 14px;min-width:0;text-align:center}
+  .sb .n{font-size:28px;letter-spacing:-.03em}
+  .sb .l{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase}
+  @media(max-width:640px){ .stats{grid-template-columns:1fr 1fr} }
+
+  /* Beş adım: her kart kendi rotasının rengiyle üstten çizgili. */
+  .how{background:none;border:0;border-radius:0;padding:0;margin:78px 0 0}
+  .how h3{font-size:clamp(25px,3.4vw,34px);letter-spacing:-.026em;font-weight:800}
+  .how .hs{font-size:16.5px;max-width:640px}
+  .steps4{margin-top:32px}
+  .s4{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 18px}
+  .s4:nth-child(1){border-top:3px solid var(--green)}
+  .s4:nth-child(2){border-top:3px solid var(--blue)}
+  .s4:nth-child(3){border-top:3px solid var(--orange)}
+  .s4:nth-child(4){border-top:3px solid var(--purple)}
+  .s4:nth-child(5){border-top:3px solid var(--pink)}
+  .s4 .n{font-family:var(--mono);font-size:11px;letter-spacing:.14em;font-weight:700}
+  .s4 .t{margin-top:11px;font-size:16px;font-weight:750}
+  .s4 .d{margin-top:8px;font-size:13.6px;line-height:1.62}
+
+  .rota{margin-top:66px}
+  .rota h2{font-size:clamp(21px,2.8vw,27px);letter-spacing:-.022em}
+  .card{border-radius:14px;padding:17px 19px}
+  .card:hover{border-color:var(--mut)}
+
+  .toplulukB{margin-top:78px}
+  .foot{margin-top:72px;padding-top:32px;border-top:1px solid var(--line)}
 </style>
 <script>
 /* ══ TEMA ANAHTARI ══
@@ -254,6 +317,7 @@ temaUygula(temaOku());
 <div class="wrap" style="position:relative">
 
   <header>
+    <div class="rozetUst"><b id="rozetSayi">123</b> <span data-i="rozetMetin">ders hazır · her zaman ücretsiz · kart istenmez</span></div>
     <h1 data-i="h1">Yapay zekâyı <span class="hl">sıfırdan</span>,<br>adım adım öğren</h1>
     <p class="sub" data-i="sub">Ders anlatan video yok, ezberlenecek formül yok. Her adım ne
        öğreneceğini söyleyerek başlar, kendi elinle oynadığın bir animasyonla sürer ve
@@ -264,6 +328,7 @@ temaUygula(temaOku());
       <a class="cta2" href="modeller.html" data-i="ctaKat">📚 model kataloğu</a>
       <a class="cta2" href="#rota0" data-i="ctaMuf">müfredatı gör ↓</a>
     </div>
+    <div class="heroSat" data-i="heroSat">5 ROTA · 401 ETKİLEŞİMLİ ADIM · 165 GÖRSELLEŞTİRME · 387 KAYNAK</div>
     <div class="stats">
       <div class="sb"><div class="n" style="color:var(--green)" id="sHazir">-</div><div class="l" data-i="stHazir">hazır ders</div></div>
       <div class="sb"><div class="n" id="sToplam">-</div><div class="l" data-i="stPlan">adım</div></div>
@@ -320,10 +385,10 @@ temaUygula(temaOku());
   </div>
 </div>
 
-<script src="viz-sozluk.js?v=1737dfb"></script>
-<script src="viz.js?v=1737dfb"></script>
-<script src="content.js?v=1737dfb"></script>
-<script src="content-en.js?v=1737dfb"></script>
+<script src="viz-sozluk.js?v=44f24b7"></script>
+<script src="viz.js?v=44f24b7"></script>
+<script src="content.js?v=44f24b7"></script>
+<script src="content-en.js?v=44f24b7"></script>
 <script>
 const $ = id => document.getElementById(id);
 const PKEY = 'mlacad_v2';
@@ -338,6 +403,8 @@ const EN = {
   ctaMuf:'see the curriculum ↓',
   stHazir:'lessons ready', stPlan:'steps', stXp:'your XP', stBit:'completed',
   navMuf:'curriculum', navYon:'method', navKat:'model catalogue', navHak:'about',
+  rozetMetin:'lessons ready · free forever · no card',
+  heroSat:'5 TRACKS · 401 INTERACTIVE STEPS · 165 VISUALIZATIONS · 387 REFERENCES',
   howH:'Every lesson follows the same five steps',
   howS:'The topic changes, the method does not. Once you get used to it you know what to expect in every lesson.',
   s0n:'01 · GOAL',  s0t:'What will you learn?',
@@ -490,6 +557,9 @@ $('rotalar').innerHTML = ROTALAR.map(r => {
 }).join('');
 
 $('sHazir').textContent = nHazir;
+/* Hero rozetindeki sayı da elle yazılmasın; README'nin başına gelen şey
+   buraya da gelirdi. */
+if ($('rozetSayi')) $('rozetSayi').textContent = nHazir;
 $('sToplam').textContent = nAdim;
 $('sXP').textContent = xpTop;
 $('sBitti').textContent = nBitti;
@@ -581,10 +651,10 @@ dilUygula();
      Ayarlar boşsa hiçbir istek atılmaz, topluluk bölümü gizli kalır.
      Yani bu bloklar bugün siteye eklense de hiçbir şey bozulmaz. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="yapilandirma.js?v=1737dfb"></script>
-<script src="topluluk/topluluk.js?v=1737dfb"></script>
-<script src="topluluk/ilerleme.js?v=1737dfb"></script>
-<script src="topluluk/hesap.js?v=1737dfb"></script>
+<script src="yapilandirma.js?v=44f24b7"></script>
+<script src="topluluk/topluluk.js?v=44f24b7"></script>
+<script src="topluluk/ilerleme.js?v=44f24b7"></script>
+<script src="topluluk/hesap.js?v=44f24b7"></script>
 <script>
   const toplulukYenile = () => TOPLULUK.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL });
   toplulukYenile();
