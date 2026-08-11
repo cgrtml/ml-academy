@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ML Academy · onay</title>
+<meta name="robots" content="noindex">
+
+<!--
+  ML Academy · e-posta onay sayfası
+  ─────────────────────────────────────────────────────────────────────
+  E-postadaki bağlantı doğrudan Supabase'e değil BURAYA gelir:
+
+      https://mltraining.org/onay.html?token_hash=...&type=signup
+
+  Neden Supabase'e değil de buraya:
+
+  1 · E-postada kullanıcının gördüğü adres mltraining.org olur. Tanıdık
+      bir alan adı, tanımadığı bir alan adına göre çok daha az şüphe
+      uyandırır.
+
+  2 · Daha sağlam. Gmail ve kurumsal güvenlik tarayıcıları e-postadaki
+      bağlantıları kullanıcıdan ÖNCE açar. Bağlantı doğrudan Supabase'in
+      /auth/v1/verify ucuna gitseydi, tarayıcının o isteği jetonu
+      tüketirdi ve kullanıcı tıkladığında "bağlantı geçersiz" görürdü.
+      Burada tarayıcı yalnızca HTML indirir; jetonu tüketen çağrıyı
+      JavaScript yapar ve tarayıcılar JavaScript çalıştırmaz.
+
+  Üç tür bağlantıyı karşılar:
+      signup       · kayıt doğrulama       → hoş geldin ekranı
+      recovery     · şifre sıfırlama       → yeni şifre formu
+      email_change · adres değiştirme      → onay ekranı
+
+  ŞİFRE SIFIRLAMA NOTU: bu sayfa yazılmadan önce sıfırlama akışı yarımdı.
+  E-posta gidiyordu, kullanıcı tıklayınca siteye dönüyordu ve orada yeni
+  şifreyi girecek hiçbir ekran yoktu. Aşağıdaki `recovery` dalı o boşluğu
+  kapatıyor.
+-->
+
+<script>
+/* ══ TEMA ══ index.html ile aynı; sayfa yanlış temayla bir an bile
+   görünmesin diye <head> içinde çalışır. */
+const TKEY = 'mlacad_tema';
+function temaOku(){
+  const k = localStorage.getItem(TKEY);
+  if (k === 'koyu' || k === 'acik') return k;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+       ? 'koyu' : 'acik';
+}
+document.documentElement.setAttribute('data-tema', temaOku());
+</script>
+
+<style>
+  :root{
+    --bg:#f6f8fc; --panel:#ffffff; --panel2:#eef2f8; --line:#dde5ef;
+    --txt:#0f1b2d; --mut:#586a80;
+    --green:#0a8b68; --blue:#1668c9; --orange:#c2620d; --red:#cf2f2f;
+    --tuval:#070a0f;
+    --anaTxt:#ffffff;
+    --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  :root[data-tema="koyu"]{
+    --bg:#080b11; --panel:#0f151e; --panel2:#141c28; --line:#1e2a3a;
+    --txt:#e6edf3; --mut:#8494a8;
+    --green:#22d3a0; --blue:#4cc4ff; --orange:#fb923c; --red:#f87171;
+    --anaTxt:#04120d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+       padding:28px 18px;background:var(--bg);color:var(--txt);
+       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
+
+  .kart{width:100%;max-width:470px;background:var(--panel);border:1px solid var(--line);
+        border-radius:18px;overflow:hidden;box-shadow:0 4px 26px rgba(15,27,45,.09)}
+
+  /* Bant: e-posta şablonundaki bandın aynısı, sürekliliği kurar. */
+  .bant{background:var(--tuval);padding:30px 32px 0}
+  .marka{font-family:var(--mono);font-size:11.5px;font-weight:700;
+         letter-spacing:.3em;color:#22d3a0}
+  .markaAlt{margin-top:12px;font-size:19px;line-height:1.35;font-weight:700;color:#fff}
+  .cizgi{display:flex;margin-top:24px}
+  .cizgi i{flex:1;height:5px}
+
+  .ic{padding:32px}
+  h1{margin:0 0 12px;font-size:22px;line-height:1.35}
+  p{margin:0 0 14px;font-size:15px;line-height:1.68;color:var(--mut)}
+  p b{color:var(--txt)}
+  .en{margin-top:20px;padding-top:18px;border-top:1px solid var(--line);
+      font-size:13px;line-height:1.65;color:var(--mut)}
+
+  .ikon{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;
+        justify-content:center;font-size:26px;font-weight:800;margin-bottom:20px}
+  .ikon.iyi{background:rgba(34,211,160,.13);color:var(--green)}
+  .ikon.kotu{background:rgba(248,113,113,.13);color:var(--red)}
+  .ikon.bekle{background:var(--panel2);color:var(--mut);font-size:22px}
+
+  .dug{display:inline-block;margin-top:8px;padding:14px 28px;border:0;border-radius:11px;
+       background:var(--blue);color:var(--anaTxt);font:700 15px/1 inherit;
+       font-family:inherit;text-decoration:none;cursor:pointer}
+  .dug:hover{filter:brightness(1.08)}
+  .dug:disabled{opacity:.55;cursor:default;filter:none}
+  .dug2{display:inline-block;margin:14px 0 0 12px;font-size:14px;
+        color:var(--mut);text-decoration:none}
+  .dug2:hover{color:var(--txt)}
+
+  label{display:block;margin:16px 0 7px;font-size:13.5px;font-weight:600}
+  input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;
+        background:var(--panel2);color:var(--txt);font:inherit;font-size:15px}
+  input:focus{outline:2px solid var(--blue);outline-offset:-1px;background:var(--panel)}
+
+  .uyari{margin-top:16px;padding:11px 14px;border-radius:10px;font-size:13.5px;line-height:1.55}
+  .uyari.kotu{background:rgba(248,113,113,.1);color:var(--red)}
+  .uyari.iyi{background:rgba(34,211,160,.1);color:var(--green)}
+
+  /* Dönen bekleme göstergesi: hareket azaltma tercihi varsa durur. */
+  @keyframes don{to{transform:rotate(360deg)}}
+  .spin{display:inline-block;width:19px;height:19px;border:2.5px solid var(--line);
+        border-top-color:var(--mut);border-radius:50%;animation:don .8s linear infinite}
+  @media(prefers-reduced-motion:reduce){ .spin{animation:none} }
+</style>
+</head>
+<body>
+
+<div class="kart">
+  <div class="bant">
+    <div class="marka">ML ACADEMY</div>
+    <div class="markaAlt" id="bantYazi">Yapay zekâyı sıfırdan öğren</div>
+    <div class="cizgi">
+      <i style="background:#22d3a0"></i><i style="background:#4cc4ff"></i>
+      <i style="background:#fb923c"></i><i style="background:#a78bfa"></i>
+      <i style="background:#f472b6"></i>
+    </div>
+  </div>
+  <div class="ic" id="ic">
+    <div class="ikon bekle"><span class="spin"></span></div>
+    <h1 id="bekleBas">Doğrulanıyor…</h1>
+    <p id="bekleAlt">Bir saniye, bağlantıyı kontrol ediyoruz.</p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="yapilandirma.js?v=05f18eb"></script>
+<script>
+(function(){
+  'use strict';
+
+  const DIL = localStorage.getItem('mlacad_dil') === 'en' ? 'en' : 'tr';
+
+  const M = {
+    tr:{
+      bant:'Yapay zekâyı sıfırdan öğren',
+
+      hosBas:'Hoş geldin',
+      hosAlt:'E-posta adresin doğrulandı. Artık 123 dersin tamamı açık ve ilerlemen cihazlar arasında saklanıyor.',
+      hosDug:'Derslere başla',
+      hosAna:'Ana sayfa',
+
+      adresBas:'Adresin güncellendi',
+      adresAlt:'Yeni e-posta adresin onaylandı. Bundan sonra giriş yaparken bu adresi kullan.',
+
+      sifreBas:'Yeni şifreni belirle',
+      sifreAlt:'Bağlantı doğrulandı. Şimdi yeni şifreni yaz.',
+      sifreEt:'Yeni şifre', sifreEt2:'Yeni şifre (tekrar)',
+      sifreAz:'En az 8 karakter',
+      sifreDug:'Şifreyi kaydet',
+      sifreKisa:'Şifre en az 8 karakter olmalı.',
+      sifreUyum:'İki şifre birbirini tutmuyor.',
+      sifreOldu:'Şifren değiştirildi',
+      sifreOlduAlt:'Yeni şifrenle giriş yapabilirsin.',
+      kaydediliyor:'Kaydediliyor…',
+
+      hataBas:'Bağlantı çalışmadı',
+      hataSure:'Bu bağlantının süresi dolmuş ya da daha önce kullanılmış. Siteye dönüp yeni bir bağlantı isteyebilirsin.',
+      hataEksik:'Bağlantı eksik görünüyor. E-postadaki adresin tamamını kopyaladığından emin ol.',
+      hataGenel:'Bağlantı doğrulanamadı.',
+      hataKurulum:'Site ayarları yüklenemedi. Birazdan tekrar dene.',
+      hataDug:'Siteye dön',
+
+      enNot:'Your email address has been confirmed. All 123 lessons are now unlocked.',
+      enNotAdres:'Your new email address has been confirmed.',
+      enNotSifre:'Your link is verified. Choose a new password above.',
+      enNotHata:'This link has expired or was already used. Please request a new one from the site.',
+    },
+    en:{
+      bant:'Learn AI from zero',
+
+      hosBas:'Welcome',
+      hosAlt:'Your email address is confirmed. All 123 lessons are unlocked and your progress is kept across devices.',
+      hosDug:'Start learning',
+      hosAna:'Home',
+
+      adresBas:'Address updated',
+      adresAlt:'Your new email address is confirmed. Use it to sign in from now on.',
+
+      sifreBas:'Choose a new password',
+      sifreAlt:'Your link is verified. Now set a new password.',
+      sifreEt:'New password', sifreEt2:'New password (again)',
+      sifreAz:'At least 8 characters',
+      sifreDug:'Save password',
+      sifreKisa:'Password must be at least 8 characters.',
+      sifreUyum:'The two passwords do not match.',
+      sifreOldu:'Password changed',
+      sifreOlduAlt:'You can sign in with your new password.',
+      kaydediliyor:'Saving…',
+
+      hataBas:'That link did not work',
+      hataSure:'This link has expired or was already used. Go back to the site and request a new one.',
+      hataEksik:'The link looks incomplete. Make sure you copied the whole address from the email.',
+      hataGenel:'The link could not be verified.',
+      hataKurulum:'Site settings could not be loaded. Please try again shortly.',
+      hataDug:'Back to the site',
+
+      enNot:'', enNotAdres:'', enNotSifre:'', enNotHata:'',
+    },
+  };
+  const t = M[DIL];
+  document.documentElement.lang = DIL;
+  document.getElementById('bantYazi').textContent = t.bant;
+
+  const ic = document.getElementById('ic');
+  const kacir = s => String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
+  /* İngilizce not yalnızca Türkçe arayüzde gösterilir; İngilizce
+     arayüzde zaten gövde İngilizce, tekrar etmenin anlamı yok. */
+  const enBlok = metin => (DIL === 'tr' && metin)
+    ? `<div class="en"><b>In English ·</b> ${metin}</div>` : '';
+
+  function ekran(tur, bas, alt, dugmeler, enNot){
+    ic.innerHTML =
+      `<div class="ikon ${tur}">${tur === 'iyi' ? '&#10003;' : '!'}</div>` +
+      `<h1>${kacir(bas)}</h1><p>${kacir(alt)}</p>${dugmeler || ''}${enBlok(enNot)}`;
+  }
+
+  function hata(mesaj, enNot){
+    ekran('kotu', t.hataBas, mesaj,
+      `<a class="dug" href="index.html">${kacir(t.hataDug)}</a>`, enNot || t.enNotHata);
+  }
+
+  /* ── bağlantıdaki değerler ──
+     Normalde sorgu dizesinde gelir. Eski Supabase bağlantıları jetonu
+     adres çıpasında (#access_token=...) taşıyordu; o biçim de sessizce
+     karşılansın diye ikisine de bakılıyor. */
+  const sorgu = new URLSearchParams(location.search);
+  const cipa  = new URLSearchParams(location.hash.replace(/^#/, ''));
+  const deger = ad => sorgu.get(ad) || cipa.get(ad) || '';
+
+  const jeton = deger('token_hash') || deger('token');
+  const tur   = deger('type') || 'signup';
+
+  if (!window.SUPA || !SUPA.hazir || !window.supabase){ hata(t.hataKurulum); return; }
+  if (!jeton){ hata(t.hataEksik); return; }
+
+  const sb = window.supabase.createClient(SUPA.url, SUPA.anonKey);
+
+  /* ── yeni şifre formu (yalnızca recovery) ── */
+  function sifreFormu(){
+    ic.innerHTML = `
+      <h1>${kacir(t.sifreBas)}</h1>
+      <p>${kacir(t.sifreAlt)}</p>
+      <label for="s1">${kacir(t.sifreEt)} · ${kacir(t.sifreAz)}</label>
+      <input type="password" id="s1" autocomplete="new-password">
+      <label for="s2">${kacir(t.sifreEt2)}</label>
+      <input type="password" id="s2" autocomplete="new-password">
+      <div style="margin-top:22px"><button class="dug" id="kaydet">${kacir(t.sifreDug)}</button></div>
+      <div id="not"></div>
+      ${enBlok(t.enNotSifre)}`;
+
+    const s1 = ic.querySelector('#s1'), s2 = ic.querySelector('#s2');
+    const dug = ic.querySelector('#kaydet'), not = ic.querySelector('#not');
+    const uyar = (m, iyi) => { not.innerHTML = `<div class="uyari ${iyi ? 'iyi' : 'kotu'}">${kacir(m)}</div>`; };
+
+    [s1, s2].forEach((inp, i) => inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter'){ e.preventDefault(); i === 0 ? s2.focus() : dug.click(); }
+    }));
+    setTimeout(() => s1.focus(), 30);
+
+    let calisiyor = false;
+    dug.onclick = async () => {
+      if (calisiyor) return;
+      if (s1.value.length < 8){ uyar(t.sifreKisa); s1.focus(); return; }
+      if (s1.value !== s2.value){ uyar(t.sifreUyum); s2.focus(); return; }
+
+      calisiyor = true; dug.disabled = true;
+      const eski = dug.textContent; dug.textContent = t.kaydediliyor;
+      try {
+        const { error } = await sb.auth.updateUser({ password: s1.value });
+        if (error) throw error;
+        ekran('iyi', t.sifreOldu, t.sifreOlduAlt,
+          `<a class="dug" href="index.html">${kacir(t.hosDug)}</a>`, '');
+      } catch (e){
+        uyar(e.message || t.hataGenel);
+        calisiyor = false; dug.disabled = false; dug.textContent = eski;
+      }
+    };
+  }
+
+  /* ── doğrulama ──
+     verifyOtp jetonu tüketir ve oturumu açar. Bu çağrı JavaScript'te
+     olduğu için e-posta tarayıcıları jetonu tüketemiyor. */
+  (async () => {
+    try {
+      const { error } = await sb.auth.verifyOtp({ token_hash: jeton, type: tur });
+      if (error) throw error;
+
+      if (tur === 'recovery'){ sifreFormu(); return; }
+
+      if (tur === 'email_change'){
+        ekran('iyi', t.adresBas, t.adresAlt,
+          `<a class="dug" href="index.html">${kacir(t.hosAna)}</a>`, t.enNotAdres);
+        return;
+      }
+
+      ekran('iyi', t.hosBas, t.hosAlt,
+        `<a class="dug" href="lesson.html?id=veri">${kacir(t.hosDug)}</a>` +
+        `<a class="dug2" href="index.html">${kacir(t.hosAna)}</a>`, t.enNot);
+
+    } catch (e){
+      const m = String((e && e.message) || '');
+      /* Süresi dolmuş ve zaten kullanılmış jeton aynı hatayı döndürür;
+         kullanıcı açısından ikisinin çaresi de aynı: yenisini iste. */
+      hata(/expired|invalid|not found/i.test(m) ? t.hataSure : (m || t.hataGenel));
+    }
+  })();
+})();
+</script>
+</body>
+</html>

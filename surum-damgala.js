@@ -20,7 +20,7 @@ const YEREL = ['anlatim-en.js','anlatim.js','arayuz-sozluk.js','content-en.js',
 const kac = (s, f) => (s.match(new RegExp('src="' + f.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\?v=', 'g')) || []).length;
 
 let toplam = 0;
-for (const p of ['index.html','lesson.html','modeller.html']){
+for (const p of ['index.html','lesson.html','modeller.html','onay.html']){
   let s = fs.readFileSync(p, 'utf8');
   let n = 0;
   for (const f of YEREL){

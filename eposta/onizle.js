@@ -19,8 +19,9 @@ const dizin = __dirname;
 
 /* Supabase'in gerçekte göndereceği değerlerin makul karşılıkları. */
 const ORNEK = {
-  '.ConfirmationURL':
-    'https://uhiwcrkwmyjzprmbuyja.supabase.co/auth/v1/verify?token=pkce_9f3c1a7e4b28&type=signup&redirect_to=https://mltraining.org',
+  /* Gerçek jeton uzun bir karma; uzunluğu benzer tutuldu ki satır
+     kaydırma davranışı önizlemede de gerçekçi olsun. */
+  '.TokenHash': 'pkce_9f3c1a7e4b28d5602f1ba84c7e39d0a51c6b8437ef92',
   '.Email':    'ornek@mltraining.org',
   '.NewEmail': 'yeni@mltraining.org',
   '.SiteURL':  'https://mltraining.org',
