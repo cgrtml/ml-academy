@@ -137,7 +137,7 @@ const HESAP = (() => {
     },
   };
 
-  let sb = null, t = M.tr, kullanici = null, moderator = false;
+  let sb = null, t = M.tr, kullanici = null, moderator = false, bekleyen = 0;
   let saglayicilar = ['email'];
   const dinleyiciler = [];
 
@@ -266,6 +266,11 @@ const HESAP = (() => {
         font-family:var(--mono,monospace);font-size:11px;padding:6px 12px;border-radius:8px;cursor:pointer}
       .hUst button:hover{color:var(--txt,#0f1b2d);border-color:var(--mut,#586a80)}
       .hUst button.vurgu{color:var(--green,#0a8b68);border-color:rgba(34,211,160,.4)}
+      /* Bekleyen yorum varsa moderatör düğmesi dikkat çeksin. */
+      .hUst button.bekler{color:var(--orange,#c2620d);border-color:rgba(251,146,60,.45)}
+      .hUst button.bekler b{display:inline-block;min-width:17px;margin-left:4px;padding:1px 5px;
+        border-radius:20px;background:var(--orange,#c2620d);color:var(--anaTxt);
+        font-size:10px;font-weight:800;text-align:center}
       /* kayıt ol: sayfadaki asıl eylem, dolu düğme */
       .hUst button.birincil{background:var(--blue,#1668c9);border-color:var(--blue,#1668c9);
         color:var(--anaTxt);font-weight:800}
@@ -691,7 +696,8 @@ const HESAP = (() => {
     } else {
       yer.innerHTML =
         `<button id="hbYorum" class="vurgu">${t.yorumBas}</button>` +
-        (moderator ? `<button id="hbMod">${t.modBas}</button>` : '') +
+        (moderator ? `<button id="hbMod"${bekleyen ? ' class="bekler"' : ''}>${t.modBas}` +
+             (bekleyen ? ` <b>${bekleyen}</b>` : '') + `</button>` : '') +
         `<button id="hbCikis">${t.cikis}</button>`;
       yer.querySelector('#hbYorum').onclick = yorumEkrani;
       if (moderator) yer.querySelector('#hbMod').onclick = modEkrani;
@@ -737,6 +743,16 @@ const HESAP = (() => {
     return data === true;
   }
 
+  /* Kaç yorum onay bekliyor?
+     Moderatör siteye girer girmez sayıyı düğmenin üstünde görsün diye.
+     Sayıyı yalnızca moderatör alabilir: politika 'pending' satırları
+     başkasına döndürmüyor, dolayısıyla bu sorgu başkası için 0 döner. */
+  async function bekleyenSayisi(){
+    const { count, error } = await sb.from('review')
+      .select('id', { count:'exact', head:true }).eq('status','pending');
+    return error ? 0 : (count || 0);
+  }
+
   async function kur(o){
     o = o || {};
     t = M[o.dil === 'en' ? 'en' : 'tr'];
@@ -747,6 +763,7 @@ const HESAP = (() => {
     const uygula = async oturum => {
       kullanici = oturum ? oturum.user : null;
       moderator = kullanici ? await moderatorMu() : false;
+      bekleyen = moderator ? await bekleyenSayisi() : 0;
       cubukCiz(); duyur();
     };
     const { data } = await sb.auth.getSession();
