@@ -164,7 +164,7 @@ Bu bir tutarsızlık ve bilerek bırakılıyor: OAuth akışının ortasına ek 
 koymak girişin en hızlı yolunu yavaşlatır. Ünvanı sonradan istemek gerekirse
 hesap ayarlarına küçük bir tamamlama kutusu eklenebilir.
 
-`kitle_dagilimi()` fonksiyonu ünvanı boş olanları `—` altında topluyor, yani
+`audience_breakdown()` fonksiyonu ünvanı boş olanları `—` altında topluyor, yani
 sayım bozulmuyor.
 
 ---
