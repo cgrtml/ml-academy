@@ -118,12 +118,26 @@ const TOPLULUK = (() => {
     return data;
   }
 
+  /* YALNIZCA METİNLİ YORUMLAR LİSTELENİR.
+     Yıldız verip yorum yazmayan kullanıcılar da var; onların kartı boş
+     çıkıyor ve sayfada kırık bir kutu gibi duruyordu. Puanları YİNE
+     sayılıyor: ortalama ve dağılım community_stats() üzerinden geliyor
+     ve orada bütün onaylı yorumlar var. Buradaki filtre yalnızca
+     "ne diyorlar" listesini ilgilendiriyor.
+
+     Filtre sunucuda yapılıyor (`not is null` + `neq ''`), böylece boş
+     kayıtlar limit'i tüketip gerçek yorumları listeden düşürmüyor. */
   async function yorumlar(limit){
     const { data, error } = await sb
       .from('review_public').select('id, display_name, rating, body, approved_at')
+      .not('body', 'is', null)
+      .neq('body', '')
+      .order('approved_at', { ascending:false })
       .limit(limit || 6);
     if (error) throw error;
-    return data || [];
+    /* Yalnızca boşluk karakterinden ibaret gövdeler sunucu filtresinden
+       geçebilir; onları da burada eliyoruz. */
+    return (data || []).filter(r => String(r.body || '').trim().length > 0);
   }
 
   /* ── çizim ── */
