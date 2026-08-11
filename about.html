@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>About · ML Academy</title>
+<meta name="description" content="Who built ML Academy, how the curriculum was designed, how every number in it is verified, and what you will know after finishing it.">
+
+<!--
+  ML Academy · hakkında
+  ─────────────────────────────────────────────────────────────────────
+  ÖĞRENME ÇIKTILARI UYDURULMADI. Her madde 123 dersin gerçek
+  başlıklarından çıkarıldı; sayılar denetim.js çıktısından alındı
+  (123 ders · 401 adım · 129 soru · 154 kilit · 165 görsel · 387 kaynak ·
+  2395 doğrulanmış sayı). Ders eklenince bu sayfadaki sayılar da
+  güncellenmeli, yoksa README'nin başına gelen olur: gerçekle arasında
+  üç kat fark birikmişti.
+
+  UNVANLAR KONUSUNDA KASITLI SEÇİM: kurum adı verilmeyen sıfatlar
+  ("CTO", "Advisory Board Member", "Mentor") alınmadı. İsimsiz unvan bir
+  eğitim sitesinde güven vermez, soru doğurur. Kurum adı netleşirse
+  eklenebilir.
+-->
+
+<script>
+const TKEY = 'mlacad_tema';
+function temaOku(){
+  const k = localStorage.getItem(TKEY);
+  if (k === 'koyu' || k === 'acik') return k;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'koyu' : 'acik';
+}
+document.documentElement.setAttribute('data-tema', temaOku());
+</script>
+
+<style>
+  :root{
+    --bg:#ffffff; --bg2:#f6f8fc; --line:#e3e9f2; --line2:#d3dceb;
+    --txt:#0b1524; --mut:#5a6b81; --mut2:#8496ab;
+    --green:#0a8b68; --blue:#1668c9; --orange:#c2620d; --purple:#6d3fd4; --pink:#c92a72;
+    --ink:#070a0f;
+    --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root[data-tema="koyu"]{
+    --bg:#080b11; --bg2:#0f151e; --line:#1e2a3a; --line2:#2a394d;
+    --txt:#e6edf3; --mut:#8494a8; --mut2:#63758c;
+    --green:#22d3a0; --blue:#4cc4ff; --orange:#fb923c; --purple:#a78bfa; --pink:#f472b6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);line-height:1.68;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:780px;margin:0 auto;padding:0 26px}
+  a{color:var(--blue)}
+
+  nav{border-bottom:1px solid var(--line);background:var(--bg)}
+  .nav{display:flex;align-items:center;gap:14px;height:62px;max-width:1120px;margin:0 auto;padding:0 26px}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:800;text-decoration:none;color:var(--txt)}
+  .logo i{width:24px;height:24px;border-radius:7px;background:var(--ink);display:block;position:relative}
+  .logo i::after{content:'';position:absolute;left:4px;right:4px;bottom:5px;height:3px;border-radius:2px;
+    background:linear-gradient(90deg,#22d3a0,#4cc4ff,#fb923c,#a78bfa,#f472b6)}
+  .nav .geri{margin-left:auto;font-size:14px;color:var(--mut);text-decoration:none}
+
+  header{padding:60px 0 0}
+  h1{font-size:clamp(32px,4.8vw,44px);line-height:1.12;letter-spacing:-.032em;font-weight:850;margin:0}
+  .ozet{margin:20px 0 0;font-size:18.5px;color:var(--mut)}
+
+  h2{font-size:24px;line-height:1.28;letter-spacing:-.024em;font-weight:800;margin:56px 0 0}
+  h3{font-size:17px;font-weight:760;margin:32px 0 0}
+  p{margin:14px 0 0;font-size:16.5px}
+  p.mut{color:var(--mut);font-size:15.5px}
+  code{font-family:var(--mono);font-size:13.5px;background:var(--bg2);border:1px solid var(--line);
+       border-radius:5px;padding:1px 6px}
+
+  .kural{margin-top:26px;padding:2px 0 2px 20px;border-left:3px solid var(--green);
+         font-size:19px;font-weight:700;line-height:1.5;letter-spacing:-.015em}
+
+  .sayilar{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+           border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-top:34px}
+  .sayilar div{background:var(--bg);padding:20px 14px;text-align:center}
+  .sayilar .n{font-size:26px;font-weight:800;letter-spacing:-.03em}
+  .sayilar .l{margin-top:3px;font-family:var(--mono);font-size:10px;letter-spacing:.13em;
+              text-transform:uppercase;color:var(--mut2)}
+  @media(max-width:640px){ .sayilar{grid-template-columns:1fr 1fr} }
+
+  .cikti{margin-top:26px;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .cikti > div{border-bottom:1px solid var(--line);padding:22px 24px}
+  .cikti > div:last-child{border-bottom:0}
+  .ciktiUst{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .rot{width:28px;height:28px;border-radius:8px;flex:none;display:flex;align-items:center;
+       justify-content:center;color:#fff;font-family:var(--mono);font-size:13px;font-weight:700}
+  .ciktiUst b{font-size:16.5px;font-weight:780;letter-spacing:-.015em}
+  .ciktiUst span{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--mut2)}
+  .cikti ul{margin:0;padding-left:20px}
+  .cikti li{margin:7px 0;font-size:15.3px;color:var(--txt)}
+
+  .kim{margin-top:26px;border:1px solid var(--line);border-radius:18px;padding:26px;background:var(--bg2)}
+  .kimUst{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+  .kimUst .ad{font-size:20px;font-weight:800;letter-spacing:-.02em}
+  .kimUst .rol{font-size:14.5px;color:var(--mut)}
+  .etiketler{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .etiketler span{border:1px solid var(--line2);border-radius:100px;padding:5px 13px;
+    font-size:13px;color:var(--mut);background:var(--bg)}
+  .baglar{display:flex;flex-wrap:wrap;gap:16px;margin-top:20px;font-size:14.5px}
+
+  footer{margin-top:76px;padding:34px 0 46px;border-top:1px solid var(--line);
+         font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--mut2)}
+  footer a{color:var(--mut)}
+</style>
+</head>
+<body>
+
+<nav><div class="nav">
+  <a class="logo" href="index.html"><i></i> ML Academy</a>
+  <a class="geri" href="index.html">← Back to the site</a>
+</div></nav>
+
+<div class="wrap">
+
+<header>
+  <h1>About</h1>
+  <p class="ozet">A free course that teaches machine learning by making you run it. No lecture
+     videos, no installation, no payment. Every algorithm is written from scratch and every
+     number in the text is recomputed by a test before it ships.</p>
+</header>
+
+<div class="sayilar">
+  <div><div class="n">123</div><div class="l">lessons</div></div>
+  <div><div class="n">401</div><div class="l">steps</div></div>
+  <div><div class="n">165</div><div class="l">simulations</div></div>
+  <div><div class="n">387</div><div class="l">references</div></div>
+</div>
+
+<h2>Why this exists</h2>
+<p>Most courses explain an idea with slides, then hand you a notebook that already works.
+   You watch someone else be competent. When the notebook breaks in your own project, none
+   of what you watched helps, because you never made a decision.</p>
+<p>This course inverts that. You get the controls first. You are asked to push a model until
+   it fails, and then to say why it failed. The step does not open until you can.</p>
+<p>That is also why there are no videos. A video runs at its own speed and cannot be
+   interrogated. A simulation runs at yours.</p>
+
+<h2>How a lesson works</h2>
+<p>Every one of the 123 lessons follows the same five steps, so once you have done one you
+   know what to expect from the rest:</p>
+<p><b style="color:var(--green)">01 Goal</b> · what you are about to learn, in one sentence.
+   <b style="color:var(--blue)">02 See</b> · the algorithm runs in front of you with the
+   active code line highlighted.
+   <b style="color:var(--orange)">03 Play</b> · the sliders are yours; break it.
+   <b style="color:var(--purple)">04 Gate</b> · either drive the simulation to a target or
+   answer a question correctly. There are 154 of these gates and 129 questions.
+   <b style="color:var(--pink)">05 Recap</b> · the one thing worth remembering.</p>
+<p class="mut">Wrong answers are not rejected. They are executed, so you can see what they
+   actually do.</p>
+
+<h2>How the curriculum was designed</h2>
+<p>The five tracks were not chosen by topic popularity. Each one answers a question a
+   learner actually gets stuck on, in the order they get stuck on it: what is an algorithm,
+   how does a classical model make a decision, how does a network learn, how does a language
+   model produce text, and how do you ship any of it without fooling yourself.</p>
+<p>The last track is the one most courses skip. Knowing how attention works does not tell
+   you how to build an eval set, debug a retrieval pipeline that returns confident nonsense,
+   or estimate what a feature will cost before you build it. Those are lessons here.</p>
+
+<h2>How every number is verified</h2>
+<p>Courses quote figures. This one proves them. A verification script re-runs the algorithms
+   and compares each result against what the lesson claims. If a single digit drifts, the
+   build fails.</p>
+<div class="kural">A number does not appear in a lesson unless a test recomputes it.</div>
+<p>The current run checks <b>2,395 numeric claims</b> and <b>0</b> of them disagree. It also
+   proves all 154 unlock conditions are reachable by sweeping the parameter space, renders
+   all 165 visualizations headless, and scans all 401 steps at real canvas dimensions for
+   text that overflows or collides.</p>
+<p>This has caught real mistakes: two key collisions that crashed lessons in the browser, a
+   saturation metric computed on the wrong tensor, and five numbers left over from an
+   earlier hyperparameter. The script is
+   <a href="https://github.com/cgrtml/ml-academy">public</a>, so you can run it yourself.</p>
+
+<h2>What you will know afterwards</h2>
+<p class="mut">These are drawn from the lessons that exist, not from a marketing wish list.</p>
+
+<div class="cikti">
+  <div>
+    <div class="ciktiUst"><div class="rot" style="background:var(--green)">0</div>
+      <b>Start from Zero</b><span>15 LESSONS</span></div>
+    <ul>
+      <li>Trace an algorithm running step by step and say what it costs</li>
+      <li>Tell learning apart from memorising, and recognise overfitting from a curve</li>
+      <li>Explain why accuracy lies on imbalanced data, and pick a metric that does not</li>
+      <li>Split data without leaking, and catch leakage in someone else's setup</li>
+      <li>Decide whether one model is genuinely better than another using a statistical test</li>
+    </ul>
+  </div>
+  <div>
+    <div class="ciktiUst"><div class="rot" style="background:var(--blue)">1</div>
+      <b>Classical Machine Learning</b><span>37 LESSONS</span></div>
+    <ul>
+      <li>Build k-NN, CART, random forests, boosting and SVM from scratch, and say when each fails</li>
+      <li>Read the bias–variance trade-off off a real curve instead of quoting it</li>
+      <li>Choose between L1 and L2 and explain what each does to the coefficients</li>
+      <li>Check whether a model's "70%" really means 70%, and fix it if it does not</li>
+      <li>Handle imbalanced data, distribution shift and time series without fooling yourself</li>
+    </ul>
+  </div>
+  <div>
+    <div class="ciktiUst"><div class="rot" style="background:var(--orange)">2</div>
+      <b>Deep Learning</b><span>22 LESSONS</span></div>
+    <ul>
+      <li>Run backpropagation by hand on a small network and watch the gradients move</li>
+      <li>Compare SGD, momentum and Adam on the same problem and explain the difference</li>
+      <li>Say what batch norm, dropout, weight initialisation and clipping actually change</li>
+      <li>Read a convolution, a pooling layer and a residual connection</li>
+      <li>Describe how a diffusion model turns pure noise into a sample</li>
+    </ul>
+  </div>
+  <div>
+    <div class="ciktiUst"><div class="rot" style="background:var(--purple)">3</div>
+      <b>Large Language Models</b><span>29 LESSONS</span></div>
+    <ul>
+      <li>Tokenise text yourself and explain why two tokenizers disagree on the same string</li>
+      <li>Compute attention by hand and assemble a full transformer block</li>
+      <li>Choose temperature, top-k and top-p deliberately instead of copying defaults</li>
+      <li>Explain why hallucination happens, and what retrieval does and does not fix</li>
+      <li>Adapt a model with LoRA instead of fine-tuning all of it</li>
+    </ul>
+  </div>
+  <div>
+    <div class="ciktiUst"><div class="rot" style="background:var(--pink)">4</div>
+      <b>Using AI in Practice</b><span>20 LESSONS</span></div>
+    <ul>
+      <li>Build an eval set that catches a regression before your users do</li>
+      <li>Debug a retrieval pipeline that returns confident nonsense</li>
+      <li>Run a blind comparison between two models and read the result honestly</li>
+      <li>Estimate cost and latency before committing to a feature</li>
+      <li>Red-team your own system, then defend it</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Who made this</h2>
+
+<div class="kim">
+  <div class="kimUst">
+    <div>
+      <div class="ad">Cagri Temel</div>
+      <div class="rol">Machine learning engineer · LLMs, retrieval and MLOps</div>
+    </div>
+  </div>
+  <p style="margin-top:0">I wrote every lesson, every simulation and every verification test
+     in this course. The algorithms are not library calls: CART with Gini gain, random
+     forests with bootstrap and feature subsampling, an MLP with backpropagation, a BPE
+     tokenizer, skip-gram word2vec with negative sampling and the rest are implemented from
+     scratch so that the numbers you see come out of code you can read.</p>
+  <p>I also wrote <a href="https://github.com/cgrtml/neural-trees"><code>neural-trees</code></a>,
+     an open-source Python library for soft decision trees, along with the other models
+     behind these lessons. One lesson in Track 1 trains a soft tree with it, so you can see
+     the library do the thing the lesson just explained.</p>
+  <div class="etiketler">
+    <span>MS, Computer Science</span>
+    <span>IEEE Senior Member</span>
+    <span>AAAI Member</span>
+    <span>Reviewer · IEEE SMC International Conference</span>
+  </div>
+  <div class="baglar">
+    <a href="https://www.linkedin.com/in/cagritemel">LinkedIn</a>
+    <a href="https://github.com/cgrtml">GitHub</a>
+    <a href="https://orcid.org/0009-0003-3359-6939">ORCID</a>
+    <a href="mailto:contact@mltraining.org">contact@mltraining.org</a>
+  </div>
+</div>
+
+<h2>How this is paid for</h2>
+<p>It is not. There is no advertising, no sponsor, no investor, no paid tier and no payment
+   integration of any kind. Nothing here is a funnel to something you buy later.</p>
+<p>An account is free and exists for two reasons only: so your progress follows you between
+   devices, and so you can leave a review. You can delete it, and everything in it, yourself
+   in one step. What is collected and why is listed in the
+   <a href="privacy.html">privacy policy</a>, field by field.</p>
+
+<h2>Corrections</h2>
+<p>Pedagogy bugs matter as much as code bugs. If a step confused you, that is a defect worth
+   reporting, and reporting it makes the lesson better for the next person. Open an issue on
+   <a href="https://github.com/cgrtml/ml-academy">GitHub</a> or write to
+   <a href="mailto:contact@mltraining.org">contact@mltraining.org</a>.</p>
+
+</div>
+
+<footer><div class="wrap">
+  © 2026 CAGRI TEMEL ·
+  <a href="index.html">MLTRAINING.ORG</a> ·
+  <a href="privacy.html">PRIVACY</a> ·
+  <a href="https://github.com/cgrtml/ml-academy/blob/main/LICENSE">LICENCE</a> ·
+  <a href="mailto:contact@mltraining.org">CONTACT</a>
+</div></footer>
+
+</body>
+</html>
