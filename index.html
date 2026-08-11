@@ -207,9 +207,9 @@ temaUygula(temaOku());
   <header>
     <div class="kicker">ML Academy</div>
     <h1 data-i="h1">Yapay zekâyı <span class="hl">sıfırdan</span>,<br>adım adım öğren</h1>
-    <p class="sub" data-i="sub">Ders anlatan video yok, ezberlenecek formül yok. Her konuda kendi elinle
-       oynayacağın bir animasyon, her adımda ne öğrendiğini söyleyen bir hedef,
-       ve geçmeden ilerleyemediğin bir soru var.</p>
+    <p class="sub" data-i="sub">Ders anlatan video yok, ezberlenecek formül yok. Her adım ne
+       öğreneceğini söyleyerek başlar, kendi elinle oynadığın bir animasyonla sürer ve
+       ancak doğru cevabı bulunca açılan bir kapıyla biter.</p>
     <div>
       <a class="cta" id="startBtn" href="lesson.html?id=veri">Buradan başla ▶</a>
       <div class="dilnot" id="dilnot"></div>
@@ -229,15 +229,15 @@ temaUygula(temaOku());
     <p class="hs" data-i="howS">Konu değişir, yöntem değişmez. Bir kere alıştıktan sonra her derste ne bekleyeceğini bilirsin.</p>
     <div class="steps4">
       <div class="s4"><div class="n" style="color:var(--green)" data-i="s0n">01 · HEDEF</div><div class="t" data-i="s0t">Ne öğreneceksin?</div>
-        <div class="d" data-i="s0d">Her adım, tek cümlelik açık bir kazanımla başlar. Ne için burada olduğunu asla merak etmezsin.</div></div>
+        <div class="d" data-i="s0d">Adım, ne kazanacağını tek cümleyle söyleyerek açılır. Neden burada olduğunu baştan bilirsin.</div></div>
       <div class="s4"><div class="n" style="color:var(--blue)" data-i="s1n">02 · GÖR</div><div class="t" data-i="s1t">Animasyon</div>
-        <div class="d" data-i="s1d">Algoritma gözünün önünde adım adım çalışır. Kod satırı vurgulanır, sayılar canlı değişir.</div></div>
+        <div class="d" data-i="s1d">Algoritma gözünün önünde adım adım çalışır. O an işleyen kod satırı vurgulanır, sayılar canlı değişir.</div></div>
       <div class="s4"><div class="n" style="color:var(--orange)" data-i="s2n">03 · OYNA</div><div class="t" data-i="s2t">Kendin kır</div>
-        <div class="d" data-i="s2d">Kaydırıcılar sende. Modeli bozana, patlatana kadar oyna, anlamanın en hızlı yolu.</div></div>
+        <div class="d" data-i="s2d">Kaydırıcılar sende. Modeli bozuncaya kadar oynayabilirsin; bir şeyi anlamanın en hızlı yolu onu kırmaktır.</div></div>
       <div class="s4"><div class="n" style="color:var(--purple)" data-i="s3n">04 · SORU</div><div class="t" data-i="s3t">Kilidi aç</div>
-        <div class="d" data-i="s3d">Doğru cevaplamadan sonraki adıma geçemezsin. Her şıkta neden yanlış olduğu açıklanır.</div></div>
+        <div class="d" data-i="s3d">İki tür kapı var: bazı adımlarda simülasyonu hedefe getirmen, bazılarında soruyu doğru cevaplaman gerekir. Şıkların her biri için neden doğru ya da yanlış olduğu açıklanır.</div></div>
       <div class="s4"><div class="n" style="color:var(--pink)" data-i="s4n">05 · ÖZET</div><div class="t" data-i="s4t">Ne öğrendin?</div>
-        <div class="d" data-i="s4d">Adım biterken kazanımın tek paragrafa iner ve XP kazanırsın. Geri dönüp okuyabilirsin.</div></div>
+        <div class="d" data-i="s4d">Adım biterken öğrendiğin tek paragrafta toplanır ve XP kazanırsın. İstediğin zaman geri dönüp okuyabilirsin.</div></div>
     </div>
   </div>
 
@@ -277,22 +277,22 @@ try { PROG = JSON.parse(localStorage.getItem(PKEY)) || {}; } catch(e){ PROG = {}
 /* ═══════ dil ═══════ */
 const EN = {
   h1:'Learn AI <span class="hl">from scratch</span>,<br>one step at a time',
-  sub:'No lecture videos, no formulas to memorise. Every topic has an animation you can break with your own hands, every step states what you are about to learn, and a question you cannot skip.',
+  sub:'No lecture videos, no formulas to memorise. Every step opens by telling you what you will learn, continues with an animation you control yourself, and ends at a gate that opens only once you get it right.',
   ctaKat:'📚 model catalogue',
   ctaMuf:'see the curriculum ↓',
   stHazir:'lessons ready', stPlan:'lessons planned', stXp:'your XP', stBit:'completed',
   howH:'Every lesson follows the same five steps',
   howS:'The topic changes, the method does not. Once you get used to it you know what to expect in every lesson.',
   s0n:'01 · GOAL',  s0t:'What will you learn?',
-  s0d:'Every step opens with one clear sentence. You never wonder why you are here.',
+  s0d:'The step opens by stating in one sentence what you will gain. You know from the outset why you are here.',
   s1n:'02 · SEE',   s1t:'Animation',
-  s1d:'The algorithm runs step by step in front of you. Code lines light up, numbers change live.',
+  s1d:'The algorithm runs step by step in front of you. The line of code being executed lights up and the numbers change live.',
   s2n:'03 · PLAY',  s2t:'Break it yourself',
-  s2d:'The sliders are yours. Play until you break the model, that is the fastest way to understand it.',
+  s2d:'The sliders are yours. Play until the model breaks; breaking a thing is the fastest way to understand it.',
   s3n:'04 · QUESTION', s3t:'Unlock the next step',
-  s3d:'You cannot move on without answering correctly. Every option explains why it is wrong.',
+  s3d:'There are two kinds of gate: some steps ask you to drive the simulation to a target, others to answer a question. Every option explains why it is right or wrong.',
   s4n:'05 · SUMMARY', s4t:'What did you learn?',
-  s4d:'Each step ends with the takeaway in one paragraph, and you earn XP. You can always go back and read it.',
+  s4d:'The step closes with what you learned gathered into one paragraph, and you earn XP. You can go back and read it whenever you like.',
   katH:'📚 Model Catalogue, <span style="color:var(--blue)">25 models on one page</span>',
   katP:'Your reference when you do not have time for a full lesson. For each model: <b>what it does · how it works · when to use it · when not to use it · working code · key settings · the classic pitfall.</b> Search, filter, copy the code.',
   footP:'ML Academy · mltraining.org · prototype', footKat:'model catalogue', footSif:'↺ reset progress',
