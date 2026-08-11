@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- charset etiketi ZORUNLU: yoksa tarayıcı dosyayı file:// ile açarken
+     kodlamayı tahmin ediyor ve yanlış tahmin ediyor. Uzun tire â€" , orta
+     nokta Â· olarak görünüyordu. -->
+<!-- ML Academy — landing, "scientific instrument" direction. One file, no external requests. -->
+<title>ML Academy — machine learning you can verify, in your browser</title>
+
+<style>
+  /* ============================================================
+     Theme tokens.
+     Light is the default; dark applies via prefers-color-scheme,
+     and the real site's data-tema attribute overrides both ways.
+     Track colours switch per theme (deeper on white, brighter on ink)
+     so large numerals keep >=3:1 against their surface.
+     ============================================================ */
+  :root {
+    --bg: #ffffff;
+    --bg-2: #f6f8fc;          /* one step off the page: panels, footer */
+    --text: #0b1524;
+    --muted: #5a6b81;
+    --line: #e2e8f1;          /* hairline rules — recessive, never dark */
+    --t0: #0a8b68;
+    --t1: #1668c9;
+    --t2: #c2620d;
+    --t3: #6d3fd4;
+    --t4: #c92a72;
+    --focus: #1668c9;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #070a0f;
+      --bg-2: #0c111a;
+      --text: #e8eef7;
+      --muted: #93a3b8;
+      --line: #1d2735;
+      --t0: #22d3a0;
+      --t1: #4cc4ff;
+      --t2: #fb923c;
+      --t3: #a78bfa;
+      --t4: #f472b6;
+      --focus: #4cc4ff;
+      color-scheme: dark;
+    }
+  }
+  /* Explicit site theme switch must beat the media query in both directions. */
+  :root[data-tema="acik"] {
+    --bg: #ffffff; --bg-2: #f6f8fc; --text: #0b1524; --muted: #5a6b81; --line: #e2e8f1;
+    --t0: #0a8b68; --t1: #1668c9; --t2: #c2620d; --t3: #6d3fd4; --t4: #c92a72;
+    --focus: #1668c9; color-scheme: light;
+  }
+  :root[data-tema="koyu"] {
+    --bg: #070a0f; --bg-2: #0c111a; --text: #e8eef7; --muted: #93a3b8; --line: #1d2735;
+    --t0: #22d3a0; --t1: #4cc4ff; --t2: #fb923c; --t3: #a78bfa; --t4: #f472b6;
+    --focus: #4cc4ff; color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.55;
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+  /* One shared mono voice for eyebrows, counts and instrument readouts —
+     it is the "lab notebook" register of the page. */
+  .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+  }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
+
+  .wrap { max-width: 68rem; margin: 0 auto; padding: 0 1.25rem; }
+
+  .skip {
+    position: absolute; left: -999px; top: 0; z-index: 99;
+    background: var(--text); color: var(--bg); padding: 0.5rem 1rem;
+  }
+  .skip:focus { left: 0.5rem; top: 0.5rem; }
+
+  /* ---------- header ---------- */
+  header.site {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav { display: flex; align-items: center; gap: 1.5rem; min-height: 3.5rem; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 650; text-decoration: none; letter-spacing: -0.01em; }
+  .brand-mark { display: inline-flex; gap: 2px; }            /* five tracks, five ticks */
+  .brand-mark i { width: 5px; height: 14px; border-radius: 1px; }
+  .brand-mark i:nth-child(1){background:var(--t0)} .brand-mark i:nth-child(2){background:var(--t1)}
+  .brand-mark i:nth-child(3){background:var(--t2)} .brand-mark i:nth-child(4){background:var(--t3)}
+  .brand-mark i:nth-child(5){background:var(--t4)}
+  .nav-links { display: flex; gap: 1.25rem; margin-right: auto; }
+  .nav-links a { text-decoration: none; color: var(--muted); font-size: 0.9rem; }
+  .nav-links a:hover { color: var(--text); }
+  .lang { color: var(--muted); }
+  .lang b { color: var(--text); font-weight: 650; }
+  .btn {
+    display: inline-block; text-decoration: none; font-size: 0.9rem; font-weight: 600;
+    padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid var(--line);
+    background: transparent; color: var(--text); cursor: pointer; font-family: inherit;
+  }
+  .btn:hover { border-color: var(--muted); }
+  .btn-solid { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .btn-solid:hover { opacity: 0.88; }
+  #theme-btn { padding: 0.5rem 0.65rem; line-height: 1; }
+  @media (max-width: 760px) {
+    .nav-links, .lang { display: none; }
+    .nav { gap: 0.6rem; }
+    .brand { margin-right: auto; }        /* keep actions pinned right once links hide */
+  }
+  @media (max-width: 480px) { .nav a.btn:not(.btn-solid) { display: none; } } /* drop Sign in, keep Start */
+
+  /* ---------- shared section scaffolding ---------- */
+  section { padding: 4.5rem 0; border-bottom: 1px solid var(--line); }
+  .eyebrow { color: var(--muted); text-transform: uppercase; display: block; margin-bottom: 1rem; }
+  h1, h2 { letter-spacing: -0.02em; line-height: 1.12; font-weight: 650; }
+  h2 { font-size: clamp(1.5rem, 3.2vw, 2.1rem); margin-bottom: 0.75rem; }
+  .lede { color: var(--muted); max-width: 44rem; }
+
+  /* ---------- hero ---------- */
+  .hero { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,26rem); gap: 3rem; align-items: center; }
+  .hero h1 { font-size: clamp(2rem, 5vw, 3.1rem); margin-bottom: 1.1rem; }
+  .hero h1 em { font-style: normal; color: var(--t0); }
+  .hero p { color: var(--muted); max-width: 34rem; margin-bottom: 1.6rem; }
+  .hero-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.4rem; }
+  .hero-meta { color: var(--muted); }
+  @media (max-width: 900px) { .hero { grid-template-columns: 1fr; } }
+
+  /* ---------- the instrument panel (always dark — lessons render on a dark canvas) ---------- */
+  .instrument {
+    background: #070a0f; color: #e8eef7;
+    border: 1px solid #1d2735; border-radius: 10px;
+    padding: 1rem 1rem 1.1rem;
+  }
+  .instrument-head {
+    display: flex; justify-content: space-between; gap: 1rem; align-items: baseline;
+    color: #8fa0b5; margin-bottom: 0.6rem;
+  }
+  .instrument svg { display: block; width: 100%; height: auto; }
+  .instrument-controls { display: flex; align-items: center; gap: 0.9rem; margin-top: 0.75rem; flex-wrap: wrap; }
+  .instrument-controls label { color: #8fa0b5; white-space: nowrap; }
+  .instrument-controls input[type="range"] { flex: 1 1 8rem; min-width: 6rem; accent-color: #22d3a0; }
+  .readout { color: #e8eef7; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .instrument-note { color: #8fa0b5; margin-top: 0.7rem; font-size: 0.78rem; line-height: 1.5; letter-spacing: 0.02em; }
+
+  /* ---------- evidence numbers ---------- */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  .stat { background: var(--bg); padding: 1.4rem 1.2rem; }
+  .stat b { display: block; font-size: clamp(1.9rem, 4vw, 2.6rem); font-weight: 650; letter-spacing: -0.02em; line-height: 1.1; }
+  .stat span { color: var(--muted); font-size: 0.9rem; }
+  @media (max-width: 640px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+
+  /* ---------- how a lesson works ---------- */
+  .steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2rem 1.5rem; margin-top: 2.5rem; }
+  .step { border-top: 2px solid var(--step-c); padding-top: 0.9rem; }
+  .step .mono { color: var(--step-c); font-weight: 700; display: block; }
+  .step h3 { font-size: 1rem; letter-spacing: 0.06em; margin: 0.15rem 0 0.35rem; }
+  .step p { color: var(--muted); font-size: 0.88rem; }
+  @media (max-width: 900px) { .steps { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) { .steps { grid-template-columns: 1fr; } }
+
+  /* ---------- verification ---------- */
+  .rule {
+    /* The thesis of the site. Big, light, unadorned — the sentence is the design. */
+    font-size: clamp(1.55rem, 4.2vw, 2.7rem);
+    font-weight: 350; letter-spacing: -0.015em; line-height: 1.25;
+    max-width: 46rem; margin: 2.2rem 0 2.6rem;
+  }
+  .rule strong { font-weight: 700; }
+  .verify-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: start; }
+  .verify-nums { display: flex; gap: 3rem; flex-wrap: wrap; }
+  .verify-nums b { display: block; font-size: clamp(2.6rem, 6vw, 3.6rem); font-weight: 650; letter-spacing: -0.03em; line-height: 1.05; }
+  .verify-nums .zero b { color: var(--t0); }
+  .verify-nums span { color: var(--muted); font-size: 0.9rem; }
+  .termlog {
+    background: #070a0f; color: #e8eef7; border: 1px solid #1d2735; border-radius: 10px;
+    padding: 1.1rem 1.2rem; overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8rem; line-height: 1.8; white-space: pre;
+  }
+  .termlog .dim { color: #8fa0b5; }
+  .termlog .ok  { color: #22d3a0; }
+  @media (max-width: 760px) { .verify-grid { grid-template-columns: 1fr; } }
+
+  /* ---------- tracks ---------- */
+  .curriculum-bar { display: flex; gap: 2px; height: 8px; margin: 2rem 0 0.5rem; }
+  .curriculum-bar i { border-radius: 2px; }
+  .tracks { list-style: none; padding: 0; margin-top: 1.5rem; }
+  .track {
+    display: grid; grid-template-columns: 3.2rem minmax(0,15rem) 1fr auto;
+    gap: 0.4rem 1.5rem; align-items: baseline;
+    padding: 1.35rem 0; border-top: 1px solid var(--line);
+  }
+  .track-idx { font-weight: 700; font-size: 1.5rem; color: var(--track-c); font-variant-numeric: tabular-nums; }
+  .track h3 { font-size: 1.05rem; font-weight: 650; letter-spacing: -0.01em; }
+  .track-topics { color: var(--muted); font-size: 0.9rem; }
+  .track-count { color: var(--muted); white-space: nowrap; }
+  @media (max-width: 760px) {
+    .track { grid-template-columns: 2.4rem 1fr; }
+    .track-topics { grid-column: 2; }
+    .track-count { grid-column: 2; }
+  }
+
+  /* ---------- author ---------- */
+  .author { display: grid; grid-template-columns: auto 1fr; gap: 1.5rem; align-items: start; max-width: 46rem; }
+  .author-mark {
+    width: 3.4rem; height: 3.4rem; border-radius: 50%;
+    border: 1px solid var(--line); background: var(--bg-2);
+    display: grid; place-items: center; font-weight: 650; letter-spacing: 0.05em;
+  }
+  .author h3 { font-size: 1.15rem; margin-bottom: 0.2rem; }
+  .author-role { color: var(--muted); margin-bottom: 0.8rem; }
+  .creds { list-style: none; padding: 0; color: var(--muted); font-size: 0.92rem; }
+  .creds li { padding-left: 1rem; position: relative; }
+  .creds li::before { content: "—"; position: absolute; left: 0; color: var(--line); }
+  .creds code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85em; }
+
+  /* ---------- footer ---------- */
+  footer.site { background: var(--bg-2); padding: 2.5rem 0 3rem; color: var(--muted); font-size: 0.9rem; }
+  .foot { display: flex; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; align-items: baseline; }
+  .foot-links { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+  .foot-links a { text-decoration: none; }
+  .foot-links a:hover { color: var(--text); }
+
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site">
+  <div class="wrap nav">
+    <a class="brand" href="#">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+      ML&nbsp;Academy
+    </a>
+    <nav class="nav-links" aria-label="Site">
+      <a href="#method">Method</a>
+      <a href="#verification">Verification</a>
+      <a href="#tracks">Tracks</a>
+      <a href="#author">Author</a>
+    </nav>
+    <span class="lang mono" aria-label="Language: English selected, Turkish available"><b>EN</b> · TR</span>
+    <button class="btn" id="theme-btn" type="button" aria-label="Toggle colour theme">◐</button>
+    <a class="btn" href="#">Sign in</a>
+    <a class="btn btn-solid" href="#tracks">Start learning</a>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ================= hero ================= -->
+  <section aria-labelledby="hero-h">
+    <div class="wrap hero">
+      <div>
+        <span class="eyebrow mono">Free · runs in your browser · no videos, no installation, no ads</span>
+        <h1 id="hero-h">Machine learning, <em>demonstrated</em> — not narrated.</h1>
+        <p>
+          123 interactive lessons. Every algorithm is implemented from scratch in JavaScript
+          and runs live on this page's twin: you move a slider, the model retrains, the
+          numbers change. Nothing is taken on faith — including the lesson text itself.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-solid" href="#tracks">Start Track 0 — from zero</a>
+          <a class="btn" href="#verification">How we verify every number</a>
+        </div>
+        <p class="hero-meta mono">123 lessons · 401 interactive steps · 165 visualizations · 2,395 verified claims</p>
+      </div>
+
+      <!-- Live specimen: a real least-squares polynomial fit, computed in this page.
+           The panel is deliberately always-dark — lesson canvases are dark on the real site. -->
+      <figure class="instrument" aria-label="Live demonstration: polynomial fit with adjustable degree">
+        <figcaption class="instrument-head mono">
+          <span>SPECIMEN · POLYNOMIAL FIT</span>
+          <span>LIVE</span>
+        </figcaption>
+        <svg id="fit-svg" viewBox="0 0 560 300" role="img" aria-label="Scatter of 12 data points with a fitted polynomial curve">
+          <!-- hairline grid, one step off the panel surface -->
+          <g stroke="#161e2b" stroke-width="1">
+            <line x1="40" y1="20"  x2="540" y2="20"/><line x1="40" y1="85"  x2="540" y2="85"/>
+            <line x1="40" y1="150" x2="540" y2="150"/><line x1="40" y1="215" x2="540" y2="215"/>
+            <line x1="40" y1="280" x2="540" y2="280"/>
+          </g>
+          <g fill="#8fa0b5" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="11">
+            <text x="34" y="24"  text-anchor="end">+1</text>
+            <text x="34" y="154" text-anchor="end">0</text>
+            <text x="34" y="284" text-anchor="end">−1</text>
+            <text x="540" y="296" text-anchor="end">x</text>
+          </g>
+          <clipPath id="plot-clip"><rect x="40" y="16" width="500" height="268"/></clipPath>
+          <path id="fit-path" d="" fill="none" stroke="#22d3a0" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" clip-path="url(#plot-clip)"/>
+          <g id="fit-pts"></g>
+          <text id="fit-label" x="0" y="0" fill="#e8eef7"
+                font-family="ui-monospace,Menlo,Consolas,monospace" font-size="11">fit</text>
+        </svg>
+        <div class="instrument-controls mono">
+          <label for="deg">polynomial degree</label>
+          <input type="range" id="deg" min="1" max="11" step="1" value="3"
+                 aria-describedby="mse-out">
+          <output class="readout" id="mse-out" for="deg" aria-live="polite">d = 3 · MSE = —</output>
+        </div>
+        <p class="instrument-note">
+          12 fixed points, ordinary least squares, solved in ~40 lines of JavaScript on this page.
+          Push the degree up and watch training error fall to zero — that is memorising, not learning.
+          Track 0, lesson topic: learning vs memorising.
+        </p>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ================= evidence ================= -->
+  <section aria-labelledby="evidence-h">
+    <div class="wrap">
+      <span class="eyebrow mono">The course, counted</span>
+      <h2 id="evidence-h">What is actually here</h2>
+      <p class="lede">Every figure below is itself a verified claim, recomputed by the same
+      test suite that checks the lessons.</p>
+      <div class="stats" style="margin-top:2rem" role="list">
+        <div class="stat" role="listitem"><b>123</b><span>lessons, all ready, all in English</span></div>
+        <div class="stat" role="listitem"><b>401</b><span>interactive steps</span></div>
+        <div class="stat" role="listitem"><b>165</b><span>visualizations</span></div>
+        <div class="stat" role="listitem"><b>129</b><span>questions behind 154 unlock gates</span></div>
+        <div class="stat" role="listitem"><b>387</b><span>academic references</span></div>
+        <div class="stat" role="listitem"><b>2,395</b><span>numeric claims verified — 0 mismatches</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= method ================= -->
+  <section id="method" aria-labelledby="method-h">
+    <div class="wrap">
+      <span class="eyebrow mono">Method</span>
+      <h2 id="method-h">How a lesson works</h2>
+      <p class="lede">Each of the 401 steps follows the same five-part protocol.
+      You do not scrub through a video; you operate the model.</p>
+      <ol class="steps">
+        <li class="step" style="--step-c: var(--t0)">
+          <span class="mono">01</span><h3>GOAL</h3>
+          <p>One precise claim the lesson will make you able to defend.</p>
+        </li>
+        <li class="step" style="--step-c: var(--t1)">
+          <span class="mono">02</span><h3>SEE</h3>
+          <p>The algorithm runs in front of you, implemented from scratch in JavaScript.</p>
+        </li>
+        <li class="step" style="--step-c: var(--t2)">
+          <span class="mono">03</span><h3>PLAY</h3>
+          <p>You move the sliders. The model retrains live and the numbers respond.</p>
+        </li>
+        <li class="step" style="--step-c: var(--t3)">
+          <span class="mono">04</span><h3>GATE</h3>
+          <p>A question you must answer correctly before the next step unlocks.</p>
+        </li>
+        <li class="step" style="--step-c: var(--t4)">
+          <span class="mono">05</span><h3>RECAP</h3>
+          <p>The claim restated — now with the evidence you generated yourself.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ================= verification ================= -->
+  <section id="verification" aria-labelledby="verify-h">
+    <div class="wrap">
+      <span class="eyebrow mono">Verification</span>
+      <h2 id="verify-h">The lesson text is under test</h2>
+      <blockquote class="rule">
+        “A number does not appear in a lesson unless <strong>a test recomputes it</strong>.”
+      </blockquote>
+      <div class="verify-grid">
+        <div>
+          <p class="lede" style="margin-bottom:2rem">
+            Before any lesson ships, a script extracts every numeric claim from its text —
+            accuracies, error rates, counts, probabilities — and recomputes each one from the
+            same code the reader runs. A single disagreement blocks release.
+          </p>
+          <div class="verify-nums">
+            <div><b>2,395</b><span>numeric claims checked</span></div>
+            <div class="zero"><b>0</b><span>mismatches</span></div>
+          </div>
+        </div>
+        <pre class="termlog" aria-label="Verification test output"><span class="dim">$</span> npm run verify-claims
+
+<span class="dim">scanning 123 lessons …</span>
+claims found        <b>2,395</b>
+recomputed          <b>2,395</b>
+mismatches          <b>0</b>
+
+<span class="ok">✓ PASS</span> <span class="dim">— every number in the text matches the model</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= tracks ================= -->
+  <section id="tracks" aria-labelledby="tracks-h">
+    <div class="wrap">
+      <span class="eyebrow mono">Curriculum</span>
+      <h2 id="tracks-h">Five tracks, 123 lessons</h2>
+      <p class="lede">From no prerequisites to production LLM practice. Track widths below are
+      proportional to lesson count.</p>
+
+      <div class="curriculum-bar" aria-hidden="true">
+        <i style="flex:15; background:var(--t0)"></i>
+        <i style="flex:37; background:var(--t1)"></i>
+        <i style="flex:22; background:var(--t2)"></i>
+        <i style="flex:29; background:var(--t3)"></i>
+        <i style="flex:20; background:var(--t4)"></i>
+      </div>
+
+      <ol class="tracks">
+        <li class="track" style="--track-c: var(--t0)">
+          <span class="track-idx" aria-hidden="true">0</span>
+          <h3>Start from Zero</h3>
+          <p class="track-topics">Algorithms, data, learning vs memorising, metrics, data leakage, statistical evidence.</p>
+          <span class="track-count mono">15 lessons · 55 steps</span>
+        </li>
+        <li class="track" style="--track-c: var(--t1)">
+          <span class="track-idx" aria-hidden="true">1</span>
+          <h3>Classical Machine Learning</h3>
+          <p class="track-topics">k-NN, decision trees, random forests, boosting, SVM, soft decision trees, PCA.</p>
+          <span class="track-count mono">37 lessons · 130 steps</span>
+        </li>
+        <li class="track" style="--track-c: var(--t2)">
+          <span class="track-idx" aria-hidden="true">2</span>
+          <h3>Deep Learning</h3>
+          <p class="track-topics">Neurons, backpropagation, optimizers, regularization, batch norm, CNNs, embeddings, transfer.</p>
+          <span class="track-count mono">22 lessons · 67 steps</span>
+        </li>
+        <li class="track" style="--track-c: var(--t3)">
+          <span class="track-idx" aria-hidden="true">3</span>
+          <h3>Large Language Models</h3>
+          <p class="track-topics">Tokenization, attention, transformer block, sampling, RLHF, hallucination, RAG, KV cache.</p>
+          <span class="track-count mono">29 lessons · 94 steps</span>
+        </li>
+        <li class="track" style="--track-c: var(--t4)">
+          <span class="track-idx" aria-hidden="true">4</span>
+          <h3>Using AI in Practice</h3>
+          <p class="track-topics">Prompting, eval sets, Elo, debugging retrieval, agents, LLM-as-judge, red teaming, cost.</p>
+          <span class="track-count mono">20 lessons · 55 steps</span>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ================= author ================= -->
+  <section id="author" aria-labelledby="author-h">
+    <div class="wrap">
+      <span class="eyebrow mono">Author</span>
+      <h2 id="author-h" class="visually-plain" style="margin-bottom:2rem">Written and built by one engineer</h2>
+      <div class="author">
+        <div class="author-mark" aria-hidden="true">CT</div>
+        <div>
+          <h3>Cagri Temel</h3>
+          <p class="author-role">Machine learning engineer · MS Computer Science</p>
+          <ul class="creds">
+            <li>IEEE Senior Member · AAAI Member</li>
+            <li>Reviewer, IEEE SMC International Conference</li>
+            <li>Author of the open-source <code>neural-trees</code> Python library</li>
+            <li>387 academic references cited across the course</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap foot">
+    <div>
+      <span style="font-weight:650; color:var(--text)">ML Academy</span>
+      <span class="mono" style="margin-left:0.75rem">mltraining.org</span>
+    </div>
+    <nav class="foot-links" aria-label="Footer">
+      <a href="#">About</a>
+      <a href="#">Privacy</a>
+      <a href="#">Licence</a>
+      <a href="#">Contact</a>
+    </nav>
+    <p>Free. No videos, no installation, no payment, no ads.</p>
+  </div>
+</footer>
+
+<script>
+  /* ---------- theme toggle: sets the real site's data-tema attribute ---------- */
+  (function () {
+    var btn = document.getElementById('theme-btn');
+    btn.addEventListener('click', function () {
+      var root = document.documentElement;
+      var dark = root.getAttribute('data-tema') === 'koyu' ||
+        (!root.getAttribute('data-tema') && matchMedia('(prefers-color-scheme: dark)').matches);
+      root.setAttribute('data-tema', dark ? 'acik' : 'koyu');
+    });
+  })();
+
+  /* ---------- the specimen: genuine least-squares polynomial fit ----------
+     12 fixed points (noisy sine). Vandermonde on x∈[−1,1], normal equations
+     solved by Gaussian elimination with a whisper of ridge for stability at
+     degree 11. Same spirit as the lessons: the number on screen is computed,
+     not typed. */
+  (function () {
+    var PTS = [ // [x in 0..1, y in −1..1]
+      [0.02,  0.11], [0.10,  0.62], [0.18,  0.87], [0.27,  0.74],
+      [0.36,  0.35], [0.45, -0.18], [0.54, -0.61], [0.63, -0.83],
+      [0.72, -0.66], [0.81, -0.30], [0.90,  0.23], [0.98,  0.58]
+    ];
+    var X0 = 40, X1 = 540, Y0 = 280, Y1 = 20;             // plot box in SVG units
+    var sx = function (x) { return X0 + x * (X1 - X0); };
+    var sy = function (y) { return Y0 + (y + 1) / 2 * (Y1 - Y0); };
+
+    function fit(deg) {
+      var n = PTS.length, m = deg + 1, i, j, k;
+      // A = Vandermonde in u = 2x−1;  solve (AᵀA + λI) w = Aᵀy
+      var ATA = [], ATy = [];
+      for (i = 0; i < m; i++) { ATA.push(new Array(m).fill(0)); ATy.push(0); }
+      for (k = 0; k < n; k++) {
+        var u = 2 * PTS[k][0] - 1, pow = [1];
+        for (i = 1; i < m; i++) pow.push(pow[i - 1] * u);
+        for (i = 0; i < m; i++) {
+          ATy[i] += pow[i] * PTS[k][1];
+          for (j = 0; j < m; j++) ATA[i][j] += pow[i] * pow[j];
+        }
+      }
+      for (i = 0; i < m; i++) ATA[i][i] += 1e-9;
+      // Gaussian elimination with partial pivoting
+      for (i = 0; i < m; i++) {
+        var p = i;
+        for (j = i + 1; j < m; j++) if (Math.abs(ATA[j][i]) > Math.abs(ATA[p][i])) p = j;
+        var t = ATA[i]; ATA[i] = ATA[p]; ATA[p] = t;
+        t = ATy[i]; ATy[i] = ATy[p]; ATy[p] = t;
+        for (j = i + 1; j < m; j++) {
+          var f = ATA[j][i] / ATA[i][i];
+          for (k = i; k < m; k++) ATA[j][k] -= f * ATA[i][k];
+          ATy[j] -= f * ATy[i];
+        }
+      }
+      var w = new Array(m).fill(0);
+      for (i = m - 1; i >= 0; i--) {
+        var s = ATy[i];
+        for (j = i + 1; j < m; j++) s -= ATA[i][j] * w[j];
+        w[i] = s / ATA[i][i];
+      }
+      return w;
+    }
+    function evalPoly(w, x) {
+      var u = 2 * x - 1, y = 0;
+      for (var i = w.length - 1; i >= 0; i--) y = y * u + w[i];
+      return y;
+    }
+
+    var path = document.getElementById('fit-path');
+    var ptsG = document.getElementById('fit-pts');
+    var label = document.getElementById('fit-label');
+    var out = document.getElementById('mse-out');
+    var slider = document.getElementById('deg');
+    var NS = 'http://www.w3.org/2000/svg';
+
+    // Points drawn once: series-coloured dot with a 2px surface ring so dots
+    // stay legible where the curve crosses them.
+    PTS.forEach(function (p) {
+      var c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', sx(p[0]).toFixed(1));
+      c.setAttribute('cy', sy(p[1]).toFixed(1));
+      c.setAttribute('r', '4.5');
+      c.setAttribute('fill', '#4cc4ff');
+      c.setAttribute('stroke', '#070a0f');
+      c.setAttribute('stroke-width', '2');
+      ptsG.appendChild(c);
+    });
+
+    function render() {
+      var deg = +slider.value, w = fit(deg), d = '', mse = 0, i;
+      for (i = 0; i <= 100; i++) {
+        var x = i / 100, y = Math.max(-1.6, Math.min(1.6, evalPoly(w, x)));
+        d += (i ? ' L' : 'M') + sx(x).toFixed(1) + ' ' + sy(y).toFixed(1);
+      }
+      path.setAttribute('d', d);
+      for (i = 0; i < PTS.length; i++) {
+        var e = PTS[i][1] - evalPoly(w, PTS[i][0]);
+        mse += e * e;
+      }
+      mse /= PTS.length;
+      out.textContent = 'd = ' + deg + ' · MSE = ' + mse.toFixed(4);
+      // direct label rides the curve's right end
+      var yEnd = Math.max(-1, Math.min(1, evalPoly(w, 0.97)));
+      label.setAttribute('x', '498');
+      label.setAttribute('y', (sy(yEnd) - 10).toFixed(1));
+      label.textContent = 'fit d=' + deg;
+    }
+    slider.addEventListener('input', render);
+    render();
+  })();
+</script>
