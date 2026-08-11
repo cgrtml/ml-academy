@@ -177,7 +177,7 @@ DERSLER['veri'] = {
     t:'Bu bir veri kümesi',
     goal:'Makine öğrenmesi bir tablodan başlar. Önce o tabloyu doğru okumayı öğreneceksin.',
     todo:'Tabloya bak. Kaç satır, kaç sütun var? Devam et.',
-    kind:'static', viz:'tablo', state:{},
+    kind:'static', viz:'tablo', h:660, state:{},
     body:'<p>10 öğrenci. Herkes için iki bilgi topladık: <b>haftada kaç saat çalıştığı</b> ve <b>sınavdan aldığı puan</b>.</p>' +
          '<p>Bu kadar. Makine öğrenmesinin başladığı yer bu, sihirli bir şey değil, bir tablo.</p>' +
          '<p>Amacımız şu: bu tablodan öyle bir kural çıkaralım ki, <b>tabloda olmayan</b> yeni bir öğrenci için de puan tahmin edebilelim.</p>',
@@ -190,7 +190,7 @@ DERSLER['veri'] = {
     t:'Sütunlar: özellik ve etiket',
     goal:'Bir tablonun sütunları eşit değildir. Bazıları <b>girdi</b>, biri <b>çıktı</b>dır. Aradaki farkı ayırt edeceksin.',
     todo:'İLERİ ile üç aşamayı geç, her aşamada vurgulanan sütuna bak.',
-    kind:'phases', viz:'tablo',
+    kind:'phases', viz:'tablo', h:660,
     phases:[
       {state:{col:0}, body:'<p>Birinci sütun sadece <b>isim</b>. Modele hiçbir şey öğretmez, Ada\'nın "Ada" olması puanını etkilemez.</p>' +
         '<p>Bu tür sütunlar modele <b>verilmez</b>. (Verirsen model isimden puan tahmin etmeye çalışır ki bu saçmadır ve şaşırtıcı biçimde sık yapılan bir hatadır.)</p>'},
@@ -215,7 +215,7 @@ DERSLER['veri'] = {
     t:'Satırlar: her satır bir örnek',
     goal:'Sütunlar "ne ölçtüğümüzü", satırlar "kimi ölçtüğümüzü" söyler. Model satırlardan öğrenir.',
     todo:'Kaydırıcıyı oynat, satırları tek tek dolaş.',
-    kind:'controls', viz:'tablo',
+    kind:'controls', viz:'tablo', h:660,
     controls:[{k:'row', lb:'SATIR', min:0, max:9, step:1, val:0, fmt:v => 'öğrenci '+(v+1)}],
     live:s => [['ÖRNEK', DATA.study.isim[s.row]], ['x (saat)', DATA.study.X[s.row]], ['y (puan)', DATA.study.Y[s.row]]],
     body:'<p>Her satıra <b>örnek</b> (sample / instance / gözlem) denir. Bir örnek = bir (x, y) çifti.</p>' +
@@ -231,7 +231,7 @@ DERSLER['veri'] = {
     t:'Tablodan grafiğe',
     goal:'Aynı veriyi <b>grafik</b> olarak görmek, ilişkiyi gözle yakalamanı sağlar. Bundan sonraki her ders bu grafiğin üstünde geçecek.',
     todo:'OYNAT\'a bas ve tablonun noktalara dönüşmesini izle.',
-    kind:'play', viz:'tabloGrafik',
+    kind:'play', viz:'tabloGrafik', h:660,
     frames:() => { const F = [];
       for (let i=0;i<=24;i++) F.push({state:{t:i/24},
         body: i===0 ? '<p>Başlangıç: elimizde sadece sayılar var.</p>'
@@ -248,7 +248,7 @@ DERSLER['veri'] = {
     t:'Peki "model" tam olarak ne?',
     goal:'Bu adımda modelin tanımını netleştireceksin, sonraki dersin tamamı bunun üstüne kurulu.',
     todo:'Grafiğe bak: sarı çizgi, tabloda <b>olmayan</b> bir öğrenciyi soruyor. Sonra soruyu cevapla.',
-    kind:'controls', viz:'dogruUydur',
+    kind:'controls', viz:'dogruUydur', h:660,
     controls:[{k:'sor', lb:'YENİ ÖĞRENCİ · x', min:0.5, max:10, step:0.5, val:6.5, fmt:v => v.toFixed(1)+' saat'}],
     state:{w:null, b:null},
     body:'<p>Sarı çizgi, tabloda olmayan bir öğrenciyi gösteriyor. Örneğin <b>6.5 saat</b> çalışan biri.</p>' +

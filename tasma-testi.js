@@ -111,7 +111,10 @@ const el = { width:0, height:0, getContext: () => CTX };
 
 function olc(yer, a, st){
   KAYIT.metin.length = 0; KAYIT.disari.length = 0; KAYIT.nan.length = 0;
-  const H = a.h || 700;
+  /* Tarayıcı ile AYNI varsayılan. Önce 700 yazıyordu, oysa lesson.html
+     600 kullanıyor: h yazılmamış adımlar 700'de test edilip 600'de
+     çiziliyordu ve taşmalar hiç görünmüyordu. */
+  const H = a.h || 600;
   SINIR.w = 1500*2; SINIR.h = H*2;
   CTX = sahteCtx();
   useCanvas(el, 1500, H);
