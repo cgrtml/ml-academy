@@ -6,10 +6,33 @@
 <title>Model Kataloğu · ML Academy</title>
 <style>
   :root{
-    --bg:#080b11; --panel:#0f151e; --panel2:#141c28; --line:#1e2a3a;
-    --txt:#e6edf3; --mut:#8494a8;
-    --green:#22d3a0; --blue:#4cc4ff; --orange:#fb923c; --purple:#a78bfa;
-    --red:#f87171; --yellow:#facc15; --pink:#f472b6;
+    /* ── AÇIK TEMA ──────────────────────────────────────────────────────
+       10 Ağustos 2026'da koyudan açığa geçildi. Gerekçe: site "sıfırdan
+       öğren" diyor ve uzun anlatım metinleri okunuyor; eğitim siteleri
+       için açık zemin hem daha okunaklı hem daha davetkâr.
+
+       Görsellerin TUVALİ koyu kaldı (viz.js hiç değişmedi). Koyu tuval
+       açık sayfada bilinçli bir odak öğesi: dokümantasyon sitelerindeki
+       koyu kod bloğu deseninin aynısı.
+
+       Vurgu renkleri açık zemin için KOYULAŞTIRILDI. Koyu temada iyi
+       görünen #22d3a0 ve #4cc4ff beyaz üstünde kontrast bırakmıyor.
+       Birincil eylem rengi mavi; yeşil "ölçüldü / doğru" vurgusu olarak
+       kaldı.                                                              */
+    --bg:#f6f8fc; --panel:#ffffff; --panel2:#eef2f8; --line:#dde5ef;
+    --txt:#0f1b2d; --mut:#586a80;
+    --green:#0a8b68; --blue:#1668c9; --orange:#c2620d; --purple:#6d3fd4;
+    --pink:#c92a72; --yellow:#96690a; --red:#cf2f2f;
+    /* koyu tuvalin kendi zemini: görsel çerçevesi için */
+    --tuval:#070a0f; --tuvalCer:#1e2a3a;
+    /* Koyu YÜZEYLER (tuval, kod bloğu) için ayrı vurgu seti. Yukarıdaki
+       koyulaştırılmış renkler beyaz üstünde doğru, ama koyu kod bloğunda
+       okunmaz. Bunlar viz.js'in K paletiyle aynı değerler. */
+    --greenD:#22d3a0; --blueD:#4cc4ff; --orangeD:#fb923c; --purpleD:#a78bfa;
+    --pinkD:#f472b6; --yellowD:#facc15; --redD:#f87171; --tuvalTxt:#c9d6e4;
+    /* Yıldız ayrı bir renk: metin kontrastı için koyulaştırılmış sarı
+       (#96690a) çamurlu duruyor, yıldız altın görünmeli. */
+    --star:#e0930b;
     --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box}
@@ -30,7 +53,7 @@
          background-clip:text;color:transparent}
   .sub{color:var(--mut);font-size:15.5px;max-width:640px;margin:0 auto}
 
-  .araclar{position:sticky;top:0;z-index:20;background:rgba(8,11,17,.96);backdrop-filter:blur(10px);
+  .araclar{position:sticky;top:0;z-index:20;background:rgba(246,248,252,.94);backdrop-filter:blur(10px);
            border-bottom:1px solid var(--line);padding:12px 0;margin-bottom:22px}
   .araclar .in{max-width:1060px;margin:0 auto;padding:0 18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   #ara{flex:1;min-width:200px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);
@@ -39,7 +62,7 @@
   .f{font-family:var(--mono);font-size:11px;letter-spacing:.06em;padding:8px 14px;border-radius:99px;
      border:1px solid var(--line);color:var(--mut);background:var(--panel);cursor:pointer;transition:.14s;white-space:nowrap}
   .f:hover{color:var(--txt)}
-  .f.on{color:#04120d;font-weight:800}
+  .f.on{color:#fff;font-weight:800}
   .sayac{font-family:var(--mono);font-size:12px;color:var(--mut);white-space:nowrap}
 
   .kart{background:var(--panel);border:1px solid var(--line);border-radius:15px;margin-bottom:12px;
@@ -70,8 +93,8 @@
   .ok-h{color:var(--green)} .no-h{color:var(--red)} .ns-h{color:var(--blue)}
   .hp-h{color:var(--orange)} .tz-h{color:var(--yellow)} .kd-h{color:var(--purple)}
 
-  pre{background:#070a0f;border:1px solid var(--line);border-radius:10px;padding:14px 16px;
-      overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.75;margin:0;color:#c9d6e4;
+  pre{background:var(--tuval);border:1px solid var(--line);border-radius:10px;padding:14px 16px;
+      overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.75;margin:0;color:var(--tuvalTxt);
       white-space:pre}
   .kopyala{float:right;font-family:var(--mono);font-size:10px;background:var(--panel2);color:var(--mut);
            border:1px solid var(--line);border-radius:6px;padding:4px 9px;cursor:pointer;margin-left:8px}
@@ -89,7 +112,7 @@
   .dersLink:hover{background:rgba(34,211,160,.24)}
   /* kilitli ders: yeşil yerine kehribar, ve düğme olduğu belli olsun */
   .dersLink.kilitli{background:rgba(251,146,60,.12);border-color:rgba(251,146,60,.45);
-    color:#fb923c;cursor:pointer}
+    color:var(--orange);cursor:pointer}
   .dersLink.kilitli:hover{background:rgba(251,146,60,.22)}
   .ustBar{position:fixed;top:16px;right:18px;z-index:60;display:flex;gap:10px;align-items:center}
   @media(max-width:640px){.ustBar{position:static;justify-content:center;margin:12px 0 0}}
@@ -226,7 +249,7 @@ $('filtreler').onclick = e => {
     b.classList.toggle('on', on);
     b.style.background = on ? (b.dataset.renk || 'var(--green)') : '';
     b.style.borderColor = on ? (b.dataset.renk || 'var(--green)') : '';
-    b.style.color = on ? '#04120d' : '';
+    b.style.color = on ? '#fff' : '';
   });
   ciz();
 };

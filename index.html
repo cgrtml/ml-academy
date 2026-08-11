@@ -6,10 +6,33 @@
 <title>ML Academy · Sıfırdan yapay zekâ öğren</title>
 <style>
   :root{
-    --bg:#080b11; --panel:#0f151e; --panel2:#141c28; --line:#1e2a3a;
-    --txt:#e6edf3; --mut:#8494a8;
-    --green:#22d3a0; --blue:#4cc4ff; --orange:#fb923c; --purple:#a78bfa;
-    --pink:#f472b6; --yellow:#facc15;
+    /* ── AÇIK TEMA ──────────────────────────────────────────────────────
+       10 Ağustos 2026'da koyudan açığa geçildi. Gerekçe: site "sıfırdan
+       öğren" diyor ve uzun anlatım metinleri okunuyor; eğitim siteleri
+       için açık zemin hem daha okunaklı hem daha davetkâr.
+
+       Görsellerin TUVALİ koyu kaldı (viz.js hiç değişmedi). Koyu tuval
+       açık sayfada bilinçli bir odak öğesi: dokümantasyon sitelerindeki
+       koyu kod bloğu deseninin aynısı.
+
+       Vurgu renkleri açık zemin için KOYULAŞTIRILDI. Koyu temada iyi
+       görünen #22d3a0 ve #4cc4ff beyaz üstünde kontrast bırakmıyor.
+       Birincil eylem rengi mavi; yeşil "ölçüldü / doğru" vurgusu olarak
+       kaldı.                                                              */
+    --bg:#f6f8fc; --panel:#ffffff; --panel2:#eef2f8; --line:#dde5ef;
+    --txt:#0f1b2d; --mut:#586a80;
+    --green:#0a8b68; --blue:#1668c9; --orange:#c2620d; --purple:#6d3fd4;
+    --pink:#c92a72; --yellow:#96690a; --red:#cf2f2f;
+    /* koyu tuvalin kendi zemini: görsel çerçevesi için */
+    --tuval:#070a0f; --tuvalCer:#1e2a3a;
+    /* Koyu YÜZEYLER (tuval, kod bloğu) için ayrı vurgu seti. Yukarıdaki
+       koyulaştırılmış renkler beyaz üstünde doğru, ama koyu kod bloğunda
+       okunmaz. Bunlar viz.js'in K paletiyle aynı değerler. */
+    --greenD:#22d3a0; --blueD:#4cc4ff; --orangeD:#fb923c; --purpleD:#a78bfa;
+    --pinkD:#f472b6; --yellowD:#facc15; --redD:#f87171; --tuvalTxt:#c9d6e4;
+    /* Yıldız ayrı bir renk: metin kontrastı için koyulaştırılmış sarı
+       (#96690a) çamurlu duruyor, yıldız altın görünmeli. */
+    --star:#e0930b;
     --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box}
@@ -34,7 +57,7 @@
   h1 .hl{background:linear-gradient(90deg,var(--green),var(--blue));-webkit-background-clip:text;
          background-clip:text;color:transparent}
   .sub{color:var(--mut);font-size:16px;max-width:610px;margin:0 auto 26px}
-  .cta{display:inline-flex;align-items:center;gap:10px;background:var(--green);color:#04120d;
+  .cta{display:inline-flex;align-items:center;gap:10px;background:var(--green);color:#fff;
        font-weight:800;font-size:16px;padding:15px 30px;border-radius:12px;transition:.15s}
   .cta:hover{filter:brightness(1.12);transform:translateY(-1px)}
   .cta2{display:inline-flex;align-items:center;gap:8px;color:var(--mut);font-size:14px;
@@ -79,15 +102,22 @@
   .card.kilitli{cursor:pointer;position:relative;border-style:dashed}
   .card.kilitli .body{opacity:.55}
   .card.kilitli .no{opacity:.55}
-  .card.kilitli:hover{border-color:var(--yellow);transform:none}
-  .kilitRozet{position:absolute;top:11px;right:13px;font-family:var(--mono);
-    font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
-    color:var(--yellow);background:rgba(250,204,21,.1);
-    border:1px solid rgba(250,204,21,.3);border-radius:7px;padding:3px 8px}
+  .card.kilitli:hover{border-color:var(--orange);transform:none}
+  /* Kilit rozeti önceden "GİRİŞ 🔒" yazıyordu ve iki satıra taşan ders
+     başlıklarının üstüne biniyordu. Ayrıca 18 kartta birden aynı yazı
+     görsel gürültüydü. Artık yalnızca simge; kilitli olduğu zaten kesik
+     kenarlık ve soluk gövdeden anlaşılıyor. Başlığa da güvenlik payı
+     verildi ki simgenin altına hiç girmesin. */
+  .kilitRozet{position:absolute;top:9px;right:10px;width:24px;height:24px;
+    display:grid;place-items:center;font-size:12px;border-radius:8px;
+    color:var(--orange);background:rgba(194,98,13,.09);
+    border:1px solid rgba(194,98,13,.28)}
+  .card.kilitli .ad{padding-right:30px}
+  .card.kilitli:hover .kilitRozet{background:rgba(194,98,13,.18)}
   .card .no{font-family:var(--mono);font-size:12px;font-weight:800;width:26px;height:26px;border-radius:8px;
             display:grid;place-items:center;flex:none;background:var(--panel2);color:var(--mut);border:1px solid var(--line)}
   .card.hazir .no{background:rgba(34,211,160,.16);color:var(--green);border-color:rgba(34,211,160,.4)}
-  .card.bitti .no{background:var(--green);color:#04120d;border-color:var(--green)}
+  .card.bitti .no{background:var(--green);color:#fff;border-color:var(--green)}
   .card .body{flex:1;min-width:0}
   .card .ad{font-size:14.5px;font-weight:680;margin-bottom:4px}
   .card .meta{font-family:var(--mono);font-size:10.5px;color:var(--mut);display:flex;gap:9px;flex-wrap:wrap;align-items:center}
@@ -106,7 +136,7 @@
   .dilbar{display:flex;gap:6px}
   .dilbar button{font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:6px 12px;
       border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--mut);cursor:pointer}
-  .dilbar button.on{background:var(--green);border-color:var(--green);color:#04120d;font-weight:800}
+  .dilbar button.on{background:var(--green);border-color:var(--green);color:#fff;font-weight:800}
   .dilnot{background:rgba(250,204,21,.08);border:1px solid rgba(250,204,21,.3);border-radius:11px;
       padding:12px 16px;margin:0 auto 8px;max-width:620px;font-size:13px;color:var(--mut);display:none}
   .foot{text-align:center;color:var(--mut);font-size:12.5px;margin-top:52px;font-family:var(--mono);line-height:2}
@@ -310,7 +340,7 @@ $('rotalar').innerHTML = ROTALAR.map(r => {
       '</div>';
     const cls = 'card '+d.durum+(bitti?' bitti':'')+(kilitli?' kilitli':'');
     if (kilitli) return '<div class="'+cls+'" data-kilit="1">'+inner+
-      '<div class="kilitRozet">'+(en?'sign in':'giriş')+' 🔒</div></div>';
+      '<div class="kilitRozet" title="'+(en?'sign in to open':'açmak için giriş yap')+'">🔒</div></div>';
     return link ? '<a class="'+cls+'" href="'+link+'">'+inner+'</a>'
                 : '<div class="'+cls+'">'+inner+'</div>';
   }).join('');
@@ -333,6 +363,43 @@ $('sBitti').textContent = nBitti;
 $('rotalar').querySelectorAll('[data-kilit]').forEach(k => {
   k.onclick = () => { if (typeof HESAP !== 'undefined') HESAP.kilitEkrani(); };
 });
+
+/* ══ ROTA BİTİŞ KONTROLÜ ══
+   Bir rotanın bütün hazır dersleri tamamlandıysa kutlama ve değerlendirme
+   ekranı çıkar. Her rota için YALNIZCA BİR KEZ: hangi rotanın sorulduğu
+   localStorage'da tutulur, yoksa her sayfa yenilemede tekrar açılırdı.
+   Zorunlu değil, "Şimdi değil" ile geçilebilir. */
+const RKEY = 'mlacad_rota_soruldu';
+function rotaBitisKontrol(){
+  if (typeof HESAP === 'undefined' || !HESAP.rotaTebrik) return;
+  let soruldu = {};
+  try { soruldu = JSON.parse(localStorage.getItem(RKEY)) || {}; } catch(e){ soruldu = {}; }
+
+  for (const r of ROTALAR){
+    if (soruldu[r.id]) continue;
+    const hazirlar = r.dersler.filter(d => d.durum === 'hazir' && !d.dis);
+    if (!hazirlar.length) continue;
+
+    let tamam = 0, xp = 0;
+    for (const d of hazirlar){
+      const ders = DERSLER[d.id];
+      const nA = ders ? ders.adimlar.length : 0;
+      const pr = PROG[d.id];
+      if (pr && nA && pr.done.length >= nA){ tamam++; xp += pr.xp || 0; }
+    }
+    if (tamam < hazirlar.length) continue;
+
+    soruldu[r.id] = Date.now();
+    try { localStorage.setItem(RKEY, JSON.stringify(soruldu)); } catch(e){}
+    const en = DIL === 'en';
+    HESAP.rotaTebrik({
+      ad:  (en && EN.rota[r.id]) ? EN.rota[r.id][0] : r.ad,
+      ders: tamam, xp, ikon: r.ikon,
+    });
+    return;                      // aynı anda tek kutlama
+  }
+}
+setTimeout(rotaBitisKontrol, 400);   // HESAP.kur() otursun diye küçük gecikme
 
 /* kaldığın yerden devam */
 const sirali = ROTALAR.flatMap(r => r.dersler).filter(d => d.durum === 'hazir' && !d.dis);
@@ -357,7 +424,9 @@ if (devam){
 
 $('reset').onclick = () => {
   if (confirm(DIL === 'en' ? EN.sifirla : 'Tüm ilerleme ve XP silinecek. Emin misin?')){
-    localStorage.removeItem(PKEY); location.reload();
+    /* Rota kutlama kaydı da sıfırlanmalı, yoksa ilerleme sıfırlandığı hâlde
+       rotalar "zaten soruldu" sayılıp bir daha hiç çıkmaz. */
+    localStorage.removeItem(PKEY); localStorage.removeItem(RKEY); location.reload();
   }
 };
 dilUygula();

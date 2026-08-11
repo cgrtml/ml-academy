@@ -13,7 +13,7 @@ const TOPLULUK = (() => {
   const M = {
     tr: {
       bas:'Topluluk',
-      alt:'Sayılar canlı, yorumlar okunduktan sonra yayımlanıyor.',
+      alt:'Sayılar canlı. Geri bildiriminiz bu kursu şekillendiriyor.',
       kullanici:'kayıtlı kullanıcı', bitiren:'ders bitiren',
       yorum:'yorum', puan:'ortalama puan',
       yorumBas:'Ne diyorlar',
@@ -24,11 +24,11 @@ const TOPLULUK = (() => {
       bekliyor:'Yorumun alındı, okunduktan sonra yayımlanacak.',
       dagilim:'Puan dağılımı', kisi:'kişi',
       cagriBas:'Burayı canlı tutan şey senin yorumun',
-      cagriAlt:'Bir dakikanı alır. Yorumlar okunduktan sonra yayımlanır.',
+      cagriAlt:'Bir dakikanı alır ve geri dönüşünüz bizim için çok değerli.',
     },
     en: {
       bas:'Community',
-      alt:'The numbers are live; reviews are published after being read.',
+      alt:'The numbers are live. Your feedback shapes this course.',
       kullanici:'registered users', bitiren:'finished a lesson',
       yorum:'reviews', puan:'average rating',
       yorumBas:'What people say',
@@ -39,7 +39,7 @@ const TOPLULUK = (() => {
       bekliyor:'Your review was received and will be published after review.',
       dagilim:'Rating breakdown', kisi:'people',
       cagriBas:'Your review is what keeps this alive',
-      cagriAlt:'It takes a minute. Reviews are published after being read.',
+      cagriAlt:'It takes a minute, and your feedback means a great deal to us.',
     },
   };
 
@@ -59,53 +59,53 @@ const TOPLULUK = (() => {
     s.textContent = `
       .toplulukB{margin-top:56px}
       .toplulukB > h2{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:0 0 6px}
-      .toplulukB > .alt{color:var(--mut,#8494a8);font-size:14.5px;margin:0 0 22px}
+      .toplulukB > .alt{color:var(--mut,#586a80);font-size:14.5px;margin:0 0 22px}
       .tSayac{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-      .tKart{background:var(--panel,#0f151e);border:1px solid var(--line,#1e2a3a);
+      .tKart{background:var(--panel,#ffffff);border:1px solid var(--line,#dde5ef);
         border-radius:14px;padding:18px 16px;text-align:center}
       .tKart .n{font-size:29px;font-weight:850;letter-spacing:-.03em;line-height:1.1}
       .tKart .e{font-family:var(--mono,monospace);font-size:10.5px;letter-spacing:.16em;
-        text-transform:uppercase;color:var(--mut,#8494a8);margin-top:7px}
-      .tKart .yld{color:var(--yellow,#facc15);font-size:15px;letter-spacing:.14em;margin-top:5px}
-      .tNot{color:var(--mut,#8494a8);font-size:12.5px;margin-top:10px;text-align:center}
+        text-transform:uppercase;color:var(--mut,#586a80);margin-top:7px}
+      .tKart .yld{color:var(--star,#e0930b);font-size:15px;letter-spacing:.14em;margin-top:5px}
+      .tNot{color:var(--mut,#586a80);font-size:12.5px;margin-top:10px;text-align:center}
       /* yıldız dağılımı */
-      .tDagilim{background:var(--panel,#0f151e);border:1px solid var(--line,#1e2a3a);
+      .tDagilim{background:var(--panel,#ffffff);border:1px solid var(--line,#dde5ef);
         border-radius:14px;padding:18px 20px;margin-top:14px}
       .tDagBas{font-family:var(--mono,monospace);font-size:10.5px;letter-spacing:.2em;
-        text-transform:uppercase;color:var(--mut,#8494a8);margin-bottom:12px}
+        text-transform:uppercase;color:var(--mut,#586a80);margin-bottom:12px}
       .tSatir{display:flex;align-items:center;gap:12px;margin-top:7px}
-      .tSatir .p{font-family:var(--mono,monospace);font-size:12px;color:var(--yellow,#facc15);
+      .tSatir .p{font-family:var(--mono,monospace);font-size:12px;color:var(--star,#e0930b);
         width:26px;flex:none}
-      .tSatir .cubuk{flex:1;height:9px;background:var(--bg,#080b11);border-radius:99px;
-        overflow:hidden;border:1px solid var(--line,#1e2a3a)}
-      .tSatir .cubuk i{display:block;height:100%;background:var(--yellow,#facc15);
+      .tSatir .cubuk{flex:1;height:9px;background:var(--bg,#f6f8fc);border-radius:99px;
+        overflow:hidden;border:1px solid var(--line,#dde5ef)}
+      .tSatir .cubuk i{display:block;height:100%;background:var(--star,#e0930b);
         border-radius:99px;transition:width .3s}
-      .tSatir .n{font-family:var(--mono,monospace);font-size:12px;color:var(--mut,#8494a8);
+      .tSatir .n{font-family:var(--mono,monospace);font-size:12px;color:var(--mut,#586a80);
         width:34px;text-align:right;flex:none}
-      .tDagAlt{font-family:var(--mono,monospace);font-size:10.5px;color:var(--mut,#8494a8);
+      .tDagAlt{font-family:var(--mono,monospace);font-size:10.5px;color:var(--mut,#586a80);
         text-align:right;margin-top:11px}
       /* yorum yazmaya çağrı */
       .tCagri{display:flex;align-items:center;justify-content:space-between;gap:18px;
         flex-wrap:wrap;margin-top:20px;padding:20px 22px;border-radius:16px;
         background:rgba(34,211,160,.07);border:1px solid rgba(34,211,160,.32)}
       .tCagri b{display:block;font-size:16px;margin-bottom:3px}
-      .tCagri span{color:var(--mut,#8494a8);font-size:13.5px}
+      .tCagri span{color:var(--mut,#586a80);font-size:13.5px}
       .tCagri button{padding:12px 22px;border-radius:12px;font-size:14.5px;font-weight:800;
-        cursor:pointer;border:0;background:var(--green,#22d3a0);color:#04120d;
+        cursor:pointer;border:0;background:var(--green,#0a8b68);color:#fff;
         font-family:inherit;flex:none}
       .tCagri button:hover{filter:brightness(1.08)}
       .tYorumBas{font-family:var(--mono,monospace);font-size:10.5px;letter-spacing:.2em;
-        text-transform:uppercase;color:var(--mut,#8494a8);margin:30px 0 12px}
+        text-transform:uppercase;color:var(--mut,#586a80);margin:30px 0 12px}
       .tYorumlar{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
-      .tYorum{background:var(--panel,#0f151e);border:1px solid var(--line,#1e2a3a);
+      .tYorum{background:var(--panel,#ffffff);border:1px solid var(--line,#dde5ef);
         border-radius:14px;padding:16px 17px}
       .tYorum .ust{display:flex;justify-content:space-between;align-items:center;gap:10px}
       .tYorum .ad{font-weight:700;font-size:14.5px}
-      .tYorum .p{color:var(--yellow,#facc15);font-size:13.5px;letter-spacing:.12em;flex:none}
-      .tYorum p{margin:9px 0 0;color:var(--mut,#8494a8);font-size:14px;line-height:1.65}
-      .tBos{text-align:center;padding:26px 16px;border:1px dashed var(--line,#1e2a3a);
-        border-radius:14px;color:var(--mut,#8494a8)}
-      .tBos b{display:block;color:var(--txt,#e6edf3);font-size:15px;margin-bottom:4px}
+      .tYorum .p{color:var(--star,#e0930b);font-size:13.5px;letter-spacing:.12em;flex:none}
+      .tYorum p{margin:9px 0 0;color:var(--mut,#586a80);font-size:14px;line-height:1.65}
+      .tBos{text-align:center;padding:26px 16px;border:1px dashed var(--line,#dde5ef);
+        border-radius:14px;color:var(--mut,#586a80)}
+      .tBos b{display:block;color:var(--txt,#0f1b2d);font-size:15px;margin-bottom:4px}
     `;
     document.head.appendChild(s);
   }

@@ -16,7 +16,19 @@ const HESAP = (() => {
 
   const M = {
     tr: {
-      giris:'Giriş yap', kayit:'Ücretsiz hesap aç', kayitKisa:'Kayıt ol', cikis:'Çıkış',
+      giris:'Giriş yap', kayit:'Hesap oluştur', kayitKisa:'Kayıt ol', cikis:'Çıkış',
+      adSoyad:'Ad Soyad', unvan:'Ünvan', kurum:'Kurum / Okul (isteğe bağlı)',
+      sifreTekrar:'Şifre (tekrar)', sifreUyum:'Şifreler aynı değil.',
+      unvanSec:'—',
+      unvanlar:['Öğrenci','Akademisyen / araştırmacı','Yazılım geliştirici',
+                'Veri bilimci / ML mühendisi','Öğretmen / eğitmen',
+                'Başka bir alandan meraklı'],
+      rotaBas:'Bir rotayı bitirdin', rotaAlt:'# ders · # XP',
+      rotaSor:'Bu rota hakkında ne düşünüyorsun?',
+      rotaSonra:'Şimdi değil', rotaGiris:'Değerlendirmek için giriş yap',
+      sifremiUnuttum:'Şifremi unuttum', sifirlaGonder:'Sıfırlama bağlantısı gönder',
+      sifirlaBilgi:'E-postana bir sıfırlama bağlantısı gönderdik.',
+      marka:'ML Academy', markaAlt:'Yapay zekâyı sıfırdan öğren',
       eposta:'e-posta', sifre:'şifre', sifreAz:'en az 8 karakter',
       girisBas:'Tekrar hoş geldin', girisAlt:'Kaldığın yerden devam et.',
       kayitBas:'Ücretsiz hesap aç', kayitAlt:DERS_SAYISI+' dersin tamamı açılır. Kart istenmez.',
@@ -28,7 +40,7 @@ const HESAP = (() => {
       dogrula:'E-postana bir doğrulama bağlantısı gönderdik. Onayladıktan sonra giriş yapabilirsin.',
       hata:'Bir şey ters gitti',
       yorumBas:'Deneyimini yaz',
-      yorumAlt:'Yorumun okunduktan sonra yayımlanır. İstediğin zaman değiştirebilirsin.',
+      yorumAlt:'Geri dönüşün bizim için çok değerli. İstediğin zaman değiştirebilirsin.',
       ad:'görünecek ad', puanEt:'puanın', yorumMetin:'yorumun (isteğe bağlı)',
       gonder:'Gönder', guncelle:'Güncelle', sil:'Sil',
       durumBekliyor:'Yorumun sırada, henüz yayımlanmadı.',
@@ -47,7 +59,19 @@ const HESAP = (() => {
       onayla:'Onayla', reddet:'Reddet',
     },
     en: {
-      giris:'Sign in', kayit:'Create free account', kayitKisa:'Sign up', cikis:'Sign out',
+      giris:'Sign in', kayit:'Create account', kayitKisa:'Sign up', cikis:'Sign out',
+      adSoyad:'Full name', unvan:'Role', kurum:'Organisation / school (optional)',
+      sifreTekrar:'Password (again)', sifreUyum:'The passwords do not match.',
+      unvanSec:'—',
+      unvanlar:['Student','Academic / researcher','Software developer',
+                'Data scientist / ML engineer','Teacher / instructor',
+                'Curious from another field'],
+      rotaBas:'You finished a route', rotaAlt:'# lessons · # XP',
+      rotaSor:'What did you think of this route?',
+      rotaSonra:'Not now', rotaGiris:'Sign in to leave a review',
+      sifremiUnuttum:'Forgot password', sifirlaGonder:'Send reset link',
+      sifirlaBilgi:'We sent a reset link to your email.',
+      marka:'ML Academy', markaAlt:'Learn AI from zero',
       eposta:'email', sifre:'password', sifreAz:'at least 8 characters',
       girisBas:'Welcome back', girisAlt:'Pick up where you left off.',
       kayitBas:'Create a free account', kayitAlt:'All '+DERS_SAYISI+' lessons unlock. No card needed.',
@@ -59,7 +83,7 @@ const HESAP = (() => {
       dogrula:'We sent a confirmation link to your email. You can sign in once you confirm it.',
       hata:'Something went wrong',
       yorumBas:'Write about your experience',
-      yorumAlt:'Your review is published after it has been read. You can change it any time.',
+      yorumAlt:'Your feedback means a great deal to us. You can change it any time.',
       ad:'display name', puanEt:'your rating', yorumMetin:'your review (optional)',
       gonder:'Submit', guncelle:'Update', sil:'Delete',
       durumBekliyor:'Your review is queued, not published yet.',
@@ -93,97 +117,119 @@ const HESAP = (() => {
     const s = document.createElement('style');
     s.id = 'hesapStil';
     s.textContent = `
-      .hArka{position:fixed;inset:0;background:rgba(4,7,12,.86);z-index:9100;
+      .hArka{position:fixed;inset:0;background:rgba(15,27,45,.44);z-index:9100;
         display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
-      .hKart{background:var(--panel,#0f151e);border:1px solid var(--line,#1e2a3a);
+      .hKart{background:var(--panel,#ffffff);border:1px solid var(--line,#dde5ef);
         border-radius:20px;max-width:428px;width:100%;padding:34px 32px 28px;margin:auto;
-        color:var(--txt,#e6edf3);font-size:15px;
-        box-shadow:0 24px 60px rgba(0,0,0,.5)}
+        color:var(--txt,#0f1b2d);font-size:15px;
+        box-shadow:0 20px 50px rgba(15,27,45,.16)}
       .hKart .marka{font-family:var(--mono,monospace);font-size:10px;letter-spacing:.26em;
-        text-transform:uppercase;color:var(--mut,#8494a8);text-align:center;margin-bottom:18px}
-      .hArti{margin:18px 0 0;padding:0;list-style:none}
-      .hArti li{display:flex;gap:10px;align-items:flex-start;color:var(--mut,#8494a8);
+        text-transform:uppercase;color:var(--mut,#586a80);text-align:center;margin-bottom:18px}
+      .hArti{margin:20px 0 0;padding:18px 0 0;list-style:none;
+        border-top:1px solid var(--line,#dde5ef)}
+      .hArti li{display:flex;gap:10px;align-items:flex-start;color:var(--mut,#586a80);
         font-size:13.5px;line-height:1.6;margin-top:8px}
-      .hArti li::before{content:'✓';color:var(--green,#22d3a0);font-weight:800;flex:none}
+      .hArti li::before{content:'✓';color:var(--green,#0a8b68);font-weight:800;flex:none}
       .hSifreSar{position:relative}
       .hSifreSar button{position:absolute;right:10px;top:50%;transform:translateY(-50%);
-        background:none;border:0;color:var(--mut,#8494a8);font-family:var(--mono,monospace);
+        background:none;border:0;color:var(--mut,#586a80);font-family:var(--mono,monospace);
         font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;padding:4px 6px}
-      .hKart.genis{max-width:760px}
-      /* kapatma düğmesi: modalın kaçış yolu görünür olmalı */
+      .hKart.genis{max-width:620px}
       .hKart{position:relative}
       .hKapat{position:absolute;top:14px;right:16px;width:30px;height:30px;line-height:1;
-        border-radius:9px;border:1px solid var(--line,#1e2a3a);background:var(--panel2,#141c28);
-        color:var(--mut,#8494a8);font-size:19px;cursor:pointer;padding:0}
-      .hKapat:hover{color:var(--txt,#e6edf3);border-color:var(--mut,#8494a8)}
-      /* giriş/kayıt sekmeleri */
-      .hSekme{display:flex;gap:4px;background:var(--bg,#080b11);border:1px solid var(--line,#1e2a3a);
-        border-radius:12px;padding:4px;margin:0 0 20px}
-      .hSekme button{flex:1;padding:9px 12px;border:0;border-radius:9px;background:none;
-        color:var(--mut,#8494a8);font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
-      .hSekme button.on{background:var(--panel2,#141c28);color:var(--txt,#e6edf3);
-        box-shadow:0 1px 3px rgba(0,0,0,.35)}
-      /* iki sütun: solda form, sağda hesabın ne getirdiği */
-      .hIki{display:grid;grid-template-columns:1fr 236px;gap:30px;align-items:start}
-      .hSag{border-left:1px solid var(--line,#1e2a3a);padding-left:26px;padding-top:4px}
-      .hSag .hArti{margin-top:0}
-      @media(max-width:660px){
-        .hIki{grid-template-columns:1fr;gap:22px}
-        .hSag{border-left:0;border-top:1px solid var(--line,#1e2a3a);padding-left:0;padding-top:20px}
-      }
+        border-radius:9px;border:1px solid var(--line,#dde5ef);background:var(--panel2,#eef2f8);
+        color:var(--mut,#586a80);font-size:19px;cursor:pointer;padding:0}
+      .hKapat:hover{color:var(--txt,#0f1b2d);border-color:var(--mut,#586a80)}
+
+      /* marka bloğu */
+      .hBas{text-align:center;margin-bottom:22px}
+      .hMarka{font-size:24px;font-weight:850;letter-spacing:-.03em;color:var(--blue,#1668c9)}
+      .hMarkaAlt{color:var(--mut,#586a80);font-size:14px;margin-top:4px}
+
+      /* giriş / kayıt sekmesi */
+      .hSekme{display:flex;gap:4px;background:var(--panel2,#eef2f8);
+        border-radius:12px;padding:4px;margin:0 0 22px}
+      .hSekme button{flex:1;padding:10px 12px;border:0;border-radius:9px;background:none;
+        color:var(--mut,#586a80);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+      .hSekme button.on{background:var(--panel,#fff);color:var(--txt,#0f1b2d);
+        box-shadow:0 1px 3px rgba(15,27,45,.12)}
+
+      /* alanlar */
+      .hAlan{margin-bottom:15px}
+      .hAlan:last-of-type{margin-bottom:0}
+      .hIkili{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+      @media(max-width:520px){ .hIkili{grid-template-columns:1fr} }
+      .hKart select{width:100%;background:var(--panel,#fff);
+        border:1px solid var(--line,#dde5ef);border-radius:10px;padding:11px 13px;
+        color:var(--txt,#0f1b2d);font-family:inherit;font-size:15px;cursor:pointer}
+      .hKart select:focus{outline:none;border-color:var(--blue,#1668c9)}
+
+      /* alt bağlantı satırı */
+      /* rota bitiş kutlaması */
+      .hTebrik{text-align:center;padding:6px 0 2px}
+      .hTebrikIkon{width:58px;height:58px;margin:0 auto 14px;border-radius:18px;
+        display:grid;place-items:center;font-size:26px;
+        background:rgba(22,104,201,.1);border:1px solid rgba(22,104,201,.28);
+        color:var(--blue,#1668c9)}
+      .hTebrikAd{font-size:17px;font-weight:750;margin-top:6px}
+      .hTebrikSay{font-family:var(--mono,monospace);font-size:12px;letter-spacing:.1em;
+        color:var(--mut,#586a80);margin-top:7px}
+      .hAlt{text-align:center;margin-top:14px}
+      .hBag{color:var(--blue,#1668c9);font-size:13.5px;cursor:pointer}
+      .hBag:hover{text-decoration:underline}
       .hKart h3{margin:0 0 7px;font-size:25px;font-weight:850;letter-spacing:-.03em;text-align:center}
-      .hKart .alt{color:var(--mut,#8494a8);font-size:14px;margin:0 0 22px;text-align:center;line-height:1.6}
-      .hKart label{display:block;font-family:var(--mono,monospace);font-size:10.5px;
-        letter-spacing:.16em;text-transform:uppercase;color:var(--mut,#8494a8);margin:14px 0 6px}
-      .hKart input,.hKart textarea{width:100%;background:var(--bg,#080b11);
-        border:1px solid var(--line,#1e2a3a);border-radius:10px;padding:11px 13px;
-        color:var(--txt,#e6edf3);font-family:inherit;font-size:15px}
+      .hKart .alt{color:var(--mut,#586a80);font-size:14px;margin:0 0 22px;text-align:center;line-height:1.6}
+      .hKart label{display:block;font-size:13.5px;font-weight:600;
+        color:var(--txt,#0f1b2d);margin:0 0 6px}
+      .hKart input,.hKart textarea{width:100%;background:var(--panel,#fff);
+        border:1px solid var(--line,#dde5ef);border-radius:10px;padding:12px 14px;
+        color:var(--txt,#0f1b2d);font-family:inherit;font-size:15px}
       .hKart textarea{resize:vertical;min-height:88px;line-height:1.6}
-      .hKart input:focus,.hKart textarea:focus{outline:none;border-color:var(--blue,#4cc4ff)}
-      .hDug{display:flex;gap:10px;margin-top:20px}
-      .hDug button{flex:1;padding:12px 16px;border-radius:11px;font-size:14.5px;font-weight:700;
-        cursor:pointer;border:1px solid var(--line,#1e2a3a);background:var(--panel2,#141c28);
-        color:var(--txt,#e6edf3);font-family:inherit}
-      .hDug button.ana{background:var(--green,#22d3a0);border-color:var(--green,#22d3a0);color:#04120d}
+      .hKart input:focus,.hKart textarea:focus{outline:none;border-color:var(--blue,#1668c9)}
+      .hDug{display:flex;gap:10px;margin-top:22px}
+      .hDug button{flex:1;padding:13px 16px;border-radius:11px;font-size:15px;font-weight:700;
+        cursor:pointer;border:1px solid var(--line,#dde5ef);background:var(--panel2,#eef2f8);
+        color:var(--txt,#0f1b2d);font-family:inherit}
+      .hDug button.ana{background:var(--blue,#1668c9);border-color:var(--blue,#1668c9);color:#fff}
       .hDug button.ana:hover{filter:brightness(1.08)}
       .hDug.tek button{flex:1}
-      .hDug button.teh{color:var(--red,#f87171);border-color:rgba(248,113,113,.4)}
-      .hDug button:hover{border-color:var(--mut,#8494a8)}
+      .hDug button.teh{color:var(--red,#cf2f2f);border-color:rgba(248,113,113,.4)}
+      .hDug button:hover{border-color:var(--mut,#586a80)}
       .hGecis{display:block;text-align:center;margin-top:15px;font-size:13px;
-        color:var(--blue,#4cc4ff);cursor:pointer}
+        color:var(--blue,#1668c9);cursor:pointer}
       .hAyrac{display:flex;align-items:center;gap:12px;margin:20px 0 4px;
-        color:var(--mut,#8494a8);font-size:12px}
-      .hAyrac::before,.hAyrac::after{content:'';flex:1;height:1px;background:var(--line,#1e2a3a)}
+        color:var(--mut,#586a80);font-size:12px}
+      .hAyrac::before,.hAyrac::after{content:'';flex:1;height:1px;background:var(--line,#dde5ef)}
       .hSos{display:flex;flex-direction:column;gap:9px;margin-top:12px}
       .hSos button{display:flex;align-items:center;justify-content:center;gap:10px;
         padding:12px 16px;border-radius:12px;font-size:14.5px;font-weight:600;cursor:pointer;
-        border:1px solid var(--line,#1e2a3a);background:var(--panel2,#141c28);
-        color:var(--txt,#e6edf3);font-family:inherit}
+        border:1px solid var(--line,#dde5ef);background:var(--panel2,#eef2f8);
+        color:var(--txt,#0f1b2d);font-family:inherit}
       .hSos svg{width:18px;height:18px;flex:none}
-      .hSos button:hover{border-color:var(--mut,#8494a8)}
-      .hKilitMad{margin:14px 0 0;padding-left:18px;color:var(--mut,#8494a8);
+      .hSos button:hover{border-color:var(--mut,#586a80)}
+      .hKilitMad{margin:14px 0 0;padding-left:18px;color:var(--mut,#586a80);
         font-size:13.5px;line-height:1.9}
       .hMesaj{margin-top:14px;padding:10px 13px;border-radius:10px;font-size:13.5px;line-height:1.55}
-      .hMesaj.iyi{background:rgba(34,211,160,.1);color:var(--green,#22d3a0)}
-      .hMesaj.kotu{background:rgba(248,113,113,.1);color:var(--red,#f87171)}
+      .hMesaj.iyi{background:rgba(34,211,160,.1);color:var(--green,#0a8b68)}
+      .hMesaj.kotu{background:rgba(248,113,113,.1);color:var(--red,#cf2f2f)}
       .hYildiz{display:flex;gap:6px;margin-top:6px}
-      .hYildiz span{font-size:30px;color:var(--line,#1e2a3a);cursor:pointer;line-height:1}
-      .hYildiz span.dolu{color:var(--yellow,#facc15)}
+      .hYildiz span{font-size:30px;color:var(--line,#dde5ef);cursor:pointer;line-height:1}
+      .hYildiz span.dolu{color:var(--star,#e0930b)}
       .hUst{display:flex;gap:9px;align-items:center}
-      .hUst button{background:none;border:1px solid var(--line,#1e2a3a);color:var(--mut,#8494a8);
+      .hUst button{background:none;border:1px solid var(--line,#dde5ef);color:var(--mut,#586a80);
         font-family:var(--mono,monospace);font-size:11px;padding:6px 12px;border-radius:8px;cursor:pointer}
-      .hUst button:hover{color:var(--txt,#e6edf3);border-color:var(--mut,#8494a8)}
-      .hUst button.vurgu{color:var(--green,#22d3a0);border-color:rgba(34,211,160,.4)}
+      .hUst button:hover{color:var(--txt,#0f1b2d);border-color:var(--mut,#586a80)}
+      .hUst button.vurgu{color:var(--green,#0a8b68);border-color:rgba(34,211,160,.4)}
       /* kayıt ol: sayfadaki asıl eylem, dolu düğme */
-      .hUst button.birincil{background:var(--green,#22d3a0);border-color:var(--green,#22d3a0);
-        color:#04120d;font-weight:800}
-      .hUst button.birincil:hover{filter:brightness(1.08);color:#04120d}
+      .hUst button.birincil{background:var(--green,#0a8b68);border-color:var(--green,#0a8b68);
+        color:#fff;font-weight:800}
+      .hUst button.birincil:hover{filter:brightness(1.08);color:#fff}
       @media(max-width:400px){ .hUst button{padding:6px 9px;font-size:10.5px} }
-      .hMod{border:1px solid var(--line,#1e2a3a);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+      .hMod{border:1px solid var(--line,#dde5ef);border-radius:12px;padding:14px 16px;margin-bottom:10px}
       .hMod .ust{display:flex;justify-content:space-between;align-items:center;gap:10px}
       .hMod .ad{font-weight:700}
-      .hMod .p{color:var(--yellow,#facc15);letter-spacing:.1em}
-      .hMod p{margin:8px 0 0;color:var(--mut,#8494a8);font-size:14px;line-height:1.6}
+      .hMod .p{color:var(--star,#e0930b);letter-spacing:.1em}
+      .hMod p{margin:8px 0 0;color:var(--mut,#586a80);font-size:14px;line-height:1.6}
     `;
     document.head.appendChild(s);
   }
@@ -264,59 +310,115 @@ const HESAP = (() => {
   }
 
   /* ── giriş / kayıt ── */
-  function girisEkrani(kayitMi){
-    /* Sekmeli düzen: hangi moddasın ve diğerine nasıl geçersin, ikisi de tek
-       bakışta görünür. Önceden yalnızca altta küçük bir bağlantı vardı.
-       Faydalar her iki modda da sağ sütunda durur; geniş ekranda iki sütun,
-       darda alt alta. */
-    const arka = kart(`
-      <div class="hIki">
-        <div class="hSol">
-          <div class="marka">ML Academy</div>
-          <div class="hSekme" role="tablist">
-            <button data-k="0" class="${kayitMi ? '' : 'on'}">${t.giris}</button>
-            <button data-k="1" class="${kayitMi ? 'on' : ''}">${t.kayitKisa}</button>
-          </div>
-          <h3>${kayitMi ? t.kayitBas : t.girisBas}</h3>
-          <p class="alt">${kayitMi ? t.kayitAlt : t.girisAlt}</p>
-          ${sosyalHTML()}
-          <label>${t.eposta}</label>
-          <input type="email" id="hE" autocomplete="email" placeholder="ad@ornek.com">
-          <label>${t.sifre}${kayitMi ? ' · ' + t.sifreAz : ''}</label>
-          <div class="hSifreSar">
-            <input type="password" id="hS" autocomplete="${kayitMi?'new-password':'current-password'}">
-            <button type="button" id="hGoz">${t.goster}</button>
-          </div>
-          <div class="hDug tek">
-            <button id="hTamam" class="ana">${kayitMi ? t.kayit : t.giris}</button>
-          </div>
-        </div>
-        <aside class="hSag">
-          <div class="marka" style="text-align:left;margin-bottom:14px">${t.artiBas}</div>
-          <ul class="hArti">${t.arti.map(x => '<li>'+x+'</li>').join('')}</ul>
-        </aside>
-      </div>`, true);
+  /* ══ GİRİŞ / KAYIT PENCERESİ ══
+     Tek kart, üstte marka, altında sekme. Kayıt formu geniş: ad, ünvan,
+     kurum, e-posta ve iki kez şifre. Giriş formu kısa kalır, çünkü giriş
+     yapan kişi zaten bilgi vermiş.
 
-    arka.querySelectorAll('.hSekme button').forEach(b2 =>
-      b2.onclick = () => { if (b2.dataset.k === (kayitMi?'1':'0')) return; girisEkrani(b2.dataset.k === '1'); });
+     Ünvan isteğe bağlıdır ve atlanabilir. Zorunlu yapılmadı: ücretsiz bir
+     kursta her zorunlu alan kayıt tamamlama oranını düşürür. */
+  function girisEkrani(kayitMi, sifirlamaMi){
+    const alan = (etiket, ic) => `<div class="hAlan"><label>${etiket}</label>${ic}</div>`;
+
+    const sifirlamaHTML = `
+      <p class="alt">${t.girisAlt}</p>
+      ${alan(t.eposta, '<input type="email" id="hE" autocomplete="email" placeholder="ad@ornek.com">')}
+      <div class="hDug tek"><button id="hTamam" class="ana">${t.sifirlaGonder}</button></div>
+      <div class="hAlt"><span class="hBag" id="hGeriGiris">← ${t.giris}</span></div>`;
+
+    const girisHTML = `
+      ${sosyalHTML()}
+      ${alan(t.eposta, '<input type="email" id="hE" autocomplete="email" placeholder="ad@ornek.com">')}
+      ${alan(t.sifre, `<div class="hSifreSar">
+          <input type="password" id="hS" autocomplete="current-password">
+          <button type="button" id="hGoz">${t.goster}</button></div>`)}
+      <div class="hDug tek"><button id="hTamam" class="ana">${t.giris}</button></div>
+      <div class="hAlt"><span class="hBag" id="hUnut">${t.sifremiUnuttum}</span></div>`;
+
+    const kayitHTML = `
+      ${sosyalHTML()}
+      ${alan(t.adSoyad, '<input type="text" id="hAd" autocomplete="name">')}
+      <div class="hIkili">
+        ${alan(t.unvan, `<select id="hUn"><option value="">${t.unvanSec}</option>` +
+          t.unvanlar.map(u => `<option>${u}</option>`).join('') + '</select>')}
+        ${alan(t.kurum, '<input type="text" id="hKu" autocomplete="organization">')}
+      </div>
+      ${alan(t.eposta, '<input type="email" id="hE" autocomplete="email" placeholder="ad@ornek.com">')}
+      ${alan(t.sifre + ' · ' + t.sifreAz, `<div class="hSifreSar">
+          <input type="password" id="hS" autocomplete="new-password">
+          <button type="button" id="hGoz">${t.goster}</button></div>`)}
+      ${alan(t.sifreTekrar, '<input type="password" id="hS2" autocomplete="new-password">')}
+      <div class="hDug tek"><button id="hTamam" class="ana">${t.kayit}</button></div>`;
+
+    const arka = kart(`
+      <div class="hBas">
+        <div class="hMarka">${t.marka}</div>
+        <div class="hMarkaAlt">${t.markaAlt}</div>
+      </div>
+      ${sifirlamaMi ? '' : `
+      <div class="hSekme" role="tablist">
+        <button data-k="0" class="${kayitMi ? '' : 'on'}">${t.giris}</button>
+        <button data-k="1" class="${kayitMi ? 'on' : ''}">${t.kayitKisa}</button>
+      </div>`}
+      ${sifirlamaMi ? sifirlamaHTML : (kayitMi ? kayitHTML : girisHTML)}
+      ${kayitMi && !sifirlamaMi ? `<ul class="hArti">${t.arti.map(x => '<li>'+x+'</li>').join('')}</ul>` : ''}`,
+      kayitMi && !sifirlamaMi);
+
+    const q = sec => arka.querySelector(sec);
+
+    arka.querySelectorAll('.hSekme button').forEach(d =>
+      d.onclick = () => { if (d.dataset.k === (kayitMi ? '1' : '0')) return;
+                          girisEkrani(d.dataset.k === '1'); });
+    if (q('#hUnut')) q('#hUnut').onclick = () => girisEkrani(false, true);
+    if (q('#hGeriGiris')) q('#hGeriGiris').onclick = () => girisEkrani(false);
     sosyalBagla(arka);
-    const gz = arka.querySelector('#hGoz');
-    gz.onclick = () => { const i = arka.querySelector('#hS');
-      const gizli = i.type === 'password';
-      i.type = gizli ? 'text' : 'password';
-      gz.textContent = gizli ? t.gizle : t.goster; };
-    arka.querySelector('#hE').addEventListener('keydown', e => {
-      if (e.key === 'Enter') arka.querySelector('#hS').focus(); });
-    arka.querySelector('#hS').addEventListener('keydown', e => {
-      if (e.key === 'Enter') arka.querySelector('#hTamam').click(); });
-    setTimeout(() => arka.querySelector('#hE').focus(), 30);
-    arka.querySelector('#hTamam').onclick = async () => {
-      const eposta = arka.querySelector('#hE').value.trim();
-      const sifre  = arka.querySelector('#hS').value;
-      if (!eposta || !sifre) return;
+
+    const gz = q('#hGoz');
+    if (gz) gz.onclick = () => {
+      const inp = q('#hS'), gizli = inp.type === 'password';
+      inp.type = gizli ? 'text' : 'password';
+      gz.textContent = gizli ? t.gizle : t.goster;
+    };
+
+    /* Enter ile ilerleme: son alanda gönder, öncesinde sonrakine geç. */
+    const sira = [...arka.querySelectorAll('input')];
+    sira.forEach((inp, k) => inp.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (k < sira.length - 1) sira[k+1].focus(); else q('#hTamam').click();
+    }));
+    setTimeout(() => { const ilk = sira[0]; if (ilk) ilk.focus(); }, 30);
+
+    q('#hTamam').onclick = async () => {
+      const eposta = (q('#hE') || {}).value ? q('#hE').value.trim() : '';
+      if (!eposta) return;
+
+      /* şifre sıfırlama */
+      if (sifirlamaMi){
+        try {
+          const { error } = await sb.auth.resetPasswordForEmail(eposta);
+          if (error) throw error;
+          mesaj(arka, t.sifirlaBilgi, true);
+        } catch (e){ mesaj(arka, e.message || t.hata, false); }
+        return;
+      }
+
+      const sifre = q('#hS').value;
+      if (!sifre) return;
+
       try {
         if (kayitMi){
-          const { error } = await sb.auth.signUp({ email:eposta, password:sifre });
+          if (sifre !== q('#hS2').value){ mesaj(arka, t.sifreUyum, false); return; }
+          /* Ad, ünvan ve kurum auth metadata'sına yazılır; profil satırı
+             oturum açılınca bundan doldurulur. */
+          const { error } = await sb.auth.signUp({
+            email: eposta, password: sifre,
+            options: { data: {
+              display_name: q('#hAd').value.trim(),
+              title:        q('#hUn').value,
+              organization: q('#hKu').value.trim(),
+            } },
+          });
           if (error) throw error;
           mesaj(arka, t.dogrula, true);
         } else {
@@ -328,11 +430,36 @@ const HESAP = (() => {
     };
   }
 
+
   /* ── yorum ── */
   async function kendiYorumu(){
     if (!kullanici) return null;
     const { data } = await sb.from('review').select('*').eq('user_id', kullanici.id).maybeSingle();
     return data || null;
+  }
+
+  /* ══ ROTA BİTİŞ EKRANI ══
+     Bir rota tamamlanınca çıkar. Amaç kutlamak ve o anda, deneyim tazeyken
+     değerlendirme istemek. Zorunlu değil: "Şimdi değil" ile geçilebilir,
+     ama index.html her rota için yalnızca BİR KEZ gösterir. */
+  function rotaTebrik(o){
+    o = o || {};
+    const arka = kart(`
+      <div class="hTebrik">
+        <div class="hTebrikIkon">${o.ikon || '◆'}</div>
+        <h3>${t.rotaBas}</h3>
+        <div class="hTebrikAd">${kacir(o.ad || '')}</div>
+        <div class="hTebrikSay">${(t.rotaAlt || '# ders · # XP')
+          .replace('#', o.ders || 0).replace('#', o.xp || 0)}</div>
+      </div>
+      <p class="alt" style="margin-top:18px">${t.rotaSor}</p>
+      <div class="hDug">
+        <button id="hSonra">${t.rotaSonra}</button>
+        <button id="hDegerlendir" class="ana">${kullanici ? t.yorumBas : t.rotaGiris}</button>
+      </div>`);
+    arka.querySelector('#hSonra').onclick = kapat;
+    arka.querySelector('#hDegerlendir').onclick = () =>
+      kullanici ? yorumEkrani() : girisEkrani(true);
   }
 
   async function yorumEkrani(){
@@ -478,7 +605,7 @@ const HESAP = (() => {
   /* Dil çubuğundan değişince giriş/yorum ekranlarının dili de değişsin. */
   function dil(d){ t = M[d === 'en' ? 'en' : 'tr']; cubukCiz(); }
 
-  return { kur, dinle, dil, girisEkrani, kilitEkrani, yorumEkrani, modEkrani,
+  return { kur, dinle, dil, girisEkrani, kilitEkrani, yorumEkrani, modEkrani, rotaTebrik,
            get girisli(){ return !!kullanici; },
            get kullanici(){ return kullanici; }, get moderator(){ return moderator; } };
 })();
