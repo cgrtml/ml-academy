@@ -73,6 +73,7 @@ const HESAP = (() => {
                 'Hesap açmak ücretsiz, kart istenmez.',
                 'Hesabını istediğin zaman silebilirsin.'],
       modBas:'Onay bekleyen yorumlar', modYok:'Bekleyen yorum yok.',
+      modSayi:'# yorum onay bekliyor', modYukleniyor:'Yükleniyor…',
       onayla:'Onayla', reddet:'Reddet',
     },
     en: {
@@ -133,6 +134,7 @@ const HESAP = (() => {
                 'Creating an account is free, no card needed.',
                 'You can delete your account whenever you want.'],
       modBas:'Reviews awaiting approval', modYok:'Nothing pending.',
+      modSayi:'# reviews awaiting approval', modYukleniyor:'Loading…',
       onayla:'Approve', reddet:'Reject',
     },
   };
@@ -651,14 +653,46 @@ const HESAP = (() => {
     };
   }
 
-  /* ── moderasyon ── */
+  /* ── moderasyon ──
+     ÖNCE PENCERE, SONRA VERİ.
+     Eski sürüm ilk satırda sorguyu `await` ediyor ve pencereyi ancak sorgu
+     döndükten sonra çiziyordu. Sorgu takılır ya da hata verirse düğmeye
+     basıldığında ekranda hiçbir şey olmuyordu; kullanıcı düğmenin bozuk
+     olduğunu sanıyordu. Aynı hata çıkış düğmesinde de vardı.
+
+     Artık pencere hemen açılıyor, içine "Yükleniyor" yazıyor, veri gelince
+     doluyor. Hata gelirse hata metni pencerenin içinde görünüyor. */
   async function modEkrani(){
-    const { data } = await sb.from('review').select('*')
-      .eq('status','pending').order('created_at');
-    const liste = (data || []).map(r => `
+    const arka = kart(`
+      <h3>${t.modBas}</h3>
+      <p class="alt" id="mDurum">${t.modYukleniyor}</p>
+      <div id="mListe"></div>
+      <div class="hDug"><button id="hIptal">${t.kapat}</button></div>`, true);
+    arka.querySelector('#hIptal').onclick = kapat;
+
+    const durum = arka.querySelector('#mDurum');
+    const yer   = arka.querySelector('#mListe');
+
+    let data = null, error = null;
+    try {
+      ({ data, error } = await sb.from('review').select('*')
+        .eq('status','pending').order('created_at'));
+    } catch (e){ error = e; }
+
+    /* Pencere kapanmış olabilir: kullanıcı beklerken Escape'e basmıştır. */
+    if (!document.body.contains(arka)) return;
+
+    if (error){ durum.textContent = hataCevir(error); return; }
+
+    const kayitlar = data || [];
+    durum.textContent = kayitlar.length
+      ? t.modSayi.replace('#', kayitlar.length)
+      : t.modYok;
+
+    yer.innerHTML = kayitlar.map(r => `
       <div class="hMod" data-id="${r.id}">
         <div class="ust"><span class="ad">${kacir(r.display_name)}</span>
-          <span class="p">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span></div>
+          <span class="p">${'★'.repeat(r.rating || 0)}${'☆'.repeat(5 - (r.rating || 0))}</span></div>
         ${r.body ? `<p>${kacir(r.body)}</p>` : ''}
         <div class="hDug">
           <button class="teh" data-is="red">${t.reddet}</button>
@@ -666,20 +700,21 @@ const HESAP = (() => {
         </div>
       </div>`).join('');
 
-    const arka = kart(`
-      <h3>${t.modBas}</h3>
-      <p class="alt">${(data || []).length || t.modYok}</p>
-      ${liste}
-      <div class="hDug"><button id="hIptal">${t.kapat}</button></div>`, true);
-
-    arka.querySelector('#hIptal').onclick = kapat;
-    arka.querySelectorAll('.hMod button').forEach(d => {
+    yer.querySelectorAll('.hMod button').forEach(d => {
       d.onclick = async () => {
-        const id = d.closest('.hMod').dataset.id;
-        await sb.from('review')
+        const kutu = d.closest('.hMod');
+        kutu.querySelectorAll('button').forEach(x => x.disabled = true);
+        const { error: hata } = await sb.from('review')
           .update({ status: d.dataset.is === 'onay' ? 'approved' : 'rejected' })
-          .eq('id', id);
-        modEkrani(); duyur();
+          .eq('id', kutu.dataset.id);
+        if (hata){
+          durum.textContent = hataCevir(hata);
+          kutu.querySelectorAll('button').forEach(x => x.disabled = false);
+          return;
+        }
+        bekleyen = await bekleyenSayisi();
+        cubukCiz(); duyur();
+        modEkrani();
       };
     });
   }
