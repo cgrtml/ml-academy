@@ -44,6 +44,18 @@ const HESAP = (() => {
             'Hesabını istediğin zaman silebilirsin'],
       dogrula:'E-postana bir doğrulama bağlantısı gönderdik. Onayladıktan sonra giriş yapabilirsin.',
       hata:'Bir şey ters gitti',
+      hataGiris:'E-posta ya da şifre hatalı.',
+      hataKayitli:'Bu e-posta zaten kayıtlı. Giriş yap sekmesinden devam edebilirsin.',
+      hataOnaysiz:'Önce e-postandaki doğrulama bağlantısına tıkla.',
+      hataEposta:'Bu e-posta adresi geçerli görünmüyor.',
+      hataSifreKisa:'Şifre en az 8 karakter olmalı.',
+      hataBekle:'Çok sık denendi. # saniye sonra tekrar dene.',
+      hataAg:'Bağlantı kurulamadı. İnterneti kontrol edip tekrar dene.',
+      gonderiliyor:'Gönderiliyor…',
+      basariBas:'Hesabın açıldı',
+      basariAlt:'# adresine bir doğrulama bağlantısı gönderdik. Bağlantıya tıkladıktan sonra giriş yapabilirsin.',
+      basariNot:'Birkaç dakika içinde gelmezse spam klasörüne bak.',
+      basariKapat:'Tamam',
       yorumBas:'Deneyimini yaz',
       yorumAlt:'Geri dönüşün bizim için çok değerli. İstediğin zaman değiştirebilirsin.',
       ad:'Görünecek ad', puanEt:'Puanın', yorumMetin:'Yorumun (isteğe bağlı)',
@@ -92,6 +104,18 @@ const HESAP = (() => {
             'Delete your account whenever you want'],
       dogrula:'We sent a confirmation link to your email. You can sign in once you confirm it.',
       hata:'Something went wrong',
+      hataGiris:'Email or password is wrong.',
+      hataKayitli:'This email is already registered. Use the Sign in tab.',
+      hataOnaysiz:'Please click the confirmation link in your email first.',
+      hataEposta:'That email address does not look valid.',
+      hataSifreKisa:'Password must be at least 8 characters.',
+      hataBekle:'Too many attempts. Try again in # seconds.',
+      hataAg:'Could not connect. Check your internet and try again.',
+      gonderiliyor:'Sending…',
+      basariBas:'Your account is ready',
+      basariAlt:'We sent a confirmation link to #. Click it and you can sign in.',
+      basariNot:'If it does not arrive within a few minutes, check your spam folder.',
+      basariKapat:'Done',
       yorumBas:'Write about your experience',
       yorumAlt:'Your feedback means a great deal to us. You can change it any time.',
       ad:'Display name', puanEt:'Your rating', yorumMetin:'Your review (optional)',
@@ -222,6 +246,15 @@ const HESAP = (() => {
       .hSos button:hover{border-color:var(--mut,#586a80)}
       .hKilitMad{margin:14px 0 0;padding-left:18px;color:var(--mut,#586a80);
         font-size:13.5px;line-height:1.9}
+      /* kayıt sonrası onay ekranı */
+      .hBasari{text-align:center;padding:6px 2px 0}
+      .hBasari h3{margin:0 0 8px}
+      .hBasariIkon{width:56px;height:56px;margin:0 auto 20px;border-radius:50%;
+        display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:800;
+        background:rgba(34,211,160,.13);color:var(--green,#0a8b68)}
+      .hBasariNot{margin:12px 0 0;font-size:13px;line-height:1.6;color:var(--mut,#586a80)}
+      /* istek uçarken düğme kilitli: çift gönderim hız sınırına takılıyordu */
+      .hDug button:disabled{opacity:.55;cursor:default;filter:none}
       .hMesaj{margin-top:14px;padding:10px 13px;border-radius:10px;font-size:13.5px;line-height:1.55}
       .hMesaj.iyi{background:rgba(34,211,160,.1);color:var(--green,#0a8b68)}
       .hMesaj.kotu{background:rgba(248,113,113,.1);color:var(--red,#cf2f2f)}
@@ -274,6 +307,47 @@ const HESAP = (() => {
     arka.querySelector('.hKart').appendChild(d);
   };
 
+  /* ── Supabase hatalarını çevir ──
+     Supabase hata metinleri her zaman İngilizce döner. Ham hâlde göstermek
+     Türkçe bir arayüzde hem yabancı duruyor hem de kullanıcıya ne yapması
+     gerektiğini söylemiyor ("For security purposes, you can only request
+     this after 49 seconds."). Tanıdığımız durumlar kendi metnimize
+     çevriliyor. Tanımadığımız bir hata gelirse ham metin gösterilir:
+     sessizce yutmak, sorunu bulmayı imkânsız kılardı. */
+  const hataCevir = e => {
+    const m = String((e && e.message) || e || '');
+    const sn = m.match(/after (\d+) seconds?/i);
+    if (sn) return t.hataBekle.replace('#', sn[1]);
+    if (/rate limit|too many requests/i.test(m))       return t.hataBekle.replace('#', '60');
+    if (/invalid login credentials/i.test(m))          return t.hataGiris;
+    if (/already registered|already exists|user already/i.test(m)) return t.hataKayitli;
+    if (/not confirmed/i.test(m))                      return t.hataOnaysiz;
+    if (/invalid email|unable to validate email/i.test(m)) return t.hataEposta;
+    if (/password should be at least|too short/i.test(m))  return t.hataSifreKisa;
+    if (/failed to fetch|networkerror|load failed/i.test(m)) return t.hataAg;
+    return m || t.hata;
+  };
+
+  /* ── kayıt sonrası ekran ──
+     Kayıt başarılı olunca formu YERİNDE BIRAKMAK hataydı: kullanıcı
+     düğmenin hâlâ basılabilir olduğunu görüp tekrar basıyor, ikinci istek
+     Supabase'in hız sınırına takılıyor ve ekranda kırmızı bir hata
+     beliriyor. Oysa kayıt olmuştu. Bu yüzden form tamamen kaldırılıyor. */
+  function basariEkrani(arka, eposta){
+    const k = arka.querySelector('.hKart');
+    k.classList.remove('genis');
+    k.innerHTML = `<button class="hKapat" aria-label="${t.kapat}">×</button>
+      <div class="hBasari">
+        <div class="hBasariIkon">✓</div>
+        <h3>${t.basariBas}</h3>
+        <p class="alt">${t.basariAlt.replace('#', '<b>' + kacir(eposta) + '</b>')}</p>
+        <p class="hBasariNot">${t.basariNot}</p>
+        <div class="hDug tek"><button id="hBitti" class="ana">${t.basariKapat}</button></div>
+      </div>`;
+    k.querySelector('.hKapat').onclick = kapat;
+    k.querySelector('#hBitti').onclick = kapat;
+  }
+
   const IKON = {
     google:'<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.6 12.2c0-.8-.1-1.4-.2-2H12v3.8h6c-.1 1-.8 2.5-2.2 3.5l3.4 2.6c2-1.8 3.4-4.6 3.4-7.9z"/><path fill="#34A853" d="M12 23c2.9 0 5.4-1 7.2-2.6l-3.4-2.6c-.9.6-2.1 1-3.8 1-2.9 0-5.4-1.9-6.3-4.6l-3.5 2.7C4 20.5 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.7 14.2c-.2-.7-.4-1.4-.4-2.2s.1-1.5.4-2.2L2.2 7.1C1.4 8.6 1 10.2 1 12s.4 3.4 1.2 4.9l3.5-2.7z"/><path fill="#EA4335" d="M12 4.8c1.6 0 2.7.7 3.4 1.3l2.9-2.9C16.5 1.6 14 .6 12 .6 7.7.6 4 3.1 2.2 7.1l3.5 2.7C6.6 6.9 9.1 4.8 12 4.8z"/></svg>',
     github:'<svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 .5C5.7.5.6 5.6.6 12c0 5 3.3 9.3 7.8 10.8.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.1.1 1.7 1.2 1.7 1.2 1 1.8 2.7 1.3 3.4 1 .1-.7.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.8 0-1.3.5-2.3 1.2-3.2-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0C17.1 4.5 18 4.8 18 4.8c.7 1.6.3 2.8.1 3.1.8.9 1.2 1.9 1.2 3.2 0 4.5-2.7 5.5-5.3 5.8.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6 4.6-1.5 7.8-5.8 7.8-10.8C23.4 5.6 18.3.5 12 .5z"/></svg>',
@@ -300,7 +374,7 @@ const HESAP = (() => {
             options: { redirectTo: location.origin + location.pathname },
           });
           if (error) throw error;
-        } catch (e){ mesaj(arka, e.message || t.hata, false); }
+        } catch (e){ mesaj(arka, hataCevir(e), false); }
       };
     });
   }
@@ -403,17 +477,37 @@ const HESAP = (() => {
     }));
     setTimeout(() => { const ilk = sira[0]; if (ilk) ilk.focus(); }, 30);
 
-    q('#hTamam').onclick = async () => {
+    /* Düğme kilidi. Ağ isteği uçarken ikinci kez basılabilmesi gerçek bir
+       hataydı: Supabase aynı adrese üst üste kayıt isteğini hız sınırına
+       takıyor, kullanıcı da kaydın başarısız olduğunu sanıyordu. */
+    const dugme = q('#hTamam');
+    let calisiyor = false;
+    const kilitle = () => {
+      calisiyor = true;
+      dugme.dataset.eski = dugme.textContent;
+      dugme.textContent  = t.gonderiliyor;
+      dugme.disabled     = true;
+    };
+    const coz = () => {
+      calisiyor = false;
+      if (dugme.dataset.eski) dugme.textContent = dugme.dataset.eski;
+      dugme.disabled = false;
+    };
+
+    dugme.onclick = async () => {
+      if (calisiyor) return;
       const eposta = (q('#hE') || {}).value ? q('#hE').value.trim() : '';
 
       /* şifre sıfırlama */
       if (sifirlamaMi){
         if (!eposta){ mesaj(arka, t.zorunluEposta, false); return; }
+        kilitle();
         try {
           const { error } = await sb.auth.resetPasswordForEmail(eposta);
           if (error) throw error;
           mesaj(arka, t.sifirlaBilgi, true);
-        } catch (e){ mesaj(arka, e.message || t.hata, false); }
+        } catch (e){ mesaj(arka, hataCevir(e), false); }
+        coz();
         return;
       }
 
@@ -430,13 +524,16 @@ const HESAP = (() => {
       if (kayitMi ? sifre.length < 8 : !sifre){
         mesaj(arka, t.zorunluSifre, false); q('#hS').focus(); return;
       }
+      if (kayitMi && sifre !== q('#hS2').value){
+        mesaj(arka, t.sifreUyum, false); q('#hS2').focus(); return;
+      }
 
+      kilitle();
       try {
         if (kayitMi){
-          if (sifre !== q('#hS2').value){ mesaj(arka, t.sifreUyum, false); q('#hS2').focus(); return; }
-          /* Ad, ünvan ve kurum auth metadata'sına yazılır; profil satırı
-             oturum açılınca bundan doldurulur. */
-          const { error } = await sb.auth.signUp({
+          /* Ad, ünvan ve kurum auth metadata'sına yazılır; profil satırını
+             veritabanı tarafındaki tetikleyici bundan doldurur. */
+          const { data, error } = await sb.auth.signUp({
             email: eposta, password: sifre,
             options: { data: {
               display_name: q('#hAd').value.trim(),
@@ -445,13 +542,22 @@ const HESAP = (() => {
             } },
           });
           if (error) throw error;
-          mesaj(arka, t.dogrula, true);
+
+          /* Supabase, kayıtlı bir e-postayla tekrar kayıt olunduğunda
+             güvenlik gereği hata döndürmez; hesabın var olduğunu ele
+             vermemek için normal bir yanıt verir. Ayırt edici işaret
+             BOŞ identities dizisidir. */
+          const zatenVar = data && data.user && Array.isArray(data.user.identities)
+                           && data.user.identities.length === 0;
+          if (zatenVar){ mesaj(arka, t.hataKayitli, false); coz(); return; }
+
+          basariEkrani(arka, eposta);   // düğme artık yok, kilit de gereksiz
         } else {
           const { error } = await sb.auth.signInWithPassword({ email:eposta, password:sifre });
           if (error) throw error;
           kapat();
         }
-      } catch (e){ mesaj(arka, e.message || t.hata, false); }
+      } catch (e){ mesaj(arka, hataCevir(e), false); coz(); }
     };
   }
 
@@ -536,7 +642,7 @@ const HESAP = (() => {
           : await sb.from('review').insert(satir);
         if (error) throw error;
         kapat(); duyur();
-      } catch (e){ mesaj(arka, e.message || t.hata, false); }
+      } catch (e){ mesaj(arka, hataCevir(e), false); }
     };
   }
 
