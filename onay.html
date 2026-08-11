@@ -180,6 +180,8 @@ document.documentElement.setAttribute('data-tema', temaOku());
       enNotAdres:'Your new email address has been confirmed.',
       enNotSifre:'Your link is verified. Choose a new password above.',
       enNotHata:'This link has expired or was already used. Please request a new one from the site.',
+      enNotKurulum:'Site settings could not be loaded. Please try again shortly.',
+      enNotEksik:'The link looks incomplete. Make sure you copied the whole address from the email.',
     },
     en:{
       bant:'Learn AI from zero',
@@ -211,6 +213,7 @@ document.documentElement.setAttribute('data-tema', temaOku());
       hataDug:'Back to the site',
 
       enNot:'', enNotAdres:'', enNotSifre:'', enNotHata:'',
+      enNotKurulum:'', enNotEksik:'',
     },
   };
   const t = M[DIL];
@@ -235,7 +238,8 @@ document.documentElement.setAttribute('data-tema', temaOku());
 
   function hata(mesaj, enNot){
     ekran('kotu', t.hataBas, mesaj,
-      `<a class="dug" href="index.html">${kacir(t.hataDug)}</a>`, enNot || t.enNotHata);
+      `<a class="dug" href="index.html">${kacir(t.hataDug)}</a>`,
+      enNot === undefined ? t.enNotHata : enNot);
   }
 
   /* ── bağlantıdaki değerler ──
@@ -249,8 +253,14 @@ document.documentElement.setAttribute('data-tema', temaOku());
   const jeton = deger('token_hash') || deger('token');
   const tur   = deger('type') || 'signup';
 
-  if (!window.SUPA || !SUPA.hazir || !window.supabase){ hata(t.hataKurulum); return; }
-  if (!jeton){ hata(t.hataEksik); return; }
+  /* SUPA'ya `window.SUPA` diye BAKILMAZ. yapilandirma.js ayarları
+     `const SUPA = {...}` ile tanımlıyor ve üst düzey `const` window
+     nesnesine yazılmaz, ayrı bir sözlükte durur. `window.SUPA` her zaman
+     undefined döner; ilk sürümde bu yüzden dosya yüklendiği hâlde
+     "ayarlar yüklenemedi" hatası veriyordu. */
+  const ayarVar = typeof SUPA !== 'undefined' && SUPA.hazir;
+  if (!ayarVar || !window.supabase){ hata(t.hataKurulum, t.enNotKurulum); return; }
+  if (!jeton){ hata(t.hataEksik, t.enNotEksik); return; }
 
   const sb = window.supabase.createClient(SUPA.url, SUPA.anonKey);
 
