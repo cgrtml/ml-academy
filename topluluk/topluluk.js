@@ -194,16 +194,29 @@ const TOPLULUK = (() => {
     t = M[o.dil === 'en' ? 'en' : 'tr'];
     const hedef = document.getElementById(o.hedef || 'topluluk');
     if (!hedef) return;
-    hedef.style.display = 'none';           // arka uç yoksa görünmez kalır
+
+    /* Bölüm YALNIZCA ilk kurulumda gizleniyor. Eskiden her tazelemede
+       önce display:none yapılıp veri beklendiği için bölüm gözle görülür
+       biçimde kırpışıyordu. Bir kez çizildikten sonra eski içerik yerinde
+       kalıyor, yenisi gelince sessizce değişiyor. */
+    if (!hedef.dataset.kuruldu) hedef.style.display = 'none';
 
     if (!o.url || !o.anonKey || typeof window.supabase === 'undefined'){
       console.info('topluluk: supabase yapılandırılmadı, bölüm gizli');
       return;
     }
-    sb = window.supabase.createClient(o.url, o.anonKey);
+
+    /* Kendi istemcisini yaratmıyor: sayfada tek istemci olmalı, yoksa iki
+       istemci birbirine kimlik olayı yayıp sonsuz tazeleme döngüsü kuruyor.
+       Ayrıntı yapilandirma.js içindeki SUPA.istemci notunda. */
+    sb = (typeof SUPA !== 'undefined' && SUPA.istemci)
+       ? SUPA.istemci()
+       : window.supabase.createClient(o.url, o.anonKey);
+    if (!sb) return;
     try {
       const [s, y] = await Promise.all([sayaclar(), yorumlar(o.limit)]);
       ciz(hedef, s || {}, y);
+      hedef.dataset.kuruldu = '1';
     } catch (e) {
       console.warn('topluluk verisi alınamadı', e);   // hata olursa bölüm gizli kalır
     }

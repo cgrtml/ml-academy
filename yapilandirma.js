@@ -28,4 +28,20 @@ SUPA.saglayicilar = ['email'];        // 'google', 'github' eklenebilir
    teşvik etmek, içeriği korumak değil. */
 SUPA.ucretsizDers = 3;
 
+/* ── TEK İSTEMCİ ──
+   hesap.js ve topluluk.js ayrı ayrı createClient çağırıyordu. Aynı oturum
+   anahtarını paylaşan iki Supabase istemcisi birbirine kimlik olayı yayıyor:
+   her olay hesap.js'in dinleyicisini tetikliyor, dinleyici topluluk.js'i
+   yeniden kuruyor, o da yeni bir istemci yaratıyor ve döngü kapanıyordu.
+   Ana sayfadaki topluluk bölümünün sürekli yanıp sönmesinin sebebi buydu.
+
+   Artık ikisi de bu fonksiyonu çağırıyor ve sayfa başına tek istemci var.
+   Fonksiyon çağrı anında çalışıyor, yani supabase kütüphanesinin bu
+   dosyadan önce ya da sonra yüklenmiş olması fark etmiyor. */
+SUPA.istemci = function(){
+  if (typeof window === 'undefined' || typeof window.supabase === 'undefined') return null;
+  if (!window.__mlSb) window.__mlSb = window.supabase.createClient(SUPA.url, SUPA.anonKey);
+  return window.__mlSb;
+};
+
 if (typeof module !== 'undefined') module.exports = SUPA;

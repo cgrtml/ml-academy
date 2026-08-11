@@ -808,7 +808,12 @@ const HESAP = (() => {
     t = M[o.dil === 'en' ? 'en' : 'tr'];
     saglayicilar = o.saglayicilar || ['email'];
     if (!o.url || !o.anonKey || typeof window.supabase === 'undefined') return;
-    sb = window.supabase.createClient(o.url, o.anonKey);
+    /* Sayfadaki TEK istemci. Ayrıntı yapilandirma.js içindeki SUPA.istemci
+       notunda: iki istemci birbirine kimlik olayı yayıp döngü kuruyordu. */
+    sb = (typeof SUPA !== 'undefined' && SUPA.istemci)
+       ? SUPA.istemci()
+       : window.supabase.createClient(o.url, o.anonKey);
+    if (!sb) return;
 
     const uygula = async oturum => {
       kullanici = oturum ? oturum.user : null;
