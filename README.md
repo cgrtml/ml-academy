@@ -51,17 +51,18 @@ Wrong answers are not rejected. They are executed so you can see what they do.
 
 ## Contents
 
-| Track | Topic | Ready | Planned |
+| Track | Topic | Lessons | Steps |
 |---|---|---:|---:|
-| 0 | Start from zero: algorithms, data, learning, overfitting, metrics, data leakage, statistical evidence | 10 | 5 |
-| 1 | Classical ML: k-NN, decision trees, random forests, boosting, SVM, soft decision trees, PCA | 10 | 22 |
-| 2 | Deep learning: neurons, backpropagation, optimizers, regularization, batch norm, CNNs, embeddings, transfer | 10 | 11 |
-| 3 | Large language models: tokenization, attention, transformer block, sampling, RLHF, hallucination, RAG, KV cache | 10 | 16 |
-| 4 | Using AI: prompting, eval sets, Elo comparison, RAG debugging, agents, LLM-as-judge, red teaming, cost | 8 | 9 |
+| 0 | Start from zero: algorithms, data, learning, overfitting, metrics, data leakage, statistical evidence | 15 | 55 |
+| 1 | Classical machine learning: k-NN, decision trees, random forests, boosting, SVM, soft decision trees, PCA | 37 | 130 |
+| 2 | Deep learning: neurons, backpropagation, optimizers, regularization, batch norm, CNNs, embeddings, transfer | 22 | 67 |
+| 3 | Large language models: tokenization, attention, transformer block, sampling, RLHF, hallucination, RAG, KV cache | 29 | 94 |
+| 4 | Using AI: prompting, eval sets, Elo comparison, RAG debugging, agents, LLM-as-judge, red teaming, cost | 20 | 55 |
 
-48 lessons are ready: 108 interactive steps, 60 gating questions, 47 unlock conditions, 143 academic references.
+**All 123 lessons are ready:** 401 interactive steps, 129 gating questions, 154 unlock
+conditions, 387 academic references, 165 visualizations, 19,090 XP.
 
-63 more are planned. That list was not guessed. It comes from the tables of contents of 17 textbooks: 1672 chapter headings were read, then anything already covered by an existing lesson and anything duplicated across books was removed. The sources include Bishop, Zhang and colleagues (d2l), Müller and Guido, Ng's CS229 notes, Raschka, Tunstall, Xiao and Zhu, Huyen, Monarch, Weidman, Fleuret and Cormen.
+Every lesson has been translated into English.
 
 There is also a catalogue of 25 models. For each one it lists what it does, how it works, when to use it, when **not** to use it, working code, key hyperparameters and the classic pitfall.
 
@@ -108,9 +109,9 @@ Content is stored as data, not code. Adding a lesson means writing an object, no
 ```
 index.html        curriculum home, progress, resume where you left off
 lesson.html       lesson engine: 4 step kinds, gating, XP, sources
-content.js        the curriculum itself: 48 lessons, 108 steps, 143 references
-content-en.js     English lesson content, one lesson at a time, same shape as content.js
-viz.js            54 visualizations and every algorithm engine
+content.js        the curriculum itself: 123 lessons, 401 steps, 387 references
+content-en.js     English lesson content, same shape as content.js
+viz.js            165 visualizations and every algorithm engine
 modeller.html     model catalogue
 ders-kanit.html   5x2cv F-test lesson running on Pyodide
 dogrula.sh        verification script
@@ -139,9 +140,9 @@ Three stages.
 
 **Syntax.** All seven source files are parsed.
 
-**Numbers and structure.** 153 numeric claims are recomputed and compared against what the lessons say. Every quiz index is checked, every option is required to have an explanation, all 47 unlock conditions are proven reachable by sweeping the parameter space, and `derive`/`control` key collisions are caught. Every translated lesson has to match its Turkish original: same step count, same step kinds, same visualization, same slider ranges, same correct answer index.
+**Numbers and structure.** 2,395 numeric claims are recomputed and compared against what the lessons say. Every quiz index is checked, every option is required to have an explanation, all 154 unlock conditions are proven reachable by sweeping the parameter space, and `derive`/`control` key collisions are caught. Every translated lesson has to match its Turkish original: same step count, same step kinds, same visualization, same slider ranges, same correct answer index.
 
-**Rendering.** All 54 visualizations are drawn against a stub canvas across 364 states.
+**Rendering and layout.** All 165 visualizations are drawn against a stub canvas. A separate sweep measures all 401 steps at real canvas dimensions, looking for overflowing and colliding text.
 
 This script has caught real bugs. Two key collisions that crashed lessons in the browser, a saturation metric computed on the wrong tensor, five lesson numbers left over from an earlier hyperparameter, and an untestable `Path2D` dependency.
 
@@ -149,12 +150,11 @@ The rule is simple: a number does not appear in a lesson unless a test recompute
 
 ## Roadmap
 
-- [ ] Clean up remaining interface bugs
-- [ ] Translate the remaining 46 lessons and the model catalogue into English
+- [x] Translate all 123 lessons into English
+- [ ] Translate the model catalogue into English
 - [ ] Interactive Prompt Arena backed by a real model endpoint
 - [ ] Instructor mode with per student seeds, so answers cannot be copied
 - [ ] Embeddable widgets for lecture slides and LMS platforms
-- [ ] Chapter mapping to Alpaydın, Bishop and Hastie
 
 ## Contributing
 
@@ -164,11 +164,12 @@ Pedagogy bugs are as welcome as code bugs. If a step confused you, that is a bug
 
 ## Sources
 
-Every lesson ships with the academic work it is based on. There are 143 references in total. A few examples: Breiman and colleagues 1984 for CART, Breiman 2001 for random forests, Friedman 2001 for gradient boosting, Cortes and Vapnik 1995 for SVM, Vaswani and colleagues 2017 for attention, İrsoy, Yıldız and Alpaydın 2012 for soft decision trees, Alpaydın 1999 for the 5x2cv F-test.
+Every lesson ships with the academic papers it is based on. There are 387 references in total. A few examples: Breiman and colleagues 1984 for CART, Breiman 2001 for random forests, Friedman 2001 for gradient boosting, Cortes and Vapnik 1995 for SVM, Vaswani and colleagues 2017 for attention, İrsoy, Yıldız and Alpaydın 2012 for soft decision trees, Alpaydın 1999 for the 5x2cv F-test.
 
 ## License
 
-MIT
+All rights reserved. The source is public so it can be read, not so it can be
+republished. See [`LICENSE`](LICENSE) for what is and is not permitted.
 
 ## Author
 

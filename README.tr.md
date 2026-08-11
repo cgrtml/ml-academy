@@ -51,17 +51,18 @@ Yanlış cevap reddedilmiyor. Çalıştırılıyor ki ne olduğunu görün.
 
 ## İçerik
 
-| Rota | Konu | Hazır | Planlı |
+| Rota | Konu | Ders | Adım |
 |---|---|---:|---:|
-| 0 | Sıfırdan Başla: algoritma, veri, öğrenme, ezberleme, metrikler, veri sızıntısı, istatistiksel kanıt | 10 | 5 |
-| 1 | Klasik ML: k-NN, ağaçlar, Random Forest, boosting, SVM, soft decision tree, PCA | 10 | 22 |
-| 2 | Derin Öğrenme: nöron, geri yayılım, optimizerlar, düzenlileştirme, batch norm, CNN, gömmeler, transfer | 10 | 11 |
-| 3 | Büyük Dil Modelleri: tokenizasyon, attention, transformer bloğu, örnekleme, RLHF, halüsinasyon, RAG, KV cache | 10 | 16 |
-| 4 | AI Kullanma: prompt, eval seti, Elo, RAG hata ayıklama, ajanlar, LLM-judge, kırmızı takım, maliyet | 8 | 9 |
+| 0 | Sıfırdan Başla: algoritma, veri, öğrenme, ezberleme, metrikler, veri sızıntısı, istatistiksel kanıt | 15 | 55 |
+| 1 | Klasik Makine Öğrenmesi: k-NN, ağaçlar, Random Forest, boosting, SVM, soft decision tree, PCA | 37 | 130 |
+| 2 | Derin Öğrenme: nöron, geri yayılım, optimizerlar, düzenlileştirme, batch norm, CNN, gömmeler, transfer | 22 | 67 |
+| 3 | Büyük Dil Modelleri: tokenizasyon, attention, transformer bloğu, örnekleme, RLHF, halüsinasyon, RAG, KV cache | 29 | 94 |
+| 4 | AI Kullanma Laboratuvarı: prompt, eval seti, Elo, RAG hata ayıklama, ajanlar, LLM-judge, kırmızı takım, maliyet | 20 | 55 |
 
-Hazır 48 ders, 108 etkileşimli adım, 60 kilit açan soru, 47 kilit koşulu, 143 akademik kaynak.
+**123 dersin tamamı hazır:** 401 etkileşimli adım, 129 kilit açan soru, 154 kilit koşulu,
+387 akademik kaynak, 165 görselleştirme, 19.090 XP.
 
-Planlı 63 ders daha var. Bu liste tahminle değil, 17 ders kitabının kendi içindekiler tablosundan çıkarıldı: 1672 bölüm başlığı taranıp mevcut derslerle çakışanlar ve tekrar edenler ayıklandı. Kaynaklar arasında Bishop, Zhang ve arkadaşları (d2l), Müller & Guido, Ng'in CS229 notları, Raschka, Tunstall, Xiao & Zhu, Huyen, Monarch, Weidman, Fleuret, Cormen var.
+Ders içeriğinin tamamı İngilizceye çevrildi.
 
 Ayrıca 25 modellik bir model kataloğu var. Her model için ne yaptığı, nasıl çalıştığı, ne zaman kullanılacağı, ne zaman kullanılmayacağı, çalışan kod, kilit hiperparametreler ve klasik tuzak yazıyor.
 
@@ -108,9 +109,9 @@ Bağımlılık yok, derleme adımı yok, sunucu gerekmiyor. Sadece bir ders (ist
 ```
 index.html        müfredat ana sayfası, ilerleme, kaldığın yerden devam
 lesson.html       ders motoru: 4 adım tipi, kilitler, XP, kaynaklar
-content.js        müfredatın kendisi: 48 ders, 108 adım, 143 referans
-content-en.js     İngilizce ders içeriği, teker teker, content.js ile aynı yapıda
-viz.js            54 görselleştirme ve bütün algoritma motorları
+content.js        müfredatın kendisi: 123 ders, 401 adım, 387 referans
+content-en.js     İngilizce ders içeriği, content.js ile aynı yapıda
+viz.js            165 görselleştirme ve bütün algoritma motorları
 modeller.html     model kataloğu
 ders-kanit.html   Pyodide ile 5x2cv F-testi dersi
 dogrula.sh        doğrulama scripti
@@ -139,9 +140,9 @@ Bütün algoritmalar `viz.js` içinde sıfırdan yazıldı. Gini kazançlı CART
 
 **Sözdizimi.** Yedi kaynak dosyanın hepsi ayrıştırılıyor.
 
-**Sayı ve yapı.** 153 sayısal iddia yeniden hesaplanıp ders metninde yazan değerle karşılaştırılıyor. Her soru indeksi kontrol ediliyor, her şıkkın açıklaması olması zorunlu tutuluyor, 47 kilit koşulunun tamamının parametre uzayı taranarak açılabilir olduğu kanıtlanıyor, `derive` ve `control` anahtar çakışmaları yakalanıyor. İngilizce çevrilen her ders, Türkçe aslıyla aynı adım sayısına, aynı adım tipine, aynı görsele, aynı kaydırıcı aralıklarına ve aynı doğru şık indeksine sahip olmak zorunda.
+**Sayı ve yapı.** 2395 sayısal iddia yeniden hesaplanıp ders metninde yazan değerle karşılaştırılıyor. Her soru indeksi kontrol ediliyor, her şıkkın açıklaması olması zorunlu tutuluyor, 154 kilit koşulunun tamamının parametre uzayı taranarak açılabilir olduğu kanıtlanıyor, `derive` ve `control` anahtar çakışmaları yakalanıyor. İngilizce çevrilen her ders, Türkçe aslıyla aynı adım sayısına, aynı adım tipine, aynı görsele, aynı kaydırıcı aralıklarına ve aynı doğru şık indeksine sahip olmak zorunda.
 
-**Çizim.** 54 görselin hepsi sahte bir canvas üzerinde 364 farklı durumda çiziliyor.
+**Çizim ve yerleşim.** 165 görselin hepsi sahte bir canvas üzerinde çiziliyor. Ayrı bir tarama 401 adımın tamamını gerçek tuval boyutlarında ölçüp taşan ve üst üste binen metin arıyor.
 
 Bu script gerçek hatalar yakaladı. Tarayıcıda ders çökerten iki anahtar çakışması, yanlış tensör üzerinden hesaplanan bir doygunluk metriği, eski bir hiperparametreden kalma beş ders sayısı ve test edilemeyen bir `Path2D` bağımlılığı.
 
@@ -149,12 +150,11 @@ Kural şu: bir sayı, testi onu yeniden hesaplamıyorsa derste yer alamaz.
 
 ## Yol haritası
 
-- [ ] Bilinen arayüz hatalarının temizlenmesi
-- [ ] Kalan 46 dersin ve model kataloğunun İngilizceye çevrilmesi
+- [x] 123 dersin tamamının İngilizceye çevrilmesi
+- [ ] Model kataloğunun İngilizceye çevrilmesi
 - [ ] Gerçek bir model uç noktasına bağlı interaktif Prompt Arena
 - [ ] Eğitmen modu: öğrenci başına farklı tohumla ödev üretici, böylece kopya yapısal olarak imkânsız
 - [ ] Ders slaytlarına ve LMS'e gömülebilir widget'lar
-- [ ] Alpaydın, Bishop ve Hastie kitaplarıyla bölüm eşlemesi
 
 ## Katkı
 
@@ -164,11 +164,12 @@ Pedagoji hataları da kod hataları kadar değerli. Bir adım kafanızı karış
 
 ## Kaynaklar
 
-Her ders, dayandığı akademik kaynaklarla birlikte geliyor. Toplam 143 referans var. Örnek olarak: CART için Breiman ve arkadaşları 1984, Random Forest için Breiman 2001, gradient boosting için Friedman 2001, SVM için Cortes ve Vapnik 1995, attention için Vaswani ve arkadaşları 2017, soft decision tree için İrsoy, Yıldız ve Alpaydın 2012, 5x2cv F-testi için Alpaydın 1999.
+Her ders, dayandığı akademik makalelerle birlikte geliyor. Toplam 387 referans var. Örnek olarak: CART için Breiman ve arkadaşları 1984, Random Forest için Breiman 2001, gradient boosting için Friedman 2001, SVM için Cortes ve Vapnik 1995, attention için Vaswani ve arkadaşları 2017, soft decision tree için İrsoy, Yıldız ve Alpaydın 2012, 5x2cv F-testi için Alpaydın 1999.
 
 ## Lisans
 
-MIT
+Telif hakkı saklıdır. Kaynak okunabilir olsun diye açık, yeniden yayımlanabilsin
+diye değil. Ayrıntı [`LICENSE`](LICENSE) dosyasında.
 
 ## Yazar
 
