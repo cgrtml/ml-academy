@@ -70,9 +70,6 @@
   header{text-align:center;padding:56px 0 34px}
   .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.26em;color:var(--mut);text-transform:uppercase}
   .hUst{display:flex;gap:8px}
-  @media(max-width:640px){
-    .ustBar{position:static;justify-content:center;margin:12px 0 0;flex-wrap:wrap}
-  }
   .kicker .alan{text-transform:none;letter-spacing:.06em;color:#5b6b80}
   .kicker .alan::before{content:'·';margin:0 9px;color:#3a4a5c}
   h1{font-size:clamp(30px,5.6vw,52px);margin:14px 0 12px;font-weight:850;letter-spacing:-.03em;line-height:1.12}
@@ -154,13 +151,27 @@
   /* Dil ve hesap düğmeleri tek bir sabit satırda durur. Önceden dil
      absolute top:18px, hesap fixed top:56px idi; ikisi ayrı yerlere düşüyordu
      ve İngilizcede uzayan "Sign in" düğmesi büsbütün kayıyordu. */
-  /* Sabit konumlu olduğu için sayfa kaydırılınca ders kartlarının ÜSTÜNDE
-     yüzüyor. Zeminsizken arkadaki başlıklar düğmelerin arasından okunuyor ve
-     ikisi de okunmaz hâle geliyordu. Kendi zemini olan bir çubuk olarak
-     duruyor artık. */
-  .ustBar{position:fixed;top:16px;right:18px;z-index:60;display:flex;gap:10px;align-items:center;
-    background:var(--panel);border:1px solid var(--line);border-radius:14px;
-    padding:7px 9px;box-shadow:0 3px 16px rgba(15,27,45,.13)}
+  /* ── ÜST ÇUBUK ──
+     Önceden sağ üst köşede havada duran bir hap vardı: sayfa kaydırılınca
+     ders kartlarının üstüne biniyor, arkadaki başlıklar düğmelerin
+     arasından okunuyordu. Ayrıca about.html ve privacy.html gerçek bir
+     üst çubuğa sahipken ana sayfanın hiç çubuğu yoktu; site kendi
+     içinde tutarsız görünüyordu. Artık üç sayfa da aynı çubuğu
+     kullanıyor: solda marka, ortada bağlantılar, sağda tema/dil/hesap. */
+  .ustNav{position:sticky;top:0;z-index:60;background:var(--panel);
+    border-bottom:1px solid var(--line)}
+  .navIc{max-width:1000px;margin:0 auto;padding:0 18px;height:60px;
+    display:flex;align-items:center;gap:26px}
+  .marka{display:flex;align-items:center;gap:9px;font-weight:800;letter-spacing:-.01em;
+    color:var(--txt);font-size:16px}
+  .marka i{width:24px;height:24px;border-radius:7px;background:#070a0f;display:block;position:relative}
+  .marka i::after{content:'';position:absolute;left:4px;right:4px;bottom:5px;height:3px;border-radius:2px;
+    background:linear-gradient(90deg,#22d3a0,#4cc4ff,#fb923c,#a78bfa,#f472b6)}
+  .navBag{display:flex;gap:20px;font-size:14px;color:var(--mut)}
+  .navBag a:hover{color:var(--txt)}
+  .navSag{margin-left:auto;display:flex;gap:10px;align-items:center}
+  @media(max-width:860px){ .navBag{display:none} }
+  @media(max-width:520px){ .navIc{gap:12px;padding:0 12px} .marka span{display:none} }
   .dilbar{display:flex;gap:6px}
   .dilbar button{font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:6px 12px;
       border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--mut);cursor:pointer}
@@ -199,9 +210,16 @@ temaUygula(temaOku());
 </script>
 </head>
 <body>
-<div class="wrap" style="position:relative">
 
-  <div class="ustBar">
+<nav class="ustNav"><div class="navIc">
+  <a class="marka" href="index.html"><i></i> <span>ML Academy</span></a>
+  <div class="navBag">
+    <a href="#rota0"        data-i="navMuf">müfredat</a>
+    <a href="#nasil"        data-i="navYon">yöntem</a>
+    <a href="modeller.html" data-i="navKat">model kataloğu</a>
+    <a href="about.html"    data-i="navHak">hakkında</a>
+  </div>
+  <div class="navSag">
     <button class="temaDug" id="temaDug" aria-label="tema"></button>
     <div class="dilbar">
       <button data-dil="tr">TR</button>
@@ -210,9 +228,11 @@ temaUygula(temaOku());
     <!-- hesap düğmeleri; Supabase yoksa boş kalır -->
     <div class="hUst" id="hesapCubuk"></div>
   </div>
+</div></nav>
+
+<div class="wrap" style="position:relative">
 
   <header>
-    <div class="kicker">ML Academy</div>
     <h1 data-i="h1">Yapay zekâyı <span class="hl">sıfırdan</span>,<br>adım adım öğren</h1>
     <p class="sub" data-i="sub">Ders anlatan video yok, ezberlenecek formül yok. Her adım ne
        öğreneceğini söyleyerek başlar, kendi elinle oynadığın bir animasyonla sürer ve
@@ -225,13 +245,13 @@ temaUygula(temaOku());
     </div>
     <div class="stats">
       <div class="sb"><div class="n" style="color:var(--green)" id="sHazir">-</div><div class="l" data-i="stHazir">hazır ders</div></div>
-      <div class="sb"><div class="n" id="sToplam">-</div><div class="l" data-i="stPlan">planlı ders</div></div>
+      <div class="sb"><div class="n" id="sToplam">-</div><div class="l" data-i="stPlan">adım</div></div>
       <div class="sb"><div class="n" style="color:var(--blue)" id="sXP">0</div><div class="l" data-i="stXp">senin XP'n</div></div>
       <div class="sb"><div class="n" style="color:var(--yellow)" id="sBitti">0</div><div class="l" data-i="stBit">bitirdiğin</div></div>
     </div>
   </header>
 
-  <div class="how">
+  <div class="how" id="nasil">
     <h3 data-i="howH">Her ders aynı beş adımı izler</h3>
     <p class="hs" data-i="howS">Konu değişir, yöntem değişmez. Bir kere alıştıktan sonra her derste ne bekleyeceğini bilirsin.</p>
     <div class="steps4">
@@ -279,10 +299,10 @@ temaUygula(temaOku());
   </div>
 </div>
 
-<script src="viz-sozluk.js?v=f07823d"></script>
-<script src="viz.js?v=f07823d"></script>
-<script src="content.js?v=f07823d"></script>
-<script src="content-en.js?v=f07823d"></script>
+<script src="viz-sozluk.js?v=d71a0af"></script>
+<script src="viz.js?v=d71a0af"></script>
+<script src="content.js?v=d71a0af"></script>
+<script src="content-en.js?v=d71a0af"></script>
 <script>
 const $ = id => document.getElementById(id);
 const PKEY = 'mlacad_v2';
@@ -295,7 +315,8 @@ const EN = {
   sub:'No lecture videos, no formulas to memorise. Every step opens by telling you what you will learn, continues with an animation you control yourself, and ends at a gate that opens only once you get it right.',
   ctaKat:'📚 model catalogue',
   ctaMuf:'see the curriculum ↓',
-  stHazir:'lessons ready', stPlan:'lessons planned', stXp:'your XP', stBit:'completed',
+  stHazir:'lessons ready', stPlan:'steps', stXp:'your XP', stBit:'completed',
+  navMuf:'curriculum', navYon:'method', navKat:'model catalogue', navHak:'about',
   howH:'Every lesson follows the same five steps',
   howS:'The topic changes, the method does not. Once you get used to it you know what to expect in every lesson.',
   s0n:'01 · GOAL',  s0t:'What will you learn?',
@@ -360,6 +381,15 @@ const TAG = {hazir:['HAZIR','t-hazir'], yapim:['YAPIM AŞAMASINDA','t-yapim'], p
 let KILIT_ACIK = false;
 function ciz(){
 let nHazir = 0, nToplam = 0, nBitti = 0, xpTop = 0;
+/* Toplam ADIM sayısı. Kutulardan biri eskiden "planlı ders" gösteriyordu;
+   bütün dersler hazır olduğu için o sayı "hazır ders" ile aynı çıkıyor ve
+   hiçbir şey anlatmıyordu. Yerine müfredatın gerçek büyüklüğünü gösteren
+   adım sayısı kondu, DERSLER'den sayılıyor. */
+let nAdim = 0;
+try {
+  nAdim = Object.values(DERSLER)
+    .reduce((a, d) => a + ((d && d.adimlar) ? d.adimlar.length : 0), 0);
+} catch(e){ nAdim = 0; }
 const en = DIL === 'en';
 /* EN başlık zinciri: tam çevrilmiş ders → çevrilmiş ders adı → Türkçe ad.
    İkincisi olmadan arayüz İngilizceye geçiyor ama müfredattaki 111 ders adı
@@ -419,7 +449,7 @@ $('rotalar').innerHTML = ROTALAR.map(r => {
 }).join('');
 
 $('sHazir').textContent = nHazir;
-$('sToplam').textContent = nToplam;
+$('sToplam').textContent = nAdim;
 $('sXP').textContent = xpTop;
 $('sBitti').textContent = nBitti;
 
@@ -510,10 +540,10 @@ dilUygula();
      Ayarlar boşsa hiçbir istek atılmaz, topluluk bölümü gizli kalır.
      Yani bu bloklar bugün siteye eklense de hiçbir şey bozulmaz. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="yapilandirma.js?v=f07823d"></script>
-<script src="topluluk/topluluk.js?v=f07823d"></script>
-<script src="topluluk/ilerleme.js?v=f07823d"></script>
-<script src="topluluk/hesap.js?v=f07823d"></script>
+<script src="yapilandirma.js?v=d71a0af"></script>
+<script src="topluluk/topluluk.js?v=d71a0af"></script>
+<script src="topluluk/ilerleme.js?v=d71a0af"></script>
+<script src="topluluk/hesap.js?v=d71a0af"></script>
 <script>
   const toplulukYenile = () => TOPLULUK.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL });
   toplulukYenile();
