@@ -309,22 +309,23 @@ temaUygula(temaOku());
          kopyalanırsa ilk taşınacak sayfa burasıdır; bildirimin burada da
          durması gerekiyor. -->
     <div class="telif">© 2026 Cagri Temel · <span id="telifHak">tüm hakları saklıdır</span> ·
-      <a id="telifLis" href="https://github.com/cgrtml/ml-academy/blob/main/LICENSE">lisans</a></div>
+      <a id="telifLis" href="https://github.com/cgrtml/ml-academy/blob/main/LICENSE">lisans</a> ·
+      <a id="telifGiz" href="privacy.html">gizlilik</a></div>
   </main>
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="viz-sozluk.js?v=f182188"></script>
-<script src="arayuz-sozluk.js?v=f182188"></script>
-<script src="anlatim.js?v=f182188"></script>
-<script src="anlatim-en.js?v=f182188"></script>
-<script src="viz.js?v=f182188"></script>
-<script src="content.js?v=f182188"></script>
-<script src="content-en.js?v=f182188"></script>
+<script src="viz-sozluk.js?v=5c38ad6"></script>
+<script src="arayuz-sozluk.js?v=5c38ad6"></script>
+<script src="anlatim.js?v=5c38ad6"></script>
+<script src="anlatim-en.js?v=5c38ad6"></script>
+<script src="viz.js?v=5c38ad6"></script>
+<script src="content.js?v=5c38ad6"></script>
+<script src="content-en.js?v=5c38ad6"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="yapilandirma.js?v=f182188"></script>
-<script src="topluluk/ilerleme.js?v=f182188"></script>
-<script src="topluluk/hesap.js?v=f182188"></script>
+<script src="yapilandirma.js?v=5c38ad6"></script>
+<script src="topluluk/ilerleme.js?v=5c38ad6"></script>
+<script src="topluluk/hesap.js?v=5c38ad6"></script>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -383,6 +384,7 @@ const L10N = {
   karsilastirma3:["</b>'ye indi.", '</b> in 2142 steps.'],
   telifHak:['tüm hakları saklıdır','all rights reserved'],
   telifLis:['lisans','licence'],
+  telifGiz:['gizlilik','privacy'],
   dilNot:['','This lesson has not been translated yet, so the text below is Turkish. The simulation, the chart and every number work exactly the same, and the interface stays in English.'],
 };
 const T = k => L10N[k][EN ? 1 : 0];
@@ -463,6 +465,7 @@ if (!D){
   $('bkLink').textContent = T('tumDers');
   if ($('telifHak')) $('telifHak').textContent = T('telifHak');
   if ($('telifLis')) $('telifLis').textContent = T('telifLis');
+  if ($('telifGiz')) $('telifGiz').textContent = T('telifGiz');
   $('adimBasligi').textContent = T('adimlar');
   document.title = (EN ? 'Lesson' : 'Ders') + ' · ML Academy';
   document.querySelector('main').innerHTML =
