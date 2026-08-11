@@ -22,6 +22,9 @@ const TOPLULUK = (() => {
       yaz:'Yorum yaz',
       azBilgi:'Ortalama puan, en az 5 yorum toplanınca gösterilir.',
       bekliyor:'Yorumun alındı, okunduktan sonra yayımlanacak.',
+      dagilim:'Puan dağılımı', kisi:'kişi',
+      cagriBas:'Burayı canlı tutan şey senin yorumun',
+      cagriAlt:'Bir dakikanı alır. Yorumlar okunduktan sonra yayımlanır.',
     },
     en: {
       bas:'Community',
@@ -34,6 +37,9 @@ const TOPLULUK = (() => {
       yaz:'Write a review',
       azBilgi:'The average rating appears once at least 5 reviews are in.',
       bekliyor:'Your review was received and will be published after review.',
+      dagilim:'Rating breakdown', kisi:'people',
+      cagriBas:'Your review is what keeps this alive',
+      cagriAlt:'It takes a minute. Reviews are published after being read.',
     },
   };
 
@@ -62,6 +68,32 @@ const TOPLULUK = (() => {
         text-transform:uppercase;color:var(--mut,#8494a8);margin-top:7px}
       .tKart .yld{color:var(--yellow,#facc15);font-size:15px;letter-spacing:.14em;margin-top:5px}
       .tNot{color:var(--mut,#8494a8);font-size:12.5px;margin-top:10px;text-align:center}
+      /* yıldız dağılımı */
+      .tDagilim{background:var(--panel,#0f151e);border:1px solid var(--line,#1e2a3a);
+        border-radius:14px;padding:18px 20px;margin-top:14px}
+      .tDagBas{font-family:var(--mono,monospace);font-size:10.5px;letter-spacing:.2em;
+        text-transform:uppercase;color:var(--mut,#8494a8);margin-bottom:12px}
+      .tSatir{display:flex;align-items:center;gap:12px;margin-top:7px}
+      .tSatir .p{font-family:var(--mono,monospace);font-size:12px;color:var(--yellow,#facc15);
+        width:26px;flex:none}
+      .tSatir .cubuk{flex:1;height:9px;background:var(--bg,#080b11);border-radius:99px;
+        overflow:hidden;border:1px solid var(--line,#1e2a3a)}
+      .tSatir .cubuk i{display:block;height:100%;background:var(--yellow,#facc15);
+        border-radius:99px;transition:width .3s}
+      .tSatir .n{font-family:var(--mono,monospace);font-size:12px;color:var(--mut,#8494a8);
+        width:34px;text-align:right;flex:none}
+      .tDagAlt{font-family:var(--mono,monospace);font-size:10.5px;color:var(--mut,#8494a8);
+        text-align:right;margin-top:11px}
+      /* yorum yazmaya çağrı */
+      .tCagri{display:flex;align-items:center;justify-content:space-between;gap:18px;
+        flex-wrap:wrap;margin-top:20px;padding:20px 22px;border-radius:16px;
+        background:rgba(34,211,160,.07);border:1px solid rgba(34,211,160,.32)}
+      .tCagri b{display:block;font-size:16px;margin-bottom:3px}
+      .tCagri span{color:var(--mut,#8494a8);font-size:13.5px}
+      .tCagri button{padding:12px 22px;border-radius:12px;font-size:14.5px;font-weight:800;
+        cursor:pointer;border:0;background:var(--green,#22d3a0);color:#04120d;
+        font-family:inherit;flex:none}
+      .tCagri button:hover{filter:brightness(1.08)}
       .tYorumBas{font-family:var(--mono,monospace);font-size:10.5px;letter-spacing:.2em;
         text-transform:uppercase;color:var(--mut,#8494a8);margin:30px 0 12px}
       .tYorumlar{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
@@ -96,6 +128,23 @@ const TOPLULUK = (() => {
 
   /* ── çizim ── */
 
+  /* Yıldız dağılımı. community_stats() bunu zaten döndürüyordu ama hiç
+     çizilmiyordu; oysa "kaç kişi 5 yıldız verdi" en çok bakılan sayı. */
+  function dagilimHTML(s){
+    const h = s.rating_histogram || {};
+    const top = [1,2,3,4,5].reduce((a,p) => a + (Number(h[p]) || 0), 0);
+    if (!top) return '';
+    return `<div class="tDagilim"><div class="tDagBas">${t.dagilim}</div>` +
+      [5,4,3,2,1].map(p => {
+        const n = Number(h[p]) || 0, y = top ? (100*n/top) : 0;
+        return `<div class="tSatir">
+          <span class="p">${p}★</span>
+          <span class="cubuk"><i style="width:${y.toFixed(1)}%"></i></span>
+          <span class="n">${n}</span></div>`;
+      }).join('') +
+      `<div class="tDagAlt">${top} ${t.kisi}</div></div>`;
+  }
+
   function ciz(hedef, s, y){
     stil();
     const kartlar = [
@@ -122,8 +171,19 @@ const TOPLULUK = (() => {
         <div class="n">${k.n}</div>${k.yld ? `<div class="yld">${k.yld}</div>` : ''}
         <div class="e">${k.e}</div></div>`).join('')}</div>
       ${(s.reviews || 0) < 5 ? `<div class="tNot">${t.azBilgi}</div>` : ''}
+      ${dagilimHTML(s)}
       <div class="tYorumBas">${t.yorumBas}</div>
-      ${yorumHTML}`;
+      ${yorumHTML}
+      <div class="tCagri">
+        <div><b>${t.cagriBas}</b><span>${t.cagriAlt}</span></div>
+        <button id="tYaz">${t.yaz}</button>
+      </div>`;
+    /* Düğme: giriş varsa yorum ekranı, yoksa önce giriş. */
+    const dug = hedef.querySelector('#tYaz');
+    if (dug) dug.onclick = () => {
+      if (typeof HESAP === 'undefined') return;
+      if (HESAP.girisli) HESAP.yorumEkrani(); else HESAP.girisEkrani(true);
+    };
     hedef.style.display = '';
   }
 
