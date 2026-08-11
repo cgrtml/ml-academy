@@ -72,6 +72,16 @@ const HESAP = (() => {
       kilitMad:['İlerlemen cihazlar arasında saklanır.',
                 'Hesap açmak ücretsiz, kart istenmez.',
                 'Hesabını istediğin zaman silebilirsin.'],
+      hesabim:'Hesabım',
+      hesapEposta:'E-posta',
+      hesapUyeBas:'Üyelik başlangıcı',
+      tehlike:'Hesabı sil',
+      tehlikeAlt:'Hesabın ve ona bağlı her şey kalıcı olarak silinir: profilin, ilerlemen ve varsa yorumun. Bu işlem geri alınamaz.',
+      tehlikeOnay:'Onaylamak için e-posta adresini yaz:',
+      tehlikeDug:'Hesabımı kalıcı olarak sil',
+      tehlikeYanlis:'Yazdığın adres hesabınla aynı değil.',
+      siliniyor:'Siliniyor…',
+      silindi:'Hesabın silindi.',
       modBas:'Onay bekleyen yorumlar', modYok:'Bekleyen yorum yok.',
       modSayi:'# yorum onay bekliyor', modYukleniyor:'Yükleniyor…',
       onayla:'Onayla', reddet:'Reddet',
@@ -133,6 +143,16 @@ const HESAP = (() => {
       kilitMad:['Your progress is kept across devices.',
                 'Creating an account is free, no card needed.',
                 'You can delete your account whenever you want.'],
+      hesabim:'Your account',
+      hesapEposta:'Email',
+      hesapUyeBas:'Member since',
+      tehlike:'Delete account',
+      tehlikeAlt:'Your account and everything attached to it is permanently deleted: your profile, your progress and your review. This cannot be undone.',
+      tehlikeOnay:'Type your email address to confirm:',
+      tehlikeDug:'Permanently delete my account',
+      tehlikeYanlis:'That address does not match your account.',
+      siliniyor:'Deleting…',
+      silindi:'Your account has been deleted.',
       modBas:'Reviews awaiting approval', modYok:'Nothing pending.',
       modSayi:'# reviews awaiting approval', modYukleniyor:'Loading…',
       onayla:'Approve', reddet:'Reject',
@@ -278,6 +298,21 @@ const HESAP = (() => {
         color:var(--anaTxt);font-weight:800}
       .hUst button.birincil:hover{filter:brightness(1.08);color:var(--anaTxt)}
       @media(max-width:400px){ .hUst button{padding:6px 9px;font-size:10.5px} }
+      /* hesap ekranı · tehlikeli bölge */
+      .hSatir{display:flex;justify-content:space-between;gap:16px;padding:13px 0;
+        border-bottom:1px solid var(--line,#dde5ef);font-size:14px}
+      .hSatir span{color:var(--mut,#586a80)}
+      .hSatir b{font-weight:600;word-break:break-all;text-align:right}
+      .hTehlike{margin-top:24px;border:1px solid rgba(207,47,47,.35);border-radius:12px;
+        padding:16px 18px;background:rgba(248,113,113,.06)}
+      .hTehlike h4{margin:0 0 8px;font-size:14.5px;color:var(--red,#cf2f2f);font-weight:800}
+      .hTehlike p{margin:0 0 14px;font-size:13.5px;line-height:1.6;color:var(--mut,#586a80)}
+      .hTehlike label{display:block;margin-bottom:7px;font-size:13px;font-weight:600}
+      .hTehlike input{width:100%;padding:11px 13px;border:1px solid var(--line,#dde5ef);
+        border-radius:9px;background:var(--panel,#fff);color:var(--txt,#0f1b2d);font:inherit;font-size:14px}
+      .hTehlike button{width:100%;margin-top:12px;padding:12px;border:0;border-radius:9px;
+        background:var(--red,#cf2f2f);color:#fff;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+      .hTehlike button:disabled{opacity:.5;cursor:default}
       .hMod{border:1px solid var(--line,#dde5ef);border-radius:12px;padding:14px 16px;margin-bottom:10px}
       .hMod .ust{display:flex;justify-content:space-between;align-items:center;gap:10px}
       .hMod .ad{font-weight:700}
@@ -653,6 +688,70 @@ const HESAP = (() => {
     };
   }
 
+  /* ══ HESAP EKRANI ══
+     "Hesabını istediğin zaman silebilirsin" cümlesi kayıt penceresinde,
+     kilit ekranında ve gönderilen doğrulama e-postalarında yazıyordu ama
+     silme diye bir şey yoktu. Bu yalnızca eksik özellik değil: GDPR 17.
+     madde ve KVKK silme hakkını zaten zorunlu kılıyor.
+
+     Silme geri alınamaz olduğu için tek tıkla yapılmıyor: kullanıcının
+     kendi e-posta adresini yazması isteniyor. Onay kutusu ya da "emin
+     misin" penceresi refleksle geçilir, adres yazmak geçilmez. */
+  async function hesabimEkrani(){
+    if (!kullanici) return girisEkrani(false);
+
+    const eposta = kullanici.email || '';
+    const tarih  = kullanici.created_at
+      ? new Date(kullanici.created_at).toLocaleDateString(t === M.en ? 'en-GB' : 'tr-TR',
+          { year:'numeric', month:'long', day:'numeric' })
+      : '—';
+
+    const arka = kart(`
+      <h3>${t.hesabim}</h3>
+      <div class="hSatir"><span>${t.hesapEposta}</span><b>${kacir(eposta)}</b></div>
+      <div class="hSatir"><span>${t.hesapUyeBas}</span><b>${kacir(tarih)}</b></div>
+      <div class="hTehlike">
+        <h4>${t.tehlike}</h4>
+        <p>${t.tehlikeAlt}</p>
+        <label for="hSilE">${t.tehlikeOnay}</label>
+        <input type="text" id="hSilE" autocomplete="off" spellcheck="false" placeholder="${kacir(eposta)}">
+        <button id="hSilDug" disabled>${t.tehlikeDug}</button>
+      </div>
+      <div class="hDug tek"><button id="hIptal">${t.kapat}</button></div>`);
+
+    arka.querySelector('#hIptal').onclick = kapat;
+
+    const kutu = arka.querySelector('#hSilE');
+    const dug  = arka.querySelector('#hSilDug');
+    const uyar = () => { dug.disabled = kutu.value.trim().toLowerCase() !== eposta.toLowerCase(); };
+    kutu.oninput = uyar;
+
+    let calisiyor = false;
+    dug.onclick = async () => {
+      if (calisiyor || dug.disabled) return;
+      if (kutu.value.trim().toLowerCase() !== eposta.toLowerCase()){
+        mesaj(arka, t.tehlikeYanlis, false); return;
+      }
+      calisiyor = true; dug.disabled = true; dug.textContent = t.siliniyor;
+      try {
+        const { error } = await sb.rpc('delete_own_account');
+        if (error) throw error;
+        /* Oturum sunucuda artık geçersiz. Çıkışta olduğu gibi ağ
+           beklenmiyor: yerel anahtarlar silinip sayfa yenileniyor. */
+        try {
+          Object.keys(localStorage)
+            .filter(k => k.indexOf('sb-') === 0)
+            .forEach(k => localStorage.removeItem(k));
+        } catch (e){}
+        alert(t.silindi);
+        location.href = 'index.html';
+      } catch (e){
+        mesaj(arka, hataCevir(e), false);
+        calisiyor = false; dug.disabled = false; dug.textContent = t.tehlikeDug;
+      }
+    };
+  }
+
   /* ── moderasyon ──
      ÖNCE PENCERE, SONRA VERİ.
      Eski sürüm ilk satırda sorguyu `await` ediyor ve pencereyi ancak sorgu
@@ -730,10 +829,12 @@ const HESAP = (() => {
       yer.querySelector('#hbGiris').onclick = () => girisEkrani(false);
     } else {
       yer.innerHTML =
+        `<button id="hbHesap">${t.hesabim}</button>` +
         `<button id="hbYorum" class="vurgu">${t.yorumBas}</button>` +
         (moderator ? `<button id="hbMod"${bekleyen ? ' class="bekler"' : ''}>${t.modBas}` +
              (bekleyen ? ` <b>${bekleyen}</b>` : '') + `</button>` : '') +
         `<button id="hbCikis">${t.cikis}</button>`;
+      yer.querySelector('#hbHesap').onclick = hesabimEkrani;
       yer.querySelector('#hbYorum').onclick = yorumEkrani;
       if (moderator) yer.querySelector('#hbMod').onclick = modEkrani;
       /* ÇIKIŞ · AĞ İSTEĞİ BEKLENMEZ.
@@ -829,7 +930,8 @@ const HESAP = (() => {
   /* Dil çubuğundan değişince giriş/yorum ekranlarının dili de değişsin. */
   function dil(d){ t = M[d === 'en' ? 'en' : 'tr']; cubukCiz(); }
 
-  return { kur, dinle, dil, girisEkrani, kilitEkrani, yorumEkrani, modEkrani, rotaTebrik,
+  return { kur, dinle, dil, girisEkrani, kilitEkrani, yorumEkrani, modEkrani,
+           hesabimEkrani, rotaTebrik,
            get girisli(){ return !!kullanici; },
            get kullanici(){ return kullanici; }, get moderator(){ return moderator; } };
 })();
