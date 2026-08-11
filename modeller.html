@@ -145,7 +145,8 @@
     padding:7px 9px;box-shadow:0 3px 16px rgba(15,27,45,.13)}
   @media(max-width:640px){.ustBar{position:static;justify-content:center;margin:12px 0 0}}
   .yok{text-align:center;color:var(--mut);padding:50px 0;font-family:var(--mono);font-size:13px}
-  .foot{text-align:center;color:var(--mut);font-size:12.5px;margin-top:40px;font-family:var(--mono)}
+  .foot{text-align:center;color:var(--mut);font-size:12.5px;margin-top:40px;font-family:var(--mono);line-height:2}
+  .foot .telif{opacity:.72;font-size:11.5px}
 </style>
 <script>
 /* ══ TEMA ANAHTARI ══
@@ -193,14 +194,16 @@ temaUygula(temaOku());
 
 <div class="wrap">
   <div id="liste"></div>
-  <div class="foot"><a href="index.html">← Derslere dön</a></div>
+  <div class="foot"><a href="index.html">← Derslere dön</a><br>
+    <span class="telif">© 2026 Cagri Temel · tüm hakları saklıdır ·
+      <a href="https://github.com/cgrtml/ml-academy/blob/main/LICENSE">lisans</a></span></div>
 </div>
 
-<script src="content.js?v=a327cd3"></script>
-<script src="yapilandirma.js?v=a327cd3"></script>
+<script src="content.js?v=685321d"></script>
+<script src="yapilandirma.js?v=685321d"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="topluluk/hesap.js?v=a327cd3"></script>
-<script src="modeller.js?v=a327cd3"></script>
+<script src="topluluk/hesap.js?v=685321d"></script>
+<script src="modeller.js?v=685321d"></script>
 <script>
 const $ = id => document.getElementById(id);
 let aktifF = 'hepsi';

@@ -258,6 +258,9 @@
     border:1px solid rgba(250,204,21,.28);border-radius:9px;padding:8px 12px;margin:0 0 16px}
   .fin{text-align:center;padding:34px 20px}
   .fin .big{font-size:44px;font-family:var(--mono);font-weight:800;color:var(--green)}
+  .telif{margin:54px 0 8px;text-align:center;font-family:var(--mono);
+    font-size:11.5px;color:var(--mut);opacity:.72;line-height:2}
+  .telif a{color:var(--blue)}
 </style>
 <script>
 /* ══ TEMA ANAHTARI ══
@@ -302,20 +305,25 @@ temaUygula(temaOku());
     <h1 id="dAd"></h1>
     <p class="lead" id="dAlt"></p>
     <div id="host"></div>
+    <!-- Telif satırı. Ders sayfası kullanıcının en uzun kaldığı yer ve
+         kopyalanırsa ilk taşınacak sayfa burasıdır; bildirimin burada da
+         durması gerekiyor. -->
+    <div class="telif">© 2026 Cagri Temel · <span id="telifHak">tüm hakları saklıdır</span> ·
+      <a id="telifLis" href="https://github.com/cgrtml/ml-academy/blob/main/LICENSE">lisans</a></div>
   </main>
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="viz-sozluk.js?v=a327cd3"></script>
-<script src="arayuz-sozluk.js?v=a327cd3"></script>
-<script src="anlatim.js?v=a327cd3"></script>
-<script src="anlatim-en.js?v=a327cd3"></script>
-<script src="viz.js?v=a327cd3"></script>
-<script src="content.js?v=a327cd3"></script>
-<script src="content-en.js?v=a327cd3"></script>
+<script src="viz-sozluk.js?v=685321d"></script>
+<script src="arayuz-sozluk.js?v=685321d"></script>
+<script src="anlatim.js?v=685321d"></script>
+<script src="anlatim-en.js?v=685321d"></script>
+<script src="viz.js?v=685321d"></script>
+<script src="content.js?v=685321d"></script>
+<script src="content-en.js?v=685321d"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="yapilandirma.js?v=a327cd3"></script>
-<script src="topluluk/hesap.js?v=a327cd3"></script>
+<script src="yapilandirma.js?v=685321d"></script>
+<script src="topluluk/hesap.js?v=685321d"></script>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -372,6 +380,8 @@ const L10N = {
                  '<b>Comparison:</b> with the sliders in step 1 your best was <b>'],
   karsilastirma2:["</b>'e inmiştin. Model 2142 adımda <b>", '</b>. The model reached <b>'],
   karsilastirma3:["</b>'ye indi.", '</b> in 2142 steps.'],
+  telifHak:['tüm hakları saklıdır','all rights reserved'],
+  telifLis:['lisans','licence'],
   dilNot:['','This lesson has not been translated yet, so the text below is Turkish. The simulation, the chart and every number work exactly the same, and the interface stays in English.'],
 };
 const T = k => L10N[k][EN ? 1 : 0];
@@ -450,6 +460,8 @@ const D = (EN && CEVRILI) ? bindir(DERSLER[DERS_ID], DERSLER_EN[DERS_ID]) : DERS
 if (!D){
   /* ders yoksa aşağıdaki satırlara hiç gelinmiyor; üst gezinme yazıları burada kurulur */
   $('bkLink').textContent = T('tumDers');
+  if ($('telifHak')) $('telifHak').textContent = T('telifHak');
+  if ($('telifLis')) $('telifLis').textContent = T('telifLis');
   $('adimBasligi').textContent = T('adimlar');
   document.title = (EN ? 'Lesson' : 'Ders') + ' · ML Academy';
   document.querySelector('main').innerHTML =

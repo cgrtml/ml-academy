@@ -169,6 +169,7 @@
       padding:12px 16px;margin:0 auto 8px;max-width:620px;font-size:13px;color:var(--mut);display:none}
   .foot{text-align:center;color:var(--mut);font-size:12.5px;margin-top:52px;font-family:var(--mono);line-height:2}
   .foot a{color:var(--blue)}
+  .foot .telif{opacity:.72;font-size:11.5px}
   .reset{background:none;border:1px solid var(--line);color:var(--mut);font-family:var(--mono);
          font-size:11px;padding:6px 13px;border-radius:8px;cursor:pointer}
   .reset:hover{color:var(--red);border-color:var(--red)}
@@ -265,15 +266,21 @@ temaUygula(temaOku());
   <div class="foot">
     <span data-i="footP">ML Academy · mltraining.org · prototip</span><br>
     <a href="modeller.html" data-i="footKat">model kataloğu</a> ·
-    <a href="https://github.com/cgrtml/ml-academy">GitHub</a><br><br>
+    <a href="https://github.com/cgrtml/ml-academy">GitHub</a><br>
+    <!-- Telif satırı. Kaynak herkese açık ama lisanssız değil: depo
+         okunabilir olsun diye açık, yeniden yayımlanabilsin diye değil.
+         Bunu yazmadan önce sitede tek bir hak bildirimi yoktu, yani
+         kopyalayan kişinin silmesi gereken hiçbir şey yoktu. -->
+    <span class="telif" data-i="footTel">© 2026 Cagri Temel · tüm hakları saklıdır ·
+      <a href="https://github.com/cgrtml/ml-academy/blob/main/LICENSE">lisans</a></span><br><br>
     <button class="reset" id="reset" data-i="footSif">↺ ilerlemeyi sıfırla</button>
   </div>
 </div>
 
-<script src="viz-sozluk.js?v=a327cd3"></script>
-<script src="viz.js?v=a327cd3"></script>
-<script src="content.js?v=a327cd3"></script>
-<script src="content-en.js?v=a327cd3"></script>
+<script src="viz-sozluk.js?v=685321d"></script>
+<script src="viz.js?v=685321d"></script>
+<script src="content.js?v=685321d"></script>
+<script src="content-en.js?v=685321d"></script>
 <script>
 const $ = id => document.getElementById(id);
 const PKEY = 'mlacad_v2';
@@ -302,6 +309,7 @@ const EN = {
   katH:'📚 Model Catalogue, <span style="color:var(--blue)">25 models on one page</span>',
   katP:'Your reference when you do not have time for a full lesson. For each model: <b>what it does · how it works · when to use it · when not to use it · working code · key settings · the classic pitfall.</b> Search, filter, copy the code.',
   footP:'ML Academy · mltraining.org · prototype', footKat:'model catalogue', footSif:'↺ reset progress',
+  footTel:'© 2026 Cagri Temel · all rights reserved · <a href="https://github.com/cgrtml/ml-academy/blob/main/LICENSE">licence</a>',
   rota:{
     0:['Start From Zero','For someone with no background. What data means, what a model is, how a machine learns. Start here.'],
     1:['Classical Machine Learning','Models that work on tabular data. Trees, neighbours, kernels and the origin of neural-trees.'],
@@ -498,9 +506,9 @@ dilUygula();
      Ayarlar boşsa hiçbir istek atılmaz, topluluk bölümü gizli kalır.
      Yani bu bloklar bugün siteye eklense de hiçbir şey bozulmaz. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="yapilandirma.js?v=a327cd3"></script>
-<script src="topluluk/topluluk.js?v=a327cd3"></script>
-<script src="topluluk/hesap.js?v=a327cd3"></script>
+<script src="yapilandirma.js?v=685321d"></script>
+<script src="topluluk/topluluk.js?v=685321d"></script>
+<script src="topluluk/hesap.js?v=685321d"></script>
 <script>
   const toplulukYenile = () => TOPLULUK.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL });
   toplulukYenile();
