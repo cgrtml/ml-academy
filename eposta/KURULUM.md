@@ -8,13 +8,23 @@ geliyor ve tasarımsız. İkisinin sebebi ayrı, çözümü de ayrı:
 | Gönderen yabancı bir adres | Supabase'in paylaşımlı göndericisi kullanılıyor | Özel SMTP bağla |
 | Metin İngilizce ve tasarımsız | Supabase'in varsayılan şablonu | Şablonları değiştir |
 
-**Sıra önemli değil**, ikisi birbirinden bağımsız. Şablonlar 10 dakikada
-biter, alan adı doğrulaması DNS yayılmasını beklediği için birkaç saat
-sürebilir. Bu yüzden önce şablonlarla başlamak daha tatmin edici.
+**SIRA ÖNEMLİ: önce SMTP, sonra şablonlar.** Supabase şablon düzenlemeyi
+özel SMTP'ye bağlamış durumda; SMTP kurulmadan Templates ekranında şu
+uyarı çıkıyor ve kutular kilitli kalıyor:
+
+> Set up custom SMTP to edit templates
+
+Yani alan adı doğrulanmadan şablonlara sıra gelmiyor. Bölüm 2'yi bitir,
+sonra Bölüm 1'e dön.
+
+DNS notu: `mltraining.org` **GoDaddy**'de duruyor (ad sunucuları
+`ns11/ns12.domaincontrol.com`). Alan adında şu an hiç MX ya da TXT kaydı
+yok, yalnızca GitHub Pages'in A kayıtları var; eklenecek kayıtlar siteyi
+etkilemiyor.
 
 ---
 
-## Bölüm 1 · Şablonlar (10 dakika, DNS gerekmez)
+## Bölüm 1 · Şablonlar (SMTP kurulduktan SONRA)
 
 Üç dosya hazır:
 
@@ -78,8 +88,21 @@ sessizce başarısız olur.
 
 ### 2.2 · Kayıtları DNS'e gir
 
-`mltraining.org` alan adını nereden aldıysan (GoDaddy, Namecheap,
-Cloudflare, Google Domains...) oranın DNS paneline gir ve üç kaydı ekle.
+Alan adı **GoDaddy**'de. Yol:
+
+1. https://dcc.godaddy.com/domains adresine gir
+2. `mltraining.org` satırında **DNS** ya da **Manage DNS**
+3. **Add New Record** ile Resend'in verdiği kayıtları tek tek ekle
+
+GoDaddy'de alanların adı Resend'inkinden farklı:
+
+| Resend'de yazan | GoDaddy'de karşılığı |
+|---|---|
+| Type | Type |
+| Name / Host | **Name** |
+| Value / Content | **Value** |
+| Priority (yalnız MX) | **Priority** |
+| TTL | **TTL** (1 saat / varsayılan yeterli) |
 
 İki yaygın hata:
 
@@ -142,15 +165,14 @@ kalkmaz. Arayüzdeki çift gönderim kilidi onu zaten engelliyor.
 
 ## Bölüm 3 · Kontrol listesi
 
-- [ ] Üç şablon Supabase'e yapıştırıldı, konu satırları yazıldı
-- [ ] Kendine deneme kaydı yapıldı, e-posta tasarımlı geldi
 - [ ] Resend hesabı açıldı, `mltraining.org` eklendi
 - [ ] Üç DNS kaydı girildi
 - [ ] Resend'de alan adı **Verified** göründü
 - [ ] API anahtarı üretildi
 - [ ] Supabase SMTP ayarları dolduruldu, Sender `noreply@mltraining.org`
 - [ ] E-posta hız sınırı yükseltildi
-- [ ] Yeni bir deneme kaydı yapıldı, gönderen artık `noreply@mltraining.org`
+- [ ] Üç şablon Supabase'e yapıştırıldı, konu satırları yazıldı
+- [ ] Deneme kaydı yapıldı: gönderen `noreply@mltraining.org`, tasarım yerinde
 
 ---
 
