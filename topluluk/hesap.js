@@ -18,6 +18,11 @@ const HESAP = (() => {
     tr: {
       giris:'Giriş yap', kayit:'Hesap oluştur', kayitKisa:'Kayıt ol', cikis:'Çıkış',
       adSoyad:'Ad Soyad', unvan:'Ünvan', kurum:'Kurum / Okul',
+      opsiyonel:'isteğe bağlı',
+      zorunluAd:'Ad ve soyadını yaz.',
+      zorunluUnvan:'Kendini nasıl tanımladığını seç.',
+      zorunluEposta:'E-posta adresini yaz.',
+      zorunluSifre:'Şifre en az 8 karakter olmalı.',
       sifreTekrar:'Şifre (tekrar)', sifreUyum:'Şifreler aynı değil.',
       unvanSec:'—',
       unvanlar:['Öğrenci','Akademisyen / Araştırmacı','Yazılım Geliştirici',
@@ -61,6 +66,11 @@ const HESAP = (() => {
     en: {
       giris:'Sign in', kayit:'Create account', kayitKisa:'Sign up', cikis:'Sign out',
       adSoyad:'Full Name', unvan:'Role', kurum:'Organisation / School',
+      opsiyonel:'optional',
+      zorunluAd:'Please enter your full name.',
+      zorunluUnvan:'Please choose how you would describe yourself.',
+      zorunluEposta:'Please enter your email address.',
+      zorunluSifre:'The password must be at least 8 characters.',
       sifreTekrar:'Password (again)', sifreUyum:'The passwords do not match.',
       unvanSec:'—',
       unvanlar:['Student','Academic / Researcher','Software Developer',
@@ -181,6 +191,9 @@ const HESAP = (() => {
       .hKart .alt{color:var(--mut,#586a80);font-size:14px;margin:0 0 22px;text-align:center;line-height:1.6}
       .hKart label{display:block;font-size:13.5px;font-weight:600;
         color:var(--txt,#0f1b2d);margin:0 0 6px}
+      /* etiket içindeki "· isteğe bağlı" notu: zorunlu alanlardan ayrılsın */
+      .hKart label i{font-style:normal;font-weight:500;color:var(--mut,#586a80);
+        font-size:12.5px}
       .hKart input,.hKart textarea{width:100%;background:var(--panel,#fff);
         border:1px solid var(--line,#dde5ef);border-radius:10px;padding:12px 14px;
         color:var(--txt,#0f1b2d);font-family:inherit;font-size:15px}
@@ -341,7 +354,8 @@ const HESAP = (() => {
       <div class="hIkili">
         ${alan(t.unvan, `<select id="hUn"><option value="">${t.unvanSec}</option>` +
           t.unvanlar.map(u => `<option>${u}</option>`).join('') + '</select>')}
-        ${alan(t.kurum, '<input type="text" id="hKu" autocomplete="organization">')}
+        ${alan(t.kurum + ' <i>· ' + t.opsiyonel + '</i>',
+               '<input type="text" id="hKu" autocomplete="organization">')}
       </div>
       ${alan(t.eposta, '<input type="email" id="hE" autocomplete="email" placeholder="ad@ornek.com">')}
       ${alan(t.sifre + ' · ' + t.sifreAz, `<div class="hSifreSar">
@@ -391,10 +405,10 @@ const HESAP = (() => {
 
     q('#hTamam').onclick = async () => {
       const eposta = (q('#hE') || {}).value ? q('#hE').value.trim() : '';
-      if (!eposta) return;
 
       /* şifre sıfırlama */
       if (sifirlamaMi){
+        if (!eposta){ mesaj(arka, t.zorunluEposta, false); return; }
         try {
           const { error } = await sb.auth.resetPasswordForEmail(eposta);
           if (error) throw error;
@@ -404,11 +418,22 @@ const HESAP = (() => {
       }
 
       const sifre = q('#hS').value;
-      if (!sifre) return;
+
+      /* Zorunlu alanlar. Kayıtta ad, ünvan, e-posta ve şifre istenir;
+         Kurum / Okul isteğe bağlıdır. Her eksik alan için ayrı ve somut
+         bir mesaj gösterilir, tek bir "form eksik" uyarısı değil. */
+      if (kayitMi){
+        if (!q('#hAd').value.trim()){ mesaj(arka, t.zorunluAd, false); q('#hAd').focus(); return; }
+        if (!q('#hUn').value)       { mesaj(arka, t.zorunluUnvan, false); q('#hUn').focus(); return; }
+      }
+      if (!eposta){ mesaj(arka, t.zorunluEposta, false); q('#hE').focus(); return; }
+      if (kayitMi ? sifre.length < 8 : !sifre){
+        mesaj(arka, t.zorunluSifre, false); q('#hS').focus(); return;
+      }
 
       try {
         if (kayitMi){
-          if (sifre !== q('#hS2').value){ mesaj(arka, t.sifreUyum, false); return; }
+          if (sifre !== q('#hS2').value){ mesaj(arka, t.sifreUyum, false); q('#hS2').focus(); return; }
           /* Ad, ünvan ve kurum auth metadata'sına yazılır; profil satırı
              oturum açılınca bundan doldurulur. */
           const { error } = await sb.auth.signUp({
