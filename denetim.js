@@ -4104,6 +4104,71 @@ console.log('═══ DENGESİZ VERİ ═══');
 }
 
 console.log('');
+console.log('═══ ÜRETİCİ MODELLER ═══');
+{
+  const U2 = URE.olc();
+  iddia('difüzyon adımı',40,U2.T);
+  iddia('halka iç yarıçap',0.55,U2.R_IC,2);
+  iddia('halka dış yarıçap',0.85,U2.R_DIS,2);
+
+  /* 1 · ileri süreç kapalı formdur */
+  [[0,0.9999],[8,0.8128],[16,0.4522],[28,0.0884],[39,0.0085]].forEach(([t,a])=>
+    iddia('ᾱ['+t+']',a,U2.ABAR[t],4));
+  /* ᾱ MONOTON azalmalı ve son adımda saf gürültüye ulaşmalı */
+  for (let t=1;t<U2.T;t++)
+    if (U2.ABAR[t] >= U2.ABAR[t-1]) console.log('  ✗ ᾱ monoton azalmıyor');
+  if (U2.ABAR[U2.T-1] > 0.02)
+    console.log('  ✗ son adımda saf gürültüye ulaşılmadı, ders yanlış');
+  /* veri payı = √ᾱ */
+  iddia('t=39 veri payı',0.0920,Math.sqrt(U2.ABAR[39]),4);
+
+  /* 2 · ters süreç öğrenildi */
+  iddia('gerçek halkada %',100.00,100*U2.gercekOlcut.icinde,2);
+  iddia('gerçek merkezde %',0.00,100*U2.gercekOlcut.merkez,2);
+  iddia('gerçek kapsama',0.9974,U2.gercekOlcut.kapsama,4);
+  iddia('difüzyon halkada %',60.17,100*U2.difOlcut.icinde,2);
+  iddia('difüzyon merkezde %',28.50,100*U2.difOlcut.merkez,2);
+  iddia('difüzyon kapsama',0.9875,U2.difOlcut.kapsama,4);
+  iddia('difüzyon ort yarıçap',0.6213,U2.difOlcut.ortR,4);
+
+  /* 3 · otokodlayıcı ortalama alıyor */
+  iddia('otokodlayıcı halkada %',39.00,100*U2.akOlcut.icinde,2);
+  iddia('otokodlayıcı merkezde %',61.00,100*U2.akOlcut.merkez,2);
+  iddia('otokodlayıcı kapsama',0.4801,U2.akOlcut.kapsama,4);
+  iddia('otokodlayıcı ort yarıçap',0.4016,U2.akOlcut.ortR,4);
+  /* dersin ana iddiaları */
+  if (U2.akOlcut.merkez <= U2.difOlcut.merkez)
+    console.log('  ✗ otokodlayıcı merkeze daha çok kütle koymadı, ders yanlış');
+  if (U2.akOlcut.kapsama >= U2.difOlcut.kapsama)
+    console.log('  ✗ otokodlayıcı kapsaması difüzyondan düşük değil, ders yanlış');
+  /* otokodlayıcının ortalama yarıçapı halkanın İÇİNDE kalmalı: ortalama alıyor */
+  if (U2.akOlcut.ortR >= U2.R_IC)
+    console.log('  ✗ otokodlayıcı ortalaması boş bölgeye düşmedi, ders yanlış');
+
+  /* 4 · adım sayısı */
+  [[0,2,33.00,35.75,0.8894],[1,4,1.75,98.25,0.9693],[2,8,51.50,47.00,0.9864],
+   [3,16,61.25,32.25,0.9873],[4,40,60.25,28.00,0.9877]].forEach(([i,k,ic,me,ka])=>{
+    iddia('adım['+i+'] k',k,U2.adimlar[i].k);
+    iddia('adım k='+k+' halkada %',ic,100*U2.adimlar[i].icinde,2);
+    iddia('adım k='+k+' merkezde %',me,100*U2.adimlar[i].merkez,2);
+    iddia('adım k='+k+' kapsama',ka,U2.adimlar[i].kapsama,4);
+  });
+  /* dersin aykırı iddiası: kalite adım sayısıyla MONOTON iyileşmiyor */
+  {
+    let monoton = true;
+    for (let i=1;i<U2.adimlar.length;i++)
+      if (U2.adimlar[i].icinde < U2.adimlar[i-1].icinde) monoton = false;
+    if (monoton)
+      console.log('  ✗ kalite adım sayısıyla monoton arttı, ders yanlış');
+    /* ve k=4 çöküşü gerçekten olmalı */
+    if (U2.adimlar[1].icinde >= U2.adimlar[0].icinde)
+      console.log('  ✗ k=4 çöküşü oluşmadı, ders yanlış');
+  }
+  /* en çok adım en iyi sonuca yakın olmalı */
+  if (U2.adimlar[4].icinde < 0.55)
+    console.log('  ✗ 40 adımda kalite yeterli değil');
+}
+
 console.log('═══ ÇOK KİPLİ ═══');
 {
   const K2 = COK.olc();

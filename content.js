@@ -92,6 +92,7 @@ const ROTALAR = [
     {id:'otokodlayici',   ad:'Otokodlayıcı: etiketsiz veriden öğrenmek',       sure:16, durum:'hazir'},
     {id:'hesap-cizge',    ad:'Hesaplama çizgesi: türev nasıl akar',            sure:16, durum:'hazir'},
     {id:'mdn',            ad:'Tek cevap yetmediğinde: karışım yoğunluk ağı',   sure:17, durum:'hazir'},
+    {id:'uretici',        ad:'Üretici modeller: difüzyon nasıl çalışır',        sure:17, durum:'hazir'},
     {id:'bayes-ag',       ad:'Bayesçi ağ: ağırlıklara da şüpheyle bakmak',     sure:17, durum:'hazir'},
     {id:'enc-dec',        ad:'Kodlayıcı mı çözücü mü: anlamak mı, üretmek mi',  sure:16, durum:'hazir'},
   ],
@@ -15380,6 +15381,190 @@ DERSLER['cokkipli'] = {
       'Sıcaklıkta ise <b>yüksek τ kazandı</b> (%83.67), CLIP in 0.07 sinin tersine. Sebep ' +
       'düzenek: 6 kavram ve 64 lük toplu işta aynı kavramdan ortalama 10 örnek "negatif" ' +
       'sayılıyor. Gerçek veride bu çakışma nadirdir.',
+    xp:55,
+  },
+  ],
+};
+
+DERSLER['uretici'] = {
+  ad:'Üretici modeller: difüzyon nasıl çalışır',
+  alt:'Bu ders uzun süre "tarayıcıda hesaplanamaz" diye ertelenmişti. Difüzyonun matematiği boyuttan bağımsız olduğu için 2 boyutta gerçekten eğitildi.',
+  kaynaklar:[
+    {"y":"Ho, J., Jain, A. & Abbeel, P.", "t":"2020", "b":"Denoising Diffusion Probabilistic Models", "n":"NeurIPS 2020"},
+    {"y":"Song, J., Meng, C. & Ermon, S.", "t":"2021", "b":"Denoising Diffusion Implicit Models", "n":"ICLR 2021 · DDIM"},
+    {"y":"Rombach, R. et al.", "t":"2022", "b":"High-Resolution Image Synthesis with Latent Diffusion Models", "n":"CVPR 2022 · Stable Diffusion"},
+  ],
+  rota:2,
+  adimlar:[
+  {
+    t:'İleri süreç: veriyi gürültüye çevirmek',
+    goal:'Difüzyonun öğrenilmeyen yarısını göreceksin.',
+    todo:'Adımı ilerlet. Halkanın nasıl kaybolduğuna ve ᾱ takvimine bak.',
+    kind:'controls', viz:'urIleri', h:760,
+    controls:[{k:'adim', lb:'ADIM t', min:0, max:4, step:1, val:0,
+               fmt:v=>'t = '+[0,8,16,28,39][Math.round(v)]}],
+    live:s => { const o = URE.olc(), e = o.ileriOrnek[Math.max(0,Math.min(4,Math.round(s.adim===undefined?0:s.adim)))];
+      return [['t', String(e.t)], ['ᾱ', e.abar.toFixed(4), K.green],
+              ['VERİ PAYI', Math.sqrt(e.abar).toFixed(4), K.orange]]; },
+    body:'<p>Difüzyon modelleri iki süreçten oluşur ve <b>yalnızca biri öğrenilir</b>. Bu adım ' +
+      'öğrenilmeyen yarıyı gösteriyor.</p>' +
+      '<p>Hedef dağılım bilinçli olarak bir <b>halka</b> seçildi. Sebebini üçüncü adımda ' +
+      'göreceksin: halkanın ortalaması merkezdedir ve orada <b>hiç veri yoktur</b>.</p>' +
+      '<p>İleri süreç veriye kademeli gürültü ekler. Tek formül:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">x<sub>t</sub> = √ᾱ<sub>t</sub> · x₀ + √(1−ᾱ<sub>t</sub>) · ε</p>' +
+      '<p>Buradaki ᾱ bir <b>takvimdir</b>, öğrenilmez. Her adımda verinin payı azalır, ' +
+      'gürültünün payı artar. Ölçülen değerler:</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;t &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ᾱ &nbsp;&nbsp;&nbsp;veri payı<br>' +
+      '&nbsp;&nbsp;0 &nbsp;&nbsp;0.9999 &nbsp;&nbsp;&nbsp;0.9999<br>' +
+      '&nbsp;&nbsp;8 &nbsp;&nbsp;0.8128 &nbsp;&nbsp;&nbsp;0.9016<br>' +
+      '16 &nbsp;&nbsp;0.4522 &nbsp;&nbsp;&nbsp;0.6725<br>' +
+      '28 &nbsp;&nbsp;0.0884 &nbsp;&nbsp;&nbsp;0.2973<br>' +
+      '39 &nbsp;&nbsp;<b>0.0085</b> &nbsp;&nbsp;&nbsp;<b>0.0920</b></p>' +
+      '<p>Son adımda ᾱ = 0.0085, yani veriden geriye neredeyse hiçbir şey kalmıyor. ' +
+      'Bu bir tercih değil <b>şarttır</b>: örnekleme saf gürültüden başlayacağı için, ' +
+      'model o rejimde eğitilmiş olmalıdır.</p>' +
+      '<p>Formülün en önemli özelliği <b>kapalı form</b> olması. Eğitim sırasında t = 28 ' +
+      'anındaki bir örnek istiyorsan, 28 adımı tek tek yürütmen gerekmez; doğrudan ' +
+      'hesaplarsın. Difüzyon eğitimini pratik kılan şey budur.</p>' +
+      '<p>Bir sonraki adımda öğrenilen yarı geliyor, ve model tek bir şey öğrenecek: ' +
+      '<b>bu gürültülü noktaya hangi gürültü eklenmişti?</b></p>',
+    learned:'<b>İleri süreç öğrenilmez, kapalı formdur.</b><br><br>' +
+      'x_t = √ᾱ_t · x₀ + √(1−ᾱ_t) · ε. ᾱ bir takvimdir ve her adımda verinin payı azalır: ' +
+      't = 0 da 0.9999, t = 39 da <b>0.0085</b>.<br><br>' +
+      'Son adımda saf gürültüye ulaşmak bir tercih değil şarttır, çünkü örnekleme oradan ' +
+      'başlar.<br><br>' +
+      'Kapalı form olması sayesinde herhangi bir t için örnek doğrudan hesaplanır, adımlar ' +
+      'tek tek yürütülmez.',
+    xp:50,
+  },
+  {
+    t:'Ters süreç öğrenilir',
+    goal:'Saf gürültüden başlayıp halkayı geri kurabilen bir modeli ölçeceksin.',
+    todo:'Üç kaynağı gez: gerçek veri, difüzyonun ürettiği ve otokodlayıcının ürettiği.',
+    kind:'controls', viz:'urTers', h:760,
+    controls:[{k:'kaynak', lb:'KAYNAK', min:0, max:2, step:1, val:0,
+               fmt:v=>['gerçek','difüzyon','otokodlayıcı'][Math.round(v)]}],
+    live:s => { const o = URE.olc();
+      const m = [o.gercekOlcut,o.difOlcut,o.akOlcut][Math.max(0,Math.min(2,Math.round(s.kaynak===undefined?0:s.kaynak)))];
+      return [['HALKADA', '%'+(100*m.icinde).toFixed(2), m.icinde>0.5?K.green:K.red],
+              ['MERKEZDE', '%'+(100*m.merkez).toFixed(2), m.merkez>0.4?K.red:K.green],
+              ['KAPSAMA', m.kapsama.toFixed(4), K.blue]]; },
+    body:'<p>Model tek bir şey öğrenir: gürültülü bir nokta ve zaman adımı verildiğinde, ' +
+      '<b>eklenmiş olan gürültüyü tahmin etmek</b>. Kayıp basit karesel hatadır.</p>' +
+      '<p>Eğitim döngüsü üç satır: rastgele bir örnek seç, rastgele bir t seç, o t için ' +
+      'gürültü ekle ve modelden eklediğin gürültüyü tahmin etmesini iste.</p>' +
+      '<p>Örnekleme ise tersine yürür. Saf gürültüyle başlanır, her adımda model gürültüyü ' +
+      'tahmin eder, o tahmin çıkarılır ve bir adım geriye gidilir.</p>' +
+      '<p>Ölçüm (600 örnek, halkanın içinde kalma ve boş merkeze düşme oranları):</p>' +
+      '<p style="font-family:var(--mono)">kaynak &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;halkada &nbsp;&nbsp;merkezde &nbsp;&nbsp;kapsama<br>' +
+      'gerçek veri &nbsp;&nbsp;&nbsp;<b>%100.00</b> &nbsp;&nbsp;&nbsp;&nbsp;%0.00 &nbsp;&nbsp;&nbsp;0.9974<br>' +
+      'difüzyon &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%60.17 &nbsp;&nbsp;&nbsp;%28.50 &nbsp;&nbsp;&nbsp;<b>0.9875</b><br>' +
+      'otokodlayıcı &nbsp;&nbsp;&nbsp;%39.00 &nbsp;&nbsp;&nbsp;<b>%61.00</b> &nbsp;&nbsp;&nbsp;0.4801</p>' +
+      '<p>Difüzyon halkayı büyük ölçüde yeniden üretiyor ve <b>açısal kapsaması 0.9875</b>, ' +
+      'yani halkanın her yönüne örnek koyuyor. Gerçek verinin kapsaması 0.9974; aradaki fark ' +
+      'küçük.</p>' +
+      '<p>Dürüst olmak gerekirse %60.17 mükemmel değil. 64 nöronlu bir ağ ve 40 adımla ' +
+      'çalışan bu düzenek, bir üretim difüzyon modeli değil. Amaç <b>mekanizmayı ölçülebilir ' +
+      'kılmak</b>, en iyi sonucu almak değil.</p>' +
+      '<p>Asıl çarpıcı satır otokodlayıcınınki. Kapsaması <b>0.4801</b>, yani halkanın yarısını ' +
+      'bile göremiyor. Ve örneklerinin <b>%61.00</b>\'i, hiç veri olmayan boş merkeze ' +
+      'düşüyor. Sonraki adım bunun sebebini gösteriyor.</p>',
+    learned:'<b>Model tek bir şey öğrenir: eklenen gürültüyü tahmin etmek.</b><br><br>' +
+      'Difüzyon halkayı yeniden üretiyor: örneklerin %60.17 si halkada, açısal kapsama ' +
+      '<b>0.9875</b> (gerçek veride 0.9974).<br><br>' +
+      'Otokodlayıcının kapsaması yalnızca <b>0.4801</b> ve örneklerinin <b>%61.00</b> i hiç ' +
+      'veri olmayan boş merkeze düşüyor.<br><br>' +
+      'Bu düzenek bir üretim modeli değil; amaç mekanizmayı ölçülebilir kılmak.',
+    xp:55,
+  },
+  {
+    t:'Ortalama almanın bedeli',
+    goal:'Tek bir cevap üreten modelin çok tepeli veride neden çuvalladığını göreceksin.',
+    todo:'İki bulutu yan yana karşılaştır. Kesikli daireler gerçek verinin sınırları.',
+    kind:'viz', viz:'urOrtalama', h:760,
+    body:'<p>Halka bilinçli seçildi. Sebebi şu: halkanın <b>ortalaması merkezdedir</b>, ve ' +
+      'merkezde hiç veri yoktur. Yani "ortalamayı üret" stratejisi burada ölçülebilir biçimde ' +
+      'yanlıştır.</p>' +
+      '<p>Otokodlayıcı girdi verilir, sıkıştırılır, geri açılır ve <b>tek bir çıktı</b> üretir. ' +
+      'Kayıp karesel olduğu için, belirsizlik karşısında en iyi tek cevap ortalamadır. Halkanın ' +
+      'bir yayına ait olabilecek girdiler için ortalama, o yayın <b>ortasına</b> düşer.</p>' +
+      '<p>Ölçüm iki modeli aynı veri üzerinde karşılaştırıyor:</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;difüzyon &nbsp;&nbsp;otokodlayıcı<br>' +
+      'halkada &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>%60.2</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%39.0<br>' +
+      'boş merkezde &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%28.5 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>%61.0</b><br>' +
+      'açısal kapsama &nbsp;&nbsp;<b>0.988</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.480<br>' +
+      'ortalama yarıçap &nbsp;&nbsp;0.621 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.402</p>' +
+      '<p>Otokodlayıcının ortalama yarıçapı <b>0.402</b>, oysa halkanın iç yarıçapı 0.55. ' +
+      'Yani ürettiği bulutun ağırlık merkezi, verinin <b>hiç bulunmadığı</b> bölgede.</p>' +
+      '<p>Açısal kapsama farkı daha da keskin: 0.988 karşı <b>0.480</b>. Otokodlayıcı halkanın ' +
+      'bazı yönlerini tamamen kaçırıyor. Bu, üretici modellerde <b>kip çöküşü</b> (mode ' +
+      'collapse) diye anılan olgunun ölçülmüş hâli.</p>' +
+      '<p>Bu kursta aynı problemi daha önce iki kez gördün. <i>Karışım yoğunluk ağı</i> ' +
+      'dersinde tek bir Gauss, iki tepeli bir dağılıma zorlanınca tepelerin ortasına ' +
+      'oturuyordu. <i>Uzman karışımı</i> dersinde yoğun model dört kümenin ortalamasını ' +
+      'öğrenmeye çalışıp seyrek modele yeniliyordu.</p>' +
+      '<p>Üçünde de aynı kural işliyor: <b>karesel kayıpla eğitilen tek çıktılı bir model, ' +
+      'belirsizlik karşısında ortalamayı üretir, ve ortalama çoğu zaman geçerli bir cevap ' +
+      'değildir.</b> Difüzyonun çözümü tek bir cevap üretmemek, bir <b>dağılımdan ' +
+      'örneklemektir</b>.</p>' +
+      '<p>Görsel modellerde bu farkın karşılığı doğrudan görünür. Otokodlayıcıyla üretilen ' +
+      'görüntülerin bulanık olması bir uygulama hatası değil, bu ortalamanın kendisidir: ' +
+      'olası bütün keskin görüntülerin ortalaması bulanık bir görüntüdür.</p>',
+    learned:'<b>Karesel kayıpla tek çıktı üreten model, belirsizlik karşısında ortalamayı verir.</b><br><br>' +
+      'Halkanın ortalaması merkezdedir ve orada hiç veri yoktur. Otokodlayıcı örneklerinin ' +
+      '<b>%61.0</b> ını oraya koyuyor, difüzyon %28.5.<br><br>' +
+      'Açısal kapsama 0.988 karşı <b>0.480</b>: otokodlayıcı halkanın bazı yönlerini tamamen ' +
+      'kaçırıyor.<br><br>' +
+      'Aynı problem <i>karışım yoğunluk ağı</i> ve <i>uzman karışımı</i> derslerinde de vardı. ' +
+      'Otokodlayıcı görüntülerinin bulanık olmasının sebebi de budur.',
+    xp:60,
+  },
+  {
+    t:'Difüzyonun asıl bedeli: adım sayısı',
+    goal:'Örnekleme adımlarını azaltmanın kaliteye ne yaptığını ölçeceksin.',
+    todo:'Adım sayısını değiştir. Eğrilerin düzgün inmediğine dikkat et.',
+    kind:'controls', viz:'urAdim', h:760,
+    controls:[{k:'k', lb:'ADIM', min:0, max:4, step:1, val:4,
+               fmt:v=>[2,4,8,16,40][Math.round(v)]+' adım'}],
+    live:s => { const o = URE.olc(), a = o.adimlar[Math.max(0,Math.min(4,Math.round(s.k===undefined?4:s.k)))];
+      return [['ADIM', String(a.k)],
+              ['HALKADA', '%'+(100*a.icinde).toFixed(2), a.icinde>0.5?K.green:K.red],
+              ['MERKEZDE', '%'+(100*a.merkez).toFixed(2), a.merkez>0.5?K.red:K.orange]]; },
+    body:'<p>Difüzyonun otokodlayıcıya karşı avantajı bedava değil. Otokodlayıcı bir örnek ' +
+      'üretmek için ağı <b>bir kez</b> çalıştırır. Difüzyon, adım sayısı kadar çalıştırır.</p>' +
+      '<p>Bu, üretim sistemlerinde en çok konuşulan kısıttır. Stable Diffusion\'ın ilk ' +
+      'sürümleri 50 adım kullanıyordu; bir görsel üretmek U-Net\'i 50 kez çalıştırmak ' +
+      'demekti.</p>' +
+      '<p>Doğal soru: adım sayısını azaltsak ne olur? Ölçüm:</p>' +
+      '<p style="font-family:var(--mono)">adım &nbsp;&nbsp;halkada &nbsp;&nbsp;merkezde &nbsp;&nbsp;kapsama<br>' +
+      '&nbsp;&nbsp;&nbsp;2 &nbsp;&nbsp;&nbsp;%33.0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%35.8 &nbsp;&nbsp;&nbsp;0.889<br>' +
+      '&nbsp;&nbsp;&nbsp;4 &nbsp;&nbsp;&nbsp;<b>%1.8</b> &nbsp;&nbsp;&nbsp;&nbsp;<b>%98.3</b> &nbsp;&nbsp;&nbsp;0.969<br>' +
+      '&nbsp;&nbsp;&nbsp;8 &nbsp;&nbsp;&nbsp;%51.5 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%47.0 &nbsp;&nbsp;&nbsp;0.986<br>' +
+      '&nbsp;&nbsp;16 &nbsp;&nbsp;&nbsp;%61.3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%32.3 &nbsp;&nbsp;&nbsp;0.987<br>' +
+      '&nbsp;&nbsp;40 &nbsp;&nbsp;&nbsp;<b>%60.3</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;%28.0 &nbsp;&nbsp;&nbsp;0.988</p>' +
+      '<p>Genel eğilim beklenen yönde: adım arttıkça halkada kalan oran yükseliyor ve boş ' +
+      'merkeze düşen oran azalıyor.</p>' +
+      '<p>Ama <b>düzgün inmiyor</b>, ve bu ölçümün en öğretici kısmı. 4 adımda halkada kalan ' +
+      'oran <b>%1.8</b>\'e çöküyor ve örneklerin <b>%98.3</b>\'ü merkeze yığılıyor. Oysa ' +
+      '2 adımda %33.0 idi. Yani adım sayısını <b>artırmak</b> sonucu geçici olarak ' +
+      'kötüleştirdi.</p>' +
+      '<p>Sebep, az adımlı örneklemede her adımın <b>büyük bir sıçrama</b> olması. Model ' +
+      'gürültü tahminini o sıçrama boyunca geçerli varsayar; sıçrama büyüdükçe bu varsayım ' +
+      'bozulur ve hata belirli adım seçimlerinde birikerek çöküşe yol açar.</p>' +
+      '<p>Buradan çıkan pratik kural: <b>adım sayısını azaltmak güvenli bir ayar değildir.</b> ' +
+      'Kalite düzgün düşmediği için "biraz hızlandıralım" kararı beklenmedik biçimde bozabilir, ' +
+      've bunu ancak ölçerek görebilirsin.</p>' +
+      '<p>Bu yüzden hızlı örnekleyiciler ayrı bir araştırma alanıdır. DDIM adımları ' +
+      'deterministik hâle getirir, DPM-Solver diferansiyel denklemi daha yüksek dereceden ' +
+      'çözer, damıtma yöntemleri ise çok adımlı bir modeli tek adımda taklit edecek ikinci ' +
+      'bir model eğitir. Hepsinin amacı aynı: bu tablodaki bozulmayı yaşamadan adım sayısını ' +
+      'düşürmek.</p>',
+    learned:'<b>Difüzyonun bedeli, örnek başına ağın defalarca çalışması.</b><br><br>' +
+      'Genel eğilim beklenen yönde: 40 adımda halkada %60.3, boş merkezde %28.0.<br><br>' +
+      'Ama kalite <b>düzgün düşmüyor</b>: 4 adımda halkada kalan %1.8 e çöküyor ve örneklerin ' +
+      '%98.3 ü merkeze yığılıyor, oysa 2 adımda %33.0 idi.<br><br>' +
+      'Az adımlı örneklemede her adım büyük bir sıçramadır ve hata belirli seçimlerde birikir. ' +
+      'Adım sayısını azaltmak güvenli bir ayar değildir.',
     xp:55,
   },
   ],

@@ -19895,3 +19895,493 @@ VIZ.ckAyar = s => {
         '  ·  en iyi ' + String(hangi === 'sicaklik' ? enIyi.t : enIyi.b) +
         ' ile %' + (100*enIyi.sifir).toFixed(2), K.green);
 };
+
+/* ═══════════════ ÜRETİCİ MODELLER ═══════════════
+   EKSIKLER.md'de "tarayıcıda gerçekten hesaplanamaz" diye D grubuna konmuştu.
+   Difüzyonun matematiği boyuttan bağımsız olduğu için 2 boyutta GERÇEKTEN
+   eğitilebiliyor. Ölçek aritmetikle anlatılıyor, mekanizma ölçülüyor.
+
+   Ölçülen iddialar:
+     1. İleri süreç kapalı formdur ve tam hesaplanır
+     2. Ters süreç öğrenilebilir ve halka dağılımını yeniden üretir
+     3. Otokodlayıcı ortalama alır ve boş merkeze kütle koyar
+     4. Adım sayısı azaltılınca kalite düşer: difüzyonun asıl bedeli budur    */
+const URE = (() => {
+  const N = 1200;        // eğitim örneği
+  const T = 40;          // difüzyon adımı
+  const GIZLI = 64;      // gürültü tahmincisinin gizli katmanı
+
+  /* ── hedef dağılım: HALKA ──
+     Bilinçli seçim. Halkanın ortalaması merkezdedir ve orada HİÇ VERİ YOKTUR.
+     Ortalama alan her model boş merkeze kütle koyar; bu ölçülebilir bir hata. */
+  const R_IC = 0.55, R_DIS = 0.85;
+  function veri(tohum){
+    const R = rng(tohum), X = [];
+    for (let i=0;i<N;i++){
+      const a = R()*2*Math.PI;
+      const r = R_IC + R()*(R_DIS-R_IC);
+      X.push([r*Math.cos(a), r*Math.sin(a)]);
+    }
+    return X;
+  }
+  const halkada = p => { const r = Math.hypot(p[0], p[1]);
+    return r >= R_IC-0.06 && r <= R_DIS+0.06; };
+
+  /* ── gürültü takvimi: kapalı form, öğrenilmez ──
+     ᾱ_t = Π(1−β_s).  x_t = √ᾱ_t · x_0 + √(1−ᾱ_t) · ε */
+  /* β takvimi son adımda ᾱ ≈ 0.01 olacak şekilde seçildi. Bu şart: örnekleme
+     saf gürültüden başlar, ve model o rejimde eğitilmiş olmalıdır. */
+  const BETA = Array.from({length:T}, (_,t) => 0.0001 + (0.22-0.0001)*t/(T-1));
+  const ABAR = (() => { const a = []; let c = 1;
+    for (let t=0;t<T;t++){ c *= (1-BETA[t]); a.push(c); } return a; })();
+
+  function ileri(x0, t, R){
+    const a = ABAR[t], s = Math.sqrt(a), g = Math.sqrt(1-a);
+    /* Box-Muller ile standart normal */
+    const n = () => { const u1 = Math.max(1e-9, R()), u2 = R();
+      return Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2); };
+    const e = [n(), n()];
+    return { xt: [s*x0[0] + g*e[0], s*x0[1] + g*e[1]], eps: e };
+  }
+
+  /* ── gürültü tahmincisi: küçük bir MLP, girdi (x, y, t/T) ── */
+  function agKur(R){
+    const gir = 7;                       // x, y, ve 5 zaman özelliği
+    return {
+      W1: Array.from({length:GIZLI}, () => Array.from({length:gir}, () => (R()-0.5)*1.4)),
+      b1: new Array(GIZLI).fill(0),
+      W2: Array.from({length:2}, () => Array.from({length:GIZLI}, () => (R()-0.5)*0.6)),
+      b2: [0,0],
+    };
+  }
+  function agIleri(A, x, y, tn){
+    /* zaman gömmesi: tek skaler yerine farklı frekanslar. Difüzyonda standart. */
+    const g = [x, y, tn,
+               Math.sin(Math.PI*tn), Math.cos(Math.PI*tn),
+               Math.sin(2*Math.PI*tn), Math.cos(2*Math.PI*tn)];
+    const h = A.W1.map((w,i) => Math.tanh(w.reduce((s,v,j)=>s+v*g[j],0) + A.b1[i]));
+    const o = A.W2.map((w,i) => w.reduce((s,v,j)=>s+v*h[j],0) + A.b2[i]);
+    return { h, o, g };
+  }
+
+  /* ── eğitim: rastgele t seç, gürültü ekle, eklenen gürültüyü tahmin et ── */
+  function egit(X, tur, tohum){
+    const R = rng(tohum || 61);
+    const A = agKur(R);
+    const hz = 0.02;
+    for (let it=0; it<tur; it++){
+      const gW1 = A.W1.map(r=>r.map(()=>0)), gb1 = new Array(GIZLI).fill(0);
+      const gW2 = A.W2.map(r=>r.map(()=>0)), gb2 = [0,0];
+      const B = 64;
+      for (let b=0;b<B;b++){
+        const i = Math.floor(R()*X.length);
+        const t = Math.floor(R()*T);
+        const { xt, eps } = ileri(X[i], t, R);
+        const { h, o, g } = agIleri(A, xt[0], xt[1], t/(T-1));
+        const d = [o[0]-eps[0], o[1]-eps[1]];
+        for (let k=0;k<2;k++){
+          for (let j=0;j<GIZLI;j++) gW2[k][j] += d[k]*h[j];
+          gb2[k] += d[k];
+        }
+        for (let j=0;j<GIZLI;j++){
+          let s = 0; for (let k=0;k<2;k++) s += d[k]*A.W2[k][j];
+          const dh = s*(1 - h[j]*h[j]);
+          for (let q=0;q<g.length;q++) gW1[j][q] += dh*g[q];
+          gb1[j] += dh;
+        }
+      }
+      for (let j=0;j<GIZLI;j++){
+        for (let q=0;q<A.W1[j].length;q++) A.W1[j][q] -= hz*gW1[j][q]/B;
+        A.b1[j] -= hz*gb1[j]/B;
+      }
+      for (let k=0;k<2;k++){
+        for (let j=0;j<GIZLI;j++) A.W2[k][j] -= hz*gW2[k][j]/B;
+        A.b2[k] -= hz*gb2[k]/B;
+      }
+    }
+    return A;
+  }
+
+  /* ── örnekleme: saf gürültüden başla, adım adım geri git ──
+     adimSayisi < T ise adımlar atlanır (DDIM benzeri hızlandırma). */
+  function orneklem(A, adet, adimSayisi, tohum){
+    const R = rng(tohum || 97);
+    const n = () => { const u1 = Math.max(1e-9, R()), u2 = R();
+      return Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2); };
+    const zaman = [];
+    for (let k=adimSayisi-1; k>=0; k--) zaman.push(Math.round(k*(T-1)/(adimSayisi-1)));
+    const out = [];
+    for (let s=0;s<adet;s++){
+      let x = [n(), n()];
+      for (let q=0;q<zaman.length;q++){
+        const t = zaman[q];
+        const { o } = agIleri(A, x[0], x[1], t/(T-1));
+        const a = ABAR[t];
+        /* tahmini x0 = (x_t − √(1−ᾱ)·ε̂) / √ᾱ */
+        const x0 = [(x[0] - Math.sqrt(1-a)*o[0])/Math.sqrt(a),
+                    (x[1] - Math.sqrt(1-a)*o[1])/Math.sqrt(a)];
+        const tt = (q+1 < zaman.length) ? zaman[q+1] : -1;
+        if (tt < 0){ x = x0; break; }
+        const a2 = ABAR[tt];
+        /* DDIM: gürültüsüz geri adım */
+        x = [Math.sqrt(a2)*x0[0] + Math.sqrt(1-a2)*o[0],
+             Math.sqrt(a2)*x0[1] + Math.sqrt(1-a2)*o[1]];
+      }
+      out.push(x);
+    }
+    return out;
+  }
+
+  /* ── otokodlayıcı: aynı veriye, darboğazdan geçirerek ──
+     Ortalama alan bir model halkanın boş merkezine kütle koyar. */
+  function otokodlayiciEgit(X, tur, tohum){
+    const R = rng(tohum || 71);
+    const H = 12;
+    const We = Array.from({length:H}, () => [ (R()-0.5)*1.2, (R()-0.5)*1.2 ]);
+    const be = new Array(H).fill(0);
+    const Wz = [ Array.from({length:H}, () => (R()-0.5)*0.6) ];   // 1 boyutlu darboğaz
+    const bz = [0];
+    const Wd = Array.from({length:H}, () => [ (R()-0.5)*0.6 ]);
+    const bd = new Array(H).fill(0);
+    const Wo = Array.from({length:2}, () => Array.from({length:H}, () => (R()-0.5)*0.6));
+    const bo = [0,0];
+    const ileriAK = x => {
+      const h1 = We.map((w,i) => Math.tanh(w[0]*x[0]+w[1]*x[1]+be[i]));
+      const z  = [Wz[0].reduce((s,v,j)=>s+v*h1[j],0)+bz[0]];
+      const h2 = Wd.map((w,i) => Math.tanh(w[0]*z[0]+bd[i]));
+      const o  = Wo.map((w) => w.reduce((s,v,j)=>s+v*h2[j],0));
+      return { h1, z, h2, o:[o[0]+bo[0], o[1]+bo[1]] };
+    };
+    const hz = 0.05;
+    for (let it=0;it<tur;it++){
+      const B = 64;
+      const gWo = Wo.map(r=>r.map(()=>0)), gbo=[0,0];
+      const gWd = Wd.map(r=>r.map(()=>0)), gbd=new Array(H).fill(0);
+      const gWz = [new Array(H).fill(0)], gbz=[0];
+      const gWe = We.map(r=>r.map(()=>0)), gbe=new Array(H).fill(0);
+      for (let b=0;b<B;b++){
+        const x = X[Math.floor(R()*X.length)];
+        const { h1, z, h2, o } = ileriAK(x);
+        const d = [o[0]-x[0], o[1]-x[1]];
+        for (let k=0;k<2;k++){ for (let j=0;j<H;j++) gWo[k][j] += d[k]*h2[j]; gbo[k] += d[k]; }
+        const dh2 = new Array(H).fill(0);
+        for (let j=0;j<H;j++){ let s=0; for(let k=0;k<2;k++) s += d[k]*Wo[k][j];
+          dh2[j] = s*(1-h2[j]*h2[j]); }
+        let dz = 0;
+        for (let j=0;j<H;j++){ gWd[j][0] += dh2[j]*z[0]; gbd[j] += dh2[j]; dz += dh2[j]*Wd[j][0]; }
+        const dh1 = new Array(H).fill(0);
+        for (let j=0;j<H;j++){ gWz[0][j] += dz*h1[j]; dh1[j] = dz*Wz[0][j]*(1-h1[j]*h1[j]); }
+        gbz[0] += dz;
+        for (let j=0;j<H;j++){ gWe[j][0] += dh1[j]*x[0]; gWe[j][1] += dh1[j]*x[1]; gbe[j] += dh1[j]; }
+      }
+      for (let k=0;k<2;k++){ for (let j=0;j<H;j++) Wo[k][j] -= hz*gWo[k][j]/B; bo[k] -= hz*gbo[k]/B; }
+      for (let j=0;j<H;j++){ Wd[j][0] -= hz*gWd[j][0]/B; bd[j] -= hz*gbd[j]/B;
+        Wz[0][j] -= hz*gWz[0][j]/B; We[j][0] -= hz*gWe[j][0]/B; We[j][1] -= hz*gWe[j][1]/B;
+        be[j] -= hz*gbe[j]/B; }
+      bz[0] -= hz*gbz[0]/B;
+    }
+    /* üretmek için: darboğaz değerini eğitim aralığında gezdirip çöz */
+    const zler = X.map(x => ileriAK(x).z[0]);
+    const zMin = Math.min(...zler), zMax = Math.max(...zler);
+    const uret = adet => {
+      const R2 = rng(83), out = [];
+      for (let i=0;i<adet;i++){
+        const z = [zMin + R2()*(zMax-zMin)];
+        const h2 = Wd.map((w,i2) => Math.tanh(w[0]*z[0]+bd[i2]));
+        const o = Wo.map(w => w.reduce((s,v,j)=>s+v*h2[j],0));
+        out.push([o[0]+bo[0], o[1]+bo[1]]);
+      }
+      return out;
+    };
+    return { uret, yeniden: x => ileriAK(x).o };
+  }
+
+  /* ── kalite ölçütleri ── */
+  function olcut(uretilen, X){
+    const icinde = uretilen.filter(halkada).length / uretilen.length;
+    /* açısal kapsama: 12 dilime böl, entropi ölç (düzgünde log2(12)=3.585) */
+    const KUTU = 12, say = new Array(KUTU).fill(0);
+    uretilen.forEach(p => {
+      let a = Math.atan2(p[1], p[0]); if (a < 0) a += 2*Math.PI;
+      say[Math.min(KUTU-1, Math.floor(a/(2*Math.PI)*KUTU))]++;
+    });
+    const H = say.reduce((s,c) => { const p = c/uretilen.length;
+      return p > 0 ? s - p*Math.log2(p) : s; }, 0);
+    /* ortalama yarıçap ve merkeze düşen oran */
+    const ortR = uretilen.reduce((s,p)=>s+Math.hypot(p[0],p[1]),0)/uretilen.length;
+    const merkez = uretilen.filter(p => Math.hypot(p[0],p[1]) < R_IC-0.06).length/uretilen.length;
+    return { icinde, H, kapsama: H/Math.log2(KUTU), ortR, merkez };
+  }
+
+  const C = {};
+  function olc(){
+    if (C.hazir) return C;
+    const X = veri(37);
+    C.X = X; C.T = T; C.R_IC = R_IC; C.R_DIS = R_DIS; C.N = N;
+    C.ABAR = ABAR; C.BETA = BETA;
+
+    /* ileri süreç: kapalı form, birkaç t için örnek bulut */
+    C.ileriOrnek = [0, 8, 16, 28, 39].map(t => {
+      const R = rng(101+t);
+      return { t, abar: ABAR[t],
+               nokta: X.slice(0,400).map(x => ileri(x, t, R).xt) };
+    });
+
+    /* difüzyon eğit */
+    const A = egit(X, 20000, 61);
+    C.model = A;
+    C.difuzyon = orneklem(A, 600, T, 97);
+    C.difOlcut = olcut(C.difuzyon, X);
+
+    /* otokodlayıcı */
+    const AK = otokodlayiciEgit(X, 4000, 71);
+    C.otokodlayici = AK.uret(600);
+    C.akOlcut = olcut(C.otokodlayici, X);
+
+    /* gerçek veri, karşılaştırma tabanı */
+    C.gercekOlcut = olcut(X.slice(0,600), X);
+
+    /* adım sayısı taraması */
+    C.adimlar = [2, 4, 8, 16, 40].map(k => {
+      const o = orneklem(A, 400, k, 97);
+      return { k, ...olcut(o, X) };
+    });
+    C.hazir = true;
+    return C;
+  }
+
+  return { N, T, R_IC, R_DIS, veri, ileri, egit, orneklem, olcut, halkada, olc };
+})();
+
+/* ── üretici · ortak: nokta bulutu ── */
+function ureBulut(P, nokta, renk, r){
+  nokta.forEach(p => dot(P.sx(p[0]), P.sy(p[1]), r || 2.4, renk));
+}
+function ureHalka(P, ic, dis){
+  cx.strokeStyle = K.mut+'66'; cx.lineWidth = 2; cx.setLineDash([5,5]);
+  [ic, dis].forEach(r => {
+    cx.beginPath();
+    cx.arc(P.sx(0), P.sy(0), Math.abs(P.sx(r)-P.sx(0)), 0, 7);
+    cx.stroke();
+  });
+  cx.setLineDash([]);
+}
+
+/* ── 1 · ileri süreç ── */
+VIZ.urIleri = s => {
+  clear();
+  const o = URE.olc();
+  const i = Math.max(0, Math.min(4, Math.round(s.adim === undefined ? 0 : s.adim)));
+  const e = o.ileriOrnek[i];
+  baslikSerit('İLERİ SÜREÇ: VERİYİ GÜRÜLTÜYE ÇEVİRMEK',
+    'Bu adımda öğrenilen hiçbir şey yok. Formül kapalı ve her t için doğrudan hesaplanır.',
+    [['ADIM  t', String(e.t)+' / '+(o.T-1), K.blue],
+     ['ᾱ', e.abar.toFixed(4), K.green],
+     ['√ᾱ · veri payı', Math.sqrt(e.abar).toFixed(4), K.orange]]);
+
+  const P = plot(rect(200, 250, 420, 420), -2.2, 2.2, -2.2, 2.2);
+  txt('t = '+e.t+' anındaki dağılım', P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', '', [-2,0,2], [-2,0,2]);
+  ureHalka(P, URE.R_IC, URE.R_DIS);
+  ureBulut(P, e.nokta, K.blue+'70', 2.6);
+
+  const Q = plot(rect(700, 250, 620, 190), 0, o.T-1, 0, 1.08);
+  txt('ᾱ TAKVİMİ  ·  yatay eksen t', Q.R.x+Q.R.w/2, Q.R.y-14, K.mut, 19);
+  frame(Q, '', '', [0,10,20,30,39], [0, 0.5, 1.0]);
+  cx.strokeStyle = K.green; cx.lineWidth = 3.5; cx.beginPath();
+  o.ABAR.forEach((a,t) => t===0 ? cx.moveTo(Q.sx(t), Q.sy(a)) : cx.lineTo(Q.sx(t), Q.sy(a)));
+  cx.stroke();
+  dot(Q.sx(e.t), Q.sy(e.abar), 8, K.yellow);
+  txt('ᾱ: verinin kalan payı', Q.R.x+Q.R.w-14, Q.R.y+30, K.green, 16, 'right');
+
+  const bx = 700;
+  box(bx, 470, 620, 110, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('TEK BİR FORMÜL', bx+310, 508, K.mut, 19);
+  txt('x_t  =  √ᾱ_t · x₀  +  √(1−ᾱ_t) · ε', bx+310, 548, K.yellow, 22);
+
+  box(bx, 600, 620, 110, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('t = '+e.t+' için:  veri payı '+Math.sqrt(e.abar).toFixed(4)+
+      '   gürültü payı '+Math.sqrt(1-e.abar).toFixed(4), bx+310, 638, K.txt, 17);
+  txt(e.t === 0 ? 'Neredeyse saf veri.'
+     : (e.abar < 0.05 ? 'Neredeyse saf gürültü: yapı tamamen gitti.'
+        : 'Halka hâlâ görünüyor ama bulanıklaşıyor.'),
+      bx+310, 672, e.abar < 0.05 ? K.red : K.mut, 17);
+
+  durum('t = '+e.t+'  ·  ᾱ = '+e.abar.toFixed(4)+'  ·  veri payı '+
+        Math.sqrt(e.abar).toFixed(4)+'  ·  bu adımda öğrenilen hiçbir şey yok',
+        e.abar < 0.05 ? K.red : K.blue);
+};
+
+/* ── 2 · ters süreç ── */
+VIZ.urTers = s => {
+  clear();
+  const o = URE.olc();
+  const hangi = Math.max(0, Math.min(2, Math.round(s.kaynak === undefined ? 0 : s.kaynak)));
+  const KUME = [['gerçek veri', o.X.slice(0,600), K.green, o.gercekOlcut],
+                ['difüzyon üretti', o.difuzyon, K.blue, o.difOlcut],
+                ['otokodlayıcı üretti', o.otokodlayici, K.orange, o.akOlcut]];
+  const [ad, nokta, renk, m] = KUME[hangi];
+  baslikSerit('TERS SÜREÇ ÖĞRENİLİR',
+    'Model tek bir şey öğrenir: "bu gürültülü noktaya hangi gürültü eklenmişti?"',
+    [['KAYNAK', ad, renk],
+     ['HALKADA', (100*m.icinde).toFixed(2)+'%', m.icinde>0.5?K.green:K.red],
+     ['BOŞ MERKEZDE', (100*m.merkez).toFixed(2)+'%', m.merkez>0.4?K.red:K.green]]);
+
+  const P = plot(rect(200, 250, 420, 420), -1.3, 1.3, -1.3, 1.3);
+  txt(ad, P.R.x+P.R.w/2, P.R.y-14, renk, 19);
+  frame(P, '', '', [-1,0,1], [-1,0,1]);
+  ureHalka(P, URE.R_IC, URE.R_DIS);
+  ureBulut(P, nokta, renk+'70', 2.6);
+
+  const bx = 700;
+  box(bx, 250, 620, 200, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('ÜÇ KAYNAK YAN YANA', bx+310, 288, K.mut, 19);
+  txt('kaynak', bx+150, 322, K.mut, 15);
+  txt('halkada', bx+360, 322, K.mut, 15);
+  txt('merkezde', bx+520, 322, K.mut, 15);
+  KUME.forEach(([a2,,r2,m2], k) => {
+    const y = 358+k*30, vur = k===hangi;
+    txt(a2, bx+30, y, vur?K.yellow:K.mut, 16, 'left');
+    txt((100*m2.icinde).toFixed(2)+'%', bx+360, y, vur?K.yellow:r2, 16);
+    txt((100*m2.merkez).toFixed(2)+'%', bx+520, y,
+        vur?K.yellow:(m2.merkez>0.4?K.red:K.green), 16);
+  });
+
+  box(bx, 470, 620, 110, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('AÇISAL KAPSAMA', bx+310, 508, K.mut, 18);
+  txt('difüzyon '+o.difOlcut.kapsama.toFixed(4)+
+      '   ·   otokodlayıcı '+o.akOlcut.kapsama.toFixed(4), bx+310, 548, K.txt, 19);
+
+  box(bx, 600, 620, 110, 'rgba(248,113,113,.06)', 'rgba(248,113,113,.4)', 2);
+  txt('HALKANIN MERKEZİNDE HİÇ VERİ YOK', bx+310, 636, K.red, 17);
+  txt('Ama otokodlayıcı örneklerinin %'+(100*o.akOlcut.merkez).toFixed(2)+
+      ' ini oraya koyuyor.', bx+310, 668, K.orange, 17);
+
+  durum(ad+'  ·  halkada %'+(100*m.icinde).toFixed(2)+
+        '  ·  boş merkezde %'+(100*m.merkez).toFixed(2)+
+        '  ·  açısal kapsama '+m.kapsama.toFixed(4),
+        m.merkez > 0.4 ? K.red : K.green);
+};
+
+/* ── 3 · ortalama alma hatası ── */
+VIZ.urOrtalama = s => {
+  clear();
+  const o = URE.olc();
+  baslikSerit('ORTALAMA ALMANIN BEDELİ',
+    'Halka bilinçli seçildi: ortalaması merkezdedir ve orada hiç veri yoktur.',
+    [['DİFÜZYON kapsama', o.difOlcut.kapsama.toFixed(4), K.blue],
+     ['OTOKODLAYICI kapsama', o.akOlcut.kapsama.toFixed(4), K.orange],
+     ['GERÇEK kapsama', o.gercekOlcut.kapsama.toFixed(4), K.green]]);
+
+  const P = plot(rect(140, 250, 380, 380), -1.3, 1.3, -1.3, 1.3);
+  txt('DİFÜZYON', P.R.x+P.R.w/2, P.R.y-14, K.blue, 19);
+  frame(P, '', '', [-1,0,1], [-1,0,1]);
+  ureHalka(P, URE.R_IC, URE.R_DIS);
+  ureBulut(P, o.difuzyon, K.blue+'70', 2.4);
+
+  const Q = plot(rect(580, 250, 380, 380), -1.3, 1.3, -1.3, 1.3);
+  txt('OTOKODLAYICI', Q.R.x+Q.R.w/2, Q.R.y-14, K.orange, 19);
+  frame(Q, '', '', [-1,0,1], [-1,0,1]);
+  ureHalka(Q, URE.R_IC, URE.R_DIS);
+  ureBulut(Q, o.otokodlayici, K.orange+'70', 2.4);
+
+  const bx = 1010;
+  box(bx, 250, 380, 200, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('SAYILAR', bx+190, 288, K.mut, 19);
+  [['halkada', 'icinde'], ['boş merkezde', 'merkez'], ['açısal kapsama', 'kapsama'],
+   ['ortalama yarıçap', 'ortR']].forEach(([ad, k], q) => {
+    const y = 326+q*30;
+    txt(ad, bx+24, y, K.mut, 15, 'left');
+    txt(k === 'kapsama' || k === 'ortR'
+        ? o.difOlcut[k].toFixed(3) : (100*o.difOlcut[k]).toFixed(1)+'%',
+        bx+250, y, K.blue, 15);
+    txt(k === 'kapsama' || k === 'ortR'
+        ? o.akOlcut[k].toFixed(3) : (100*o.akOlcut[k]).toFixed(1)+'%',
+        bx+340, y, K.orange, 15);
+  });
+  txt('difüzyon', bx+250, 436, K.blue, 14);
+  txt('otokod.', bx+340, 436, K.orange, 14);
+
+  box(bx, 470, 380, 240, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('NEDEN', bx+190, 508, K.mut, 18);
+  txt('Otokodlayıcı tek bir çıktı üretir', bx+24, 544, K.mut, 15, 'left');
+  txt('ve kayıp karesel olduğu için en iyi', bx+24, 566, K.mut, 15, 'left');
+  txt('tek cevap ORTALAMADIR.', bx+24, 588, K.orange, 15, 'left');
+  txt('Difüzyon ise tek cevap değil, bir', bx+24, 620, K.blue, 15, 'left');
+  txt('dağılımdan örnekler.', bx+24, 642, K.blue, 15, 'left');
+  txt('Karışım yoğunluk ağı dersindeki', bx+24, 674, K.mut, 15, 'left');
+  txt('aynı problem, aynı çözüm.', bx+24, 696, K.mut, 15, 'left');
+
+  durum('difüzyon kapsama '+o.difOlcut.kapsama.toFixed(4)+' · merkez %'+
+        (100*o.difOlcut.merkez).toFixed(1)+
+        '   ·   otokodlayıcı kapsama '+o.akOlcut.kapsama.toFixed(4)+' · merkez %'+
+        (100*o.akOlcut.merkez).toFixed(1), K.blue);
+};
+
+/* ── 4 · adım sayısı ── */
+VIZ.urAdim = s => {
+  clear();
+  const o = URE.olc();
+  const i = Math.max(0, Math.min(4, Math.round(s.k === undefined ? 4 : s.k)));
+  const a = o.adimlar[i];
+  baslikSerit('DİFÜZYONUN ASIL BEDELİ: ADIM SAYISI',
+    'Tek bir örnek üretmek için ağ defalarca çalıştırılır. Azaltınca ne oluyor?',
+    [['ADIM', String(a.k), K.blue],
+     ['HALKADA', (100*a.icinde).toFixed(2)+'%', a.icinde>0.5?K.green:K.red],
+     ['BOŞ MERKEZDE', (100*a.merkez).toFixed(2)+'%', a.merkez>0.5?K.red:K.orange]]);
+
+  const P = plot(rect(160, 250, 620, 300), -0.3, 4.3, 0, 1.05);
+  txt('ADIM SAYISI ile KALİTE  ·  yatay eksen adım sayısı',
+      P.R.x+P.R.w/2, P.R.y-14, K.mut, 19);
+  frame(P, '', 'oran', [], [0, 0.5, 1.0]);
+  [['icinde', K.green, 'halkada'], ['merkez', K.red, 'boş merkezde'],
+   ['kapsama', K.blue, 'açısal kapsama']].forEach(([alan, renk]) => {
+    cx.strokeStyle = renk; cx.lineWidth = 3.5; cx.beginPath();
+    o.adimlar.forEach((q,k) => k===0 ? cx.moveTo(P.sx(k), P.sy(q[alan]))
+                                     : cx.lineTo(P.sx(k), P.sy(q[alan])));
+    cx.stroke();
+    o.adimlar.forEach((q,k) => dot(P.sx(k), P.sy(q[alan]), k===i?8:5, k===i?K.yellow:renk));
+  });
+  o.adimlar.forEach((q,k) => txt(String(q.k), P.sx(k), P.R.y+P.R.h+28,
+                                 k===i?K.yellow:K.mut, 16));
+  txt('■ halkada', P.R.x+16, P.R.y+30, K.green, 15, 'left');
+  txt('■ boş merkezde', P.R.x+16, P.R.y+52, K.red, 15, 'left');
+  txt('■ açısal kapsama', P.R.x+16, P.R.y+74, K.blue, 15, 'left');
+
+  const Q = plot(rect(160, 612, 620, 66), -0.3, 4.3, 0, 44);
+  txt('AĞIN KAÇ KEZ ÇALIŞTIĞI  ·  maliyet', Q.R.x+Q.R.w/2, Q.R.y-14, K.mut, 17);
+  frame(Q, '', '', [], [0, 20, 40]);
+  o.adimlar.forEach((q,k) => {
+    const x = Q.sx(k), gen = 80, vur = k===i;
+    box(x-gen/2, Q.sy(q.k), gen, Q.sy(0)-Q.sy(q.k), (vur?K.yellow:K.orange)+'cc', null);
+    txt(String(q.k), x, Q.sy(q.k)-10, vur?K.yellow:K.orange, 15);
+  });
+
+  const bx = 820;
+  box(bx, 250, 570, 230, 'rgba(7,10,15,.6)', K.axis, 2);
+  txt('TAM TABLO', bx+285, 288, K.mut, 19);
+  txt('adım', bx+80, 322, K.mut, 15);
+  txt('halkada', bx+250, 322, K.mut, 15);
+  txt('merkez', bx+400, 322, K.mut, 15);
+  txt('kapsama', bx+530, 322, K.mut, 15);
+  o.adimlar.forEach((q,k) => {
+    const y = 358+k*28, vur = k===i;
+    txt(String(q.k), bx+80, y, vur?K.yellow:K.mut, 15);
+    txt((100*q.icinde).toFixed(1)+'%', bx+250, y, vur?K.yellow:K.green, 15);
+    txt((100*q.merkez).toFixed(1)+'%', bx+400, y, vur?K.yellow:K.red, 15);
+    txt(q.kapsama.toFixed(3), bx+530, y, vur?K.yellow:K.blue, 15);
+  });
+
+  box(bx, 500, 570, 210, 'rgba(248,113,113,.06)', 'rgba(248,113,113,.4)', 2);
+  txt('AZALTMAK GÜVENLİ DEĞİL', bx+285, 538, K.red, 18);
+  txt('Kalite adım sayısıyla DÜZGÜN düşmüyor.', bx+24, 574, K.txt, 16, 'left');
+  txt('4 adımda halkada kalan yalnızca %'+(100*o.adimlar[1].icinde).toFixed(1)+',', bx+24, 604, K.red, 16, 'left');
+  txt('oysa 2 adımda %'+(100*o.adimlar[0].icinde).toFixed(1)+'. Sıralama bozuluyor.', bx+24, 626, K.red, 16, 'left');
+  txt('Bu yüzden hızlı örnekleyiciler (DDIM,', bx+24, 658, K.mut, 16, 'left');
+  txt('DPM-Solver) ayrı bir araştırma alanı.', bx+24, 680, K.mut, 16, 'left');
+
+  durum(a.k+' adım  ·  halkada %'+(100*a.icinde).toFixed(2)+
+        '  ·  boş merkezde %'+(100*a.merkez).toFixed(2)+
+        '  ·  ağ örnek başına '+a.k+' kez çalıştı',
+        a.icinde > 0.5 ? K.green : K.red);
+};

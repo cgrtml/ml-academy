@@ -24,8 +24,10 @@
   /* ── hero ── */
   header{text-align:center;padding:56px 0 34px}
   .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.26em;color:var(--mut);text-transform:uppercase}
-  .hUst{position:fixed;top:56px;right:18px;z-index:60;display:flex;gap:8px}
-  @media(max-width:640px){.hUst{position:static;justify-content:center;margin:10px 0 0}}
+  .hUst{display:flex;gap:8px}
+  @media(max-width:640px){
+    .ustBar{position:static;justify-content:center;margin:12px 0 0;flex-wrap:wrap}
+  }
   .kicker .alan{text-transform:none;letter-spacing:.06em;color:#5b6b80}
   .kicker .alan::before{content:'·';margin:0 9px;color:#3a4a5c}
   h1{font-size:clamp(30px,5.6vw,52px);margin:14px 0 12px;font-weight:850;letter-spacing:-.03em;line-height:1.12}
@@ -97,7 +99,11 @@
   .pmini{height:3px;background:var(--line);border-radius:99px;margin-top:8px;overflow:hidden}
   .pmini i{display:block;height:100%;background:var(--green);border-radius:99px}
 
-  .dilbar{position:absolute;top:18px;right:20px;display:flex;gap:6px;z-index:5}
+  /* Dil ve hesap düğmeleri tek bir sabit satırda durur. Önceden dil
+     absolute top:18px, hesap fixed top:56px idi; ikisi ayrı yerlere düşüyordu
+     ve İngilizcede uzayan "Sign in" düğmesi büsbütün kayıyordu. */
+  .ustBar{position:fixed;top:16px;right:18px;z-index:60;display:flex;gap:10px;align-items:center}
+  .dilbar{display:flex;gap:6px}
   .dilbar button{font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:6px 12px;
       border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--mut);cursor:pointer}
   .dilbar button.on{background:var(--green);border-color:var(--green);color:#04120d;font-weight:800}
@@ -113,13 +119,14 @@
 <body>
 <div class="wrap" style="position:relative">
 
-  <div class="dilbar">
-    <button data-dil="tr">TR</button>
-    <button data-dil="en">EN</button>
+  <div class="ustBar">
+    <div class="dilbar">
+      <button data-dil="tr">TR</button>
+      <button data-dil="en">EN</button>
+    </div>
+    <!-- hesap düğmeleri; Supabase yoksa boş kalır -->
+    <div class="hUst" id="hesapCubuk"></div>
   </div>
-
-  <!-- hesap düğmeleri; Supabase yoksa boş kalır -->
-  <div class="hUst" id="hesapCubuk"></div>
 
   <header>
     <div class="kicker">ML Academy</div>

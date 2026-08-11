@@ -217,8 +217,30 @@ eklenirse ya sahte animasyon olur ya da çok pahalıya mal olur. Müfredatın
 **"her sayı gerçekten ölçülür"** kuralını bozmadan eklemenin yolu bulunmadan
 başlanmamalı.
 
-- [ ] **Üretici görsel modeller** · VAE → GAN → difüzyon
-      `otokodlayici[4]` VAE'yi bir varyant olarak anıyor, öğretmiyor.
+- [x] **Üretici görsel modeller** · difüzyon  ✔ 10 Ağustos 2026
+      `DERSLER['uretici']`, Rota 2 (`mdn` sonrası), 4 adım, 220 XP.
+      Bu madde "tarayıcıda gerçekten hesaplanamaz" diye D grubuna konmuştu.
+      İtiraz kısmen haksız çıktı: difüzyonun matematiği boyuttan bağımsız
+      olduğu için 2 boyutta GERÇEKTEN eğitildi. Ölçek kısmı ayrıca ve
+      aritmetik olarak etiketlendi, tıpkı LoRA ve MoE derslerinde olduğu gibi.
+      Hedef dağılım bilinçli olarak halka seçildi: ortalaması merkezdedir ve
+      orada hiç veri yoktur, yani "ortalama al" stratejisi ölçülebilir biçimde
+      yanlıştır.
+      Ölçülen: ileri süreç kapalı form, ᾱ t=0'da 0.9999 ve t=39'da 0.0085.
+      Difüzyon örneklerinin %60.17'si halkada, %28.50'si boş merkezde, açısal
+      kapsama 0.9875 (gerçek veride 0.9974). Otokodlayıcı ise kapsama 0.4801
+      ve örneklerinin %61.00'i boş merkezde; ortalama yarıçapı 0.4016, yani
+      halkanın iç yarıçapı olan 0.55'in altında.
+      Adım sayısı taraması aykırı çıktı ve olduğu gibi raporlandı: kalite
+      monoton iyileşmiyor, 4 adımda halkada kalan %1.75'e çöküyor ve %98.25
+      merkeze yığılıyor, oysa 2 adımda %33.00 idi.
+      Uygulamada iki hata bulunup düzeltildi: β takvimi son adımda ᾱ 0.29'da
+      kalıyordu (saf gürültüye ulaşmıyordu) ve zaman gömmesi tek skalerdi.
+      Düzeltmeden sonra halkada kalan oran %40.17'den %60.17'ye çıktı.
+      Kapsanmayan: VAE ayrı olarak eğitilmedi (düz otokodlayıcı kullanıldı),
+      GAN yok, gerçek görselle çalışılmadı, FID gibi ölçütler ve kosinüs
+      takvimi yalnızca anlatımda anılıyor. Gizil uzayda difüzyon ve damıtma
+      da anlatımda.
 
 ---
 

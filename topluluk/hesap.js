@@ -6,18 +6,25 @@
      <script src="topluluk/hesap.js"></script>
      <script>HESAP.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL });</script>   */
 
+/* Ders sayısı elle yazılırsa eskiyor: 113 yazılmıştı, gerçek sayı çoktan
+   değişmişti. Artık ROTALAR'dan çalışma anında sayılıyor. */
+const DERS_SAYISI = (typeof ROTALAR !== 'undefined')
+  ? ROTALAR.reduce((a,r) => a + r.dersler.length, 0)
+  : 120;
+
 const HESAP = (() => {
 
   const M = {
     tr: {
-      giris:'Giriş yap', kayit:'Ücretsiz hesap aç', cikis:'Çıkış',
+      giris:'Giriş yap', kayit:'Ücretsiz hesap aç', kayitKisa:'Kayıt ol', cikis:'Çıkış',
       eposta:'e-posta', sifre:'şifre', sifreAz:'en az 8 karakter',
       girisBas:'Tekrar hoş geldin', girisAlt:'Kaldığın yerden devam et.',
-      kayitBas:'Ücretsiz hesap aç', kayitAlt:'113 dersin tamamı açılır. Kart istenmez.',
+      kayitBas:'Ücretsiz hesap aç', kayitAlt:DERS_SAYISI+' dersin tamamı açılır. Kart istenmez.',
       gecis1:'Hesabın yok mu?  Kayıt ol', gecis2:'Zaten hesabın var mı?  Giriş yap',
       goster:'göster', gizle:'gizle',
       artiBas:'Hesapla birlikte',
-      arti:['113 dersin tamamı', 'İlerlemen cihazlar arası saklanır', 'Ücretsiz, istediğin an sil'],
+      arti:[DERS_SAYISI+' dersin tamamı', 'İlerlemen cihazlar arası saklanır',
+            'Hesabını istediğin zaman silebilirsin'],
       dogrula:'E-postana bir doğrulama bağlantısı gönderdik. Onayladıktan sonra giriş yapabilirsin.',
       hata:'Bir şey ters gitti',
       yorumBas:'Deneyimini yaz',
@@ -34,20 +41,21 @@ const HESAP = (() => {
       kilitAlt:'Her rotanın ilk üç dersi herkese açık. Gerisi için ücretsiz bir hesap yeterli.',
       kilitNe:'Hesap açmak neden gerekiyor:',
       kilitMad:['İlerlemen cihazlar arasında saklanır.',
-                'Hangi soruların bozuk olduğunu görüp dersleri düzeltiyoruz.',
-                'Ücretsiz, ve istediğin an silebilirsin.'],
+                'Hesap açmak ücretsiz, kart istenmez.',
+                'Hesabını istediğin zaman silebilirsin.'],
       modBas:'Onay bekleyen yorumlar', modYok:'Bekleyen yorum yok.',
       onayla:'Onayla', reddet:'Reddet',
     },
     en: {
-      giris:'Sign in', kayit:'Create free account', cikis:'Sign out',
+      giris:'Sign in', kayit:'Create free account', kayitKisa:'Sign up', cikis:'Sign out',
       eposta:'email', sifre:'password', sifreAz:'at least 8 characters',
       girisBas:'Welcome back', girisAlt:'Pick up where you left off.',
-      kayitBas:'Create a free account', kayitAlt:'All 113 lessons unlock. No card needed.',
+      kayitBas:'Create a free account', kayitAlt:'All '+DERS_SAYISI+' lessons unlock. No card needed.',
       gecis1:'No account yet?  Sign up', gecis2:'Already have an account?  Sign in',
       goster:'show', gizle:'hide',
       artiBas:'With an account',
-      arti:['All 113 lessons', 'Progress kept across devices', 'Free, delete it any time'],
+      arti:['All '+DERS_SAYISI+' lessons', 'Progress kept across devices',
+            'Delete your account whenever you want'],
       dogrula:'We sent a confirmation link to your email. You can sign in once you confirm it.',
       hata:'Something went wrong',
       yorumBas:'Write about your experience',
@@ -64,8 +72,8 @@ const HESAP = (() => {
       kilitAlt:'The first three lessons of every route are open to everyone. A free account covers the rest.',
       kilitNe:'Why an account:',
       kilitMad:['Your progress is kept across devices.',
-                'We see which questions are broken and fix the lessons.',
-                'It is free, and you can delete it whenever you like.'],
+                'Creating an account is free, no card needed.',
+                'You can delete your account whenever you want.'],
       modBas:'Reviews awaiting approval', modYok:'Nothing pending.',
       onayla:'Approve', reddet:'Reject',
     },
@@ -101,7 +109,28 @@ const HESAP = (() => {
       .hSifreSar button{position:absolute;right:10px;top:50%;transform:translateY(-50%);
         background:none;border:0;color:var(--mut,#8494a8);font-family:var(--mono,monospace);
         font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;padding:4px 6px}
-      .hKart.genis{max-width:680px}
+      .hKart.genis{max-width:760px}
+      /* kapatma düğmesi: modalın kaçış yolu görünür olmalı */
+      .hKart{position:relative}
+      .hKapat{position:absolute;top:14px;right:16px;width:30px;height:30px;line-height:1;
+        border-radius:9px;border:1px solid var(--line,#1e2a3a);background:var(--panel2,#141c28);
+        color:var(--mut,#8494a8);font-size:19px;cursor:pointer;padding:0}
+      .hKapat:hover{color:var(--txt,#e6edf3);border-color:var(--mut,#8494a8)}
+      /* giriş/kayıt sekmeleri */
+      .hSekme{display:flex;gap:4px;background:var(--bg,#080b11);border:1px solid var(--line,#1e2a3a);
+        border-radius:12px;padding:4px;margin:0 0 20px}
+      .hSekme button{flex:1;padding:9px 12px;border:0;border-radius:9px;background:none;
+        color:var(--mut,#8494a8);font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
+      .hSekme button.on{background:var(--panel2,#141c28);color:var(--txt,#e6edf3);
+        box-shadow:0 1px 3px rgba(0,0,0,.35)}
+      /* iki sütun: solda form, sağda hesabın ne getirdiği */
+      .hIki{display:grid;grid-template-columns:1fr 236px;gap:30px;align-items:start}
+      .hSag{border-left:1px solid var(--line,#1e2a3a);padding-left:26px;padding-top:4px}
+      .hSag .hArti{margin-top:0}
+      @media(max-width:660px){
+        .hIki{grid-template-columns:1fr;gap:22px}
+        .hSag{border-left:0;border-top:1px solid var(--line,#1e2a3a);padding-left:0;padding-top:20px}
+      }
       .hKart h3{margin:0 0 7px;font-size:25px;font-weight:850;letter-spacing:-.03em;text-align:center}
       .hKart .alt{color:var(--mut,#8494a8);font-size:14px;margin:0 0 22px;text-align:center;line-height:1.6}
       .hKart label{display:block;font-family:var(--mono,monospace);font-size:10.5px;
@@ -145,6 +174,11 @@ const HESAP = (() => {
         font-family:var(--mono,monospace);font-size:11px;padding:6px 12px;border-radius:8px;cursor:pointer}
       .hUst button:hover{color:var(--txt,#e6edf3);border-color:var(--mut,#8494a8)}
       .hUst button.vurgu{color:var(--green,#22d3a0);border-color:rgba(34,211,160,.4)}
+      /* kayıt ol: sayfadaki asıl eylem, dolu düğme */
+      .hUst button.birincil{background:var(--green,#22d3a0);border-color:var(--green,#22d3a0);
+        color:#04120d;font-weight:800}
+      .hUst button.birincil:hover{filter:brightness(1.08);color:#04120d}
+      @media(max-width:400px){ .hUst button{padding:6px 9px;font-size:10.5px} }
       .hMod{border:1px solid var(--line,#1e2a3a);border-radius:12px;padding:14px 16px;margin-bottom:10px}
       .hMod .ust{display:flex;justify-content:space-between;align-items:center;gap:10px}
       .hMod .ad{font-weight:700}
@@ -163,8 +197,13 @@ const HESAP = (() => {
     stil(); kapat();
     const arka = document.createElement('div');
     arka.className = 'hArka';
-    arka.innerHTML = `<div class="hKart${genis ? ' genis' : ''}">${icerik}</div>`;
+    arka.innerHTML = `<div class="hKart${genis ? ' genis' : ''}">` +
+      `<button class="hKapat" aria-label="${t.kapat}">×</button>${icerik}</div>`;
     arka.addEventListener('mousedown', e => { if (e.target === arka) kapat(); });
+    arka.querySelector('.hKapat').onclick = kapat;
+    /* Escape ile kapansın: modalın kaçış yolu olmalı. */
+    const esc = e => { if (e.key === 'Escape'){ kapat(); document.removeEventListener('keydown', esc); } };
+    document.addEventListener('keydown', esc);
     document.body.appendChild(arka);
     return arka;
   }
@@ -226,25 +265,40 @@ const HESAP = (() => {
 
   /* ── giriş / kayıt ── */
   function girisEkrani(kayitMi){
+    /* Sekmeli düzen: hangi moddasın ve diğerine nasıl geçersin, ikisi de tek
+       bakışta görünür. Önceden yalnızca altta küçük bir bağlantı vardı.
+       Faydalar her iki modda da sağ sütunda durur; geniş ekranda iki sütun,
+       darda alt alta. */
     const arka = kart(`
-      <div class="marka">ML Academy</div>
-      <h3>${kayitMi ? t.kayitBas : t.girisBas}</h3>
-      <p class="alt">${kayitMi ? t.kayitAlt : t.girisAlt}</p>
-      ${sosyalHTML()}
-      <label>${t.eposta}</label>
-      <input type="email" id="hE" autocomplete="email" placeholder="ad@ornek.com">
-      <label>${t.sifre}${kayitMi ? ' · ' + t.sifreAz : ''}</label>
-      <div class="hSifreSar">
-        <input type="password" id="hS" autocomplete="${kayitMi?'new-password':'current-password'}">
-        <button type="button" id="hGoz">${t.goster}</button>
-      </div>
-      <div class="hDug tek">
-        <button id="hTamam" class="ana">${kayitMi ? t.kayit : t.giris}</button>
-      </div>
-      ${kayitMi ? `<div style="margin-top:20px"><div class="marka" style="text-align:left;margin-bottom:0">${t.artiBas}</div>
-        <ul class="hArti">${t.arti.map(x => '<li>'+x+'</li>').join('')}</ul></div>` : ''}
-      <span class="hGecis" id="hGecis">${kayitMi ? t.gecis2 : t.gecis1}</span>`);
+      <div class="hIki">
+        <div class="hSol">
+          <div class="marka">ML Academy</div>
+          <div class="hSekme" role="tablist">
+            <button data-k="0" class="${kayitMi ? '' : 'on'}">${t.giris}</button>
+            <button data-k="1" class="${kayitMi ? 'on' : ''}">${t.kayitKisa}</button>
+          </div>
+          <h3>${kayitMi ? t.kayitBas : t.girisBas}</h3>
+          <p class="alt">${kayitMi ? t.kayitAlt : t.girisAlt}</p>
+          ${sosyalHTML()}
+          <label>${t.eposta}</label>
+          <input type="email" id="hE" autocomplete="email" placeholder="ad@ornek.com">
+          <label>${t.sifre}${kayitMi ? ' · ' + t.sifreAz : ''}</label>
+          <div class="hSifreSar">
+            <input type="password" id="hS" autocomplete="${kayitMi?'new-password':'current-password'}">
+            <button type="button" id="hGoz">${t.goster}</button>
+          </div>
+          <div class="hDug tek">
+            <button id="hTamam" class="ana">${kayitMi ? t.kayit : t.giris}</button>
+          </div>
+        </div>
+        <aside class="hSag">
+          <div class="marka" style="text-align:left;margin-bottom:14px">${t.artiBas}</div>
+          <ul class="hArti">${t.arti.map(x => '<li>'+x+'</li>').join('')}</ul>
+        </aside>
+      </div>`, true);
 
+    arka.querySelectorAll('.hSekme button').forEach(b2 =>
+      b2.onclick = () => { if (b2.dataset.k === (kayitMi?'1':'0')) return; girisEkrani(b2.dataset.k === '1'); });
     sosyalBagla(arka);
     const gz = arka.querySelector('#hGoz');
     gz.onclick = () => { const i = arka.querySelector('#hS');
@@ -256,7 +310,6 @@ const HESAP = (() => {
     arka.querySelector('#hS').addEventListener('keydown', e => {
       if (e.key === 'Enter') arka.querySelector('#hTamam').click(); });
     setTimeout(() => arka.querySelector('#hE').focus(), 30);
-    arka.querySelector('#hGecis').onclick = () => girisEkrani(!kayitMi);
     arka.querySelector('#hTamam').onclick = async () => {
       const eposta = arka.querySelector('#hE').value.trim();
       const sifre  = arka.querySelector('#hS').value;
@@ -373,8 +426,13 @@ const HESAP = (() => {
     const yer = document.getElementById('hesapCubuk');
     if (!yer) return;
     if (!kullanici){
-      yer.innerHTML = `<button id="hbGiris">${t.giris}</button>`;
+      /* Giriş yapmamış kullanıcıya iki yol da gösterilir. Önceden yalnızca
+         soluk bir "Giriş yap" düğmesi vardı ve kayıt olma yolu görünmüyordu. */
+      yer.innerHTML =
+        `<button id="hbGiris">${t.giris}</button>` +
+        `<button id="hbKayit" class="birincil">${t.kayitKisa}</button>`;
       yer.querySelector('#hbGiris').onclick = () => girisEkrani(false);
+      yer.querySelector('#hbKayit').onclick = () => girisEkrani(true);
     } else {
       yer.innerHTML =
         `<button id="hbYorum" class="vurgu">${t.yorumBas}</button>` +

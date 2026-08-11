@@ -87,11 +87,20 @@
             background:rgba(34,211,160,.14);color:var(--green);border:1px solid rgba(34,211,160,.4);
             border-radius:9px;padding:9px 15px}
   .dersLink:hover{background:rgba(34,211,160,.24)}
+  /* kilitli ders: yeşil yerine kehribar, ve düğme olduğu belli olsun */
+  .dersLink.kilitli{background:rgba(251,146,60,.12);border-color:rgba(251,146,60,.45);
+    color:#fb923c;cursor:pointer}
+  .dersLink.kilitli:hover{background:rgba(251,146,60,.22)}
+  .ustBar{position:fixed;top:16px;right:18px;z-index:60;display:flex;gap:10px;align-items:center}
+  @media(max-width:640px){.ustBar{position:static;justify-content:center;margin:12px 0 0}}
   .yok{text-align:center;color:var(--mut);padding:50px 0;font-family:var(--mono);font-size:13px}
   .foot{text-align:center;color:var(--mut);font-size:12.5px;margin-top:40px;font-family:var(--mono)}
 </style>
 </head>
 <body>
+
+<!-- hesap çubuğu: index.html ile aynı yerde dursun -->
+<div class="ustBar"><div class="hUst" id="hesapCubuk"></div></div>
 
 <header>
   <div class="wrap">
@@ -113,10 +122,41 @@
   <div class="foot"><a href="index.html">← Derslere dön</a></div>
 </div>
 
+<script src="content.js"></script>
+<script src="yapilandirma.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="topluluk/hesap.js"></script>
 <script src="modeller.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 let aktifF = 'hepsi';
+
+/* ── erişim kilidi ──
+   BUG (10 Ağustos 2026): bu sayfa ders linkini kilidi hiç sormadan basıyordu,
+   yani model kataloğu üzerinden her derse girilebiliyordu. lesson.html kendi
+   perdesini koruyor ama katalogda linkin kilitli görünmemesi yanlıştı.
+   Kural index.html ile aynı: her rotanın ilk N dersi açık. */
+const UCRETSIZ_M = (typeof SUPA !== 'undefined' && SUPA.ucretsizDers) || 3;
+let GIRISLI_M = false;
+function dersSirasiM(id){
+  if (typeof ROTALAR === 'undefined') return 0;
+  for (const r of ROTALAR){
+    const i = r.dersler.findIndex(d => d.id === id);
+    if (i >= 0) return i;
+  }
+  return 0;
+}
+function dersKilitli(id){
+  if (GIRISLI_M) return false;
+  if (typeof SUPA === 'undefined' || !SUPA.hazir) return false;
+  return dersSirasiM(id) >= UCRETSIZ_M;
+}
+function dersLinki(id){
+  if (!dersKilitli(id))
+    return '<a class="dersLink" href="lesson.html?id='+id+'">▶ Bu modelin interaktif dersine git</a>';
+  return '<button class="dersLink kilitli" data-ders="'+id+'">' +
+         '🔒 Bu ders için hesap gerekiyor</button>';
+}
 
 $('filtreler').innerHTML =
   '<button class="f on" data-g="hepsi" style="background:var(--green);border-color:var(--green)">HEPSİ</button>' +
@@ -158,11 +198,17 @@ function ciz(){
         '<div class="bl"><span class="h hp-h">◈ Kilit ayarlar</span><table>' +
           m.hiper.map(([a,b])=>'<tr><td>'+a+'</td><td>'+b+'</td></tr>').join('') + '</table></div>' +
         '<div class="bl"><span class="h tz-h">⚠ Klasik tuzak</span><div class="tuzak">'+m.tuzak+'</div></div>' +
-        (m.ders ? '<a class="dersLink" href="lesson.html?id='+m.ders+'">▶ Bu modelin interaktif dersine git</a>' : '') +
+        (m.ders ? dersLinki(m.ders) : '') +
       '</div></div>';
   }).join('');
 
   document.querySelectorAll('.bas').forEach(el => el.onclick = () => el.parentElement.classList.toggle('acik'));
+  /* kilitli ders düğmesi giriş ekranını açar */
+  document.querySelectorAll('.dersLink.kilitli').forEach(el => el.onclick = ev => {
+    ev.stopPropagation();
+    if (typeof HESAP !== 'undefined' && HESAP.girisEkrani) HESAP.girisEkrani();
+    else location.href = 'index.html';
+  });
   document.querySelectorAll('.kopyala').forEach(el => el.onclick = ev => {
     ev.stopPropagation();
     navigator.clipboard.writeText($('kod'+el.dataset.k).textContent);
@@ -185,6 +231,15 @@ $('filtreler').onclick = e => {
   ciz();
 };
 ciz();
+
+/* Giriş durumu. index.html ile aynı kurulum: dinle() ile durum değişimini
+   yakala, kur() ile oturumu başlat. Giriş yapılınca kilitler açılıp liste
+   yeniden çizilir. */
+if (typeof HESAP !== 'undefined' && typeof SUPA !== 'undefined' && SUPA.hazir){
+  HESAP.dinle(() => { GIRISLI_M = HESAP.girisli; ciz(); });
+  HESAP.kur({ url:SUPA.url, anonKey:SUPA.anonKey,
+              saglayicilar:SUPA.saglayicilar });
+}
 </script>
 </body>
 </html>

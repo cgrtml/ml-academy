@@ -715,6 +715,13 @@ var ARAYUZ_EN = {
   "AYIRMA": "SEPARATION",
   "AYAR": "SETTING",
   "SIFIR-ATIŞ": "ZERO-SHOT",
+  "difüzyon": "diffusion",
+  "otokodlayıcı": "autoencoder",
+  "HALKADA": "IN RING",
+  "MERKEZDE": "IN CENTRE",
+  "KAPSAMA": "COVERAGE",
+  "VERİ PAYI": "DATA SHARE",
+  "ADIM": "STEPS",
 /*SON*/
 };
 

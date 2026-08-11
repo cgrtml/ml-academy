@@ -9874,3 +9874,167 @@ DERSLER_EN['cokkipli'] = {
   ],
 };
 DERS_ADI_EN['cokkipli'] = 'Multimodal models: bringing image and text into one space';
+
+DERSLER_EN['uretici'] = {
+  ad:'Generative models: how diffusion works',
+  alt:'This lesson was deferred for a long time as "not computable in a browser". Diffusion\'s mathematics is dimension-independent, so it was genuinely trained in 2D.',
+  adimlar:[
+  {
+    t:'The forward process: turning data into noise',
+    goal:'You will see the half of diffusion that is not learned.',
+    todo:'Advance the step. Watch the ring vanish and follow the ᾱ schedule.',
+    kind:'controls', viz:'urIleri', h:760, xp:50,
+    controls:[{k:'adim', lb:'STEP t', min:0, max:4, step:1, val:0,
+               fmt:v=>'t = '+[0,8,16,28,39][Math.round(v)]}],
+    body:'<p>Diffusion models consist of two processes and <b>only one is learned</b>. This step ' +
+      'shows the one that is not.</p>' +
+      '<p>The target distribution was deliberately chosen to be a <b>ring</b>. You will see why ' +
+      'in the third step: the ring\'s mean is at the centre, and there is <b>no data there</b>.</p>' +
+      '<p>The forward process adds noise to the data in stages. One formula:</p>' +
+      '<p style="font-family:var(--mono);text-align:center">x<sub>t</sub> = √ᾱ<sub>t</sub> · x₀ + √(1−ᾱ<sub>t</sub>) · ε</p>' +
+      '<p>ᾱ here is a <b>schedule</b>, not something learned. At every step the data\'s share ' +
+      'falls and the noise\'s share rises. Measured:</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;t &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ᾱ &nbsp;&nbsp;&nbsp;data share<br>' +
+      '&nbsp;&nbsp;0 &nbsp;&nbsp;0.9999 &nbsp;&nbsp;&nbsp;0.9999<br>' +
+      '&nbsp;&nbsp;8 &nbsp;&nbsp;0.8128 &nbsp;&nbsp;&nbsp;0.9016<br>' +
+      '16 &nbsp;&nbsp;0.4522 &nbsp;&nbsp;&nbsp;0.6725<br>' +
+      '28 &nbsp;&nbsp;0.0884 &nbsp;&nbsp;&nbsp;0.2973<br>' +
+      '39 &nbsp;&nbsp;<b>0.0085</b> &nbsp;&nbsp;&nbsp;<b>0.0920</b></p>' +
+      '<p>At the last step ᾱ = 0.0085, so almost nothing of the data remains. That is not a ' +
+      'preference but a <b>requirement</b>: since sampling starts from pure noise, the model ' +
+      'must have been trained in that regime.</p>' +
+      '<p>The formula\'s most important property is being <b>closed form</b>. If training needs ' +
+      'a sample at t = 28, you do not have to run 28 steps; you compute it directly. That is ' +
+      'what makes diffusion training practical.</p>' +
+      '<p>The next step brings the learned half, and the model will learn exactly one thing: ' +
+      '<b>what noise was added to this noisy point?</b></p>',
+    learned:'<b>The forward process is not learned; it is closed form.</b><br><br>' +
+      'x_t = √ᾱ_t · x₀ + √(1−ᾱ_t) · ε. ᾱ is a schedule and the data\'s share falls at every ' +
+      'step: 0.9999 at t = 0 and <b>0.0085</b> at t = 39.<br><br>' +
+      'Reaching pure noise at the last step is a requirement, not a preference, because ' +
+      'sampling starts there.<br><br>' +
+      'Being closed form means a sample at any t is computed directly rather than by running ' +
+      'the steps one by one.',
+  },
+  {
+    t:'The reverse process is learned',
+    goal:'You will measure a model that starts from pure noise and rebuilds the ring.',
+    todo:'Step through the three sources: real data, diffusion\'s output, the autoencoder\'s output.',
+    kind:'controls', viz:'urTers', h:760, xp:55,
+    controls:[{k:'kaynak', lb:'SOURCE', min:0, max:2, step:1, val:0,
+               fmt:v=>['real','diffusion','autoencoder'][Math.round(v)]}],
+    body:'<p>The model learns exactly one thing: given a noisy point and a time step, ' +
+      '<b>predict the noise that was added</b>. The loss is plain squared error.</p>' +
+      '<p>The training loop is three lines: pick a random example, pick a random t, add noise ' +
+      'for that t, and ask the model to predict the noise you added.</p>' +
+      '<p>Sampling runs the other way. Start from pure noise; at each step the model predicts ' +
+      'the noise, that prediction is removed, and one step back is taken.</p>' +
+      '<p>Measured (600 samples; share landing in the ring and in the empty centre):</p>' +
+      '<p style="font-family:var(--mono)">source &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;in ring &nbsp;&nbsp;in centre &nbsp;&nbsp;coverage<br>' +
+      'real data &nbsp;&nbsp;&nbsp;&nbsp;<b>100.00%</b> &nbsp;&nbsp;&nbsp;&nbsp;0.00% &nbsp;&nbsp;&nbsp;0.9974<br>' +
+      'diffusion &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;60.17% &nbsp;&nbsp;&nbsp;28.50% &nbsp;&nbsp;&nbsp;<b>0.9875</b><br>' +
+      'autoencoder &nbsp;&nbsp;&nbsp;39.00% &nbsp;&nbsp;&nbsp;<b>61.00%</b> &nbsp;&nbsp;&nbsp;0.4801</p>' +
+      '<p>Diffusion largely rebuilds the ring, and its <b>angular coverage is 0.9875</b>, ' +
+      'meaning it places samples in every direction of the ring. The real data\'s coverage is ' +
+      '0.9974; the difference is small.</p>' +
+      '<p>To be honest, 60.17% is not perfect. This setup, a 64-unit network with 40 steps, is ' +
+      'not a production diffusion model. The goal is to make the <b>mechanism measurable</b>, ' +
+      'not to get the best result.</p>' +
+      '<p>The striking row is the autoencoder\'s. Its coverage is <b>0.4801</b>, so it cannot ' +
+      'even see half the ring. And <b>61.00%</b> of its samples land in the empty centre where ' +
+      'there is no data at all. The next step shows why.</p>',
+    learned:'<b>The model learns one thing: to predict the noise that was added.</b><br><br>' +
+      'Diffusion rebuilds the ring: 60.17% of samples land in it and angular coverage is ' +
+      '<b>0.9875</b> (0.9974 for real data).<br><br>' +
+      'The autoencoder\'s coverage is only <b>0.4801</b> and <b>61.00%</b> of its samples fall ' +
+      'in the empty centre.<br><br>' +
+      'This setup is not a production model; the goal is to make the mechanism measurable.',
+  },
+  {
+    t:'The price of averaging',
+    goal:'You will see why a model producing a single answer fails on multi-peaked data.',
+    todo:'Compare the two clouds side by side. The dashed circles are the real data\'s bounds.',
+    kind:'viz', viz:'urOrtalama', h:760, xp:60,
+    body:'<p>The ring was chosen deliberately. The reason: the ring\'s <b>mean is at the ' +
+      'centre</b>, and there is no data at the centre. So the strategy "produce the average" is ' +
+      'measurably wrong here.</p>' +
+      '<p>An autoencoder takes an input, compresses it, expands it back and produces <b>a single ' +
+      'output</b>. Because the loss is squared error, the best single answer under uncertainty ' +
+      'is the mean. For inputs that could belong to an arc of the ring, that mean falls in the ' +
+      '<b>middle</b> of the arc.</p>' +
+      '<p>The measurement compares two models on the same data:</p>' +
+      '<p style="font-family:var(--mono)">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;diffusion &nbsp;&nbsp;autoencoder<br>' +
+      'in ring &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>60.2%</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;39.0%<br>' +
+      'in empty centre &nbsp;&nbsp;28.5% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<b>61.0%</b><br>' +
+      'angular coverage &nbsp;<b>0.988</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.480<br>' +
+      'mean radius &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.621 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0.402</p>' +
+      '<p>The autoencoder\'s mean radius is <b>0.402</b>, while the ring\'s inner radius is 0.55. ' +
+      'So the centre of mass of the cloud it produces lies in a region where there is <b>no ' +
+      'data at all</b>.</p>' +
+      '<p>The coverage difference is sharper still: 0.988 against <b>0.480</b>. The autoencoder ' +
+      'misses some directions of the ring entirely. This is the measured form of what is called ' +
+      '<b>mode collapse</b> in generative models.</p>' +
+      '<p>You have seen the same problem twice before in this course. In the <i>mixture density ' +
+      'network</i> lesson a single Gaussian forced onto a two-peaked distribution settled ' +
+      'between the peaks. In the <i>mixture of experts</i> lesson the dense model tried to learn ' +
+      'the average of four clusters and lost to the sparse one.</p>' +
+      '<p>The same rule governs all three: <b>a single-output model trained with squared loss ' +
+      'produces the mean under uncertainty, and the mean is often not a valid answer.</b> ' +
+      'Diffusion\'s answer is not to produce one output but to <b>sample from a ' +
+      'distribution</b>.</p>' +
+      '<p>In image models the difference is directly visible. Autoencoder-generated images being ' +
+      'blurry is not an implementation fault but this averaging itself: the mean of all the ' +
+      'sharp images that could be there is a blurry image.</p>',
+    learned:'<b>A single-output model with squared loss returns the mean under uncertainty.</b><br><br>' +
+      'The ring\'s mean is at the centre and there is no data there. The autoencoder puts ' +
+      '<b>61.0%</b> of its samples there against diffusion\'s 28.5%.<br><br>' +
+      'Angular coverage is 0.988 against <b>0.480</b>: the autoencoder misses some directions of ' +
+      'the ring entirely.<br><br>' +
+      'The same problem appeared in the <i>mixture density network</i> and <i>mixture of ' +
+      'experts</i> lessons. It is also why autoencoder images look blurry.',
+  },
+  {
+    t:'Diffusion\'s real cost: the number of steps',
+    goal:'You will measure what cutting the sampling steps does to quality.',
+    todo:'Change the step count. Note that the curves do not fall smoothly.',
+    kind:'controls', viz:'urAdim', h:760, xp:55,
+    controls:[{k:'k', lb:'STEPS', min:0, max:4, step:1, val:4,
+               fmt:v=>[2,4,8,16,40][Math.round(v)]+' steps'}],
+    body:'<p>Diffusion\'s advantage over the autoencoder is not free. The autoencoder runs its ' +
+      'network <b>once</b> per sample. Diffusion runs it as many times as there are steps.</p>' +
+      '<p>This is the most-discussed constraint in production systems. Early versions of Stable ' +
+      'Diffusion used 50 steps, meaning generating one image ran the U-Net 50 times.</p>' +
+      '<p>The natural question: what if we cut the steps? Measured:</p>' +
+      '<p style="font-family:var(--mono)">steps &nbsp;&nbsp;in ring &nbsp;&nbsp;in centre &nbsp;&nbsp;coverage<br>' +
+      '&nbsp;&nbsp;&nbsp;2 &nbsp;&nbsp;&nbsp;33.0% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;35.8% &nbsp;&nbsp;&nbsp;0.889<br>' +
+      '&nbsp;&nbsp;&nbsp;4 &nbsp;&nbsp;&nbsp;<b>1.8%</b> &nbsp;&nbsp;&nbsp;&nbsp;<b>98.3%</b> &nbsp;&nbsp;&nbsp;0.969<br>' +
+      '&nbsp;&nbsp;&nbsp;8 &nbsp;&nbsp;&nbsp;51.5% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;47.0% &nbsp;&nbsp;&nbsp;0.986<br>' +
+      '&nbsp;&nbsp;16 &nbsp;&nbsp;&nbsp;61.3% &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;32.3% &nbsp;&nbsp;&nbsp;0.987<br>' +
+      '&nbsp;&nbsp;40 &nbsp;&nbsp;&nbsp;<b>60.3%</b> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;28.0% &nbsp;&nbsp;&nbsp;0.988</p>' +
+      '<p>The general trend goes the expected way: more steps means a higher share landing in ' +
+      'the ring and a lower share in the empty centre.</p>' +
+      '<p>But it <b>does not fall smoothly</b>, and that is the most instructive part of the ' +
+      'measurement. At 4 steps the share in the ring collapses to <b>1.8%</b> and <b>98.3%</b> ' +
+      'of samples pile into the centre. At 2 steps it was 33.0%. So <b>increasing</b> the step ' +
+      'count temporarily made things worse.</p>' +
+      '<p>The reason is that with few steps each step is a <b>large jump</b>. The model\'s noise ' +
+      'prediction is assumed valid across that jump; as the jump grows that assumption breaks, ' +
+      'and for particular step choices the error accumulates into a collapse.</p>' +
+      '<p>The practical rule: <b>cutting the step count is not a safe knob.</b> Because quality ' +
+      'does not degrade smoothly, a decision to "speed it up a bit" can break things ' +
+      'unexpectedly, and you can only see that by measuring.</p>' +
+      '<p>This is why fast samplers are a research field of their own. DDIM makes the steps ' +
+      'deterministic, DPM-Solver solves the differential equation to a higher order, and ' +
+      'distillation methods train a second model to imitate a many-step model in one step. All ' +
+      'have the same goal: lowering the step count without the degradation in this table.</p>',
+    learned:'<b>Diffusion\'s cost is running the network many times per sample.</b><br><br>' +
+      'The general trend goes the expected way: at 40 steps, 60.3% in the ring and 28.0% in the ' +
+      'empty centre.<br><br>' +
+      'But quality <b>does not fall smoothly</b>: at 4 steps the share in the ring collapses to ' +
+      '1.8% and 98.3% pile into the centre, while at 2 steps it was 33.0%.<br><br>' +
+      'With few steps each step is a large jump and error accumulates at particular choices. ' +
+      'Cutting the step count is not a safe knob.',
+  },
+  ],
+};
+DERS_ADI_EN['uretici'] = 'Generative models: how diffusion works';
