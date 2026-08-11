@@ -16,7 +16,7 @@ const HESAP = (() => {
 
   const M = {
     tr: {
-      giris:'Giriş yap', kayit:'Hesap oluştur', kayitKisa:'Kayıt ol', cikis:'Çıkış',
+      giris:'Giriş yap', kayit:'Hesap oluştur', cikis:'Çıkış',
       adSoyad:'Ad Soyad', unvan:'Ünvan', kurum:'Kurum / Okul (isteğe bağlı)',
       sifreTekrar:'Şifre (tekrar)', sifreUyum:'Şifreler aynı değil.',
       unvanSec:'—',
@@ -30,9 +30,12 @@ const HESAP = (() => {
       sifirlaBilgi:'E-postana bir sıfırlama bağlantısı gönderdik.',
       marka:'ML Academy', markaAlt:'Yapay zekâyı sıfırdan öğren',
       eposta:'e-posta', sifre:'şifre', sifreAz:'en az 8 karakter',
-      girisBas:'Tekrar hoş geldin', girisAlt:'Kaldığın yerden devam et.',
+      girisBas:'Giriş yap ya da hesap aç',
+      girisAlt:'Tek adım. Hesabın yoksa aynı bilgilerle otomatik açılır.',
+      devam:'Devam et', istegeBagli:'isteğe bağlı',
+      ekBas:'Yeni hesap açıyorsan',
+      sifreYanlis:'Bu e-posta kayıtlı ama şifre yanlış.',
       kayitBas:'Ücretsiz hesap aç', kayitAlt:DERS_SAYISI+' dersin tamamı açılır. Kart istenmez.',
-      gecis1:'Hesabın yok mu?  Kayıt ol', gecis2:'Zaten hesabın var mı?  Giriş yap',
       goster:'göster', gizle:'gizle',
       artiBas:'Hesapla birlikte',
       arti:[DERS_SAYISI+' dersin tamamı', 'İlerlemen cihazlar arası saklanır',
@@ -59,7 +62,7 @@ const HESAP = (() => {
       onayla:'Onayla', reddet:'Reddet',
     },
     en: {
-      giris:'Sign in', kayit:'Create account', kayitKisa:'Sign up', cikis:'Sign out',
+      giris:'Sign in', kayit:'Create account', cikis:'Sign out',
       adSoyad:'Full name', unvan:'Role', kurum:'Organisation / school (optional)',
       sifreTekrar:'Password (again)', sifreUyum:'The passwords do not match.',
       unvanSec:'—',
@@ -73,9 +76,12 @@ const HESAP = (() => {
       sifirlaBilgi:'We sent a reset link to your email.',
       marka:'ML Academy', markaAlt:'Learn AI from zero',
       eposta:'email', sifre:'password', sifreAz:'at least 8 characters',
-      girisBas:'Welcome back', girisAlt:'Pick up where you left off.',
+      girisBas:'Sign in or create an account',
+      girisAlt:'One step. If you have no account, it is created with the same details.',
+      devam:'Continue', istegeBagli:'optional',
+      ekBas:'If you are creating an account',
+      sifreYanlis:'This email is registered but the password is wrong.',
       kayitBas:'Create a free account', kayitAlt:'All '+DERS_SAYISI+' lessons unlock. No card needed.',
-      gecis1:'No account yet?  Sign up', gecis2:'Already have an account?  Sign in',
       goster:'show', gizle:'hide',
       artiBas:'With an account',
       arti:['All '+DERS_SAYISI+' lessons', 'Progress kept across devices',
@@ -146,13 +152,13 @@ const HESAP = (() => {
       .hMarka{font-size:24px;font-weight:850;letter-spacing:-.03em;color:var(--blue,#1668c9)}
       .hMarkaAlt{color:var(--mut,#586a80);font-size:14px;margin-top:4px}
 
-      /* giriş / kayıt sekmesi */
-      .hSekme{display:flex;gap:4px;background:var(--panel2,#eef2f8);
-        border-radius:12px;padding:4px;margin:0 0 22px}
-      .hSekme button{flex:1;padding:10px 12px;border:0;border-radius:9px;background:none;
-        color:var(--mut,#586a80);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
-      .hSekme button.on{background:var(--panel,#fff);color:var(--txt,#0f1b2d);
-        box-shadow:0 1px 3px rgba(15,27,45,.12)}
+      /* Sekme kaldırıldı: tek kutu, tek düğme. Aşağıdaki başlık yalnızca
+         "bu alanlar yeni hesap içindir" demek için var, mod değiştirmez. */
+      .hEkBas{display:flex;align-items:center;gap:9px;margin:22px 0 14px;
+        font-family:var(--mono,monospace);font-size:10px;letter-spacing:.18em;
+        text-transform:uppercase;color:var(--mut,#586a80)}
+      .hEkBas::after{content:'';flex:1;height:1px;background:var(--line,#dde5ef)}
+      .hEkBas span{letter-spacing:.1em;opacity:.75}
 
       /* alanlar */
       .hAlan{margin-bottom:15px}
@@ -195,8 +201,6 @@ const HESAP = (() => {
       .hDug.tek button{flex:1}
       .hDug button.teh{color:var(--red,#cf2f2f);border-color:rgba(248,113,113,.4)}
       .hDug button:hover{border-color:var(--mut,#586a80)}
-      .hGecis{display:block;text-align:center;margin-top:15px;font-size:13px;
-        color:var(--blue,#1668c9);cursor:pointer}
       .hAyrac{display:flex;align-items:center;gap:12px;margin:20px 0 4px;
         color:var(--mut,#586a80);font-size:12px}
       .hAyrac::before,.hAyrac::after{content:'';flex:1;height:1px;background:var(--line,#dde5ef)}
@@ -301,12 +305,11 @@ const HESAP = (() => {
         <ul class="hKilitMad">${t.kilitMad.map(x => '<li>'+x+'</li>').join('')}</ul></div>
       <div class="hDug">
         <button id="hIptal">${t.kapat}</button>
-        <button id="hTamam" class="ana">${t.kayit}</button>
-      </div>
-      <span class="hGecis" id="hGecis">${t.gecis2}</span>`);
+        <button id="hTamam" class="ana">${t.giris}</button>
+      </div>`);
     arka.querySelector('#hIptal').onclick = kapat;
-    arka.querySelector('#hTamam').onclick = () => girisEkrani(true);
-    arka.querySelector('#hGecis').onclick = () => girisEkrani(false);
+    /* Giriş ve kayıt tek ekran olduğu için burada da tek yol var. */
+    arka.querySelector('#hTamam').onclick = () => girisEkrani(false);
   }
 
   /* ── giriş / kayıt ── */
@@ -317,59 +320,54 @@ const HESAP = (() => {
 
      Ünvan isteğe bağlıdır ve atlanabilir. Zorunlu yapılmadı: ücretsiz bir
      kursta her zorunlu alan kayıt tamamlama oranını düşürür. */
+  /* ══ GİRİŞ / KAYIT · TEK KUTU ══
+     Sekme yok, mod yok. Kullanıcı e-posta ve şifresini yazar, tek düğmeye
+     basar. Arka planda önce giriş denenir; hesap yoksa aynı bilgilerle
+     açılır. Böylece "kayıtlı mıydım?" diye düşünmek gerekmiyor.
+
+     Alttaki üç alan yalnızca YENİ hesap açılırsa kullanılır ve hepsi
+     isteğe bağlıdır; dönen kullanıcı üstteki iki alanı doldurup geçer.
+
+     `kayitMi` artık davranışı değiştirmiyor, yalnızca eski çağrıların
+     (kilit ekranı, rota tebriği) kırılmaması için kabul ediliyor. */
   function girisEkrani(kayitMi, sifirlamaMi){
     const alan = (etiket, ic) => `<div class="hAlan"><label>${etiket}</label>${ic}</div>`;
 
     const sifirlamaHTML = `
-      <p class="alt">${t.girisAlt}</p>
+      <p class="alt">${t.sifremiUnuttum}</p>
       ${alan(t.eposta, '<input type="email" id="hE" autocomplete="email" placeholder="ad@ornek.com">')}
       <div class="hDug tek"><button id="hTamam" class="ana">${t.sifirlaGonder}</button></div>
       <div class="hAlt"><span class="hBag" id="hGeriGiris">← ${t.giris}</span></div>`;
 
-    const girisHTML = `
+    const anaHTML = `
       ${sosyalHTML()}
       ${alan(t.eposta, '<input type="email" id="hE" autocomplete="email" placeholder="ad@ornek.com">')}
       ${alan(t.sifre, `<div class="hSifreSar">
           <input type="password" id="hS" autocomplete="current-password">
           <button type="button" id="hGoz">${t.goster}</button></div>`)}
-      <div class="hDug tek"><button id="hTamam" class="ana">${t.giris}</button></div>
-      <div class="hAlt"><span class="hBag" id="hUnut">${t.sifremiUnuttum}</span></div>`;
-
-    const kayitHTML = `
-      ${sosyalHTML()}
+      <div class="hEkBas">${t.ekBas} <span>· ${t.istegeBagli}</span></div>
       ${alan(t.adSoyad, '<input type="text" id="hAd" autocomplete="name">')}
       <div class="hIkili">
         ${alan(t.unvan, `<select id="hUn"><option value="">${t.unvanSec}</option>` +
           t.unvanlar.map(u => `<option>${u}</option>`).join('') + '</select>')}
         ${alan(t.kurum, '<input type="text" id="hKu" autocomplete="organization">')}
       </div>
-      ${alan(t.eposta, '<input type="email" id="hE" autocomplete="email" placeholder="ad@ornek.com">')}
-      ${alan(t.sifre + ' · ' + t.sifreAz, `<div class="hSifreSar">
-          <input type="password" id="hS" autocomplete="new-password">
-          <button type="button" id="hGoz">${t.goster}</button></div>`)}
-      ${alan(t.sifreTekrar, '<input type="password" id="hS2" autocomplete="new-password">')}
-      <div class="hDug tek"><button id="hTamam" class="ana">${t.kayit}</button></div>`;
+      <div class="hDug tek"><button id="hTamam" class="ana">${t.devam}</button></div>
+      <div class="hAlt"><span class="hBag" id="hUnut">${t.sifremiUnuttum}</span></div>
+      <ul class="hArti">${t.arti.map(x => '<li>' + x + '</li>').join('')}</ul>`;
 
     const arka = kart(`
       <div class="hBas">
         <div class="hMarka">${t.marka}</div>
         <div class="hMarkaAlt">${t.markaAlt}</div>
       </div>
-      ${sifirlamaMi ? '' : `
-      <div class="hSekme" role="tablist">
-        <button data-k="0" class="${kayitMi ? '' : 'on'}">${t.giris}</button>
-        <button data-k="1" class="${kayitMi ? 'on' : ''}">${t.kayitKisa}</button>
-      </div>`}
-      ${sifirlamaMi ? sifirlamaHTML : (kayitMi ? kayitHTML : girisHTML)}
-      ${kayitMi && !sifirlamaMi ? `<ul class="hArti">${t.arti.map(x => '<li>'+x+'</li>').join('')}</ul>` : ''}`,
-      kayitMi && !sifirlamaMi);
+      <h3>${sifirlamaMi ? t.sifremiUnuttum : t.girisBas}</h3>
+      <p class="alt">${sifirlamaMi ? '' : t.girisAlt}</p>
+      ${sifirlamaMi ? sifirlamaHTML : anaHTML}`, !sifirlamaMi);
 
     const q = sec => arka.querySelector(sec);
 
-    arka.querySelectorAll('.hSekme button').forEach(d =>
-      d.onclick = () => { if (d.dataset.k === (kayitMi ? '1' : '0')) return;
-                          girisEkrani(d.dataset.k === '1'); });
-    if (q('#hUnut')) q('#hUnut').onclick = () => girisEkrani(false, true);
+    if (q('#hUnut'))      q('#hUnut').onclick      = () => girisEkrani(false, true);
     if (q('#hGeriGiris')) q('#hGeriGiris').onclick = () => girisEkrani(false);
     sosyalBagla(arka);
 
@@ -380,20 +378,19 @@ const HESAP = (() => {
       gz.textContent = gizli ? t.gizle : t.goster;
     };
 
-    /* Enter ile ilerleme: son alanda gönder, öncesinde sonrakine geç. */
+    /* Enter: son alanda gönder, öncesinde sonrakine geç. */
     const sira = [...arka.querySelectorAll('input')];
     sira.forEach((inp, k) => inp.addEventListener('keydown', e => {
       if (e.key !== 'Enter') return;
       e.preventDefault();
-      if (k < sira.length - 1) sira[k+1].focus(); else q('#hTamam').click();
+      if (k < sira.length - 1) sira[k + 1].focus(); else q('#hTamam').click();
     }));
-    setTimeout(() => { const ilk = sira[0]; if (ilk) ilk.focus(); }, 30);
+    setTimeout(() => { if (sira[0]) sira[0].focus(); }, 30);
 
     q('#hTamam').onclick = async () => {
-      const eposta = (q('#hE') || {}).value ? q('#hE').value.trim() : '';
+      const eposta = q('#hE').value.trim();
       if (!eposta) return;
 
-      /* şifre sıfırlama */
       if (sifirlamaMi){
         try {
           const { error } = await sb.auth.resetPasswordForEmail(eposta);
@@ -406,29 +403,37 @@ const HESAP = (() => {
       const sifre = q('#hS').value;
       if (!sifre) return;
 
+      /* 1 · önce giriş denenir */
       try {
-        if (kayitMi){
-          if (sifre !== q('#hS2').value){ mesaj(arka, t.sifreUyum, false); return; }
-          /* Ad, ünvan ve kurum auth metadata'sına yazılır; profil satırı
-             oturum açılınca bundan doldurulur. */
-          const { error } = await sb.auth.signUp({
-            email: eposta, password: sifre,
-            options: { data: {
-              display_name: q('#hAd').value.trim(),
-              title:        q('#hUn').value,
-              organization: q('#hKu').value.trim(),
-            } },
-          });
-          if (error) throw error;
-          mesaj(arka, t.dogrula, true);
-        } else {
-          const { error } = await sb.auth.signInWithPassword({ email:eposta, password:sifre });
-          if (error) throw error;
-          kapat();
-        }
-      } catch (e){ mesaj(arka, e.message || t.hata, false); }
+        const { error } = await sb.auth.signInWithPassword({ email:eposta, password:sifre });
+        if (!error){ kapat(); return; }
+      } catch (e){ /* aşağıda kayıt denenecek */ }
+
+      /* 2 · giriş olmadı: hesap yoksa aç.
+         Supabase güvenlik gereği "böyle bir kullanıcı yok" ile "şifre
+         yanlış" ayrımını yapmaz. Bu yüzden kayıt denenir ve dönen yanıta
+         bakılır: e-posta zaten kayıtlıysa Supabase BOŞ bir identities
+         dizisi döndürür, bu da "şifre yanlıştı" demektir. */
+      try {
+        const { data, error } = await sb.auth.signUp({
+          email: eposta, password: sifre,
+          options: { data: {
+            display_name: (q('#hAd') || {}).value ? q('#hAd').value.trim() : '',
+            title:        (q('#hUn') || {}).value || '',
+            organization: (q('#hKu') || {}).value ? q('#hKu').value.trim() : '',
+          } },
+        });
+        if (error) throw error;
+        const zatenVar = data && data.user && Array.isArray(data.user.identities)
+                         && data.user.identities.length === 0;
+        mesaj(arka, zatenVar ? t.sifreYanlis : t.dogrula, !zatenVar);
+      } catch (e){
+        const m = String(e.message || '');
+        mesaj(arka, /already|registered|exists/i.test(m) ? t.sifreYanlis : (m || t.hata), false);
+      }
     };
   }
+
 
 
   /* ── yorum ── */
