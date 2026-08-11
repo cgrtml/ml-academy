@@ -701,23 +701,38 @@ const HESAP = (() => {
         `<button id="hbCikis">${t.cikis}</button>`;
       yer.querySelector('#hbYorum').onclick = yorumEkrani;
       if (moderator) yer.querySelector('#hbMod').onclick = modEkrani;
-      /* ÇIKIŞ · onAuthStateChange'e güvenilmez.
-         Oturum belirteci sunucuda çoktan geçersizse signOut() hata döndürür,
-         yerel oturumu temizlemez ve SIGNED_OUT olayını yaymaz. Düğme basılır,
-         hiçbir şey olmaz. Bu yüzden: önce olağan çıkış denenir, olmazsa yalnız
-         yerel oturum temizlenir, sonra durum HER HÂLÜKÂRDA elle sıfırlanıp
-         çubuk yeniden çizilir. */
-      yer.querySelector('#hbCikis').onclick = async () => {
+      /* ÇIKIŞ · AĞ İSTEĞİ BEKLENMEZ.
+         İki sürüm boyunca çalışmadı, sebebi her seferinde aynıydı: kod
+         `await sb.auth.signOut()` diyordu ve o istek yanıt vermediğinde
+         (belirteç sunucuda geçersiz, ağ takılı, uç yavaş) sonraki satırlar
+         hiç çalışmıyordu. Düğmeye basılıyor, hiçbir şey olmuyordu.
+
+         Çıkış yerel bir karardır: kullanıcı "beni çıkar" dediğinde sunucunun
+         iznini beklemenin anlamı yok. Bu yüzden sıra şu:
+           1 · supabase-js'in oturum anahtarları localStorage'dan SİLİNİR
+           2 · sunucudaki oturumu iptal isteği ARKA PLANDA gönderilir
+           3 · sayfa yenilenir
+         Ağ hiç cevap vermese bile kullanıcı çıkmış olur.
+
+         Sayfa yenilemek kasıtlı: ders kilitleri, topluluk bölümü ve üst
+         çubuk aynı anda ve tutarlı biçimde yeniden kuruluyor. */
+      yer.querySelector('#hbCikis').onclick = () => {
         const dug = yer.querySelector('#hbCikis');
         dug.disabled = true;
+
+        /* Arka planda; sonucu beklenmiyor, hatası yutuluyor. */
+        try { Promise.resolve(sb.auth.signOut()).catch(() => {}); } catch (e){}
+
+        /* Asıl çıkış burada. supabase-js oturumu 'sb-' ile başlayan
+           anahtarlarda tutuyor. */
         try {
-          const { error } = await sb.auth.signOut();
-          if (error) await sb.auth.signOut({ scope:'local' });
-        } catch (e){
-          try { await sb.auth.signOut({ scope:'local' }); } catch (e2){}
-        }
-        kullanici = null; moderator = false;
-        cubukCiz(); duyur();
+          Object.keys(localStorage)
+            .filter(k => k.indexOf('sb-') === 0)
+            .forEach(k => localStorage.removeItem(k));
+        } catch (e){}
+
+        kullanici = null; moderator = false; bekleyen = 0;
+        location.reload();
       };
     }
   }
