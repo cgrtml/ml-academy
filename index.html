@@ -206,68 +206,142 @@
          font-size:11px;padding:6px 13px;border-radius:8px;cursor:pointer}
   .reset:hover{color:var(--red);border-color:var(--red)}
 
+
   /* ══════════════════════════════════════════════════════════════════
-     TASARIM A · "laboratuvar"
+     TASARIM D · "geliştirici aracı"
      ─────────────────────────────────────────────────────────────────
-     demo/a.html'de karara bağlanan görsel dil. Buraya YENİDEN YAZMAK
-     yerine üstüne yazan bir katman olarak eklendi: yukarıdaki kuralların
-     hepsi yerinde duruyor, yalnızca görünüş değişiyor. Sebep, kartları
-     ve rotaları üreten JavaScript'e hiç dokunmamak; sınıf adları ve
+     demo/d.html'de karara bağlanan görsel dil. Yukarıdaki kurallar
+     yeniden yazılmadı; bu blok onların üstüne yazıyor. Sebep, kartları
+     ve rotaları üreten JavaScript'e hiç dokunmamak: sınıf adları ve
      kimlikler aynı kaldığı için hiçbir davranış kırılmıyor.
 
-     Fikir: sitenin zaten sahip olduğu renk sistemini öne çıkarmak.
-     Beş rota, beş renk. Sayılar süs değil kanıt, o yüzden hero'nun
-     hemen altında kendi şeridinde duruyorlar.
+     Fikir: iyi yapılmış bir dokümantasyon sitesinin dili. 1 piksel
+     çizgiler, sıkı ızgara, sayılar ve etiketler için monospace. Amaç
+     mühendisin sayfayı görür görmez "altındaki şey düzgün yapılmış"
+     diye düşünmesi.
+
+     Sitenin en güçlü varlığı derslerin koyu tuvalde çalışan canlı
+     simülasyonlar olması. Bu yüzden hero'nun merkezinde çalışan bir ders
+     gibi görünen koyu panel var; her iki temada da koyu kalıyor, çünkü
+     ürünün tuvalini temsil ediyor.
      ══════════════════════════════════════════════════════════════════ */
 
-  .wrap{max-width:1060px}
+  .wrap{max-width:1120px;padding:0 22px 90px}
 
-  header{padding:74px 0 30px}
-  .rozetUst{display:inline-flex;align-items:center;gap:8px;padding:6px 15px;border-radius:100px;
-    border:1px solid var(--line);background:var(--panel);font-family:var(--mono);
-    font-size:11.5px;letter-spacing:.04em;color:var(--mut)}
-  .rozetUst b{color:var(--green);font-weight:700}
-  h1{font-size:clamp(34px,6vw,60px);margin:26px 0 0;letter-spacing:-.035em;line-height:1.08}
-  .sub{margin:22px auto 0;font-size:18px;max-width:660px}
-  header > div:not(.rozetUst):not(.stats):not(.heroSat){margin-top:34px}
-  .heroSat{margin-top:18px;font-family:var(--mono);font-size:11px;letter-spacing:.13em;
-    color:var(--mut);opacity:.85}
+  /* ── hero ── */
+  header{text-align:left;padding:64px 0 0;display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1.02fr);gap:56px;align-items:center}
+  @media(max-width:960px){ header{grid-template-columns:1fr;gap:36px;padding-top:44px} }
 
-  /* Birincil eylem mavi: yeşil sitede "ölçüldü / doğru" anlamına geliyor,
-     eylem rengi olarak kullanılınca o anlam sulanıyordu. */
-  .cta{background:var(--blue);border-radius:11px;padding:15px 28px;font-size:15.5px;font-weight:700}
-  .cta2{font-size:14.5px}
+  .heroUst{font-family:var(--mono);font-size:11.5px;letter-spacing:.15em;
+    text-transform:uppercase;color:var(--green);font-weight:700}
+  h1{font-size:clamp(34px,5.2vw,54px);margin:20px 0 0;letter-spacing:-.035em;
+    line-height:1.06;font-weight:850}
+  h1 .hl{background:none;-webkit-text-fill-color:currentColor;color:var(--green)}
+  .sub{margin:20px 0 0;font-size:17px;max-width:560px;color:var(--mut)}
 
-  /* Kanıt şeridi: dört kutu yerine tek bir çerçeve, aralarında ince çizgi. */
-  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
-    border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-top:52px}
-  .sb{background:var(--panel);border:0;border-radius:0;padding:22px 14px;min-width:0;text-align:center}
-  .sb .n{font-size:28px;letter-spacing:-.03em}
-  .sb .l{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase}
-  @media(max-width:640px){ .stats{grid-template-columns:1fr 1fr} }
+  .heroDug{margin-top:30px;display:flex;gap:11px;flex-wrap:wrap;align-items:center}
+  .cta{background:var(--green);color:var(--anaTxt);border-radius:9px;
+    padding:13px 22px;font-size:15px;font-weight:750}
+  .cta2{border:1px solid var(--line);border-radius:9px;padding:13px 18px;
+    font-size:14.5px;color:var(--txt);font-weight:650;background:var(--panel)}
+  .cta2:hover{border-color:var(--mut)}
 
-  /* Beş adım: her kart kendi rotasının rengiyle üstten çizgili. */
-  .how{background:none;border:0;border-radius:0;padding:0;margin:78px 0 0}
-  .how h3{font-size:clamp(25px,3.4vw,34px);letter-spacing:-.026em;font-weight:800}
-  .how .hs{font-size:16.5px;max-width:640px}
-  .steps4{margin-top:32px}
-  .s4{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 18px}
-  .s4:nth-child(1){border-top:3px solid var(--green)}
-  .s4:nth-child(2){border-top:3px solid var(--blue)}
-  .s4:nth-child(3){border-top:3px solid var(--orange)}
-  .s4:nth-child(4){border-top:3px solid var(--purple)}
-  .s4:nth-child(5){border-top:3px solid var(--pink)}
-  .s4 .n{font-family:var(--mono);font-size:11px;letter-spacing:.14em;font-weight:700}
-  .s4 .t{margin-top:11px;font-size:16px;font-weight:750}
-  .s4 .d{margin-top:8px;font-size:13.6px;line-height:1.62}
+  .heroSat{margin-top:16px;font-family:var(--mono);font-size:12px;
+    letter-spacing:.04em;color:var(--mut)}
+  .heroOnay{margin-top:16px;display:inline-flex;align-items:center;gap:9px;
+    border:1px solid var(--line);border-radius:100px;padding:7px 15px;
+    font-family:var(--mono);font-size:11.5px;color:var(--mut);background:var(--panel)}
+  .heroOnay b{color:var(--green)}
 
-  .rota{margin-top:66px}
-  .rota h2{font-size:clamp(21px,2.8vw,27px);letter-spacing:-.022em}
-  .card{border-radius:14px;padding:17px 19px}
+  /* ── koyu ders paneli · her iki temada koyu ── */
+  .tuvalPanel{background:#070a0f;border:1px solid #1e2a3a;border-radius:14px;
+    overflow:hidden;font-family:var(--mono)}
+  .tpUst{display:flex;align-items:center;gap:8px;padding:11px 15px;
+    border-bottom:1px solid #1e2a3a;font-size:11.5px;color:#5d7089}
+  .tpUst b{color:#c9d6e4;font-weight:600}
+  .tpUst .canli{margin-left:auto;color:#22d3a0;display:flex;align-items:center;gap:6px}
+  .tpUst .canli i{width:6px;height:6px;border-radius:50%;background:#22d3a0;display:block}
+  .tpCizim{padding:14px 15px 4px}
+  .tpCizim svg{display:block;width:100%;height:auto}
+  .tpKay{display:grid;grid-template-columns:1fr 1fr;gap:0 18px;padding:4px 15px 0}
+  .tpK{padding:9px 0;border-top:1px solid #141d29}
+  .tpK .st{display:flex;justify-content:space-between;font-size:11.5px;color:#5d7089}
+  .tpK .st b{color:#e6edf3;font-weight:600}
+  .tpK .cub{margin-top:7px;height:3px;border-radius:2px;background:#1b2534;position:relative}
+  .tpK .cub i{position:absolute;left:0;top:-3px;width:9px;height:9px;border-radius:50%;
+    background:#4cc4ff;display:block}
+  .tpSkor{padding:11px 15px;border-top:1px solid #141d29;font-size:11.5px;color:#5d7089;
+    display:flex;gap:14px;flex-wrap:wrap}
+  .tpSkor b{color:#e6edf3}
+  .tpSkor .mavi{color:#4cc4ff} .tpSkor .yesil{color:#22d3a0}
+  .tpKod{margin:0 15px 15px;background:#0b1119;border:1px solid #1b2534;border-radius:9px;
+    padding:11px 13px;font-size:11.5px;line-height:1.85;color:#8fa1b6;overflow-x:auto}
+  .tpKod .sat{white-space:pre}
+  .tpKod .vur{background:rgba(34,211,160,.09);color:#c9d6e4;
+    box-shadow:inset 2px 0 0 #22d3a0;margin:0 -13px;padding:0 13px}
+  .tpKod .anh{color:#a78bfa} .tpKod .say{color:#fb923c} .tpKod .not{color:#4a5b70}
+  .tpAlt{margin-top:11px;font-family:var(--mono);font-size:11px;line-height:1.7;color:var(--mut)}
+
+  /* ── kanıt şeridi ── */
+  .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--line);
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    border-radius:0;margin:64px 0 0}
+  .sb{background:var(--bg);border:0;border-radius:0;padding:22px 16px;min-width:0;text-align:left}
+  .sb .n{font-size:25px;letter-spacing:-.03em;font-weight:800}
+  .sb .l{margin-top:3px;font-size:12px;color:var(--mut);font-family:inherit;
+    letter-spacing:0;text-transform:none}
+  @media(max-width:900px){ .stats{grid-template-columns:repeat(3,1fr)} }
+  @media(max-width:560px){ .stats{grid-template-columns:repeat(2,1fr)} }
+
+  /* Kişisel ilerleme ayrı satırda: ilk gelen ziyaretçiyi ilgilendirmiyor,
+     dönen kullanıcıyı ilgilendiriyor. Sıfırsa hiç görünmüyor. */
+  .kisisel{margin-top:14px;font-family:var(--mono);font-size:11.5px;color:var(--mut)}
+  .kisisel b{color:var(--txt)}
+
+  /* ── bölüm başlıkları ── */
+  .kicker2{font-family:var(--mono);font-size:11px;letter-spacing:.19em;
+    text-transform:uppercase;color:var(--mut);margin-bottom:13px}
+  .how{background:none;border:0;border-radius:0;padding:0;margin:82px 0 0}
+  .how h3{font-size:clamp(25px,3.3vw,33px);letter-spacing:-.028em;font-weight:800;margin:0}
+  .how .hs{font-size:16.5px;max-width:660px;margin-top:13px}
+  .steps4{margin-top:34px}
+  .s4{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:19px 17px}
+  .s4:nth-child(1){border-top:2px solid var(--green)}
+  .s4:nth-child(2){border-top:2px solid var(--blue)}
+  .s4:nth-child(3){border-top:2px solid var(--orange)}
+  .s4:nth-child(4){border-top:2px solid var(--purple)}
+  .s4:nth-child(5){border-top:2px solid var(--pink)}
+  .s4 .n{font-family:var(--mono);font-size:11px;letter-spacing:.13em;font-weight:700}
+  .s4 .t{margin-top:10px;font-size:15.5px;font-weight:750}
+  .s4 .d{margin-top:7px;font-size:13.4px;line-height:1.6}
+
+  /* ── doğrulama bölümü ── */
+  .dogrulama{margin-top:88px;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+  @media(max-width:900px){ .dogrulama{grid-template-columns:1fr;gap:30px} }
+  .dogrulama h3{font-size:clamp(24px,3.1vw,31px);letter-spacing:-.026em;font-weight:800;margin:0}
+  .dogrulama p{margin-top:14px;font-size:16px;color:var(--mut)}
+  .kural{margin-top:24px;padding:3px 0 3px 19px;border-left:3px solid var(--green);
+    font-size:19px;font-weight:700;line-height:1.45;letter-spacing:-.015em;color:var(--txt)}
+  .terminal{background:#070a0f;border:1px solid #1e2a3a;border-radius:12px;overflow:hidden;
+    font-family:var(--mono)}
+  .tmUst{display:flex;align-items:center;gap:7px;padding:10px 14px;border-bottom:1px solid #1e2a3a}
+  .tmUst i{width:9px;height:9px;border-radius:50%;background:#243040;display:block}
+  .tmUst span{margin-left:9px;font-size:11px;color:#5d7089}
+  .tmGov{padding:15px;font-size:12px;line-height:2;color:#8fa1b6;overflow-x:auto}
+  .tmGov .sat{white-space:pre}
+  .tmGov .kmt{color:#4a5b70}
+  .tmGov .ok{color:#22d3a0}
+  .tmGov .sy{color:#e6edf3}
+
+  /* ── rotalar ── */
+  .rota{margin-top:72px}
+  .rota h2{font-size:clamp(21px,2.7vw,27px);letter-spacing:-.024em}
+  .card{border-radius:11px;padding:15px 17px}
   .card:hover{border-color:var(--mut)}
+  .toplulukB{margin-top:88px}
+  .foot{margin-top:78px;padding-top:34px;border-top:1px solid var(--line)}
 
-  .toplulukB{margin-top:78px}
-  .foot{margin-top:72px;padding-top:32px;border-top:1px solid var(--line)}
 </style>
 <script>
 /* ══ TEMA ANAHTARI ══
@@ -317,27 +391,97 @@ temaUygula(temaOku());
 <div class="wrap" style="position:relative">
 
   <header>
-    <div class="rozetUst"><b id="rozetSayi">123</b> <span data-i="rozetMetin">ders hazır · her zaman ücretsiz · kart istenmez</span></div>
-    <h1 data-i="h1">Yapay zekâyı <span class="hl">sıfırdan</span>,<br>adım adım öğren</h1>
-    <p class="sub" data-i="sub">Ders anlatan video yok, ezberlenecek formül yok. Her adım ne
-       öğreneceğini söyleyerek başlar, kendi elinle oynadığın bir animasyonla sürer ve
-       ancak doğru cevabı bulunca açılan bir kapıyla biter.</p>
     <div>
-      <a class="cta" id="startBtn" href="lesson.html?id=veri">Buradan başla ▶</a>
+      <div class="heroUst" data-i="heroUst">ÜCRETSİZ · TARAYICINDA ÇALIŞIR · <span id="heroDers">123</span> DERS</div>
+      <h1 data-i="h1">Makine öğrenmesini izleme.<br><span class="hl">Çalıştır.</span></h1>
+      <p class="sub" data-i="sub">Her algoritma sıfırdan yazıldı ve tarayıcında çalışıyor.
+         Kaydırıcıyı sen çeviriyorsun, model yanıt veriyor. Bir tahmin yapıyorsun,
+         kod onu kontrol ediyor.</p>
+      <div class="heroDug">
+        <a class="cta" id="startBtn" href="lesson.html?id=veri">Buradan başla ▶</a>
+        <a class="cta2" href="#rota0" data-i="ctaMuf">5 rotanın tamamı</a>
+      </div>
       <div class="dilnot" id="dilnot"></div>
-      <a class="cta2" href="modeller.html" data-i="ctaKat">📚 model kataloğu</a>
-      <a class="cta2" href="#rota0" data-i="ctaMuf">müfredatı gör ↓</a>
+      <div class="heroSat" data-i="heroSat">video yok · kurulum yok · ücret yok · reklam yok</div>
+      <div class="heroOnay"><b>✓</b>&nbsp;<span data-i="heroOnay">2.395 sayısal iddia testle doğrulandı · 0 uyuşmazlık</span></div>
     </div>
-    <div class="heroSat" data-i="heroSat">5 ROTA · 401 ETKİLEŞİMLİ ADIM · 165 GÖRSELLEŞTİRME · 387 KAYNAK</div>
-    <div class="stats">
-      <div class="sb"><div class="n" style="color:var(--green)" id="sHazir">-</div><div class="l" data-i="stHazir">hazır ders</div></div>
-      <div class="sb"><div class="n" id="sToplam">-</div><div class="l" data-i="stPlan">adım</div></div>
-      <div class="sb"><div class="n" style="color:var(--blue)" id="sXP">0</div><div class="l" data-i="stXp">senin XP'n</div></div>
-      <div class="sb"><div class="n" style="color:var(--yellow)" id="sBitti">0</div><div class="l" data-i="stBit">bitirdiğin</div></div>
+
+    <!-- ── ÇALIŞAN DERS PANELİ ──
+         Ürünün vaadini anlatmak yerine göstermek için. Rota 1'deki
+         "elinle bir doğru uydur, sonra gradient descent seni geçsin"
+         dersinin aynısı. Her iki temada da koyu kalıyor, çünkü derslerin
+         tuvali koyu; açık sayfadaki koyu panel dokümantasyon
+         sitelerindeki kod bloğu deseninin aynısı. -->
+    <div>
+      <div class="tuvalPanel">
+        <div class="tpUst"><span data-i="tpYol">rota-1 / <b>gradient-descent</b> · adım 4/9</span>
+          <span class="canli"><i></i><span data-i="tpCanli">CANLI</span></span></div>
+        <div class="tpCizim">
+          <svg viewBox="0 0 460 210" preserveAspectRatio="none" aria-hidden="true">
+            <g stroke="#141d29" stroke-width="1">
+              <line x1="0" y1="40"  x2="460" y2="40"/>
+              <line x1="0" y1="90"  x2="460" y2="90"/>
+              <line x1="0" y1="140" x2="460" y2="140"/>
+            </g>
+            <line x1="16" y1="176" x2="446" y2="52" stroke="#4cc4ff" stroke-width="2.5"
+                  stroke-dasharray="7 6"/>
+            <line x1="16" y1="164" x2="446" y2="30" stroke="#22d3a0" stroke-width="2.5"/>
+            <g fill="#6d8298">
+              <circle cx="52"  cy="168" r="3.4"/><circle cx="98"  cy="152" r="3.4"/>
+              <circle cx="146" cy="146" r="3.4"/><circle cx="192" cy="126" r="3.4"/>
+              <circle cx="238" cy="112" r="3.4"/><circle cx="284" cy="96"  r="3.4"/>
+              <circle cx="330" cy="74"  r="3.4"/><circle cx="376" cy="62"  r="3.4"/>
+              <circle cx="422" cy="44"  r="3.4"/>
+            </g>
+            <text x="444" y="20" text-anchor="end" fill="#22d3a0"
+                  font-family="monospace" font-size="11">gradient descent</text>
+            <text x="300" y="112" text-anchor="end" fill="#4cc4ff"
+                  font-family="monospace" font-size="11" data-i="tpSenin">senin doğrun</text>
+          </svg>
+        </div>
+        <div class="tpKay">
+          <div class="tpK"><div class="st"><span data-i="tpEgim">eğim w</span><b>1.62</b></div>
+            <div class="cub"><i style="left:58%"></i></div></div>
+          <div class="tpK"><div class="st"><span data-i="tpKesisim">kesişim b</span><b>0.48</b></div>
+            <div class="cub"><i style="left:34%"></i></div></div>
+        </div>
+        <div class="tpSkor">
+          <span data-i="tpMse">senin MSE <b class="mavi">0.4128</b></span>
+          <span>gradient descent <b class="yesil">0.2977</b></span>
+          <span data-i="tpAdim">200 adım sonra</span>
+        </div>
+        <div class="tpKod">
+          <div class="sat"><span class="not">1</span>  <span class="anh">for</span> step <span class="anh">in</span> range(<span class="say">200</span>):</div>
+          <div class="sat"><span class="not">2</span>    grad_w = <span class="say">2</span> * mean(x * (w*x + b - y))</div>
+          <div class="sat vur"><span class="not">3</span>    w -= <span class="say">0.1</span> * grad_w   <span class="not" data-i="tpNot"># bütün numara bu</span></div>
+        </div>
+      </div>
+      <div class="tpAlt" data-i="tpAlt">Rota 1'den alındı · her ders böyle: bir model,
+        üstünde senin ellerin, geçilecek bir skor.</div>
     </div>
   </header>
 
+  <!-- ── KANIT ŞERİDİ ──
+       Altı sayı da müfredattan sayılıyor ya da denetim çıktısından
+       geliyor; hiçbiri elle yazılmadı. Kişisel ilerleme (XP, bitirilen)
+       buradan çıkarıldı: ilk gelen ziyaretçiyi ilgilendirmiyor ve
+       sıfır görünen iki kutu şeridi zayıflatıyordu. Aşağıda, yalnızca
+       ilerleme varsa görünen ayrı bir satırda duruyor. -->
+  <div class="stats">
+    <div class="sb"><div class="n" id="sHazir">-</div><div class="l" data-i="stHazir">ders, hepsi hazır</div></div>
+    <div class="sb"><div class="n" id="sToplam">-</div><div class="l" data-i="stPlan">etkileşimli adım</div></div>
+    <div class="sb"><div class="n" id="sGorsel">-</div><div class="l" data-i="stGor">canlı görselleştirme</div></div>
+    <div class="sb"><div class="n" id="sKilit">-</div><div class="l" data-i="stKil">kilit · <span id="sSoru">-</span> soru</div></div>
+    <div class="sb"><div class="n" id="sKaynak">-</div><div class="l" data-i="stKay">akademik kaynak</div></div>
+    <div class="sb"><div class="n" style="color:var(--green)" id="sDogru">2.395 / 0</div><div class="l" data-i="stDog">doğrulanan iddia / uyuşmazlık</div></div>
+  </div>
+  <div class="kisisel" id="kisisel" style="display:none">
+    <span data-i="kisiselEt">senin ilerlemen</span> · <b id="sXP">0</b> XP ·
+    <b id="sBitti">0</b> <span data-i="kisiselDers">ders bitti</span>
+  </div>
+
   <div class="how" id="nasil">
+    <div class="kicker2" data-i="howKick">yöntem</div>
     <h3 data-i="howH">Her ders aynı beş adımı izler</h3>
     <p class="hs" data-i="howS">Konu değişir, yöntem değişmez. Bir kere alıştıktan sonra her derste ne bekleyeceğini bilirsin.</p>
     <div class="steps4">
@@ -363,6 +507,37 @@ temaUygula(temaOku());
        çalışan kod · kilit ayarlar · klasik tuzak.</b> Ara, filtrele, kodu kopyala.</p>
   </a>
 
+  <!-- ── DOĞRULAMA ──
+       Sitenin başka hiçbir eğitim sitesinde olmayan iddiası bu, o yüzden
+       ana sayfada kendi bölümü var. Terminal çıktısı biçimi kasıtlı:
+       iddia pazarlama cümlesi değil, çalıştırılabilir bir kontrol. -->
+  <section class="dogrulama" id="dogrulama">
+    <div>
+      <div class="kicker2" data-i="dogKick">doğrulama</div>
+      <h3 data-i="dogBas">Ders metni testten geçiyor</h3>
+      <p data-i="dogAlt">Kurslar sayı alıntılar. Bu kurs onları kanıtlıyor. Bir betik
+         algoritmaları yeniden çalıştırıp her sonucu ders metninde yazan değerle
+         karşılaştırıyor. Tek hane kayarsa yayın durur.</p>
+      <div class="kural" data-i="dogKural">Bir sayı, onu yeniden hesaplayan bir test
+         olmadan derste yer alamaz.</div>
+    </div>
+    <div class="terminal">
+      <div class="tmUst"><i></i><i></i><i></i><span>dogrula.sh · son çalıştırma</span></div>
+      <div class="tmGov">
+        <div class="sat"><span class="kmt">$</span> ./dogrula.sh</div>
+        <div class="sat"><span class="kmt">→</span> sözdizimi          <span class="ok">✓</span></div>
+        <div class="sat"><span class="kmt">→</span> sayısal iddia      <span class="sy">2.395</span> bulundu</div>
+        <div class="sat"><span class="kmt">→</span> yeniden hesaplandı <span class="sy">2.395</span></div>
+        <div class="sat"><span class="kmt">→</span> uyuşmazlık         <span class="ok">0</span></div>
+        <div class="sat"><span class="kmt">→</span> kilit koşulu       <span class="ok">154 ✓</span> ulaşılabilir</div>
+        <div class="sat"><span class="kmt">→</span> görselleştirme     <span class="ok">165 ✓</span> çizildi</div>
+        <div class="sat"><span class="kmt">→</span> yerleşim taraması  <span class="ok">401 ✓</span> adım</div>
+        <div class="sat">&nbsp;</div>
+        <div class="sat"><span class="ok">PASS</span> <span class="kmt">· çıkış kodu 0</span></div>
+      </div>
+    </div>
+  </section>
+
   <div id="rotalar"></div>
 
   <!-- Topluluk: sayaçlar + onaylı yorumlar.
@@ -385,10 +560,10 @@ temaUygula(temaOku());
   </div>
 </div>
 
-<script src="viz-sozluk.js?v=44f24b7"></script>
-<script src="viz.js?v=44f24b7"></script>
-<script src="content.js?v=44f24b7"></script>
-<script src="content-en.js?v=44f24b7"></script>
+<script src="viz-sozluk.js?v=8931440"></script>
+<script src="viz.js?v=8931440"></script>
+<script src="content.js?v=8931440"></script>
+<script src="content-en.js?v=8931440"></script>
 <script>
 const $ = id => document.getElementById(id);
 const PKEY = 'mlacad_v2';
@@ -397,13 +572,27 @@ try { PROG = JSON.parse(localStorage.getItem(PKEY)) || {}; } catch(e){ PROG = {}
 
 /* ═══════ dil ═══════ */
 const EN = {
-  h1:'Learn AI <span class="hl">from scratch</span>,<br>one step at a time',
-  sub:'No lecture videos, no formulas to memorise. Every step opens by telling you what you will learn, continues with an animation you control yourself, and ends at a gate that opens only once you get it right.',
   ctaKat:'📚 model catalogue',
-  ctaMuf:'see the curriculum ↓',
-  stHazir:'lessons ready', stPlan:'steps', stXp:'your XP', stBit:'completed',
+  stHazir:'lessons, all ready', stPlan:'interactive steps', stXp:'your XP', stBit:'completed',
   navMuf:'curriculum', navYon:'method', navKat:'model catalogue', navHak:'about',
-  rozetMetin:'lessons ready · free forever · no card',
+  heroUst:'FREE · RUNS IN YOUR BROWSER · <span id="heroDers">123</span> LESSONS',
+  h1:'Don\'t watch machine<br>learning. <span class="hl">Run it.</span>',
+  sub:'Every algorithm is written from scratch and runs in your browser. You move the slider, the model responds. You make a prediction, the code checks it.',
+  ctaMuf:'All 5 tracks',
+  heroSat:'no videos · no installation · no payment · no ads',
+  heroOnay:'2,395 numeric claims verified by tests · 0 mismatches',
+  tpAlt:'Recreated from Track 1 · every lesson is this: a model, your hands on it, a score to beat.',
+  tpYol:'track-1 / <b>gradient-descent</b> · step 4/9', tpCanli:'LIVE',
+  tpSenin:'your line', tpEgim:'slope w', tpKesisim:'intercept b',
+  tpMse:'your MSE <b class="mavi">0.4128</b>', tpAdim:'after 200 steps',
+  tpNot:'# the whole trick',
+  howKick:'method',
+  stGor:'live visualizations', stKil:'gates · <span id="sSoru">-</span> questions',
+  stKay:'academic references', stDog:'claims verified / mismatches',
+  kisiselEt:'your progress', kisiselDers:'lessons finished',
+  dogKick:'verification', dogBas:'The lesson text is under test',
+  dogAlt:'Courses quote numbers. This one proves them. A script re-runs the algorithms and compares each result against the value written in the lesson. If one digit drifts, the build stops.',
+  dogKural:'A number does not appear in a lesson unless a test recomputes it.',
   heroSat:'5 TRACKS · 401 INTERACTIVE STEPS · 165 VISUALIZATIONS · 387 REFERENCES',
   howH:'Every lesson follows the same five steps',
   howS:'The topic changes, the method does not. Once you get used to it you know what to expect in every lesson.',
@@ -557,10 +746,39 @@ $('rotalar').innerHTML = ROTALAR.map(r => {
 }).join('');
 
 $('sHazir').textContent = nHazir;
-/* Hero rozetindeki sayı da elle yazılmasın; README'nin başına gelen şey
-   buraya da gelirdi. */
-if ($('rozetSayi')) $('rozetSayi').textContent = nHazir;
 $('sToplam').textContent = nAdim;
+
+/* KANIT ŞERİDİNDEKİ SAYILARIN HİÇBİRİ ELLE YAZILMIYOR.
+   README'nin başına gelen şey buydu: gerçekle arasında üç kat fark
+   birikmişti. Buradaki her sayı müfredattan sayılıyor, ders eklenince
+   kendiliğinden güncelleniyor. */
+(function sayaclar(){
+  let gorsel = new Set(), kilit = 0, soru = 0, kaynak = 0;
+  try {
+    Object.values(DERSLER).forEach(d => {
+      (d.kaynaklar || []).forEach(() => kaynak++);
+      (d.adimlar || []).forEach(a => {
+        if (a.viz) gorsel.add(a.viz);
+        if (a.unlock) kilit++;
+        if (a.quiz) soru++;
+      });
+    });
+  } catch(e){}
+  const yaz = (id, n) => { const e = $(id); if (e) e.textContent = n; };
+  yaz('sGorsel', gorsel.size);
+  yaz('sKilit',  kilit);
+  yaz('sSoru',   soru);
+  yaz('sKaynak', kaynak);
+  yaz('heroDers', nHazir);
+})();
+
+/* Kişisel satır yalnızca ilerleme varsa görünsün. Sıfır yazan iki kutu
+   ilk gelen ziyaretçide tam ters etki yapıyordu. */
+if ($('kisisel')) $('kisisel').style.display = (xpTop > 0 || nBitti > 0) ? '' : 'none';
+
+/* Binlik ayracı dile göre: Türkçe 2.395, İngilizce 2,395. Sabit yazılsaydı
+   dillerden birinde yanlış olurdu. */
+if ($('sDogru')) $('sDogru').textContent = (2395).toLocaleString(DIL === 'en' ? 'en-US' : 'tr-TR') + ' / 0';
 $('sXP').textContent = xpTop;
 $('sBitti').textContent = nBitti;
 
@@ -651,10 +869,10 @@ dilUygula();
      Ayarlar boşsa hiçbir istek atılmaz, topluluk bölümü gizli kalır.
      Yani bu bloklar bugün siteye eklense de hiçbir şey bozulmaz. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="yapilandirma.js?v=44f24b7"></script>
-<script src="topluluk/topluluk.js?v=44f24b7"></script>
-<script src="topluluk/ilerleme.js?v=44f24b7"></script>
-<script src="topluluk/hesap.js?v=44f24b7"></script>
+<script src="yapilandirma.js?v=8931440"></script>
+<script src="topluluk/topluluk.js?v=8931440"></script>
+<script src="topluluk/ilerleme.js?v=8931440"></script>
+<script src="topluluk/hesap.js?v=8931440"></script>
 <script>
   const toplulukYenile = () => TOPLULUK.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL });
   toplulukYenile();
