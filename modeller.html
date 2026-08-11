@@ -136,7 +136,13 @@
   .dersLink.kilitli{background:rgba(251,146,60,.12);border-color:rgba(251,146,60,.45);
     color:var(--orange);cursor:pointer}
   .dersLink.kilitli:hover{background:rgba(251,146,60,.22)}
-  .ustBar{position:fixed;top:16px;right:18px;z-index:60;display:flex;gap:10px;align-items:center}
+  /* Sabit konumlu olduğu için sayfa kaydırılınca ders kartlarının ÜSTÜNDE
+     yüzüyor. Zeminsizken arkadaki başlıklar düğmelerin arasından okunuyor ve
+     ikisi de okunmaz hâle geliyordu. Kendi zemini olan bir çubuk olarak
+     duruyor artık. */
+  .ustBar{position:fixed;top:16px;right:18px;z-index:60;display:flex;gap:10px;align-items:center;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:7px 9px;box-shadow:0 3px 16px rgba(15,27,45,.13)}
   @media(max-width:640px){.ustBar{position:static;justify-content:center;margin:12px 0 0}}
   .yok{text-align:center;color:var(--mut);padding:50px 0;font-family:var(--mono);font-size:13px}
   .foot{text-align:center;color:var(--mut);font-size:12.5px;margin-top:40px;font-family:var(--mono)}
@@ -190,11 +196,11 @@ temaUygula(temaOku());
   <div class="foot"><a href="index.html">← Derslere dön</a></div>
 </div>
 
-<script src="content.js?v=05f18eb"></script>
-<script src="yapilandirma.js?v=05f18eb"></script>
+<script src="content.js?v=f4b1716"></script>
+<script src="yapilandirma.js?v=f4b1716"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="topluluk/hesap.js?v=05f18eb"></script>
-<script src="modeller.js?v=05f18eb"></script>
+<script src="topluluk/hesap.js?v=f4b1716"></script>
+<script src="modeller.js?v=f4b1716"></script>
 <script>
 const $ = id => document.getElementById(id);
 let aktifF = 'hepsi';

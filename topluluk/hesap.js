@@ -695,22 +695,46 @@ const HESAP = (() => {
         `<button id="hbCikis">${t.cikis}</button>`;
       yer.querySelector('#hbYorum').onclick = yorumEkrani;
       if (moderator) yer.querySelector('#hbMod').onclick = modEkrani;
-      yer.querySelector('#hbCikis').onclick = async () => { await sb.auth.signOut(); };
+      /* ÇIKIŞ · onAuthStateChange'e güvenilmez.
+         Oturum belirteci sunucuda çoktan geçersizse signOut() hata döndürür,
+         yerel oturumu temizlemez ve SIGNED_OUT olayını yaymaz. Düğme basılır,
+         hiçbir şey olmaz. Bu yüzden: önce olağan çıkış denenir, olmazsa yalnız
+         yerel oturum temizlenir, sonra durum HER HÂLÜKÂRDA elle sıfırlanıp
+         çubuk yeniden çizilir. */
+      yer.querySelector('#hbCikis').onclick = async () => {
+        const dug = yer.querySelector('#hbCikis');
+        dug.disabled = true;
+        try {
+          const { error } = await sb.auth.signOut();
+          if (error) await sb.auth.signOut({ scope:'local' });
+        } catch (e){
+          try { await sb.auth.signOut({ scope:'local' }); } catch (e2){}
+        }
+        kullanici = null; moderator = false;
+        cubukCiz(); duyur();
+      };
     }
   }
 
   const duyur = () => dinleyiciler.forEach(f => { try { f(); } catch(e){} });
   const dinle = f => dinleyiciler.push(f);
 
-  /* Moderatör mü? Doğrudan sorulamaz (tabloya kimseye yetki yok),
-     bekleyen yorum sorgusu üzerinden dolaylı anlaşılır: politika yalnızca
-     moderatöre 'pending' satır döndürür, diğerlerine boş küme döner.
-     Boş küme moderatör olmadığını KANITLAMAZ; yalnızca düğmeyi göstermek
-     için kullanılıyor, gerçek yetki her hâlükârda veritabanında. */
+  /* Moderatör mü?
+     ESKİ SÜRÜM HATALIYDI: bekleyen yorumları sorgulayıp `Array.isArray(data)`
+     diyordu. Boş dizi de dizidir, yani sonuç HER kullanıcı için true oluyordu
+     ve "Onay bekleyen yorumlar" düğmesi herkese görünüyordu.
+
+     Doğrusu veritabanındaki is_moderator() fonksiyonunu sormak. O fonksiyon
+     security definer ve moderator tablosuna bakıyor; tabloyu kimse okuyamaz
+     ama fonksiyon evet/hayır döndürebilir.
+
+     Hata durumunda false döner, yani düğme gizlenir. Güvenli varsayılan bu:
+     gerçek yetki zaten veritabanı politikalarında, buradaki kontrol sadece
+     arayüzü sadeleştirmek için. */
   async function moderatorMu(){
-    const { data, error } = await sb.from('review').select('id').eq('status','pending').limit(1);
+    const { data, error } = await sb.rpc('is_moderator');
     if (error) return false;
-    return Array.isArray(data);
+    return data === true;
   }
 
   async function kur(o){

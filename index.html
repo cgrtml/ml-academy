@@ -154,7 +154,13 @@
   /* Dil ve hesap düğmeleri tek bir sabit satırda durur. Önceden dil
      absolute top:18px, hesap fixed top:56px idi; ikisi ayrı yerlere düşüyordu
      ve İngilizcede uzayan "Sign in" düğmesi büsbütün kayıyordu. */
-  .ustBar{position:fixed;top:16px;right:18px;z-index:60;display:flex;gap:10px;align-items:center}
+  /* Sabit konumlu olduğu için sayfa kaydırılınca ders kartlarının ÜSTÜNDE
+     yüzüyor. Zeminsizken arkadaki başlıklar düğmelerin arasından okunuyor ve
+     ikisi de okunmaz hâle geliyordu. Kendi zemini olan bir çubuk olarak
+     duruyor artık. */
+  .ustBar{position:fixed;top:16px;right:18px;z-index:60;display:flex;gap:10px;align-items:center;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:7px 9px;box-shadow:0 3px 16px rgba(15,27,45,.13)}
   .dilbar{display:flex;gap:6px}
   .dilbar button{font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:6px 12px;
       border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--mut);cursor:pointer}
@@ -264,10 +270,10 @@ temaUygula(temaOku());
   </div>
 </div>
 
-<script src="viz-sozluk.js?v=05f18eb"></script>
-<script src="viz.js?v=05f18eb"></script>
-<script src="content.js?v=05f18eb"></script>
-<script src="content-en.js?v=05f18eb"></script>
+<script src="viz-sozluk.js?v=f4b1716"></script>
+<script src="viz.js?v=f4b1716"></script>
+<script src="content.js?v=f4b1716"></script>
+<script src="content-en.js?v=f4b1716"></script>
 <script>
 const $ = id => document.getElementById(id);
 const PKEY = 'mlacad_v2';
@@ -492,9 +498,9 @@ dilUygula();
      Ayarlar boşsa hiçbir istek atılmaz, topluluk bölümü gizli kalır.
      Yani bu bloklar bugün siteye eklense de hiçbir şey bozulmaz. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="yapilandirma.js?v=05f18eb"></script>
-<script src="topluluk/topluluk.js?v=05f18eb"></script>
-<script src="topluluk/hesap.js?v=05f18eb"></script>
+<script src="yapilandirma.js?v=f4b1716"></script>
+<script src="topluluk/topluluk.js?v=f4b1716"></script>
+<script src="topluluk/hesap.js?v=f4b1716"></script>
 <script>
   const toplulukYenile = () => TOPLULUK.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL });
   toplulukYenile();
