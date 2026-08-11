@@ -64,11 +64,27 @@ grant select, insert, update on profile to authenticated;
 -- bir yazma isteği atmasına gerek kalmaz.
 create or replace function public.yeni_kullanici_profili()
 returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  ad text;
 begin
+  /* Ad hangi anahtarda geleceği giriş yoluna göre değişir:
+       kendi formumuz : display_name
+       Google         : full_name, sonra name
+       GitHub         : name, sonra user_name
+     İlk dolu olan alınır. Hiçbiri yoksa e-postanın @ öncesi kullanılır,
+     böylece yorum yazarken boş bir ad kutusuyla karşılaşılmaz. */
+  ad := coalesce(
+          nullif(trim(new.raw_user_meta_data ->> 'display_name'), ''),
+          nullif(trim(new.raw_user_meta_data ->> 'full_name'),    ''),
+          nullif(trim(new.raw_user_meta_data ->> 'name'),         ''),
+          nullif(trim(new.raw_user_meta_data ->> 'user_name'),    ''),
+          nullif(split_part(coalesce(new.email, ''), '@', 1),     '')
+        );
+
   insert into profile (id, display_name, title, organization)
   values (
     new.id,
-    nullif(trim(coalesce(new.raw_user_meta_data ->> 'display_name', '')), ''),
+    ad,
     nullif(trim(coalesce(new.raw_user_meta_data ->> 'title',        '')), ''),
     nullif(trim(coalesce(new.raw_user_meta_data ->> 'organization', '')), '')
   )
