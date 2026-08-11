@@ -1,0 +1,194 @@
+<!--
+  ML Academy · e-posta doğrulama şablonu
+  ─────────────────────────────────────────────────────────────────────
+  Supabase panelinde: Authentication → Emails → Confirm signup
+  Konu satırı: ML Academy · e-posta adresini doğrula
+
+  TASARIM NOTU · neden görsel dosya yok
+  Bu şablonda tek bir <img> bile yok, başlık bandı tamamen HTML ile
+  çiziliyor. Sebebi estetik değil, teslimat:
+    · Gmail ve Outlook, tanımadığı göndericinin uzak görsellerini
+      varsayılan olarak engeller. Banner bir PNG olsaydı ilk e-postada
+      çoğu kullanıcıda boş bir kutu görünürdü.
+    · Görselsiz e-posta her ekran yoğunluğunda net kalır, retina için
+      ikinci bir dosya gerekmez.
+    · Sitenin kendisi de baştan sona kodla çiziliyor; burada da aynı.
+  Banttaki beş renkli çizgi sitedeki beş adımın renkleridir:
+  01 HEDEF yeşil · 02 GÖR mavi · 03 OYNA turuncu · 04 SORU mor · 05 ÖZET pembe.
+
+  E-POSTA HTML'İ KURALLARI · buradaki "eski" işaretleme bilinçli
+  Flexbox, grid, <style> bloğu ve harici CSS e-posta istemcilerinde
+  çalışmaz. Bu yüzden her şey tablo ve satır içi stil. Değiştirirken
+  bu kısıtı koru, yoksa Outlook'ta dağılır.
+
+  İKİ DİL · Supabase her şablon türü için TEK metin tutar, kullanıcının
+  diline göre seçim yapamaz. Bu yüzden Türkçe önde, İngilizce hemen
+  altında. Kullanıcıların bir kısmı ABD'de.
+
+  DEĞİŞKENLER · {{ .ConfirmationURL }} doğrulama bağlantısı
+                {{ .Email }} kullanıcının adresi
+-->
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>ML Academy</title>
+</head>
+<body style="margin:0;padding:0;background:#eef2f8;">
+
+<!-- Önizleme satırı: gelen kutusunda konu başlığının yanında görünür,
+     e-posta açılınca görünmez. Gizlemek için sıfır yükseklik. -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+  Hesabını açmak için tek bir adım kaldı. Bağlantı 24 saat geçerli.
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background:#eef2f8;padding:32px 12px;">
+<tr><td align="center">
+
+  <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+         style="width:100%;max-width:600px;border-radius:16px;overflow:hidden;
+                box-shadow:0 2px 14px rgba(15,27,45,.10);">
+
+    <!-- ═══ BANT ═══ -->
+    <tr><td style="background:#070a0f;padding:38px 40px 0;">
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+                  font-size:12px;font-weight:700;letter-spacing:.3em;color:#22d3a0;">
+        ML ACADEMY
+      </div>
+      <div style="margin-top:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                  font-size:25px;line-height:1.32;font-weight:700;color:#ffffff;">
+        Yapay zekâyı sıfırdan,<br>adım adım öğren
+      </div>
+      <div style="margin-top:9px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                  font-size:14px;line-height:1.6;color:#8494a8;">
+        Learn AI from zero, one step at a time
+      </div>
+    </td></tr>
+
+    <!-- beş adımın renkleri -->
+    <tr><td style="background:#070a0f;padding:30px 40px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="border-collapse:collapse;">
+        <tr>
+          <td width="20%" height="5" style="background:#22d3a0;font-size:0;line-height:0;">&nbsp;</td>
+          <td width="20%" height="5" style="background:#4cc4ff;font-size:0;line-height:0;">&nbsp;</td>
+          <td width="20%" height="5" style="background:#fb923c;font-size:0;line-height:0;">&nbsp;</td>
+          <td width="20%" height="5" style="background:#a78bfa;font-size:0;line-height:0;">&nbsp;</td>
+          <td width="20%" height="5" style="background:#f472b6;font-size:0;line-height:0;">&nbsp;</td>
+        </tr>
+      </table>
+    </td></tr>
+
+    <!-- ═══ GÖVDE ═══ -->
+    <tr><td style="background:#ffffff;padding:40px 40px 8px;
+                   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+      <div style="font-size:21px;line-height:1.4;font-weight:700;color:#0f1b2d;">
+        Son bir adım kaldı
+      </div>
+
+      <div style="margin-top:14px;font-size:15px;line-height:1.68;color:#3d4f66;">
+        <b style="color:#0f1b2d;">{{ .Email }}</b> adresiyle ML Academy hesabı
+        açıldı. Aşağıdaki düğmeye basıp adresini doğrulayınca 123 dersin
+        tamamı açılıyor ve ilerlemen cihazlar arasında saklanmaya başlıyor.
+      </div>
+
+      <!-- Düğme: <a> yerine tablo hücresi, çünkü Outlook <a> üzerindeki
+           padding'i yok sayar ve düğme metne dönüşür. -->
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 6px;">
+        <tr><td align="center" bgcolor="#1668c9" style="border-radius:11px;">
+          <a href="{{ .ConfirmationURL }}"
+             style="display:inline-block;padding:15px 34px;border-radius:11px;
+                    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                    font-size:15.5px;font-weight:700;color:#ffffff;text-decoration:none;">
+            E-posta adresimi doğrula
+          </a>
+        </td></tr>
+      </table>
+
+      <div style="margin-top:18px;font-size:13px;line-height:1.6;color:#586a80;">
+        Bağlantı <b>24 saat</b> geçerli. Düğme çalışmazsa bu adresi
+        tarayıcına yapıştır:
+      </div>
+      <div style="margin-top:9px;padding:12px 14px;border-radius:9px;background:#f6f8fc;
+                  border:1px solid #dde5ef;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+                  font-size:11.5px;line-height:1.6;color:#1668c9;word-break:break-all;">
+        {{ .ConfirmationURL }}
+      </div>
+    </td></tr>
+
+    <!-- ═══ HESAPLA NE AÇILIYOR ═══ -->
+    <tr><td style="background:#ffffff;padding:26px 40px 4px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="border-top:1px solid #dde5ef;">
+        <tr><td style="padding-top:24px;
+                       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+          <div style="font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+                      font-size:10.5px;font-weight:700;letter-spacing:.19em;color:#586a80;">
+            HESABINLA BİRLİKTE
+          </div>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;">
+            <tr>
+              <td width="22" valign="top" style="font-size:15px;color:#0a8b68;line-height:1.6;">&#10003;</td>
+              <td style="font-size:14.5px;line-height:1.6;color:#3d4f66;padding-bottom:11px;">
+                123 dersin tamamı açılır
+              </td>
+            </tr>
+            <tr>
+              <td width="22" valign="top" style="font-size:15px;color:#0a8b68;line-height:1.6;">&#10003;</td>
+              <td style="font-size:14.5px;line-height:1.6;color:#3d4f66;padding-bottom:11px;">
+                İlerlemen cihazlar arasında saklanır
+              </td>
+            </tr>
+            <tr>
+              <td width="22" valign="top" style="font-size:15px;color:#0a8b68;line-height:1.6;">&#10003;</td>
+              <td style="font-size:14.5px;line-height:1.6;color:#3d4f66;">
+                Hesabını istediğin zaman silebilirsin
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>
+    </td></tr>
+
+    <!-- ═══ İNGİLİZCE ═══ -->
+    <tr><td style="background:#ffffff;padding:26px 40px 34px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="border-top:1px solid #dde5ef;">
+        <tr><td style="padding-top:22px;
+                       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                       font-size:13.5px;line-height:1.68;color:#586a80;">
+          <b style="color:#0f1b2d;">In English ·</b> An ML Academy account was created
+          with <b style="color:#0f1b2d;">{{ .Email }}</b>. Confirm your address using the
+          button above and all 123 lessons unlock. The link is valid for 24 hours.
+          If you did not sign up, you can ignore this email; no account stays active
+          without confirmation.
+        </td></tr>
+      </table>
+    </td></tr>
+
+    <!-- ═══ ALT ═══ -->
+    <tr><td style="background:#0f151e;padding:26px 40px;
+                   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+      <div style="font-size:13px;line-height:1.65;color:#8494a8;">
+        Bu e-postayı sen istemediysen görmezden gel. Doğrulanmayan hesap
+        açık kalmaz, kimse adresinle giriş yapamaz.
+      </div>
+      <div style="margin-top:16px;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+                  font-size:11px;letter-spacing:.13em;color:#586a80;">
+        <a href="https://mltraining.org" style="color:#22d3a0;text-decoration:none;">MLTRAINING.ORG</a>
+        &nbsp;·&nbsp; ÜCRETSİZ &nbsp;·&nbsp; REKLAMSIZ
+      </div>
+    </td></tr>
+
+  </table>
+</td></tr>
+</table>
+</body>
+</html>

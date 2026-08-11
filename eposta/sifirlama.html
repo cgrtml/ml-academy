@@ -1,0 +1,127 @@
+<!--
+  ML Academy · şifre sıfırlama şablonu
+  ─────────────────────────────────────────────────────────────────────
+  Supabase panelinde: Authentication → Emails → Reset password
+  Konu satırı: ML Academy · şifreni sıfırla
+
+  Tasarım kuralları dogrulama.html içinde açıklandı; burada aynısı geçerli.
+  Bu şablonun farkı ton: sıfırlama e-postası kutlama değil, güvenlik
+  bildirimidir. Bu yüzden bandın rengi turuncu ve "sen istemediysen ne
+  yapmalısın" bilgisi gövdenin içinde, altta değil.
+
+  DEĞİŞKENLER · {{ .ConfirmationURL }} sıfırlama bağlantısı
+                {{ .Email }} kullanıcının adresi
+-->
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>ML Academy</title>
+</head>
+<body style="margin:0;padding:0;background:#eef2f8;">
+
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+  Şifre sıfırlama bağlantın hazır. Bağlantı 1 saat geçerli.
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background:#eef2f8;padding:32px 12px;">
+<tr><td align="center">
+
+  <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+         style="width:100%;max-width:600px;border-radius:16px;overflow:hidden;
+                box-shadow:0 2px 14px rgba(15,27,45,.10);">
+
+    <!-- ═══ BANT ═══ -->
+    <tr><td style="background:#070a0f;padding:38px 40px 0;">
+      <div style="font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+                  font-size:12px;font-weight:700;letter-spacing:.3em;color:#fb923c;">
+        ML ACADEMY
+      </div>
+      <div style="margin-top:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                  font-size:25px;line-height:1.32;font-weight:700;color:#ffffff;">
+        Şifreni sıfırla
+      </div>
+      <div style="margin-top:9px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                  font-size:14px;line-height:1.6;color:#8494a8;">
+        Reset your password
+      </div>
+    </td></tr>
+
+    <tr><td style="background:#070a0f;padding:30px 40px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="border-collapse:collapse;">
+        <tr>
+          <td width="100%" height="5" style="background:#fb923c;font-size:0;line-height:0;">&nbsp;</td>
+        </tr>
+      </table>
+    </td></tr>
+
+    <!-- ═══ GÖVDE ═══ -->
+    <tr><td style="background:#ffffff;padding:40px 40px 34px;
+                   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+
+      <div style="font-size:15px;line-height:1.68;color:#3d4f66;">
+        <b style="color:#0f1b2d;">{{ .Email }}</b> hesabı için şifre sıfırlama
+        isteği aldık. Yeni şifreni belirlemek için aşağıdaki düğmeye bas.
+      </div>
+
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 6px;">
+        <tr><td align="center" bgcolor="#1668c9" style="border-radius:11px;">
+          <a href="{{ .ConfirmationURL }}"
+             style="display:inline-block;padding:15px 34px;border-radius:11px;
+                    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+                    font-size:15.5px;font-weight:700;color:#ffffff;text-decoration:none;">
+            Yeni şifre belirle
+          </a>
+        </td></tr>
+      </table>
+
+      <div style="margin-top:18px;font-size:13px;line-height:1.6;color:#586a80;">
+        Bağlantı <b>1 saat</b> geçerli. Düğme çalışmazsa bu adresi
+        tarayıcına yapıştır:
+      </div>
+      <div style="margin-top:9px;padding:12px 14px;border-radius:9px;background:#f6f8fc;
+                  border:1px solid #dde5ef;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+                  font-size:11.5px;line-height:1.6;color:#1668c9;word-break:break-all;">
+        {{ .ConfirmationURL }}
+      </div>
+
+      <!-- Güvenlik uyarısı: sıfırlama e-postasında bu bilgi alt bilgiye
+           değil gövdeye ait, çünkü isteği yapan kişi kullanıcı olmayabilir. -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="margin-top:26px;background:#fff7ed;border:1px solid #fed7aa;border-radius:11px;">
+        <tr><td style="padding:15px 17px;font-size:13.5px;line-height:1.65;color:#7c4510;">
+          <b>Bu isteği sen yapmadıysan</b> hiçbir şey yapmana gerek yok.
+          Şifren değişmez ve bağlantı bir saat sonra kendiliğinden geçersiz olur.
+          Hesabına giren biri olduğunu düşünüyorsan şifreni yine de değiştir.
+        </td></tr>
+      </table>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="margin-top:26px;border-top:1px solid #dde5ef;">
+        <tr><td style="padding-top:22px;font-size:13.5px;line-height:1.68;color:#586a80;">
+          <b style="color:#0f1b2d;">In English ·</b> We received a password reset request
+          for <b style="color:#0f1b2d;">{{ .Email }}</b>. Use the button above to choose a
+          new password. The link is valid for one hour. If you did not request this,
+          no action is needed: your password stays unchanged and the link expires on its own.
+        </td></tr>
+      </table>
+    </td></tr>
+
+    <!-- ═══ ALT ═══ -->
+    <tr><td style="background:#0f151e;padding:26px 40px;
+                   font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+                   font-size:11px;letter-spacing:.13em;color:#586a80;">
+      <a href="https://mltraining.org" style="color:#22d3a0;text-decoration:none;">MLTRAINING.ORG</a>
+      &nbsp;·&nbsp; ÜCRETSİZ &nbsp;·&nbsp; REKLAMSIZ
+    </td></tr>
+
+  </table>
+</td></tr>
+</table>
+</body>
+</html>
