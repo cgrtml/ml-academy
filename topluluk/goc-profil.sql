@@ -29,12 +29,12 @@ alter table profile add column if not exists country      text;
 alter table profile drop constraint if exists profile_title_chk;
 alter table profile add  constraint profile_title_chk check (
   title is null or title = '' or title in (
-    'Öğrenci','Akademisyen / araştırmacı','Yazılım geliştirici',
-    'Veri bilimci / ML mühendisi','Öğretmen / eğitmen',
-    'Başka bir alandan meraklı',
-    'Student','Academic / researcher','Software developer',
-    'Data scientist / ML engineer','Teacher / instructor',
-    'Curious from another field'
+    'Öğrenci','Akademisyen / Araştırmacı','Yazılım Geliştirici',
+    'Veri Bilimci / ML Mühendisi','Öğretmen / Eğitmen',
+    'Meraklı / Diğer',
+    'Student','Academic / Researcher','Software Developer',
+    'Data Scientist / ML Engineer','Teacher / Instructor',
+    'Enthusiast / Other'
   )
 );
 
