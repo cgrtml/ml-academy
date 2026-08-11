@@ -314,16 +314,17 @@ temaUygula(temaOku());
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="viz-sozluk.js?v=23b2a45"></script>
-<script src="arayuz-sozluk.js?v=23b2a45"></script>
-<script src="anlatim.js?v=23b2a45"></script>
-<script src="anlatim-en.js?v=23b2a45"></script>
-<script src="viz.js?v=23b2a45"></script>
-<script src="content.js?v=23b2a45"></script>
-<script src="content-en.js?v=23b2a45"></script>
+<script src="viz-sozluk.js?v=546aa9d"></script>
+<script src="arayuz-sozluk.js?v=546aa9d"></script>
+<script src="anlatim.js?v=546aa9d"></script>
+<script src="anlatim-en.js?v=546aa9d"></script>
+<script src="viz.js?v=546aa9d"></script>
+<script src="content.js?v=546aa9d"></script>
+<script src="content-en.js?v=546aa9d"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="yapilandirma.js?v=23b2a45"></script>
-<script src="topluluk/hesap.js?v=23b2a45"></script>
+<script src="yapilandirma.js?v=546aa9d"></script>
+<script src="topluluk/ilerleme.js?v=546aa9d"></script>
+<script src="topluluk/hesap.js?v=546aa9d"></script>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -473,7 +474,14 @@ if (!D){
 /* ── ilerleme (localStorage) ── */
 const PKEY = 'mlacad_v2';
 function loadP(){ try { return JSON.parse(localStorage.getItem(PKEY)) || {}; } catch(e){ return {}; } }
-function saveP(p){ localStorage.setItem(PKEY, JSON.stringify(p)); }
+/* Yerel kayıt ANINDA yapılır, sunucuya gönderim arka planda olur ve
+   beklenmez. Ağ giderse ders kesintisiz sürer, ilerleme kaybolmaz;
+   bir sonraki girişte zaten yukarı taşınır. */
+function saveP(p){
+  localStorage.setItem(PKEY, JSON.stringify(p));
+  if (typeof ILERLEME !== 'undefined' && typeof D !== 'undefined' && D.adimlar)
+    ILERLEME.yaz(DERS_ID, p[DERS_ID], D.adimlar.length);
+}
 const PROG = loadP();
 PROG[DERS_ID] = PROG[DERS_ID] || {done:[], xp:0};
 const MY = PROG[DERS_ID];
@@ -860,7 +868,28 @@ if (KILITLI_DERS && typeof HESAP !== 'undefined'){
   document.getElementById('kpGeri').onclick = () => location.href = 'index.html';
   document.getElementById('kpGiris').onclick = () => HESAP.girisEkrani(false);
 
-  HESAP.dinle(() => { if (HESAP.girisli) perde.remove(); });
+  HESAP.dinle(async () => {
+    if (HESAP.girisli) perde.remove();
+
+    /* Giriş yapılınca sunucudaki ilerleme yerelle birleştirilir ve
+       bu dersin kaydı tazelenir. Kullanıcı başka bir cihazda bıraktığı
+       yerden devam edebilsin diye. */
+    if (HESAP.girisli && typeof ILERLEME !== 'undefined' && SUPA.istemci){
+      ILERLEME.kur(SUPA.istemci());
+      ILERLEME.oturum(HESAP.kullanici);
+      const birlesik = await ILERLEME.indir();
+      const yeni = birlesik[DERS_ID];
+      if (yeni && (yeni.xp > MY.xp || yeni.done.length > MY.done.length)){
+        MY.done = yeni.done.slice();
+        MY.xp   = yeni.xp;
+        PROG[DERS_ID] = MY;
+        $('xpN').textContent = MY.xp + ' XP';
+        renderMap();
+      }
+    } else if (typeof ILERLEME !== 'undefined'){
+      ILERLEME.temizle();
+    }
+  });
   /* dil çubuğu ders sayfasında da var; giriş ekranı onu takip etsin */
   const db = document.querySelector('.dilbar');
   if (db) db.addEventListener('click', e => {

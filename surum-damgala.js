@@ -16,7 +16,7 @@ const { execSync } = require('child_process');
 const h = execSync('git rev-parse --short HEAD').toString().trim();
 const YEREL = ['anlatim-en.js','anlatim.js','arayuz-sozluk.js','content-en.js',
                'content.js','modeller.js','topluluk/hesap.js','topluluk/topluluk.js',
-               'viz-sozluk.js','viz.js','yapilandirma.js'];
+               'topluluk/ilerleme.js','viz-sozluk.js','viz.js','yapilandirma.js'];
 const kac = (s, f) => (s.match(new RegExp('src="' + f.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\?v=', 'g')) || []).length;
 
 let toplam = 0;

@@ -277,10 +277,10 @@ temaUygula(temaOku());
   </div>
 </div>
 
-<script src="viz-sozluk.js?v=23b2a45"></script>
-<script src="viz.js?v=23b2a45"></script>
-<script src="content.js?v=23b2a45"></script>
-<script src="content-en.js?v=23b2a45"></script>
+<script src="viz-sozluk.js?v=546aa9d"></script>
+<script src="viz.js?v=546aa9d"></script>
+<script src="content.js?v=546aa9d"></script>
+<script src="content-en.js?v=546aa9d"></script>
 <script>
 const $ = id => document.getElementById(id);
 const PKEY = 'mlacad_v2';
@@ -506,18 +506,37 @@ dilUygula();
      Ayarlar boşsa hiçbir istek atılmaz, topluluk bölümü gizli kalır.
      Yani bu bloklar bugün siteye eklense de hiçbir şey bozulmaz. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="yapilandirma.js?v=23b2a45"></script>
-<script src="topluluk/topluluk.js?v=23b2a45"></script>
-<script src="topluluk/hesap.js?v=23b2a45"></script>
+<script src="yapilandirma.js?v=546aa9d"></script>
+<script src="topluluk/topluluk.js?v=546aa9d"></script>
+<script src="topluluk/ilerleme.js?v=546aa9d"></script>
+<script src="topluluk/hesap.js?v=546aa9d"></script>
 <script>
   const toplulukYenile = () => TOPLULUK.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL });
   toplulukYenile();
-  HESAP.dinle(() => {
+  HESAP.dinle(async () => {
     toplulukYenile();                   // yorum onaylanınca sayaçlar tazelensin
     /* Kilit yalnızca Supabase yapılandırılmışken ve giriş yokken açık.
        Arka uç yoksa hiçbir ders kilitlenmez, site eskisi gibi çalışır. */
     KILIT_ACIK = SUPA.hazir && !HESAP.girisli;
     ciz();                              // ciz() global, rotalariCiz() değildi
+
+    /* ── İLERLEME SENKRONU ──
+       Site "ilerlemen cihazlar arasında saklanır" diyordu ama ilerleme
+       hiç sunucuya yazılmıyordu. Giriş yapılınca sunucudaki kayıt yerel
+       kayıtla BİRLEŞTİRİLİR: tamamlanan adımların birleşimi alınır,
+       XP'de büyük olan kazanır. Böylece hiçbir cihazda ilerleme geri
+       gitmez ve hesap açmadan önce yapılan ilerleme hesaba taşınır.
+
+       ciz() iki kez çağrılıyor: biri hemen, biri senkron bitince.
+       Kullanıcı ağ yanıtını beklemesin. */
+    if (HESAP.girisli && SUPA.istemci){
+      ILERLEME.kur(SUPA.istemci());
+      ILERLEME.oturum(HESAP.kullanici);
+      PROG = await ILERLEME.indir();
+      ciz();
+    } else {
+      ILERLEME.temizle();
+    }
   });
   HESAP.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL,
               saglayicilar:SUPA.saglayicilar });
