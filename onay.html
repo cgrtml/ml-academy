@@ -139,12 +139,17 @@ document.documentElement.setAttribute('data-tema', temaOku());
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="yapilandirma.js?v=a4495f8"></script>
+<script src="yapilandirma.js?v=1737dfb"></script>
 <script>
 (function(){
   'use strict';
 
-  const DIL = localStorage.getItem('mlacad_dil') === 'en' ? 'en' : 'tr';
+  /* index.html ile aynı kural: varsayılan İngilizce, kullanıcının açık
+     seçimi kazanır. E-postadan gelen kişi siteyi hiç görmemiş olabilir. */
+  const DIL = (() => {
+    const secilmis = localStorage.getItem('mlacad_dil');
+    return (secilmis === 'tr' || secilmis === 'en') ? secilmis : 'en';
+  })();
 
   const M = {
     tr:{

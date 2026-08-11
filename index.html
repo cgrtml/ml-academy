@@ -1,9 +1,30 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ML Academy · Sıfırdan yapay zekâ öğren</title>
+<title>ML Academy · Learn machine learning by actually running it</title>
+<meta name="description" content="123 interactive machine learning lessons that run in your browser. No videos, no installation, no payment. Every number in every lesson is recomputed by a test before it ships.">
+<link rel="canonical" href="https://mltraining.org/">
+
+<!-- ── PAYLAŞIM ETİKETLERİ ──
+     Bunlar olmadan bağlantı nereye atılırsa atılsın (HN, Reddit, LinkedIn,
+     WhatsApp, Slack) boş bir kutu görünüyordu: başlık yok, açıklama yok,
+     görsel yok. Duyuru öncesi kapatılması gereken üç eksikten biriydi.
+     Görsel gorsel/og.png · 1200x630 · gorsel/og-uret.sh ile üretiliyor. -->
+<meta property="og:type"        content="website">
+<meta property="og:site_name"   content="ML Academy">
+<meta property="og:title"       content="Learn machine learning by actually running it">
+<meta property="og:description" content="123 interactive machine learning lessons that run in your browser. No videos, no installation, no payment. Every number in every lesson is recomputed by a test before it ships.">
+<meta property="og:url"         content="https://mltraining.org/">
+<meta property="og:image"       content="https://mltraining.org/gorsel/og.png">
+<meta property="og:image:width"  content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="Learn machine learning by actually running it">
+<meta name="twitter:description" content="123 interactive machine learning lessons that run in your browser. No videos, no installation, no payment. Every number in every lesson is recomputed by a test before it ships.">
+<meta name="twitter:image"       content="https://mltraining.org/gorsel/og.png">
+
 <style>
   :root{
     /* ── AÇIK TEMA ──────────────────────────────────────────────────────
@@ -299,10 +320,10 @@ temaUygula(temaOku());
   </div>
 </div>
 
-<script src="viz-sozluk.js?v=a4495f8"></script>
-<script src="viz.js?v=a4495f8"></script>
-<script src="content.js?v=a4495f8"></script>
-<script src="content-en.js?v=a4495f8"></script>
+<script src="viz-sozluk.js?v=1737dfb"></script>
+<script src="viz.js?v=1737dfb"></script>
+<script src="content.js?v=1737dfb"></script>
+<script src="content-en.js?v=1737dfb"></script>
 <script>
 const $ = id => document.getElementById(id);
 const PKEY = 'mlacad_v2';
@@ -348,7 +369,22 @@ const EN = {
   basla:'Start here: ', devam:'Continue where you left off: ', bitti:'You finished everything ✓ ',
   sifirla:'All progress and XP will be deleted. Are you sure?',
 };
-let DIL = localStorage.getItem('mlacad_dil') || 'tr';
+/* ── VARSAYILAN DİL ──
+   10 Ağustos 2026'ya kadar varsayılan Türkçe'ydi. Hedef kitle ABD'ye
+   kayınca bu bir sorun oldu: dışarıdan gelen ziyaretçi Türkçe bir
+   başlıkla karşılaşıp geri dönüyordu.
+
+   Karar: varsayılan İNGİLİZCE, Türkçe bir seçenek. Tarayıcı diline
+   bakılmıyor; Türkiye'den gelen kullanıcı da İngilizce açılışı görüp TR
+   düğmesine basıyor. Sebep tutarlılık: paylaşılan her bağlantı, arama
+   sonuçları ve HN gibi yerlerden gelen ziyaretçi hep aynı sayfayı görmeli.
+
+   Kullanıcının açık seçimi her zaman kazanır ve localStorage'da kalır. */
+function varsayilanDil(){
+  const secilmis = localStorage.getItem('mlacad_dil');
+  return (secilmis === 'tr' || secilmis === 'en') ? secilmis : 'en';
+}
+let DIL = varsayilanDil();
 const TR = {};
 document.querySelectorAll('[data-i]').forEach(el => TR[el.dataset.i] = el.innerHTML);
 function dilUygula(){
@@ -545,10 +581,10 @@ dilUygula();
      Ayarlar boşsa hiçbir istek atılmaz, topluluk bölümü gizli kalır.
      Yani bu bloklar bugün siteye eklense de hiçbir şey bozulmaz. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="yapilandirma.js?v=a4495f8"></script>
-<script src="topluluk/topluluk.js?v=a4495f8"></script>
-<script src="topluluk/ilerleme.js?v=a4495f8"></script>
-<script src="topluluk/hesap.js?v=a4495f8"></script>
+<script src="yapilandirma.js?v=1737dfb"></script>
+<script src="topluluk/topluluk.js?v=1737dfb"></script>
+<script src="topluluk/ilerleme.js?v=1737dfb"></script>
+<script src="topluluk/hesap.js?v=1737dfb"></script>
 <script>
   const toplulukYenile = () => TOPLULUK.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL });
   toplulukYenile();
