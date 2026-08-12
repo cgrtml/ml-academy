@@ -34,8 +34,13 @@ const DATA = {
   },
 };
 /* ── arayüz dili · EN seçiliyse görsel etiketleri de İngilizce ──
-   Node içinde (denetim.js / cizim-testi.js) localStorage yok, o yüzden TR'ye düşer. */
-const VDIL = (() => { try { return localStorage.getItem('mlacad_dil') === 'en' ? 'en' : 'tr'; }
+   Varsayılan EN, çünkü index.html ve lesson.html içindeki varsayilanDil()
+   de öyle: seçim yapılmamışsa 'en'. Burası eskiden 'tr'ye düşüyordu, sonuç
+   olarak hiç dil seçmemiş ilk ziyaretçi arayüzü İngilizce görüyor ama bütün
+   tuval etiketlerini Türkçe görüyordu. Üç yerin varsayılanı aynı kalmalı.
+   Node içinde (denetim.js / cizim-testi.js) localStorage yok, ReferenceError
+   yakalanıyor ve TR'ye düşüyor; Türkçe içeriği doğrulayan testler öyle çalışır. */
+const VDIL = (() => { try { return localStorage.getItem('mlacad_dil') === 'tr' ? 'tr' : 'en'; }
                       catch(e){ return 'tr'; } })();
 const LB = (tr, en) => VDIL === 'en' ? en : tr;
 
@@ -107,12 +112,43 @@ function frame(P,xl,yl,xt,yt){
   cx.textAlign = 'right';
   (yt||[]).forEach(t => cx.fillText(String(t), P.R.x-10, P.sy(t)+7));
   cx.textAlign = 'center';
-  if (xl) cx.fillText(CEV(xl), P.R.x+P.R.w/2, P.R.y+P.R.h+58);
-  if (yl){ cx.save(); cx.translate(P.R.x-60, P.R.y+P.R.h/2); cx.rotate(-Math.PI/2); cx.fillText(CEV(yl),0,0); cx.restore(); }
+  /* x etiketi txt() üzerinden geçiyor, sığmayınca orada küçülüyor. */
+  if (xl) txt(xl, P.R.x+P.R.w/2, P.R.y+P.R.h+58, K.mut, 20, 'center', '400');
+  if (yl){
+    /* Y etiketi döndürülerek çiziliyor, yani uzunluğu DİKEY yer kaplıyor ve
+       txt()'nin yatay hesabı burada işe yaramaz. İngilizce karşılık uzayınca
+       tuvalin üstünden taşıyordu: soft-split'te "kapı çıktısı = sağ dala gitme
+       ağırlığı" 40 karakterken karşılığı 55 karakter, 30 mantıksal piksel
+       yukarı çıkıyordu. Etiket dikeyde ortalı, iki yana da aynı pay var. */
+    const orta = P.R.y + P.R.h/2, e = String(CEV(yl));
+    let p = 20;
+    const yer = 2*Math.min(orta, cvs.height - orta) - 12;
+    if (VDIL === 'en' && yer > 0) while (p > 11 && e.length*p*0.6 > yer) p -= 1;
+    cx.save(); cx.translate(P.R.x-60, orta); cx.rotate(-Math.PI/2);
+    cx.font = p+'px ui-monospace,monospace'; cx.fillStyle = K.mut; cx.textAlign = 'center';
+    cx.fillText(e,0,0); cx.restore();
+  }
 }
+/* Tuvale sığmayan yazı küçülür. Sebep: widget'lardaki açıklama satırları
+   Türkçe uzunluğa göre ELLE bölünmüş. CEV() yerine İngilizce karşılığı
+   koyunca satır uzuyor ve tuvalin dışına çıkıyor, oradaki yazı kırpılıp
+   büsbütün okunmaz oluyor. DIL=en tasma-testi.js bunu 172 yerde buldu,
+   TR modunda ise hiç taşma yok. durum() aynı işi zaten yapıyordu, davranış
+   buraya taşındı. Yalnız EN'de devreye giriyor, böylece Türkçe yerleşimin
+   tek pikseli bile oynamıyor. */
 function txt(s,x,y,c,sz,al,wt){
-  cx.fillStyle = c; cx.font = (wt||'700')+' '+(sz||22)+'px ui-monospace,monospace';
-  cx.textAlign = al||'center'; cx.fillText(CEV(s),x,y);
+  const t = String(CEV(s) == null ? '' : CEV(s));
+  const hiza = al || 'center';
+  let p = sz || 22;
+  if (VDIL === 'en' && t.length){
+    const kenar = 6;
+    const yer = (hiza === 'left'  || hiza === 'start') ? cvs.width - x - kenar
+              : (hiza === 'right' || hiza === 'end')   ? x - kenar
+              : 2*Math.min(x - kenar, cvs.width - x - kenar);
+    if (yer > 0) while (p > 11 && t.length*p*0.6 > yer) p -= 1;
+  }
+  cx.fillStyle = c; cx.font = (wt||'700')+' '+p+'px ui-monospace,monospace';
+  cx.textAlign = hiza; cx.fillText(t,x,y);
 }
 function dot(x,y,r,f,s,lw){
   cx.beginPath(); cx.arc(x,y,r,0,7);
@@ -11570,13 +11606,26 @@ function baslikSerit(ust, alt, cipler){
   txt(ust, 750, 52, K.txt, 34);
   if (alt) txt(alt, 750, 86, K.mut, 20, 'center', '400');
   if (cipler){
-    const w = 230, gap = 16, tot = cipler.length*w + (cipler.length-1)*gap;
+    /* Çip genişliği sabit 230'du, metin ne kadar uzun olursa olsun. Yazı çipin
+       dışına, oradan da komşu çipin üstüne taşıyordu; İngilizce karşılıklar
+       Türkçesinden uzun olduğu için EN modunda her yerde görünür hâle geldi.
+       Genişlik artık metinden hesaplanıyor, tuval monospace olduğu için
+       karakter sayısı güvenilir. Toplam sığmazsa punto kademeli düşüyor. */
+    const gap = 16, dolgu = 34, enGenis = 1440;
+    const metin = cipler.map(([k,v]) => String(CEV(k+'  '+v)));
+    let sz = 19, gen, tot;
+    for (;;){
+      gen = metin.map(m => Math.max(120, m.length*sz*0.6 + dolgu));
+      tot = gen.reduce((a,b) => a+b, 0) + (cipler.length-1)*gap;
+      if (tot <= enGenis || sz <= 13) break;
+      sz -= 1;
+    }
     let x = 750 - tot/2;
-    cipler.forEach(([k,v,c]) => {
+    cipler.forEach(([k,v,c], i) => {
       cx.strokeStyle = c+'88'; cx.lineWidth = 2;
-      cx.beginPath(); cx.roundRect(x, 104, w, 40, 20); cx.stroke();
-      txt(k+'  '+v, x+w/2, 130, c, 19);
-      x += w + gap;
+      cx.beginPath(); cx.roundRect(x, 104, gen[i], 40, 20); cx.stroke();
+      txt(k+'  '+v, x+gen[i]/2, 130, c, sz);
+      x += gen[i] + gap;
     });
   }
 }
@@ -11796,7 +11845,10 @@ VIZ.arama = s => {
   const sagIdx = Math.min(k, adimlar.length-1);
   const st = adimlar[sagIdx];
   const sagBuldu = k >= adimlar.length-1;
-  txt('SIRALI DİZİ  ·  ikili arama', sagX+tot/2, 470, K.green, 22);
+  /* Bu başlık 470'teydi, kutuların 50 piksel üstünde. Soldaki eşi kutularının
+     120 piksel üstünde duruyor; 50 piksel kutu3'ün yukarı taşan üst yüzüne
+     yetmiyor ve yazı kutuların üstüne biniyordu. İki taraf artık simetrik. */
+  txt('SIRALI DİZİ  ·  ikili arama', sagX+tot/2, 410, K.green, 22);
   A_SIR.forEach((v,i) => {
     let renk = '#232f3e';
     if (i < st.lo || i > st.hi) renk = '#161d27';
@@ -12282,8 +12334,13 @@ VIZ.metrik = s => {
   cx.strokeStyle = K.orange; cx.lineWidth = 4;
   cx.beginPath(); cx.moveTo(P.sx(e),P.R.y-6); cx.lineTo(P.sx(e),P.R.y+P.R.h+6); cx.stroke();
   txt('eşik', P.sx(e), P.R.y-16, K.orange, 16);
-  txt('■ normal', P.R.x+8, 200, '#4a5a6d', 15, 'left');
-  txt('■ dolandırıcılık', P.R.x+110, 200, K.red, 15, 'left');
+  /* Açıklama 200'deydi, "eşik" etiketi ise P.R.y-16 = 210'da. Aralarında
+     10 piksel var ve eşik etiketi kaydırıcıyla yatayda geziyor: Türkçe "eşik"
+     dar olduğu için sıyırıyordu, İngilizce "threshold" iki katı geniş ve
+     eşik sola gelince açıklamanın üstüne biniyordu. Açıklama başlık satırına
+     alındı, eşik etiketine bütün bir satır kaldı. */
+  txt('■ normal', P.R.x+8, 184, '#4a5a6d', 15, 'left');
+  txt('■ dolandırıcılık', P.R.x+110, 184, K.red, 15, 'left');
   txt('SKOR DAĞILIMI', P.R.x+P.R.w/2, 184, K.mut, 18);
 
   /* ── metrik çubukları (sol alt) ── */
@@ -17629,7 +17686,11 @@ VIZ.lrTara = s => {
     cx.strokeStyle = renk; cx.lineWidth = 2.5; cx.setLineDash([7,5]);
     cx.beginPath(); cx.moveTo(P.R.x, P.sy(v)); cx.lineTo(P.R.x+P.R.w, P.sy(v)); cx.stroke();
     cx.setLineDash([]);
-    txt(ad+'  '+(100*v).toFixed(1)+'%', P.R.x+10, P.sy(v)-10, renk, 15, 'left');
+    /* Etiket çizginin ÜSTÜNDEydi, rank noktalarının yüzde etiketleri de öyle.
+       "tam ince ayar %74.2" ile hemen yanındaki "%73.2" Türkçede kıl payı
+       sıyırıyordu, İngilizce karşılık bir karakter uzun olunca bindi.
+       Etiket çizginin altına alındı, iki yazı artık ters yönlere bakıyor. */
+    txt(ad+'  '+(100*v).toFixed(1)+'%', P.R.x+10, P.sy(v)+20, renk, 15, 'left');
   });
   cx.strokeStyle = K.blue; cx.lineWidth = 4; cx.beginPath();
   o.rank.forEach((q,k) => k===0 ? cx.moveTo(P.sx(k), P.sy(q.dogruluk))

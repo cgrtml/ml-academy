@@ -1,11 +1,36 @@
 /* ML Academy · EN modunda tuvale hâlâ Türkçe metin çiziliyor mu?
    viz.js'i localStorage.mlacad_dil = 'en' ile yükler, bütün widget'ları çizer
-   ve fillText'e giden metinlerde Türkçe karakter arar.
-   Kullanım: node tuval-en-denetim.js   */
+   ve fillText'e giden metinlere iki ayrı test uygular.
+   Kullanım: node tuval-en-denetim.js
+
+   1) Türkçe karakter testi. Ucuz ama KÖR: "kontrol", "tahmin", "toplam",
+      "karar", "oran", "buldu" gibi etiketlerin hepsi ASCII ve bu filtreden
+      kaçıyor. tuval-metin.js kendi başlığında tam bu tuzağı yazıyor, burası
+      ona rağmen yalnız aksanlı harfe bakıyordu.
+   2) Sözlük anahtarı testi. Kesin: EN modunda tuvale çizilen bir metin
+      TUVAL_EN'in ANAHTARI ise, o metnin İngilizce karşılığı var demektir ve
+      yine de Türkçesi çizilmiştir; yani CEV() atlanmıştır. Bu, o metnin
+      txt() yerine doğrudan cx.fillText ile çizildiğini gösterir.
+      Aksan içermeyen kaçakları yakalayan tek test budur. */
 const fs = require('fs');
 
 const TRCH = /[ğüşıöçĞÜŞİÖÇ]/;
 const KALAN = new Map();
+const CEVSIZ = new Map();
+
+/* Bilerek Türkçe kalan metinler. İki ders Türkçe'nin KENDİSİNİ inceliyor,
+   oradaki Türkçe kelime çeviri artığı değil, incelenen veri:
+     bpe       "kitaplarımızdan" nasıl parçalanıyor, ekleri BPE öğrenebiliyor mu
+     cokanlam  "yüz" üç ayrı anlama geliyor, statik gömme birine çöküyor
+   Bu satırlar çevrilirse ders anlamsızlaşır. Muafiyet dar tutulmalı: yalnız
+   bu iki widget'ta ve yalnız bu kelimeleri içeren metinlerde geçerli, böylece
+   aynı widget'a sonradan sızacak gerçek bir Türkçe metin yine yakalanır. */
+const BILEREK = [
+  { viz:'bpe',      kelime:['kitaplarımızdan','kitapları'] },
+  { viz:'cokanlam', kelime:['yüz'] },
+];
+const bilerekMi = (s, viz) => BILEREK.some(b =>
+  b.viz === viz && b.kelime.some(k => s.includes(k)));
 
 function sahteCtx(){
   const c = { font:'22px monospace', textAlign:'start', textBaseline:'alphabetic',
@@ -17,7 +42,15 @@ function sahteCtx(){
    'fillRect','strokeRect','rect','arc','moveTo','lineTo'].forEach(k => c[k] = yok);
   c.fillText = s => {
     s = String(s == null ? '' : s);
-    if (!s.length || !TRCH.test(s)) return;
+    if (!s.length) return;
+    /* Karşılığı kendisiyle aynı olanlar sayılmaz: "AUC", "R²", "Huffman",
+       "SMOTE" gibi terimler sözlükte duruyor ama iki dilde de aynı yazılıyor,
+       çizilmeleri doğru. Yalnız karşılığı FARKLI olanlar kaçak demektir. */
+    if (typeof TUVAL_EN !== 'undefined' && TUVAL_EN[s] !== undefined && TUVAL_EN[s] !== s){
+      if (!CEVSIZ.has(s)) CEVSIZ.set(s, new Set());
+      if (AKTIF) CEVSIZ.get(s).add(AKTIF);
+    }
+    if (!TRCH.test(s) || bilerekMi(s, AKTIF)) return;
     if (!KALAN.has(s)) KALAN.set(s, new Set());
     if (AKTIF) KALAN.get(s).add(AKTIF);
   };
@@ -72,7 +105,17 @@ Object.entries(DERSLER).forEach(([id,d]) => {
 `);
 
 console.log('═══ EN MODU · TUVAL DENETİMİ ═══\n');
-if (!KALAN.size){ console.log('  ✓✓  EN modunda tuvale Türkçe metin çizilmiyor.'); process.exit(0); }
-console.log('  Çevrilmemiş kalan metin: ' + KALAN.size + '\n');
+
+console.log('── 1 · SÖZLÜKTE KARŞILIĞI OLDUĞU HÂLDE TÜRKÇE ÇİZİLEN ── ' + CEVSIZ.size);
+if (CEVSIZ.size) console.log('     (CEV() atlanmış: txt() yerine doğrudan cx.fillText)');
+[...CEVSIZ.entries()].slice(0, 60).forEach(([s, w]) =>
+  console.log('    ' + JSON.stringify(s).slice(0,90) + '   [' + [...w].slice(0,3).join(', ') + ']'));
+
+console.log('\n── 2 · TÜRKÇE KARAKTER İÇEREN METİN ── ' + KALAN.size);
 [...KALAN.entries()].slice(0, 60).forEach(([s, w]) =>
   console.log('    ' + JSON.stringify(s).slice(0,90) + '   [' + [...w].slice(0,3).join(', ') + ']'));
+
+const toplam = CEVSIZ.size + KALAN.size;
+console.log('\n' + (toplam === 0
+  ? '  ✓✓  EN modunda tuvale Türkçe metin çizilmiyor.'
+  : '  ✗  toplam ' + toplam + ' benzersiz metin'));

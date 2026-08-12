@@ -103,10 +103,22 @@ function cakismaBul(metinler){
 let CTX = sahteCtx();
 const DUMP = process.env.DUMP || '';
 let DUMPN = 0;
+
+/* Dil seçimi:  node tasma-testi.js        → TR yerleşimi
+                DIL=en node tasma-testi.js → EN yerleşimi
+   viz.js'teki VDIL localStorage'a bakar. Node'da localStorage yoktu, TR'ye
+   düşüyordu, yani İNGİLİZCE YERLEŞİM HİÇ ÖLÇÜLMÜYORDU. İngilizce karşılıklar
+   Türkçesinden uzun olduğu için taşmaların bir kısmı yalnızca EN'de çıkıyor.
+   EN modunda viz-sozluk.js de yüklenmeli, yoksa CEV() sözlüğü bulamaz ve
+   metinler Türkçe uzunlukta ölçülür. */
+const DIL = process.env.DIL === 'en' ? 'en' : 'tr';
+const localStorage = { getItem: k => k === 'mlacad_dil' ? DIL : null, setItem(){}, removeItem(){} };
+
+const S = DIL === 'en' ? fs.readFileSync('./viz-sozluk.js','utf8') : '';
 const V = fs.readFileSync('./viz.js','utf8');
 const C = fs.readFileSync('./content.js','utf8');
 
-eval(V + C + `
+eval(S + V + C + `
 const el = { width:0, height:0, getContext: () => CTX };
 
 function olc(yer, a, st){
@@ -160,7 +172,7 @@ const grupla = (arr, anahtar) => {
 };
 const LIMIT = parseInt(process.env.LIMIT || '40', 10);
 
-console.log('═══ TAŞMA VE ÇAKIŞMA TESTİ ═══\n');
+console.log('═══ TAŞMA VE ÇAKIŞMA TESTİ · ' + DIL.toUpperCase() + ' ═══\n');
 
 const tumu = grupla(RAPOR.disari, x => x.yer+'|'+x.viz+'|'+x.tip+'|'+(x.s||''));
 // çizgi ve arc taşması tuval tarafından kırpılır, görsel hata değil; metin ve dolu kutu gerçek
