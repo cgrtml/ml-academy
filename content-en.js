@@ -1532,7 +1532,7 @@ DERSLER_EN['maliyet'] = {
          '<p><b>Latency is a separate axis:</b> how quickly the user sees the first token (TTFT) and how fast the rest streams. Long context grows TTFT; long output grows the total time. Streaming does not shorten the total time but it substantially lowers the <b>perceived</b> latency.</p>',
     learned:'<b>An output token costs 4 to 5 times more than an input token</b>, but if you use RAG the balance shifts to the input.<br><br>The order for cutting cost: <b>prompt caching</b> (risk free, biggest) → smaller model or a cascade → shorten the output → retrieve fewer chunks → batch.<br><br>Latency is a separate axis: long context grows TTFT, long output grows the total time.',
     controls:[{k:'model', lb:'MODEL', min:0, max:2, step:1, val:1},
-              {k:'istek', lb:'DAILY REQUESTS', min:1000, max:200000, step:1000},
+              {k:'istek', lb:'DAILY REQUESTS', min:1000, max:200000, step:1000, val:10000},
               {k:'rag', lb:'RAG CONTEXT', min:0, max:1, step:1, val:0}],
     quiz:{
       q:'A RAG based support bot takes 50,000 requests a day, and the same 2000 token system prompt is sent on every one. Where is the single biggest win?',

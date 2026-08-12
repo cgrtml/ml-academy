@@ -4308,7 +4308,11 @@ DERSLER['maliyet'] = {
     todo:'İstek sayısını ve modeli değiştir. Sonra <b>RAG anahtarını aç</b> ve maliyetin nereye kaydığına bak.',
     kind:'controls', viz:'maliyet', h:760,
     controls:[{k:'model', lb:'MODEL', min:0, max:2, step:1, val:1, fmt:v=>FIYAT[Math.round(v)].ad},
-              {k:'istek', lb:'GÜNLÜK İSTEK', min:1000, max:200000, step:1000,
+              /* val yazılmamıştı: st.istek undefined kalıyor, live() içindeki
+                 Math.round(undefined) NaN üretiyor ve rozetler ilk açılışta
+                 "$NaN" gösteriyordu. Tuval kendi yedeğiyle 10.000 çizdiği için
+                 aynı ekranda iki farklı sayı duruyordu. Yedekle aynı değer. */
+              {k:'istek', lb:'GÜNLÜK İSTEK', min:1000, max:200000, step:1000, val:10000,
                fmt:v=>Math.round(v).toLocaleString('tr')},
               {k:'rag', lb:'RAG BAĞLAMI', min:0, max:1, step:1, val:0, fmt:v=>v?'AÇIK (×8 girdi)':'kapalı'}],
     live:s => { const h = maliyetHesap(Math.round(s.model), Math.round(s.istek), 500, 300, s.rag?8:1);

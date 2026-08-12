@@ -53,17 +53,21 @@ Object.entries(DERSLER).forEach(([id, d]) => {
       try { ekle(c.fmt(c.max), 'control.fmt'); } catch(e){}
     });
     (a.kod || []).forEach(l => ekle(l, 'kod'));
-    /* phases[].body ve state'i content-en.js zaten sağlıyor; yalnızca live etiketleri kalıyor */
-    (a.phases || []).forEach(p => (p.live || []).forEach(r => ekle(r[0], 'phase.live')));
+    /* phases[].body ve state'i content-en.js zaten sağlıyor; yalnızca live satırları kalıyor.
+       Canlı rozet satırı [etiket, değer, renk]. Burada yalnız r[0] toplanıyordu, oysa
+       lesson.html'deki cevirLive() ikisini de CEVIR()'den geçiriyor: envanter sayfanın
+       bastığı metnin yarısını görmüyor, "11 kontrol ✓" gibi DEĞERLER eksik sayılmıyordu. */
+    const canli = (r, n) => { ekle(r[0], n); ekle(r[1], n); };
+    (a.phases || []).forEach(p => (p.live || []).forEach(r => canli(r, 'phase.live')));
     if (a.kind === 'play' && a.frames){
       let F = []; try { F = a.frames(); } catch(e){}
       F.forEach(f => { if (f.body) ekle(f.body, 'frame.body');
-        (f.live || []).forEach(r => ekle(r[0], 'frame.live')); });
+        (f.live || []).forEach(r => canli(r, 'frame.live')); });
     }
     durumlar(a).forEach(st => {
       let s = { ...st };
       try { if (a.derive){ s._d = a.derive(s); s = { ...s, ...s._d }; } } catch(e){}
-      if (a.live){ try { (a.live(s) || []).forEach(r => ekle(r[0], 'live')); } catch(e){} }
+      if (a.live){ try { (a.live(s) || []).forEach(r => canli(r, 'live')); } catch(e){} }
       if (a.bodyFn){ try { ekle(a.bodyFn(s), 'bodyFn'); } catch(e){} }
     });
     if (a.kodlab && a.kodlab.calistir){
@@ -78,7 +82,7 @@ Object.entries(DERSLER).forEach(([id, d]) => {
         let r; try { r = a.kodlab.calistir(vals, {}); } catch(e){ return; }
         (r && r.kareler || []).forEach(kare => {
           if (kare.body) ekle(kare.body, 'kodlab.body');
-          (kare.live || []).forEach(x => ekle(x[0], 'kodlab.live'));
+          (kare.live || []).forEach(x => canli(x, 'kodlab.live'));
         });
         if (r && r.sonBody) ekle(r.sonBody, 'kodlab.sonBody');
         if (r && r.mesaj)   ekle(r.mesaj,   'kodlab.mesaj');

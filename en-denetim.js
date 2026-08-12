@@ -102,10 +102,16 @@ Object.values(M2.DERSLER).forEach(d => d.adimlar.forEach(a => {
     for (let v = c.min; v <= c.max + 1e-9; v += ad){ try { ekle(c.fmt(v), 'control.fmt'); } catch(e){} }
     try { ekle(c.fmt(c.max), 'control.fmt'); } catch(e){} });
   (a.kod || []).forEach(l => ekle(l, 'kod'));
-  (a.phases || []).forEach(p => (p.live || []).forEach(r => ekle(r[0], 'phase.live')));
+  /* Canlı rozet satırı [etiket, değer, renk]. Burada yalnız r[0], yani ETİKET
+     toplanıyordu; oysa lesson.html'deki cevirLive() ikisini de CEVIR()'den
+     geçiriyor. Denetim sayfanın bastığı metnin yarısını görmüyordu ve
+     "11 kontrol ✓" gibi çevrilmemiş DEĞERLER hiç raporlanmadan canlıya çıktı.
+     İkisi de toplanmalı, sayfa ikisini de çeviriyor. */
+  const canli = (r, n) => { ekle(r[0], n); ekle(r[1], n); };
+  (a.phases || []).forEach(p => (p.live || []).forEach(r => canli(r, 'phase.live')));
   if (a.kind === 'play' && a.frames){ let F = []; try { F = a.frames(); } catch(e){}
     F.forEach(f => { if (f.body) ekle(f.body, 'frame.body');
-      (f.live || []).forEach(r => ekle(r[0], 'frame.live')); }); }
+      (f.live || []).forEach(r => canli(r, 'frame.live')); }); }
   const durumlar = [];
   if (a.kind === 'phases') (a.phases||[]).forEach(p => durumlar.push({ ...(a.state||{}), ...(p.state||{}) }));
   else { const st = { ...(a.state||{}) }; (a.controls||[]).forEach(c => st[c.k] = c.val);
@@ -114,7 +120,7 @@ Object.values(M2.DERSLER).forEach(d => d.adimlar.forEach(a => {
       for (let v = c.min; v <= c.max + 1e-9; v += ad) durumlar.push({ ...st, [c.k]:v }); }); }
   durumlar.forEach(st => { let s = { ...st };
     try { if (a.derive){ s._d = a.derive(s); s = { ...s, ...s._d }; } } catch(e){}
-    if (a.live){ try { (a.live(s)||[]).forEach(r => ekle(r[0], 'live')); } catch(e){} }
+    if (a.live){ try { (a.live(s)||[]).forEach(r => canli(r, 'live')); } catch(e){} }
     if (a.bodyFn){ try { ekle(a.bodyFn(s), 'bodyFn'); } catch(e){} } });
 }));
 const arayuzKalan = [];

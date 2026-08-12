@@ -11834,7 +11834,11 @@ VIZ.arama = s => {
       solX+tot/2, solY+58, solBuldu ? K.green : K.orange, 24);
 
   /* ── SAĞ: sıralı, ikili arama ── */
-  const sagX = 60, sagY = 520;
+  /* Alt blok 520'deydi. kutu3'te Y ön yüzün ALT kenarı, yani kutular
+     466'dan başlıyor ve üstteki durum yazısı 378'de bitiyor: başlığa 88
+     piksel kalıyordu, üstteki eşine 120. Tuvalin altında 94 piksel boş yer
+     vardı, blok 30 piksel aşağı alındı ve iki yarı aynı nefesi aldı. */
+  const sagX = 60, sagY = 550;
   let lo = 0, hi = N-1, adimlar = [];
   while (lo <= hi){
     const mid = Math.floor((lo+hi)/2);
@@ -11845,10 +11849,9 @@ VIZ.arama = s => {
   const sagIdx = Math.min(k, adimlar.length-1);
   const st = adimlar[sagIdx];
   const sagBuldu = k >= adimlar.length-1;
-  /* Bu başlık 470'teydi, kutuların 50 piksel üstünde. Soldaki eşi kutularının
-     120 piksel üstünde duruyor; 50 piksel kutu3'ün yukarı taşan üst yüzüne
-     yetmiyor ve yazı kutuların üstüne biniyordu. İki taraf artık simetrik. */
-  txt('SIRALI DİZİ  ·  ikili arama', sagX+tot/2, 410, K.green, 22);
+  /* Bu başlık 470'teydi, kutuların üst kenarı ise 466: yazı kutuların üstüne
+     biniyordu. Artık soldaki eşiyle aynı payı bırakıyor. */
+  txt('SIRALI DİZİ  ·  ikili arama', sagX+tot/2, 440, K.green, 22);
   A_SIR.forEach((v,i) => {
     let renk = '#232f3e';
     if (i < st.lo || i > st.hi) renk = '#161d27';
