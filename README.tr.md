@@ -4,7 +4,10 @@
 
 Sıfırdan yapay zekâ öğrenmek isteyenler için hazırlanmış, tamamen tarayıcıda çalışan interaktif bir kurs.
 
-Video yok, kurulum yok, üyelik yok. `index.html` dosyasını açıp başlıyorsunuz.
+Video yok, kurulum yok, ücret yok. `index.html` dosyasını açıp başlıyorsunuz.
+
+Her rotanın ilk üç dersi herkese açık. Kalan dersler için kart istemeyen ücretsiz bir
+hesap yeterli; hesap ayrıca ilerlemenizi cihazlar arasında taşıyor.
 
 **[Canlı demo](https://mltraining.org)**
 

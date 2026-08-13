@@ -4,7 +4,10 @@
 
 An interactive course that teaches machine learning from scratch, running entirely in the browser.
 
-No videos, no installation, no accounts. Open `index.html` and start.
+No videos, no installation, no payment. Open `index.html` and start.
+
+The first three lessons of every track are open to anyone. A free account, with no card,
+unlocks the remaining lessons and keeps your progress across devices.
 
 **[Live demo](https://mltraining.org)**
 
