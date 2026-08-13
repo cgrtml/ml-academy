@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>ML Academy · film karesi</title>
+<!--
+  ML Academy · tanıtım videosunun tek karesi
+  ─────────────────────────────────────────────────────────────────────
+  Bu sayfa insan için değil, kamera için. `?kare=N` ile çağrılıyor ve o
+  kareyi çiziyor; gorsel/film-uret.sh onu N kez çağırıp kareleri
+  birleştiriyor.
+
+  NEDEN BÖYLE
+  Yapay zeka video üreticileri (Sora, Runway, Veo) bu iş için yanlış
+  araç: senin arayüzünü bilmedikleri için gerçeğe benzeyen ama UYDURMA
+  bir arayüz çiziyorlar. Ürünü tanıtan videoda sahte arayüz göstermek,
+  gelen kişinin siteyi açtığında videoda gördüğünü bulamaması demek.
+
+  Burada çizen şey sitenin KENDİ motoru: viz.js içindeki gerçek polinom
+  uydurma kodu ve content.js içindeki gerçek ders verisi. Yani video
+  ürünün canlandırması değil, ürünün kendisi.
+
+  Ekran kaydına göre üstünlüğü: fare titremiyor, kare hızı sabit,
+  yeniden üretilebilir. Sayılar değişirse betiği tekrar çalıştırmak
+  yeterli.
+-->
+<style>
+  html,body{margin:0;background:#070a0f;overflow:hidden}
+  .sahne{position:relative;width:1280px;height:720px;background:#070a0f;
+    font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace}
+  canvas{position:absolute;left:40px;top:96px;width:1200px;height:480px}
+
+  .ust{position:absolute;left:40px;top:34px;right:40px;display:flex;align-items:center;gap:12px}
+  .marka{font-size:15px;font-weight:700;letter-spacing:.3em;color:#22d3a0}
+  .yol{font-size:14px;color:#5d7089}
+  .yol b{color:#c9d6e4;font-weight:600}
+
+  .baslik{position:absolute;left:40px;top:60px;font-size:22px;font-weight:700;
+    color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    letter-spacing:-.02em}
+
+  /* Kaydırıcı: gerçek input değil, çizilmiş. Kare kare ilerlediği için
+     etkileşime gerek yok, yalnızca görünmesi gerekiyor. */
+  .kay{position:absolute;left:40px;top:600px;width:560px}
+  .kayUst{display:flex;justify-content:space-between;font-size:13px;color:#5d7089;
+    letter-spacing:.12em}
+  .kayUst b{color:#e6edf3;font-size:17px;letter-spacing:0}
+  .cubuk{margin-top:12px;height:5px;border-radius:3px;background:#1b2534;position:relative}
+  .cubuk i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:#4cc4ff}
+  .cubuk u{position:absolute;top:-7px;width:19px;height:19px;border-radius:50%;
+    background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.5);transform:translateX(-9px)}
+
+  /* Canlı sayılar · dersin kendi live() çıktısından geliyor */
+  .canli{position:absolute;right:40px;top:596px;display:flex;gap:34px}
+  .cv .k{font-size:11px;letter-spacing:.15em;color:#5d7089;text-transform:uppercase}
+  .cv .n{margin-top:5px;font-size:24px;font-weight:700;letter-spacing:-.02em}
+
+  .alt{position:absolute;left:40px;right:40px;bottom:26px;display:flex;
+    align-items:center;justify-content:space-between;font-size:13px;color:#3f5065}
+  .alt b{color:#22d3a0;letter-spacing:.18em}
+</style>
+</head>
+<body>
+<div class="sahne">
+  <div class="ust">
+    <span class="marka">ML ACADEMY</span>
+    <span class="yol">rota-0 / <b>ezberleme</b> · adım 2/4</span>
+  </div>
+  <div class="baslik" id="baslik">Modeli esnetelim</div>
+
+  <canvas id="cv"></canvas>
+
+  <div class="kay">
+    <div class="kayUst"><span id="kayAd">POLİNOM DERECESİ</span><b id="kayDeger">1</b></div>
+    <div class="cubuk"><i id="dolgu"></i><u id="tutamak"></u></div>
+  </div>
+  <div class="canli" id="canli"></div>
+
+  <div class="alt"><span>mltraining.org</span><b>KAYDIRICI SENDE</b></div>
+</div>
+
+<script src="../viz.js"></script>
+<script src="../content.js"></script>
+<script>
+(function(){
+  'use strict';
+  const q = new URLSearchParams(location.search);
+  const kare  = parseInt(q.get('kare') || '0', 10);
+  const toplam = parseInt(q.get('toplam') || '120', 10);
+  /* Doğrudan derece verilebilir. Kaydırıcı tam sayı adımlarla gittiği
+     için yalnızca 9 benzersiz kare var; her kareyi ayrı ayrı üretip
+     süreleri ffmpeg tarafında ayarlamak, 600 kez tarayıcı açmaktan hem
+     hızlı hem de sonucu birebir aynı. */
+  const dogrudan = q.get('derece') ? parseInt(q.get('derece'), 10) : null;
+
+  const D = DERSLER['ezberleme'];
+  const a = D.adimlar[1];                 // kaydırıcılı adım
+  const c = a.controls[0];                // derece · 1..9
+
+  /* Kare numarasını kontrol değerine çevir.
+     Başta ve sonda birer duraklama var: izleyicinin ilk hâli görmesi ve
+     son hâlin akılda kalması için. Aradaki geçiş yumuşatılıyor, çünkü
+     doğrusal artış videoda mekanik duruyor. */
+  const bekleBas = Math.round(toplam * 0.12);
+  const bekleSon = Math.round(toplam * 0.22);
+  const gecis    = toplam - bekleBas - bekleSon;
+  let t;
+  if (kare < bekleBas)               t = 0;
+  else if (kare >= bekleBas + gecis) t = 1;
+  else {
+    const x = (kare - bekleBas) / Math.max(1, gecis - 1);
+    t = x * x * (3 - 2 * x);            // smoothstep
+  }
+  const derece = dogrudan !== null ? dogrudan : Math.round(c.min + t * (c.max - c.min));
+
+  /* Durum, lesson.html'deki vizState() ile aynı sırayla kuruluyor:
+     adımın kendi state'i, kontrol değeri, sonra derive(). */
+  let s = Object.assign({}, a.state || {});
+  s[c.k] = derece;
+  if (a.derive){ s._d = a.derive(s); s = Object.assign({}, s, s._d); }
+
+  useCanvas(document.getElementById('cv'), 1200, 480);
+  VIZ[a.viz](s);
+
+  /* Kaydırıcı görüntüsü */
+  const oran = (derece - c.min) / (c.max - c.min);
+  document.getElementById('kayAd').textContent = c.lb;
+  document.getElementById('kayDeger').textContent = derece;
+  document.getElementById('dolgu').style.width = (oran * 100) + '%';
+  document.getElementById('tutamak').style.left = (oran * 100) + '%';
+
+  /* Canlı sayılar dersin kendi live() fonksiyonundan. Elle yazılmıyor:
+     videodaki sayılar da derste görülenlerle birebir aynı olsun. */
+  const lv = a.live ? a.live(s) : [];
+  document.getElementById('canli').innerHTML = (lv || []).slice(0, 3).map(function(r){
+    return '<div class="cv"><div class="k">' + r[0] + '</div>' +
+           '<div class="n" style="color:' + (r[2] || '#e6edf3') + '">' + r[1] + '</div></div>';
+  }).join('');
+})();
+</script>
+</body>
+</html>
