@@ -25,6 +25,11 @@ const TOPLULUK = (() => {
       dagilim:'Puan dağılımı', kisi:'kişi',
       cagriBas:'Burayı canlı tutan şey senin yorumun',
       cagriAlt:'Bir dakikanı alır ve geri dönüşünüz bizim için çok değerli.',
+      payMetin:'ML Academy: tarayıcıda çalışan 123 derslik interaktif makine öğrenmesi kursu. Ücretsiz.',
+      payBas:'Makine öğrenmesini izleme. *Çalıştır.*',
+      payAlt:'Her algoritma sıfırdan yazıldı ve tarayıcında çalışıyor. Kaydırıcıyı sen oynatıyorsun, model cevap veriyor. Tahminini sen yazıyorsun, kod kontrol ediyor.',
+      paySay:[['123','ders'],['401','adım'],['165','simülasyon'],['2.395','doğrulanmış sayı']],
+      payKural:'Derste yazan hiçbir sayı, *onu yeniden hesaplayan bir test olmadan* yayına girmez.',
     },
     en: {
       bas:'Community',
@@ -40,10 +45,18 @@ const TOPLULUK = (() => {
       dagilim:'Rating breakdown', kisi:'people',
       cagriBas:'Your review is what keeps this alive',
       cagriAlt:'It takes a minute, and your feedback means a great deal to us.',
+      payMetin:'ML Academy: 123 interactive machine learning lessons that run in your browser. Free.',
+      payBas:"Don't watch machine learning. *Run it.*",
+      payAlt:'Every algorithm is written from scratch and runs in your browser. You move the slider, the model responds. You make a prediction, the code checks it.',
+      paySay:[['123','lessons'],['401','steps'],['165','simulations'],['2,395','verified numbers']],
+      payKural:'A number does not appear in a lesson *unless a test recomputes it.*',
     },
   };
 
-  let sb = null, t = M.tr;
+  /* dil modül seviyesinde tutuluyor: ciz() paylaş düğmesini kurarken
+     hangi dilde olduğumuzu bilmeli, ama kur()'un o parametresi oraya
+     kadar taşınmıyordu. */
+  let sb = null, t = M.tr, dil = 'tr';
 
   /* ── biçimlendirme ── */
   const say = n => (n === null || n === undefined) ? '–' : Number(n).toLocaleString('tr');
@@ -94,6 +107,10 @@ const TOPLULUK = (() => {
         cursor:pointer;border:0;background:var(--green,#0a8b68);color:var(--anaTxt);
         font-family:inherit;flex:none}
       .tCagri button:hover{filter:brightness(1.08)}
+      .tCagriDug{display:flex;align-items:center;gap:10px;flex:none}
+      /* paylaş düğmesi bu kutuda yeşil zemin üstünde duruyor, kendi
+         kenarlığı kutunun içinde kaybolmasın */
+      .tCagriDug .pyDug{height:44px;padding:0 15px;font-size:14px;border-radius:12px}
       .tYorumBas{font-family:var(--mono,monospace);font-size:10.5px;letter-spacing:.2em;
         text-transform:uppercase;color:var(--mut,#586a80);margin:30px 0 12px}
       .tYorumlar{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
@@ -190,8 +207,20 @@ const TOPLULUK = (() => {
       ${yorumHTML}
       <div class="tCagri">
         <div><b>${t.cagriBas}</b><span>${t.cagriAlt}</span></div>
-        <button id="tYaz">${t.yaz}</button>
+        <div class="tCagriDug"><span id="tPaylas"></span><button id="tYaz">${t.yaz}</button></div>
       </div>`;
+    /* Paylaş düğmesi. Bölüm her dil değişiminde yeniden çizildiği için
+       düğme de burada, çizimden hemen sonra kuruluyor; dışarıdan bir kez
+       bağlansa ilk yeniden çizimde kaybolurdu. */
+    if (typeof PAYLAS !== 'undefined'){
+      PAYLAS.kur(hedef.querySelector('#tPaylas'), {
+        en: dil === 'en',
+        baslik: 'ML Academy',
+        metin: t.payMetin,
+        url: 'https://mltraining.org/?lang=' + dil,
+        hikaye: { bas:t.payBas, alt:t.payAlt, sayilar:t.paySay, kural:t.payKural },
+      });
+    }
     /* Düğme: giriş varsa yorum ekranı, yoksa önce giriş. */
     const dug = hedef.querySelector('#tYaz');
     if (dug) dug.onclick = () => {
@@ -205,7 +234,8 @@ const TOPLULUK = (() => {
 
   async function kur(o){
     o = o || {};
-    t = M[o.dil === 'en' ? 'en' : 'tr'];
+    dil = o.dil === 'en' ? 'en' : 'tr';
+    t = M[dil];
     const hedef = document.getElementById(o.hedef || 'topluluk');
     if (!hedef) return;
 
