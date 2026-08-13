@@ -108,9 +108,16 @@ const TOPLULUK = (() => {
         font-family:inherit;flex:none}
       .tCagri button:hover{filter:brightness(1.08)}
       .tCagriDug{display:flex;align-items:center;gap:10px;flex:none}
-      /* paylaş düğmesi bu kutuda yeşil zemin üstünde duruyor, kendi
-         kenarlığı kutunun içinde kaybolmasın */
-      .tCagriDug .pyDug{height:44px;padding:0 15px;font-size:14px;border-radius:12px}
+      /* Yukarıdaki ".tCagri button" kuralı SEÇİCİ olarak paylaş düğmesini de
+         yakalıyor ve onu da yeşil dolu düğmeye çeviriyordu: yan yana iki dolu
+         yeşil düğme çıkıyor, "Paylaş" yazısı zemine karışıp okunmuyordu.
+         Paylaş ikincil eylem, "Yorum yaz" birincil; renkler burada geri
+         alınıyor ve hiyerarşi korunuyor. */
+      .tCagriDug .pyDug{height:44px;padding:0 15px;font-size:14px;border-radius:12px;
+        background:var(--panel,#ffffff);color:var(--mut,#586a80);
+        border:1px solid var(--line,#dde5ef);font-weight:400}
+      .tCagriDug .pyDug:hover{color:var(--txt,#0f1b2d);border-color:var(--mut,#586a80);
+        background:var(--panel,#ffffff);filter:none}
       .tYorumBas{font-family:var(--mono,monospace);font-size:10.5px;letter-spacing:.2em;
         text-transform:uppercase;color:var(--mut,#586a80);margin:30px 0 12px}
       .tYorumlar{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
