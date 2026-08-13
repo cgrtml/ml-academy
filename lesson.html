@@ -315,17 +315,18 @@ temaUygula(temaOku());
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="viz-sozluk.js?v=61ee8f2"></script>
-<script src="arayuz-sozluk.js?v=61ee8f2"></script>
-<script src="anlatim.js?v=61ee8f2"></script>
-<script src="anlatim-en.js?v=61ee8f2"></script>
-<script src="viz.js?v=61ee8f2"></script>
-<script src="content.js?v=61ee8f2"></script>
-<script src="content-en.js?v=61ee8f2"></script>
+<script src="paylas.js?v=61ee8f2"></script>
+<script src="viz-sozluk.js?v=2439607"></script>
+<script src="arayuz-sozluk.js?v=2439607"></script>
+<script src="anlatim.js?v=2439607"></script>
+<script src="anlatim-en.js?v=2439607"></script>
+<script src="viz.js?v=2439607"></script>
+<script src="content.js?v=2439607"></script>
+<script src="content-en.js?v=2439607"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="yapilandirma.js?v=61ee8f2"></script>
-<script src="topluluk/ilerleme.js?v=61ee8f2"></script>
-<script src="topluluk/hesap.js?v=61ee8f2"></script>
+<script src="yapilandirma.js?v=2439607"></script>
+<script src="topluluk/ilerleme.js?v=2439607"></script>
+<script src="topluluk/hesap.js?v=2439607"></script>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -342,6 +343,16 @@ const $ = id => document.getElementById(id);
 
    Kullanıcının açık seçimi her zaman kazanır ve localStorage'da kalır. */
 function varsayilanDil(){
+  /* 1 · ADRESTEKİ PARAMETRE EN ÜSTTE.
+     Türkçe bir dizinden ya da Türkçe bir gönderiden gelen kişi
+     ?lang=tr ile doğrudan Türkçe açılışa düşsün. Varsayılan İngilizce
+     olduğu için bu olmadan TR düğmesini kendisi bulmak zorundaydı.
+     Seçim kalıcı: bir kez geldikten sonra tercihi hatırlanıyor. */
+  try {
+    const p = new URLSearchParams(location.search);
+    const u = (p.get('lang') || p.get('dil') || '').toLowerCase();
+    if (u === 'tr' || u === 'en'){ localStorage.setItem('mlacad_dil', u); return u; }
+  } catch(e){}
   const secilmis = localStorage.getItem('mlacad_dil');
   return (secilmis === 'tr' || secilmis === 'en') ? secilmis : 'en';
 }

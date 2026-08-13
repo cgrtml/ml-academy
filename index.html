@@ -378,6 +378,7 @@ temaUygula(temaOku());
     <a href="about.html"    data-i="navHak">hakkında</a>
   </div>
   <div class="navSag">
+    <button class="pyDug" id="paylasDug" type="button"></button>
     <button class="temaDug" id="temaDug" aria-label="tema"></button>
     <div class="dilbar">
       <button data-dil="tr">TR</button>
@@ -560,10 +561,11 @@ temaUygula(temaOku());
   </div>
 </div>
 
-<script src="viz-sozluk.js?v=61ee8f2"></script>
-<script src="viz.js?v=61ee8f2"></script>
-<script src="content.js?v=61ee8f2"></script>
-<script src="content-en.js?v=61ee8f2"></script>
+<script src="paylas.js?v=61ee8f2"></script>
+<script src="viz-sozluk.js?v=2439607"></script>
+<script src="viz.js?v=2439607"></script>
+<script src="content.js?v=2439607"></script>
+<script src="content-en.js?v=2439607"></script>
 <script>
 const $ = id => document.getElementById(id);
 const PKEY = 'mlacad_v2';
@@ -637,6 +639,16 @@ const EN = {
 
    Kullanıcının açık seçimi her zaman kazanır ve localStorage'da kalır. */
 function varsayilanDil(){
+  /* 1 · ADRESTEKİ PARAMETRE EN ÜSTTE.
+     Türkçe bir dizinden ya da Türkçe bir gönderiden gelen kişi
+     ?lang=tr ile doğrudan Türkçe açılışa düşsün. Varsayılan İngilizce
+     olduğu için bu olmadan TR düğmesini kendisi bulmak zorundaydı.
+     Seçim kalıcı: bir kez geldikten sonra tercihi hatırlanıyor. */
+  try {
+    const p = new URLSearchParams(location.search);
+    const u = (p.get('lang') || p.get('dil') || '').toLowerCase();
+    if (u === 'tr' || u === 'en'){ localStorage.setItem('mlacad_dil', u); return u; }
+  } catch(e){}
   const secilmis = localStorage.getItem('mlacad_dil');
   return (secilmis === 'tr' || secilmis === 'en') ? secilmis : 'en';
 }
@@ -656,7 +668,21 @@ function dilUygula(){
   } else $('dilnot').style.display = 'none';
   document.querySelectorAll('.dilbar button').forEach(b =>
     b.classList.toggle('on', b.dataset.dil === DIL));
+  paylasKur();
   ciz();
+}
+/* Paylaş düğmesi. Dil değişince etiketi de değişsin diye dilUygula()
+   içinden yeniden kuruluyor; PAYLAS.kur() bu yüzden tekrar çağrılabilir. */
+function paylasKur(){
+  if (typeof PAYLAS === 'undefined') return;
+  const en = DIL === 'en';
+  PAYLAS.kur(document.getElementById('paylasDug'), {
+    en,
+    baslik: 'ML Academy',
+    metin: en ? 'ML Academy: 123 interactive machine learning lessons that run in your browser. Free.'
+              : 'ML Academy: tarayıcıda çalışan 123 derslik interaktif makine öğrenmesi kursu. Ücretsiz.',
+    url: 'https://mltraining.org/',
+  });
 }
 document.querySelector('.dilbar').onclick = e => {
   if (!e.target.dataset.dil) return;
@@ -869,10 +895,10 @@ dilUygula();
      Ayarlar boşsa hiçbir istek atılmaz, topluluk bölümü gizli kalır.
      Yani bu bloklar bugün siteye eklense de hiçbir şey bozulmaz. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="yapilandirma.js?v=61ee8f2"></script>
-<script src="topluluk/topluluk.js?v=61ee8f2"></script>
-<script src="topluluk/ilerleme.js?v=61ee8f2"></script>
-<script src="topluluk/hesap.js?v=61ee8f2"></script>
+<script src="yapilandirma.js?v=2439607"></script>
+<script src="topluluk/topluluk.js?v=2439607"></script>
+<script src="topluluk/ilerleme.js?v=2439607"></script>
+<script src="topluluk/hesap.js?v=2439607"></script>
 <script>
   const toplulukYenile = () => TOPLULUK.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL });
   toplulukYenile();
