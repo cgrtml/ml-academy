@@ -442,6 +442,37 @@ const CEVIR = (() => {
 })();
 const cevirLive = rows => (rows||[]).map(r => [CEVIR(r[0]), CEVIR(r[1]), r[2]]);
 
+/* Ders bitiminde çıkan paylaş düğmesi. Paylaşılan adres dersin kendi
+   adresi, ana sayfa değil: öneri "şu siteye bak" değil "şu dersi bitirdim"
+   olduğunda tıklayan kişi doğrudan o dersin içine düşer. */
+function paylasKur(){
+  const yer = $('paylasYer');
+  if (!yer || typeof PAYLAS === 'undefined') return;
+  const ad = (document.getElementById('dAd') || {}).textContent || 'ML Academy';
+  const nAdim = D.adimlar.length;
+  PAYLAS.kur(yer, {
+    en: EN,
+    baslik: ad + ' · ML Academy',
+    metin: EN ? 'I just finished "' + ad + '" on ML Academy, an interactive machine learning course that runs in the browser.'
+              : 'ML Academy\'de "' + ad + '" dersini bitirdim. Tarayıcıda çalışan interaktif bir makine öğrenmesi kursu.',
+    /* Adres dili taşıyor: ?lang= localStorage'daki tercihi de geçtiği için
+       Türkçe paylaşılan ders karşı tarafta Türkçe açılıyor. */
+    url: location.origin + location.pathname + '?id=' + encodeURIComponent(DERS_ID) + '&lang=' + DIL,
+    /* Story görseli dersin kendi sonucunu gösteriyor: hangi ders, kaç adım,
+       kaç XP. Genel bir tanıtım kartından daha çok paylaşılır çünkü kişinin
+       söyleyecek somut bir şeyi var. */
+    hikaye: {
+      bas: EN ? '*' + ad + '*' : '*' + ad + '*',
+      alt: EN ? 'Finished on ML Academy. Every step hands you the controls and does not unlock until you have used them.'
+              : 'ML Academy\'de bitirdim. Her adım kontrolü sana veriyor ve sen kullanana kadar açılmıyor.',
+      sayilar: EN ? [[String(nAdim),'steps'],[String(MY.xp),'XP'],['123','lessons in total']]
+                  : [[String(nAdim),'adım'],[String(MY.xp),'XP'],['123','ders toplam']],
+      kural: EN ? 'A number does not appear in a lesson *unless a test recomputes it.*'
+                : 'Derste yazan hiçbir sayı, *onu yeniden hesaplayan bir test olmadan* yayına girmez.',
+    },
+  });
+}
+
 const qs = new URLSearchParams(location.search);
 const DERS_ID = qs.get('id') || 'veri';
 
@@ -611,7 +642,10 @@ function go(i){
       '<div class="ch" data-k="'+k+'"><div class="k">'+'ABCD'[k]+'</div><div class="txt">'+o.t+'</div></div>').join('') +
     '</div></div>';
   html += '<div id="learned"></div>' +
-    '<div class="nav"><button class="btn" id="primary">'+T('devam')+'</button><span class="hint" id="hint"></span></div>' +
+    '<div class="nav"><button class="btn" id="primary">'+T('devam')+'</button><span class="hint" id="hint"></span>' +
+      /* Ders bitince doluyor. Paylaşmanın en anlamlı anı burası: kişi
+         az önce bir şeyi bitirdi ve söyleyecek somut bir şeyi var. */
+      '<span id="paylasYer" style="margin-left:auto"></span></div>' +
     '</div>';
 
   $('host').innerHTML = html;
@@ -819,6 +853,7 @@ function go(i){
       $('primary').textContent = T('listeDon');
       $('primary').onclick = () => location.href = 'index.html';
       $('hint').innerHTML = '<b style="color:var(--green)">'+T('dersBitti')+' · '+MY.xp+' XP</b>';
+      paylasKur();
     }
   }
 

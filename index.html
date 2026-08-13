@@ -676,12 +676,26 @@ function dilUygula(){
 function paylasKur(){
   if (typeof PAYLAS === 'undefined') return;
   const en = DIL === 'en';
+  /* hikaye.bas içindeki *yıldızlar* vurgu rengiyle çizilir.
+     Sayılar dogrula.sh'in doğruladığı sayılar, elle değiştirme. */
   PAYLAS.kur(document.getElementById('paylasDug'), {
     en,
     baslik: 'ML Academy',
     metin: en ? 'ML Academy: 123 interactive machine learning lessons that run in your browser. Free.'
               : 'ML Academy: tarayıcıda çalışan 123 derslik interaktif makine öğrenmesi kursu. Ücretsiz.',
-    url: 'https://mltraining.org/',
+    /* Adres dili taşıyor. ?lang= parametresi localStorage'daki tercihi de
+       geçiyor, yani Türkçe paylaşılan bağlantı karşı tarafta Türkçe açılır. */
+    url: 'https://mltraining.org/?lang=' + DIL,
+    hikaye: {
+      bas: en ? "Don't watch machine learning. *Run it.*"
+              : 'Makine öğrenmesini izleme. *Çalıştır.*',
+      alt: en ? 'Every algorithm is written from scratch and runs in your browser. You move the slider, the model responds. You make a prediction, the code checks it.'
+              : 'Her algoritma sıfırdan yazıldı ve tarayıcında çalışıyor. Kaydırıcıyı sen oynatıyorsun, model cevap veriyor. Tahminini sen yazıyorsun, kod kontrol ediyor.',
+      sayilar: en ? [['123','lessons'],['401','steps'],['165','simulations'],['2,395','verified numbers']]
+                  : [['123','ders'],['401','adım'],['165','simülasyon'],['2.395','doğrulanmış sayı']],
+      kural: en ? 'A number does not appear in a lesson *unless a test recomputes it.*'
+                : 'Derste yazan hiçbir sayı, *onu yeniden hesaplayan bir test olmadan* yayına girmez.',
+    },
   });
 }
 document.querySelector('.dilbar').onclick = e => {
