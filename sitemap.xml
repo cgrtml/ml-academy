@@ -249,4 +249,5 @@
   <url><loc>https://mltraining.org/ders/en/leaderboard.html</loc><priority>0.7</priority></url>
   <url><loc>https://mltraining.org/ders/tr/leaderboard.html</loc><priority>0.7</priority></url>
   <url><loc>https://mltraining.org/ders-kanit.html</loc><priority>0.7</priority></url>
+  <url><loc>https://mltraining.org/ders-kanit-en.html</loc><priority>0.7</priority></url>
 </urlset>

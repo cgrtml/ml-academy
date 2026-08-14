@@ -1,27 +1,27 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Görev 01 · Bu model gerçekten daha mı iyi? — ML Academy</title>
+<title>Task 01 · Is this model really better? — ML Academy</title>
 <!-- Bu ders kendi sayfasında yaşıyor (content.js'te dis:'ders-kanit.html'),
      o yüzden ders-sayfa-uret.js ona iniş sayfası üretmiyor; paylaşım ve
      arama etiketleri doğrudan burada duruyor. -->
-<meta name="description" content="Beş model eğit, en yüksek doğruluğu bul, sonra 5×2cv F-testi ve McNemar ile o farkın gerçek olup olmadığını sına. Tarayıcıda çalışan interaktif ders.">
-<link rel="canonical" href="https://mltraining.org/ders-kanit.html">
-<link rel="alternate" hreflang="tr" href="https://mltraining.org/ders-kanit.html">
+<meta name="description" content="Train two models, find the higher accuracy, then test with the 5x2cv F-test and McNemar whether that difference is real. An interactive lesson that runs in your browser.">
+<link rel="canonical" href="https://mltraining.org/ders-kanit-en.html">
 <link rel="alternate" hreflang="en" href="https://mltraining.org/ders-kanit-en.html">
+<link rel="alternate" hreflang="tr" href="https://mltraining.org/ders-kanit.html">
 <meta property="og:type"        content="article">
 <meta property="og:site_name"   content="ML Academy">
-<meta property="og:title"       content="Bu model gerçekten daha mı iyi?">
-<meta property="og:description" content="Beş model eğit, en yüksek doğruluğu bul, sonra 5×2cv F-testi ve McNemar ile o farkın gerçek olup olmadığını sına.">
-<meta property="og:url"         content="https://mltraining.org/ders-kanit.html">
+<meta property="og:title"       content="Is this model really better?">
+<meta property="og:description" content="Train two models, find the higher accuracy, then test with the 5x2cv F-test and McNemar whether that difference is real.">
+<meta property="og:url"         content="https://mltraining.org/ders-kanit-en.html">
 <meta property="og:image"       content="https://mltraining.org/gorsel/og.png">
 <meta property="og:image:width"  content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card"        content="summary_large_image">
-<meta name="twitter:title"       content="Bu model gerçekten daha mı iyi?">
-<meta name="twitter:description" content="Beş model eğit, en yüksek doğruluğu bul, sonra 5×2cv F-testi ve McNemar ile o farkın gerçek olup olmadığını sına.">
+<meta name="twitter:title"       content="Is this model really better?">
+<meta name="twitter:description" content="Train two models, find the higher accuracy, then test with the 5x2cv F-test and McNemar whether that difference is real.">
 <meta name="twitter:image"       content="https://mltraining.org/gorsel/og.png">
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <style>
@@ -199,18 +199,18 @@
 
 <div id="boot">
   <div class="kicker">ML ACADEMY</div>
-  <div style="font-size:20px;font-weight:700">Python motoru yükleniyor</div>
+  <div style="font-size:20px;font-weight:700">Starting the Python engine</div>
   <div class="bar"><div class="fill"></div></div>
-  <div id="bootMsg">pyodide indiriliyor…</div>
+  <div id="bootMsg">downloading pyodide…</div>
   <div style="color:var(--mut);font-size:12px;max-width:390px">
-    scikit-learn tarayıcının içinde çalışacak — sunucu yok, kurulum yok.
-    İlk açılış ~20-40 sn, sonra önbellekten gelir.
+    scikit-learn will run inside your browser. No server, no installation.
+    The first load takes 20 to 40 seconds; after that it comes from the cache.
   </div>
 </div>
 
 <div class="topbar">
   <div class="in">
-    <div class="stepno" id="stepNo">Adım 1 / 10</div>
+    <div class="stepno" id="stepNo">Step 1 / 10</div>
     <div class="pbar"><div class="pfill" id="pfill"></div></div>
     <div class="xp" id="xp">0 XP</div>
   </div>
@@ -218,47 +218,47 @@
 
 <div class="wrap">
   <header>
-    <div class="kicker">Görev 01 · İstatistiksel Karşılaştırma</div>
-    <h1>Bu model <span class="hl">gerçekten</span> daha mı iyi?</h1>
-    <p class="sub">10 adım · ~12 dakika · ön bilgi gerekmiyor</p>
+    <div class="kicker">Task 01 · Statistical comparison</div>
+    <h1>Is this model <span class="hl">really</span> better?</h1>
+    <p class="sub">10 steps · about 12 minutes · no background needed</p>
   </header>
 
   <div class="brief">
-    <div class="lb">◆ Görev brifingi</div>
-    <p>Bir kurum iki modelden birini seçecek ve <b>senin raporuna göre</b> karar verecek.
-       Yanlış modeli önerirsen kimse fark etmez — ta ki sistem sahada çökene kadar.
-       Görevin sadece “hangisi daha iyi” demek değil: <b>dediğini kanıtlamak.</b></p>
+    <div class="lb">◆ Mission briefing</div>
+    <p>An organisation is about to pick one of two models, and it will decide <b>on the strength of your
+       report</b>. If you recommend the wrong one nobody will notice, right up until the system fails in
+       production. Your job is not to say &ldquo;this one is better&rdquo;. It is to <b>prove it.</b></p>
   </div>
 
   <!-- ═══════════ 1 · SEZGİ ISINMASI ═══════════ -->
   <section class="card" id="c1">
-    <div class="chead"><span class="cnum">ADIM 1</span><h2>Isınma — hiç model yok</h2></div>
-    <div class="why-box"><span class="h">◆ Neden bu soruyu soruyoruz?</span>
-      Bütün görevin dayandığı fikri, henüz hiçbir teknik kelime öğrenmeden yakalaman için.
-      Bu soruyu doğru cevaplarsan, geri kalan 9 adım sadece <i>aynı fikrin matematiği</i> olacak.</div>
-    <div class="task"><b>Yapacağın</b>Aşağıdaki soruyu cevapla. Yanlış cevap serbest — burada kimse not vermiyor, kendi sezgini ölçüyorsun.</div>
+    <div class="chead"><span class="cnum">STEP 1</span><h2>Warm-up: no models yet</h2></div>
+    <div class="why-box"><span class="h">◆ Why start with this question?</span>
+      So that you catch the idea the whole task rests on before you learn a single technical word.
+      Get this one right and the remaining nine steps are just <i>the mathematics of the same idea</i>.</div>
+    <div class="task"><b>Your task</b>Answer the question below. Getting it wrong is fine. Nobody is grading you here; you are measuring your own intuition.</div>
     <p style="font-size:15.5px;margin:16px 0 10px">
-      <b>Ali ve Veli 10 el taş-kağıt-makas oynadı. Ali 6, Veli 4 el kazandı.<br>Ali daha mı iyi oyuncu?</b></p>
+      <b>Two people played 10 rounds of rock-paper-scissors. One won 6, the other won 4.<br>Is the first one the better player?</b></p>
     <div class="choices" id="ch1"></div>
     <div id="out1"></div>
-    <div class="btn-row"><button class="btn" id="go1" disabled>Cevabımı ver →</button></div>
+    <div class="btn-row"><button class="btn" id="go1" disabled>Submit my answer →</button></div>
   </section>
 
   <!-- ═══════════ 2 · GÖREVİ KUR ═══════════ -->
   <section class="card hidden" id="c2">
-    <div class="chead"><span class="cnum">ADIM 2</span><h2>Görevi kur — neyi neyle karşılaştırıyorsun?</h2></div>
-    <div class="why-box"><span class="h">◆ Neden bu adım var?</span>
-      Karşılaştıracağın iki şeyin <i>ne yaptığını</i> bilmeden sonucu yorumlayamazsın.
-      p-değeri sana “neden” demez, sadece “evet/hayır” der. “Neden”i sen kuracaksın.</div>
-    <div class="task"><b>Yapacağın</b>Bir veri seti ve iki farklı model seç. Her seçimin altında ne olduğu düz Türkçeyle yazıyor.</div>
+    <div class="chead"><span class="cnum">STEP 2</span><h2>Set up the task: what are you comparing with what?</h2></div>
+    <div class="why-box"><span class="h">◆ Why this step exists</span>
+      You cannot interpret the result without knowing <i>what the two things actually do</i>.
+      A p-value never tells you &ldquo;why&rdquo;, only &ldquo;yes or no&rdquo;. The &ldquo;why&rdquo; is on you.</div>
+    <div class="task"><b>Your task</b>Pick a dataset and two different models. Under each choice you get a plain-English description of what it is.</div>
     <div class="row" style="margin-top:16px">
-      <div class="fld"><label>Veri seti</label>
+      <div class="fld"><label>Dataset</label>
         <select id="ds">
-          <option value="moons">Moons — iki hilal</option>
-          <option value="circles">Circles — halka içinde halka</option>
-          <option value="blobs">Blobs — 3 ayrık küme</option>
-          <option value="iris">Iris — gerçek çiçek ölçümleri</option>
-          <option value="cancer">Breast Cancer — gerçek tümör ölçümleri</option>
+          <option value="moons">Moons: two crescents</option>
+          <option value="circles">Circles: a ring inside a ring</option>
+          <option value="blobs">Blobs: three separate clusters</option>
+          <option value="iris">Iris: real flower measurements</option>
+          <option value="cancer">Breast Cancer: real tumour measurements</option>
         </select>
         <div class="desc" id="dDs"></div>
       </div>
@@ -283,140 +283,146 @@
         <div class="desc" id="dB"></div>
       </div>
     </div>
-    <div class="btn-row"><button class="btn" id="go2">Görevi başlat →</button></div>
+    <div class="btn-row"><button class="btn" id="go2">Start the task →</button></div>
   </section>
 
   <!-- ═══════════ 3 · TAHMİN ═══════════ -->
   <section class="card hidden" id="c3">
-    <div class="chead"><span class="cnum">ADIM 3</span><h2>Tahmin et — sonucu görmeden önce</h2></div>
-    <div class="why-box"><span class="h">◆ Neden sonucu göstermeden tahmin istiyoruz?</span>
-      İki sebep. <b>Bir:</b> önce tahmin edip sonra görmek, sadece görmekten kalıcı öğrenme yaratıyor —
-      beynin cevabı üretmeye çalışırken bilgiyi bağlıyor. <b>İki:</b> bu sitede asıl ölçtüğümüz şey
-      bilgin değil, <b>sezginin ne kadar güvenilir olduğu</b>. Yanlış tahminlerin senin en değerli verisi.</div>
-    <div class="task"><b>Yapacağın</b>Bir şık seç ve kilitle. Sonucu 8. adımda göreceksin — o zamana kadar değiştiremezsin.</div>
+    <div class="chead"><span class="cnum">STEP 3</span><h2>Predict, before you see the result</h2></div>
+    <div class="why-box"><span class="h">◆ Why we ask you to predict first</span>
+      Two reasons. <b>One:</b> predicting and then seeing produces durable learning in a way that only
+      seeing does not; your brain binds the information while it is trying to generate the answer.
+      <b>Two:</b> what this site really measures is not your knowledge but <b>how reliable your intuition
+      is</b>. Your wrong predictions are your most valuable data.</div>
+    <div class="task"><b>Your task</b>Pick an option and lock it in. You will see the result at step 8, and you cannot change it before then.</div>
     <p style="font-size:15px;margin:16px 0 10px"><b id="q3"></b></p>
     <div class="choices" id="ch3"></div>
-    <div class="btn-row"><button class="btn" id="go3" disabled>Tahminimi kilitle →</button></div>
+    <div class="btn-row"><button class="btn" id="go3" disabled>Lock in my prediction →</button></div>
   </section>
 
   <!-- ═══════════ 4 · İLK KANIT ═══════════ -->
   <section class="card hidden" id="c4">
-    <div class="chead"><span class="cnum">ADIM 4</span><h2>İlk kanıt — herkesin yaptığı şey</h2></div>
-    <div class="why-box"><span class="h">◆ Neden bunu yapıyoruz?</span>
-      Çünkü sahada, makalelerde, blog yazılarında, Kaggle notebook'larında yapılan şey <b>tam olarak bu</b>:
-      veriyi %70 eğitim / %30 test diye böl, iki modeli eğit, accuracy'lere bak, yükseği seç.
-      Önce bunu yapacağız — sonra neden yetmediğini <i>göstereceğiz</i>.</div>
-    <div class="task"><b>Yapacağın</b>Sadece izle. İki modelin veriyi nasıl böldüğüne ve kaç noktayı kaçırdığına bak.</div>
+    <div class="chead"><span class="cnum">STEP 4</span><h2>First evidence: what everybody does</h2></div>
+    <div class="why-box"><span class="h">◆ Why we do this</span>
+      Because this is <b>exactly</b> what gets done in the field, in papers, in blog posts and in Kaggle
+      notebooks: split the data 70% train / 30% test, fit both models, look at the accuracies, take the
+      higher one. We will do that first, and then <i>show</i> you why it is not enough.</div>
+    <div class="task"><b>Your task</b>Just watch. Look at how each model carves up the data and how many points it misses.</div>
     <div class="boards" style="margin-top:16px">
       <div class="board"><h3 id="nA"></h3><div class="acc" id="aA">—</div><canvas id="cvA" width="240" height="240"></canvas></div>
       <div class="board"><h3 id="nB"></h3><div class="acc" id="aB">—</div><canvas id="cvB" width="240" height="240"></canvas></div>
     </div>
     <div class="legend">
-      <i style="background:var(--red)"></i>sınıf 0<i style="background:var(--blue)"></i>sınıf 1<i style="background:var(--yellow)"></i>sınıf 2
-      <i class="ring"></i>modelin <b>kaçırdığı</b> nokta
+      <i style="background:var(--red)"></i>class 0<i style="background:var(--blue)"></i>class 1<i style="background:var(--yellow)"></i>class 2
+      <i class="ring"></i>a point the model <b>got wrong</b>
     </div>
     <div id="out4"></div>
-    <div class="btn-row"><button class="btn hidden" id="go4">Kararı verdim, devam →</button></div>
+    <div class="btn-row"><button class="btn hidden" id="go4">I have decided, continue →</button></div>
   </section>
 
   <!-- ═══════════ 5 · SARSINTI ═══════════ -->
   <section class="card hidden" id="c5">
-    <div class="chead"><span class="cnum">ADIM 5</span><h2>Sarsıntı — güvendiğin sayıyı sallıyoruz</h2></div>
-    <div class="why-box"><span class="h">◆ Neden bunu yapıyoruz?</span>
-      4. adımdaki bölünme <b>rastgele</b>ydi. Rastgele bir seçim tek bir sayı üretti ve sen o sayıya
-      bakarak karar vermek üzereydin. Şimdi <b>aynı veriyi, aynı modelleri</b> alıp sadece
-      rastgele bölünmeyi değiştireceğiz. Model değişmiyor. Veri değişmiyor. Sadece kim eğitimde
-      kim testte, o değişiyor.</div>
-    <div class="task"><b>Yapacağın</b>“Yeniden böl” düğmesine <b>en az 5 kez</b> bas. Her basışta accuracy'lerin nereye gittiğini izle.</div>
-    <div class="btn-row"><button class="btn" id="shake">🎲 Yeniden böl</button>
-      <span style="font-family:var(--mono);font-size:12px;color:var(--mut)" id="shakeN">0 bölünme</span></div>
+    <div class="chead"><span class="cnum">STEP 5</span><h2>The shake: we rattle the number you trusted</h2></div>
+    <div class="why-box"><span class="h">◆ Why we do this</span>
+      The split at step 4 was <b>random</b>. A random choice produced a single number and you were about
+      to decide on the strength of it. Now we take <b>the same data and the same models</b> and change
+      nothing but the random split. The models do not change. The data does not change. Only who is in
+      training and who is in test.</div>
+    <div class="task"><b>Your task</b>Press &ldquo;Split again&rdquo; <b>at least 5 times</b>. Watch where the accuracies go on each press.</div>
+    <div class="btn-row"><button class="btn" id="shake">🎲 Split again</button>
+      <span style="font-family:var(--mono);font-size:12px;color:var(--mut)" id="shakeN">0 splits</span></div>
     <div id="shakeOut" style="display:none"><table id="shakeTbl"></table></div>
     <div id="out5"></div>
-    <div class="btn-row"><button class="btn hidden" id="go5">Anladım, devam →</button></div>
+    <div class="btn-row"><button class="btn hidden" id="go5">Got it, continue →</button></div>
   </section>
 
   <!-- ═══════════ 6 · PROTOKOL ═══════════ -->
   <section class="card hidden" id="c6">
-    <div class="chead"><span class="cnum">ADIM 6</span><h2>Peki kaç kez tekrar etmeli?</h2></div>
-    <div class="why-box"><span class="h">◆ Neden rastgele 100 kere tekrarlamıyoruz?</span>
-      Çünkü tekrarlar birbirinden <b>bağımsız değil</b> — hepsi aynı 400 satırlık veriyi tekrar tekrar
-      kullanıyor. Aynı noktalar defalarca hem eğitimde hem testte görünüyor. 100 tekrar sana
-      100 bağımsız kanıt vermez; aynı kanıtı 100 kez sayar ve <b>emin olmadığın halde emin
-      olduğunu sanmana</b> yol açar. Bu yüzden tekrarların yapısı önemli.</div>
-    <p style="margin-top:16px;font-size:14.5px">Ethem Alpaydın'ın çözümü <b>5×2cv</b>: veriyi ikiye böl,
-       önce birinci yarıyla eğit ikinciyle test et, sonra <b>rolleri takas et</b>. Bu bir tekrar.
-       Farklı bölmelerle 5 kez yap. Toplam <b>10 eğitim</b>, ve her satır kendi içinde dengeli.</p>
+    <div class="chead"><span class="cnum">STEP 6</span><h2>So how many times should you repeat it?</h2></div>
+    <div class="why-box"><span class="h">◆ Why not just repeat it 100 times at random?</span>
+      Because the repeats are <b>not independent</b> of each other. They all reuse the same 400 rows over
+      and over, so the same points keep appearing in both training and test. A hundred repeats do not
+      give you a hundred independent pieces of evidence; they count the same evidence a hundred times
+      and lead you to <b>believe you are certain when you are not</b>. This is why the structure of the
+      repeats matters.</div>
+    <p style="margin-top:16px;font-size:14.5px">Ethem Alpaydin's answer is <b>5x2cv</b>: cut the data in
+       half, train on the first half and test on the second, then <b>swap the roles</b>. That is one
+       repeat. Do it 5 times with different halves. <b>Ten fits</b> in total, and every row is balanced
+       within itself.</p>
     <div class="diag" id="diag"></div>
-    <div class="learn-box" style="margin-top:14px"><span class="h">✦ Kilit nokta</span>
-      Her katta <b>iki model de aynı bölünmeyi görüyor</b>. Bu “eşleştirilmiş” (paired) tasarım demek:
-      bölünmenin şansı ikisini de aynı anda etkiliyor, dolayısıyla <b>farkı</b> alınca şans büyük ölçüde sadeleşiyor.
-      Ölçtüğümüz şey artık “A ne kadar iyi” değil, <b>“A ile B arasındaki fark ne kadar tutarlı”</b>.</div>
-    <div class="btn-row"><button class="btn" id="go6">Anladım · protokolü çalıştır →</button></div>
+    <div class="learn-box" style="margin-top:14px"><span class="h">✦ The key point</span>
+      On every fold <b>both models see the same split</b>. That is what &ldquo;paired&rdquo; means: the luck of
+      the split hits both of them at once, so taking the <b>difference</b> cancels most of that luck.
+      What we are measuring is no longer &ldquo;how good is A&rdquo; but <b>&ldquo;how consistent is the gap
+      between A and B&rdquo;</b>.</div>
+    <div class="btn-row"><button class="btn" id="go6">Got it, run the protocol →</button></div>
   </section>
 
   <!-- ═══════════ 7 · ÇALIŞTIR ═══════════ -->
   <section class="card hidden" id="c7">
-    <div class="chead"><span class="cnum">ADIM 7</span><h2>Çalıştır — 10 eğitim, gerçek kod</h2></div>
-    <div class="why-box"><span class="h">◆ Neden kodu gösteriyoruz?</span>
-      Çünkü bu bir animasyon değil. Aşağıdaki kod <b>senin makinende, gerçek scikit-learn ile</b>
-      çalışacak. Kopyalayıp kendi projene yapıştırabilirsin — kara kutu yok.</div>
-<pre><span class="cm"># 5 tekrar × 2 kat. 2-kat CV'de ikinci kat zaten birincinin takasıdır:</span>
-<span class="cm"># her yarı bir kez eğitim, bir kez test olur.</span>
+    <div class="chead"><span class="cnum">STEP 7</span><h2>Run it: ten fits, real code</h2></div>
+    <div class="why-box"><span class="h">◆ Why we show you the code</span>
+      Because this is not an animation. The code below runs <b>on your machine, with real
+      scikit-learn</b>. You can copy it into your own project. There is no black box.</div>
+<pre><span class="cm"># 5 repeats x 2 folds. In 2-fold CV the second fold is already the swap of the first:</span>
+<span class="cm"># each half is training once and test once.</span>
 <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="st">5</span>):
     cv = <span class="fn">StratifiedKFold</span>(n_splits=<span class="st">2</span>, shuffle=<span class="kw">True</span>, random_state=i)
     <span class="kw">for</span> j, (tr, te) <span class="kw">in</span> <span class="fn">enumerate</span>(cv.<span class="fn">split</span>(X, y)):
         errA = <span class="st">1</span> - A.<span class="fn">fit</span>(X[tr], y[tr]).<span class="fn">score</span>(X[te], y[te])
         errB = <span class="st">1</span> - B.<span class="fn">fit</span>(X[tr], y[tr]).<span class="fn">score</span>(X[te], y[te])
-        p[i][j] = errA - errB          <span class="cm"># eşleştirilmiş fark — aynı bölünme</span></pre>
-    <div class="task"><b>Yapacağın</b>Düğmeye bas, 10 eğitimi çalıştır. Sonra <b>fark sütununa</b> bak: işaret hep aynı mı, yoksa oynak mı?</div>
-    <div class="btn-row"><button class="btn" id="run7">▶ 10 eğitimi çalıştır</button></div>
+        p[i][j] = errA - errB          <span class="cm"># paired difference, same split</span></pre>
+    <div class="task"><b>Your task</b>Press the button and run the ten fits. Then look at the <b>difference column</b>: is the sign always the same, or does it flip?</div>
+    <div class="btn-row"><button class="btn" id="run7">▶ Run the ten fits</button></div>
     <div id="cvOut" style="display:none"><table id="cvTbl"></table><div class="grid4" id="cvStats"></div></div>
     <div id="out7"></div>
-    <div class="btn-row"><button class="btn hidden" id="go7">Devam →</button></div>
+    <div class="btn-row"><button class="btn hidden" id="go7">Continue →</button></div>
   </section>
 
   <!-- ═══════════ 8 · TEST SEÇ ═══════════ -->
   <section class="card hidden" id="c8">
-    <div class="chead"><span class="cnum">ADIM 8</span><h2>Doğru testi seç</h2></div>
-    <div class="why-box"><span class="h">◆ Neden “bir test” değil de “doğru test”?</span>
-      Her istatistik testi bir <b>tasarım varsayımı</b> ile gelir. Yanlış testi uygularsan sayı yine çıkar,
-      p-değeri yine yazılır, hakem de fark etmeyebilir — ama <b>o sayı yalan söyler</b>.
-      Bu adım, ML'de en sık ve en sessiz yapılan hatanın tam kalbi.</div>
-    <div class="task"><b>Elindeki durum</b>10 eşleştirilmiş fark var · her katta modeller <b>yeniden eğitildi</b> · bölünmeler örtüşüyor (bağımsız değil).</div>
+    <div class="chead"><span class="cnum">STEP 8</span><h2>Pick the right test</h2></div>
+    <div class="why-box"><span class="h">◆ Why &ldquo;the right test&rdquo; and not just &ldquo;a test&rdquo;?</span>
+      Every statistical test comes with a <b>design assumption</b>. Apply the wrong one and you still get
+      a number, a p-value still gets written down, and the reviewer may well not notice, but <b>that
+      number is lying</b>. This step sits at the heart of the most common and most silent mistake in ML.</div>
+    <div class="task"><b>What you have</b>Ten paired differences · the models were <b>refitted</b> on every fold · the splits overlap, so they are not independent.</div>
     <div class="choices" id="ch8"></div>
-    <div class="btn-row"><button class="btn" id="go8" disabled>Testi uygula →</button></div>
+    <div class="btn-row"><button class="btn" id="go8" disabled>Apply the test →</button></div>
     <div id="out8"></div>
-    <div class="btn-row"><button class="btn hidden" id="next8">p-değerini oku →</button></div>
+    <div class="btn-row"><button class="btn hidden" id="next8">Read the p-value →</button></div>
   </section>
 
   <!-- ═══════════ 9 · p-DEĞERİ ═══════════ -->
   <section class="card hidden" id="c9">
-    <div class="chead"><span class="cnum">ADIM 9</span><h2>p-değeri ne diyor?</h2></div>
-    <div class="why-box"><span class="h">◆ Neden ayrı bir adım?</span>
-      Çünkü p-değeri, bilim tarihinin <b>en çok yanlış anlaşılan sayısı</b>. Doğru testi seçip
-      sonucu yanlış cümleyle yazmak, en baştan test yapmamaktan farksız.</div>
+    <div class="chead"><span class="cnum">STEP 9</span><h2>What is the p-value saying?</h2></div>
+    <div class="why-box"><span class="h">◆ Why this gets its own step</span>
+      Because the p-value is <b>the most misunderstood number in the history of science</b>. Choosing the
+      right test and then writing the result up in the wrong sentence is no better than never testing
+      at all.</div>
     <div class="grid4" id="testStats"></div>
-    <div class="task" style="margin-top:16px"><b>Yapacağın</b>Yukarıdaki p-değerinin ne anlama geldiğini seç. Şıkların üçü, sahada sürekli yazılan yanlış cümleler.</div>
+    <div class="task" style="margin-top:16px"><b>Your task</b>Pick what the p-value above actually means. Three of the options are wrong sentences that get written all the time.</div>
     <div class="choices" id="ch9"></div>
-    <div class="btn-row"><button class="btn" id="go9" disabled>Cevabımı ver →</button></div>
+    <div class="btn-row"><button class="btn" id="go9" disabled>Submit my answer →</button></div>
     <div id="out9"></div>
-    <div class="btn-row"><button class="btn hidden" id="next9">Raporu yaz →</button></div>
+    <div class="btn-row"><button class="btn hidden" id="next9">Write the report →</button></div>
   </section>
 
   <!-- ═══════════ 10 · RAPOR ═══════════ -->
   <section class="card hidden" id="c10">
-    <div class="chead"><span class="cnum">ADIM 10</span><h2>Rapor — imzanı at</h2></div>
-    <div class="why-box"><span class="h">◆ Neden son adım yazmak?</span>
-      Çünkü işin çıktısı bir p-değeri değil, <b>bir cümle</b>. O cümleyi kurum okuyacak,
-      hakem okuyacak, ekip okuyacak. Yanlış kurulmuş bir cümle doğru yapılmış bütün analizi çöpe atar.</div>
+    <div class="chead"><span class="cnum">STEP 10</span><h2>The report: sign your name to it</h2></div>
+    <div class="why-box"><span class="h">◆ Why the last step is writing</span>
+      Because the output of the work is not a p-value, it is <b>a sentence</b>. The organisation will read
+      that sentence, the reviewer will read it, the team will read it. One badly built sentence throws
+      away an entire correct analysis.</div>
     <div id="reportOut"></div>
     <div class="btn-row">
-      <button class="btn" id="copyRep">📋 Raporu kopyala</button>
-      <button class="btn-ghost" onclick="location.reload()">↺ Yeni görev kur</button>
+      <button class="btn" id="copyRep">📋 Copy the report</button>
+      <button class="btn-ghost" onclick="location.reload()">↺ Set up a new task</button>
     </div>
   </section>
 
-  <div class="foot">prototip · tek dosya · scikit-learn tarayıcıda (Pyodide) · <a href="ders-kanit-en.html" style="color:var(--blue)">English</a></div>
+  <div class="foot">prototype · one file · scikit-learn in the browser (Pyodide) · <a href="ders-kanit.html" style="color:var(--blue)">Türkçe</a></div>
 </div>
 
 <div class="xpop" id="xpop"></div>
@@ -428,21 +434,21 @@ const S = { ds:'moons', mA:'rf', mB:'lr', p1:null, p3:null, p8:null, p9:null,
 let py = null;
 
 const MODELS = {
-  dt:{n:'Decision Tree', d:'Tek bir karar ağacı. Art arda “şu değer şundan büyük mü?” diye sorar, veriyi dikey-yatay kesiklerle böler. Derinlik 4 ile sınırlı.'},
-  rf:{n:'Random Forest', d:'100 farklı ağaç yetiştirir, hepsi ayrı ayrı oy verir, çoğunluk kazanır. Tek ağaçtan çok daha kararlı.'},
-  svm:{n:'SVM (RBF)', d:'Sınıfları en geniş boşlukla ayıran sınırı arar. RBF çekirdeği sayesinde bu sınır eğri olabilir.'},
-  knn:{n:'k-NN (k=5)', d:'Hiç “öğrenmez”. Yeni bir noktaya en yakın 5 komşusuna bakar, çoğunluk hangi sınıfsa onu söyler.'},
-  lr:{n:'Logistic Regression', d:'Tek bir düz çizgi (veya düzlem) çeker. Çok hızlı ve yorumlanabilir — ama gerçek sınır eğriyse çaresizdir.'},
-  mlp:{n:'MLP (32,16)', d:'Küçük bir sinir ağı: 32 ve 16 nöronlu iki gizli katman. Eğri sınırlar öğrenebilir, ama az veride oynaktır.'},
-  nb:{n:'Naive Bayes', d:'Her özelliğin diğerlerinden bağımsız olduğunu varsayar ve olasılık hesaplar. Çok hızlı; varsayımı çoğu zaman yanlış ama yine de işe yarar.'},
-  gb:{n:'Gradient Boosting', d:'Ağaçları sırayla ekler; her yeni ağaç, önceki ağaçların yaptığı hatayı düzeltmeye çalışır.'},
+  dt:{n:'Decision Tree', d:'A single decision tree. It asks &ldquo;is this value above that threshold?&rdquo; over and over, cutting the data with vertical and horizontal lines. Depth is capped at 4.'},
+  rf:{n:'Random Forest', d:'It grows 100 different trees, each votes on its own, and the majority wins. Far more stable than a single tree.'},
+  svm:{n:'SVM (RBF)', d:'It looks for the boundary that separates the classes with the widest gap. Thanks to the RBF kernel that boundary can be curved.'},
+  knn:{n:'k-NN (k=5)', d:'It never really &ldquo;learns&rdquo;. For a new point it looks at the 5 nearest neighbours and returns whichever class is in the majority.'},
+  lr:{n:'Logistic Regression', d:'It draws a single straight line (or plane). Very fast and interpretable, but helpless when the real boundary is curved.'},
+  mlp:{n:'MLP (32,16)', d:'A small neural network: two hidden layers of 32 and 16 neurons. It can learn curved boundaries, but it is unstable on little data.'},
+  nb:{n:'Naive Bayes', d:'It assumes every feature is independent of the others and computes probabilities. Very fast; the assumption is usually wrong and it still works.'},
+  gb:{n:'Gradient Boosting', d:'It adds trees one after another; each new tree tries to correct the error the previous ones made.'},
 };
 const DATASETS = {
-  moons:'400 nokta, iç içe geçmiş iki hilal + gürültü. Düz bir çizgiyle ayrılamaz — doğrusal modelleri zorlar.',
-  circles:'400 nokta, bir halkanın içinde başka bir halka. Doğrusal modeller için kâbus; hiçbir düz çizgi işe yaramaz.',
-  blobs:'400 nokta, 3 ayrık küme. Neredeyse her model çözer — <b>tam da bu yüzden</b> aralarında fark bulmak zordur.',
-  iris:'Gerçek çiçek ölçümleri (petal boyu/eni), 3 tür. İstatistiğin klasik veri seti, 1936\'dan beri.',
-  cancer:'Gerçek tümör ölçümleri (yarıçap ve içbükeylik), iyi/kötü huylu. Gürültülü ve sınıflar örtüşüyor.',
+  moons:'400 points, two interlocking crescents plus noise. No straight line separates them, so it puts linear models under strain.',
+  circles:'400 points, one ring inside another. A nightmare for linear models; no straight line helps at all.',
+  blobs:'400 points, three separate clusters. Almost every model solves it, which is <b>exactly why</b> finding a difference between them is hard.',
+  iris:'Real flower measurements (petal length and width), three species. The classic dataset of statistics, in use since 1936.',
+  cancer:'Real tumour measurements (radius and concavity), benign versus malignant. Noisy, and the classes overlap.',
 };
 
 /* ═══════════════ python ═══════════════ */
@@ -541,14 +547,14 @@ def cv5x2(ds, ka, kb):
 (async () => {
   const msg = document.getElementById('bootMsg');
   py = await loadPyodide({ indexURL:'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/' });
-  msg.textContent = 'numpy · scipy · scikit-learn kuruluyor…';
+  msg.textContent = 'installing numpy, scipy and scikit-learn…';
   await py.loadPackage(['numpy','scipy','scikit-learn']);
-  msg.textContent = 'hazırlanıyor…';
+  msg.textContent = 'preparing…';
   await py.runPythonAsync(PY);
   document.getElementById('boot').style.display = 'none';
 })().catch(e => {
   document.getElementById('bootMsg').innerHTML =
-    '<span style="color:var(--red)">Yüklenemedi: ' + e.message + '</span><br>İnternet bağlantısını kontrol et.';
+    '<span style="color:var(--red)">Could not load: ' + e.message + '</span><br>Check your internet connection.';
 });
 
 /* ═══════════════ helpers ═══════════════ */
@@ -560,7 +566,7 @@ const pfmt = p => p < 0.0001 ? '< 0.0001' : p.toFixed(4);
 function goStep(n){
   S.step = n;
   $('c'+n).classList.remove('hidden');
-  $('stepNo').textContent = 'Adım ' + n + ' / 10';
+  $('stepNo').textContent = 'Step ' + n + ' / 10';
   $('pfill').style.width = ((n-1)/9*100) + '%';
   setTimeout(() => $('c'+n).scrollIntoView({behavior:'smooth', block:'start'}), 60);
 }
@@ -595,7 +601,7 @@ function reveal(el, correct, items){
     if (items[i].why) c.querySelector('.txt').insertAdjacentHTML('beforeend', '<span class="why">' + items[i].why + '</span>');
   });
 }
-function learnBox(html){ return '<div class="learn-box"><span class="h">✦ Ne öğrendin?</span>' + html + '</div>'; }
+function learnBox(html){ return '<div class="learn-box"><span class="h">✦ What you learned</span>' + html + '</div>'; }
 function statBox(lb, vl, color){
   return '<div class="stat"><div class="lb">' + lb + '</div><div class="vl"' +
          (color ? ' style="color:' + color + '"' : '') + '>' + vl + '</div></div>';
@@ -621,25 +627,25 @@ function draw(cv, zz, grid, pts, wrong, bounds){
 
 /* ═══════════════ 1 · ISINMA ═══════════════ */
 const Q1 = [
-  { t:'Evet — 6 &gt; 4, Ali daha iyi oynamış.',
-    why:'Hayır. Bu, ML dünyasında “A modelinin accuracy\'si daha yüksek, o hâlde A daha iyi” demenin birebir aynısı.' },
-  { t:'Hayır — 10 el çok az. İki <b>eşit</b> oyuncu arasında da bu fark rahatlıkla çıkar.',
-    why:'Doğru. Hilesiz yazı-tura ile 10 atışta en az 6-4 fark çıkma olasılığı <b>%75</b>. Yani bu sonuç, “ikisi tamamen eşit” senaryosuyla fazlasıyla uyumlu — hiçbir şey kanıtlanmadı.' },
-  { t:'Ali\'nin kazanma oranı %60, bu net bir üstünlük.',
-    why:'Hayır. Oran büyük görünüyor ama <b>kaç el üzerinden</b> hesaplandığını göz ardı ediyor. 10 elde %60, 1000 elde %60 ile aynı şey değildir.' },
+  { t:'Yes. 6 &gt; 4, so the first one played better.',
+    why:'No. This is word for word the same move as saying &ldquo;model A has the higher accuracy, therefore A is better&rdquo;.' },
+  { t:'No. Ten rounds is very few. This gap turns up easily between two <b>equal</b> players.',
+    why:'Correct. With a fair coin, the probability of a gap of at least 6-4 in ten tosses is <b>75%</b>. So this result is entirely compatible with &ldquo;the two are exactly equal&rdquo;. Nothing has been proven.' },
+  { t:'A 60% win rate is a clear advantage.',
+    why:'No. The rate looks large but it ignores <b>how many rounds</b> it was computed over. 60% out of 10 is not the same thing as 60% out of 1000.' },
 ];
 pickList($('ch1'), Q1, i => { S.p1 = i; $('go1').disabled = false; });
 $('go1').onclick = () => {
   $('go1').disabled = true;
   const ok = S.p1 === 1;
   reveal($('ch1'), 1, Q1);
-  if (ok) addXP(20, 'sezgi doğru'); else addXP(5, 'deneme');
+  if (ok) addXP(20, 'intuition correct'); else addXP(5, 'attempt');
   $('out1').innerHTML = learnBox(
-    'Bir farkın <b>var olması</b> ile o farkın <b>gerçek olması</b> ayrı şeyler. ' +
-    'Küçük örneklemde şans, gerçek bir üstünlük gibi görünür.<br><br>' +
-    'Bundan sonraki 9 adım, tam olarak bu sorunun modeller için matematiksel cevabı: ' +
-    '<b>“elimdeki fark, şansla açıklanabilir mi?”</b>');
-  $('go1').textContent = 'Devam →';
+    'A difference <b>existing</b> and a difference being <b>real</b> are two separate things. ' +
+    'In a small sample, luck looks exactly like a genuine advantage.<br><br>' +
+    'The next nine steps are the mathematical answer to that same question, for models: ' +
+    '<b>&ldquo;can the gap I am holding be explained by chance?&rdquo;</b>');
+  $('go1').textContent = 'Continue →';
   $('go1').disabled = false;
   $('go1').onclick = () => goStep(2);
 };
@@ -654,13 +660,13 @@ function syncDesc(){
 syncDesc();
 $('go2').onclick = () => {
   S.ds = $('ds').value; S.mA = $('mA').value; S.mB = $('mB').value;
-  if (S.mA === S.mB){ alert('İki farklı model seç — bir modeli kendisiyle karşılaştırmak anlamsız.'); return; }
+  if (S.mA === S.mB){ alert('Pick two different models. Comparing a model with itself is meaningless.'); return; }
   const A = MODELS[S.mA].n, B = MODELS[S.mB].n;
-  $('q3').innerHTML = 'Bu veri setinde <b>' + A + '</b> ile <b>' + B + '</b> arasında ne bulacağız?';
+  $('q3').innerHTML = 'On this dataset, what will we find between <b>' + A + '</b> and <b>' + B + '</b>?';
   pickList($('ch3'), [
-    { t:'<b>' + A + '</b> (A) anlamlı biçimde daha iyi çıkacak' },
-    { t:'<b>' + B + '</b> (B) anlamlı biçimde daha iyi çıkacak' },
-    { t:'Aralarında <b>istatistiksel olarak anlamlı fark bulunmayacak</b>' },
+    { t:'<b>' + A + '</b> (A) will come out significantly better' },
+    { t:'<b>' + B + '</b> (B) will come out significantly better' },
+    { t:'There will be <b>no statistically significant difference</b> between them' },
   ], i => { S.p3 = i; $('go3').disabled = false; });
   $('nA').textContent = 'A · ' + A;
   $('nB').textContent = 'B · ' + B;
@@ -672,7 +678,7 @@ $('go3').onclick = async () => {
   $('ch3').dataset.locked = '1';
   [...$('ch3').children].forEach(c => c.classList.add('locked'));
   $('go3').disabled = true;
-  $('go3').innerHTML = '<span class="spin"></span>modeller eğitiliyor…';
+  $('go3').innerHTML = '<span class="spin"></span>fitting the models…';
   const raw = await py.runPythonAsync('see("'+S.ds+'","'+S.mA+'","'+S.mB+'",42)');
   S.see = JSON.parse(raw);
   addXP(10, 'tahmin kilitlendi');
@@ -683,12 +689,12 @@ $('go3').onclick = async () => {
   const d = (S.see.models.A.acc - S.see.models.B.acc) * 100;
   const lead = d > 0 ? 'A' : (d < 0 ? 'B' : '—');
   $('out4').innerHTML =
-    '<div class="verdict v-warn"><b class="h">Şu an elindeki “kanıt”</b>' +
-    (lead === '—' ? 'İki model tam eşit çıktı. '
-      : '<b>' + lead + '</b> modeli ' + Math.abs(d).toFixed(1) + ' puan önde. ') +
-    'Raporu şimdi yazsaydın “' + (lead === '—' ? 'fark yok' : lead + ' daha iyi') + '” derdin.<br><br>' +
-    'Ama bu sayı <b>tek bir rastgele bölünmeden</b> geldi. Adım 1\'deki Ali-Veli maçı gibi: ' +
-    '10 el oynandı, bir sonuç çıktı. Sonuç bu mu, şans mı?</div>';
+    '<div class="verdict v-warn"><b class="h">The &ldquo;evidence&rdquo; you now hold</b>' +
+    (lead === '—' ? 'The two models came out exactly equal. '
+      : '<b>' + lead + '</b> modeli ' + Math.abs(d).toFixed(1) + ' points ahead. ') +
+    'If you wrote the report now you would say &ldquo;' + (lead === '—' ? 'no difference' : lead + ' is better') + '” derdin.<br><br>' +
+    'But that number came from <b>a single random split</b>. Just like the ten rounds in step 1: ' +
+    'ten rounds were played and a result came out. Is that the result, or is it luck?</div>';
   $('go4').classList.remove('hidden');
   goStep(4);
 };
@@ -702,7 +708,7 @@ $('shake').onclick = async () => {
   if (S.shakes.length >= SEEDS.length + 1) return;
   $('shake').disabled = true;
   const prev = $('shake').innerHTML;
-  $('shake').innerHTML = '<span class="spin"></span>eğitiliyor…';
+  $('shake').innerHTML = '<span class="spin"></span>fitting…';
 
   if (!S.shakes.length) S.shakes.push({ seed:42, a:S.see.models.A.acc, b:S.see.models.B.acc });
   const seed = SEEDS[S.shakes.length - 1];
@@ -711,18 +717,18 @@ $('shake').onclick = async () => {
 
   const first = S.shakes[0], firstLead = first.a > first.b ? 'A' : (first.a < first.b ? 'B' : '=');
   let flips = 0;
-  let html = '<tr><th>Bölünme</th><th>A accuracy</th><th>B accuracy</th><th>Önde olan</th></tr>';
+  let html = '<tr><th>Split</th><th>A accuracy</th><th>B accuracy</th><th>Ahead</th></tr>';
   S.shakes.forEach((x, i) => {
     const lead = x.a > x.b ? 'A' : (x.a < x.b ? 'B' : '=');
     const flip = i > 0 && lead !== firstLead;
     if (flip) flips++;
-    html += '<tr class="' + (flip ? 'flip' : '') + '"><td>#' + (i+1) + (i===0 ? ' <span style="color:var(--mut)">(adım 4)</span>' : '') + '</td>' +
+    html += '<tr class="' + (flip ? 'flip' : '') + '"><td>#' + (i+1) + (i===0 ? ' <span style="color:var(--mut)">(step 4)</span>' : '') + '</td>' +
             '<td>' + pct(x.a) + '</td><td>' + pct(x.b) + '</td>' +
-            '<td>' + lead + (flip ? ' ⟲ değişti!' : '') + '</td></tr>';
+            '<td>' + lead + (flip ? ' ⟲ flipped!' : '') + '</td></tr>';
   });
   $('shakeTbl').innerHTML = html;
   $('shakeOut').style.display = 'block';
-  $('shakeN').textContent = S.shakes.length + ' bölünme';
+  $('shakeN').textContent = S.shakes.length + ' splits';
   $('shake').innerHTML = prev; $('shake').disabled = false;
 
   if (S.shakes.length >= 5){
@@ -730,17 +736,17 @@ $('shake').onclick = async () => {
     const rngA = (Math.max(...accsA) - Math.min(...accsA)) * 100;
     const rngB = (Math.max(...accsB) - Math.min(...accsB)) * 100;
     if (!$('out5').innerHTML){
-      addXP(25, 'sarsıntıyı gördün');
+      addXP(25, 'you saw the shake');
       $('out5').innerHTML = learnBox(
-        'Model değişmedi. Veri değişmedi. Sadece <b>kimin eğitimde kimin testte</b> olduğu değişti — ' +
-        've A\'nın accuracy\'si <b>' + rngA.toFixed(1) + ' puan</b>, B\'ninki <b>' + rngB.toFixed(1) + ' puan</b> oynadı.' +
+        'The models did not change. The data did not change. Only <b>who was in training and who was in test</b> changed, ' +
+        'and A&rsquo;s accuracy moved by <b>' + rngA.toFixed(1) + ' puan</b>, B\'ninki <b>' + rngB.toFixed(1) + ' points</b>.' +
         (flips > 0
-          ? '<br><br><b style="color:var(--yellow)">Ve ' + flips + ' bölünmede sıralama tamamen ters döndü.</b> ' +
-            'Adım 4\'te yazacağın rapor, sırf rastgele sayı üreteci farklı başlasaydı <b>tam tersini</b> söyleyecekti.'
-          : '<br><br>Bu seferki sıralama değişmedi — ama <b>sayılar</b> değişti. Sıralamanın sabit kalması ' +
-            'şanslı bir durum; farkın gerçekten anlamlı olduğunu <b>hâlâ kanıtlamadın</b>.') +
-        '<br><br>İşte bu yüzden tek bölünmeye bakan her karşılaştırma eksiktir. ' +
-        'Tek sayı yerine <b>farkın dağılımına</b> bakmamız lazım.');
+          ? '<br><br><b style="color:var(--yellow)">Ve ' + flips + ' of the splits the ranking flipped completely.</b> ' +
+            'The report you would have written at step 4 would have said <b>the exact opposite</b>, purely because the random number generator started somewhere else.'
+          : '<br><br>This time the ranking did not change, but the <b>numbers</b> did. The ranking holding still is ' +
+            'a piece of luck; you <b>still have not shown</b> that the difference is real.') +
+        '<br><br>This is exactly why every comparison built on a single split is incomplete. ' +
+        'Instead of one number we need to look at <b>the distribution of the difference</b>.');
       $('go5').classList.remove('hidden');
     }
   }
@@ -749,12 +755,12 @@ $('go5').onclick = () => {
   let d = '';
   for (let i=1;i<=5;i++){
     d += '<div class="rep"><div class="lbl">Tekrar ' + i + '</div>' +
-         '<div class="half h-tr">EĞİTİM</div><div class="half h-te">TEST</div>' +
+         '<div class="half h-tr">TRAIN</div><div class="half h-te">TEST</div>' +
          '<div class="swap">⇄</div>' +
-         '<div class="half h-te">TEST</div><div class="half h-tr">EĞİTİM</div></div>';
+         '<div class="half h-te">TEST</div><div class="half h-tr">TRAIN</div></div>';
   }
   d += '<div style="font-family:var(--mono);font-size:10.5px;color:var(--mut);margin-top:10px;text-align:center">' +
-       'her satır = veri ikiye bölünür, roller takas edilir → 2 eğitim · 5 satır → <b style="color:var(--green)">10 eğitim</b></div>';
+       'each row = the data is halved and the roles swapped → 2 fits · 5 rows → <b style="color:var(--green)">10 fits</b></div>';
   $('diag').innerHTML = d;
   goStep(6);
 };
@@ -763,10 +769,10 @@ $('go6').onclick = () => goStep(7);
 /* ═══════════════ 7 · ÇALIŞTIR ═══════════════ */
 $('run7').onclick = async () => {
   $('run7').disabled = true;
-  $('run7').innerHTML = '<span class="spin"></span>10 eğitim çalışıyor…';
+  $('run7').innerHTML = '<span class="spin"></span>running the ten fits…';
   S.cv = JSON.parse(await py.runPythonAsync('cv5x2("'+S.ds+'","'+S.mA+'","'+S.mB+'")'));
   const r = S.cv;
-  let html = '<tr><th>Tekrar</th><th>Kat</th><th>A acc</th><th>B acc</th><th>hata farkı (A−B)</th></tr>';
+  let html = '<tr><th>Repeat</th><th>Fold</th><th>A acc</th><th>B acc</th><th>error gap (A−B)</th></tr>';
   r.rows.forEach(x => {
     html += '<tr><td>' + x.rep + '</td><td>' + x.fold + '</td><td>' + pct(x.a) + '</td><td>' + pct(x.b) + '</td>' +
             '<td class="' + (x.d<0?'pos':(x.d>0?'neg':'')) + '">' + (x.d>=0?'+':'') + x.d.toFixed(4) + '</td></tr>';
@@ -779,15 +785,15 @@ $('run7').onclick = async () => {
       statBox('A ortalama', pct(r.accA))
     + statBox('B ortalama', pct(r.accB))
     + statBox('Ham fark', (diff>=0?'+':'') + (diff*100).toFixed(2) + ' puan', diff>0?'var(--green)':'var(--orange)')
-    + statBox('Fark yönü', consistent ? 'TUTARLI' : 'OYNAK', consistent?'var(--green)':'var(--yellow)');
+    + statBox('Sign of the gap', consistent ? 'TUTARLI' : 'OYNAK', consistent?'var(--green)':'var(--yellow)');
   $('cvOut').style.display = 'block';
-  $('run7').innerHTML = '✓ 10 eğitim tamamlandı';
-  addXP(15, '10 eğitim koştu');
+  $('run7').innerHTML = '✓ ten fits complete';
+  addXP(15, 'ran the ten fits');
   $('out7').innerHTML = learnBox(
-    'Fark sütununa bak: işaret ' + (consistent
-      ? '<b>10 katta da aynı yönde</b>. Bu iyi bir işaret — ama tek başına yeterli değil, farkın <i>büyüklüğü</i> de gürültüye göre değerlendirilmeli.'
-      : '<b>kat kat yön değiştiriyor</b>. Bir katta A önde, başka katta B. Ortalamaya bakınca göremediğin şey tam olarak bu.') +
-    '<br><br>Elimizde artık tek bir sayı değil, <b>10 eşleştirilmiş fark</b> var. Sıradaki soru: bu 10 sayıya hangi testi uygulayacağız?');
+    'Look at the difference column: the sign is ' + (consistent
+      ? '<b>the same on all ten folds</b>. That is a good sign, but not enough on its own: the <i>size</i> of the gap still has to be judged against the noise.'
+      : '<b>changing from fold to fold</b>. A is ahead on one, B on another. This is exactly what the average hides from you.') +
+    '<br><br>We are no longer holding one number but <b>ten paired differences</b>. The next question is which test to apply to those ten.');
   $('go7').classList.remove('hidden');
 };
 $('go7').onclick = () => { buildQ8(); goStep(8); };
@@ -796,14 +802,14 @@ $('go7').onclick = () => { buildQ8(); goStep(8); };
 let Q8 = [];
 function buildQ8(){
   Q8 = [
-    { t:'Bağımsız iki örneklem <b>t-testi</b>',
-      why:'Yanlış. Bu test, iki grubun <b>bağımsız</b> olduğunu varsayar. Bizim 10 skorumuz bağımsız değil — hepsi aynı 400 satırın örtüşen bölünmelerinden geliyor. Varsayım çökünce p-değeri olduğundan küçük çıkar: <b>olmayan farkları “anlamlı” ilan edersin.</b>' },
+    { t:'An independent two-sample <b>t-test</b>',
+      why:'Wrong. That test assumes the two groups are <b>independent</b>. Our ten scores are not: they all come from overlapping splits of the same 400 rows. When the assumption breaks the p-value comes out smaller than it should, and <b>you start declaring differences that are not there to be &ldquo;significant&rdquo;.</b>' },
     { t:'<b>McNemar</b> testi',
-      why:'Yanlış — bu tasarım için değil. McNemar <b>tek sabit test setinde</b> iki modelin anlaşmazlıklarını sayar; yeniden eğitimden doğan varyansı hiç görmez. Modeli eğitmek çok pahalıysa (dev bir LLM gibi) doğru seçimdir; burada 10 kez eğitebiliyoruz, o bilgiyi çöpe atmamalıyız.' },
-    { t:'Alpaydın <b>5×2cv F-testi</b>',
-      why:'Doğru. Tam olarak bu tasarım için türetildi: 5 tekrar × 2 kat, eşleştirilmiş farklar, F(10,5) dağılımı. Örtüşen bölünmelerin yarattığı bağımlılığı hesaba katar; Tip-I hata kontrolü 5×2cv t-testinden de daha iyidir.' },
-    { t:'Hiç test yok — <b>ortalama accuracy</b> yeterli',
-      why:'Yanlış, ve sahada en sık yapılan hata bu. Ortalama fark, o farkın gürültüden mi gerçek etkiden mi geldiğini <b>söylemez</b>. Adım 5\'te bunu gözünle gördün.' },
+      why:'Wrong for this design. McNemar counts the disagreements between two models on <b>one fixed test set</b>; it never sees the variance that refitting creates. It is the right choice when training is expensive (a large LLM, say), but here we can fit ten times, and we should not throw that information away.' },
+    { t:'The Alpaydin <b>5x2cv F-test</b>',
+      why:'Correct. It was derived for exactly this design: 5 repeats x 2 folds, paired differences, an F(10,5) distribution. It accounts for the dependence created by overlapping splits, and its Type I error control is better than the 5x2cv t-test.' },
+    { t:'No test at all: <b>the mean accuracy</b> is enough',
+      why:'Wrong, and this is the most common mistake in the field. A mean difference <b>does not tell you</b> whether it came from noise or from a real effect. You watched that happen at step 5.' },
   ];
   pickList($('ch8'), Q8, i => { S.p8 = i; $('go8').disabled = false; });
 }
@@ -811,48 +817,48 @@ $('go8').onclick = () => {
   $('go8').disabled = true;
   const ok = S.p8 === 2;
   reveal($('ch8'), 2, Q8);
-  addXP(ok ? 30 : 5, ok ? 'doğru test' : 'deneme');
+  addXP(ok ? 30 : 5, ok ? 'right test' : 'deneme');
   $('out8').innerHTML = learnBox(
-    'Test seçimi bir <b>zevk meselesi değil</b>, tasarımın sonucu. Elindeki veri nasıl üretildiyse ' +
-    'test onu takip etmek zorunda: yeniden eğitim var mı, bölünmeler örtüşüyor mu, ölçümler eşleştirilmiş mi.<br><br>' +
-    'Şimdi F-testini uyguluyoruz.');
+    'Choosing a test is <b>not a matter of taste</b>, it follows from the design. However the data in your hands was produced, ' +
+    'the test has to follow it: was there refitting, do the splits overlap, are the measurements paired.<br><br>' +
+    'Now we apply the F-test.');
   $('next8').classList.remove('hidden');
 };
 $('next8').onclick = () => {
   const r = S.cv, sig = r.pf < 0.05;
   $('testStats').innerHTML =
-      statBox('F istatistiği', r.f.toFixed(3))
+      statBox('F statistic', r.f.toFixed(3))
     + statBox('serbestlik derecesi', '10 & 5')
-    + statBox('p-değeri', pfmt(r.pf), sig ? 'var(--green)' : 'var(--orange)')
-    + statBox('α = 0.05 eşiği', sig ? 'ANLAMLI' : 'ANLAMSIZ', sig ? 'var(--green)' : 'var(--orange)');
+    + statBox('p-value', pfmt(r.pf), sig ? 'var(--green)' : 'var(--orange)')
+    + statBox('α = 0.05 threshold', sig ? 'ANLAMLI' : 'ANLAMSIZ', sig ? 'var(--green)' : 'var(--orange)');
   pickList($('ch9'), Q9, i => { S.p9 = i; $('go9').disabled = false; });
   goStep(9);
 };
 
 /* ═══════════════ 9 · p-DEĞERİ ═══════════════ */
 const Q9 = [
-  { t:'“İki model arasında gerçekten fark <b>olma</b> olasılığı 1−p.”',
-    why:'Yanlış — ve en yaygın hata. p-değeri, hipotezin doğru olma olasılığı <b>değildir</b>. Bunu söyleyebilmek için Bayesçi bir çerçeve ve bir önsel dağılım gerekir; p-değerinde ikisi de yok.' },
-  { t:'“Gerçekte <b>hiç fark olmasaydı</b>, en az bu kadar büyük bir farkı görme olasılığı p.”',
-    why:'Doğru. p-değerinin tanımı budur: <i>sıfır hipotezi doğruyken</i>, gözlediğimiz kadar veya daha uç bir sonucun çıkma olasılığı. Dikkat: cümle “fark yok” varsayımıyla <b>başlıyor</b>.' },
-  { t:'“Seçtiğimiz modelin sahada yanılma olasılığı p.”',
-    why:'Yanlış. p-değerinin modelin hata oranıyla hiçbir ilgisi yok. Hata oranı zaten accuracy sütununda yazıyor.' },
-  { t:'“Deneyi tekrarlarsak aynı sonucu bulma olasılığı 1−p.”',
-    why:'Yanlış. p-değeri tekrarlanabilirlik olasılığı değildir. Bunun için ayrıca güç (power) analizi ve etki büyüklüğü gerekir.' },
+  { t:'&ldquo;The probability that a difference between the two models really <b>exists</b> is 1−p.&rdquo;',
+    why:'Wrong, and the most widespread error there is. A p-value is <b>not</b> the probability that a hypothesis is true. Saying that requires a Bayesian framework and a prior; the p-value has neither.' },
+  { t:'&ldquo;If there were <b>no difference at all</b> in reality, the probability of seeing a gap at least this large is p.&rdquo;',
+    why:'Correct. That is the definition: the probability, <i>assuming the null hypothesis is true</i>, of a result as extreme as the one we observed or more so. Note that the sentence <b>starts</b> from the assumption that there is no difference.' },
+  { t:'&ldquo;The probability that the model we picked will be wrong in production is p.&rdquo;',
+    why:'Wrong. A p-value has nothing to do with the model&rsquo;s error rate. The error rate is already sitting in the accuracy column.' },
+  { t:'&ldquo;If we repeat the experiment, the probability of finding the same result is 1−p.&rdquo;',
+    why:'Wrong. A p-value is not a probability of replication. That needs a power analysis and an effect size on top.' },
 ];
 $('go9').onclick = () => {
   $('go9').disabled = true;
   const ok = S.p9 === 1;
   reveal($('ch9'), 1, Q9);
-  addXP(ok ? 30 : 5, ok ? 'p-değeri doğru okundu' : 'deneme');
+  addXP(ok ? 30 : 5, ok ? 'read the p-value correctly' : 'deneme');
   const r = S.cv, sig = r.pf < 0.05;
   $('out9').innerHTML = learnBox(
-    'p = ' + pfmt(r.pf) + ' şunu diyor: <i>“A ile B gerçekte tıpatıp aynı olsaydı, ' +
-    'bu kadar büyük bir farkı görme ihtimalim ' + (r.pf < 0.0001 ? '%0.01\'den küçüktü' : '%' + (r.pf*100).toFixed(2) + ' olurdu.”</i>') +
-    (sig ? '<br><br>Bu ihtimal küçük olduğu için “sadece şans” açıklamasını <b>reddediyoruz</b>.'
-         : '<br><br>Bu ihtimal küçük <b>değil</b> — yani gördüğün fark, “ikisi tamamen eşit” senaryosuyla rahatlıkla açıklanabiliyor. Ali-Veli\'nin 6-4\'ü gibi.') +
-    '<br><br><b>Ve şu asla unutulmamalı:</b> anlamlı çıkmaması “fark yok” demek değildir. ' +
-    '“Bu veriyle, bu örneklem büyüklüğüyle fark <i>gösterilemedi</i>” demektir. Yokluğun kanıtı, kanıtın yokluğu değildir.');
+    'p = ' + pfmt(r.pf) + ' says this: <i>&ldquo;if A and B were in reality exactly the same, ' +
+    'my chance of seeing a gap this large would be ' + (r.pf < 0.0001 ? 'below 0.01%' : '%' + (r.pf*100).toFixed(2) + ' olurdu.”</i>') +
+    (sig ? '<br><br>Because that chance is small we <b>reject</b> the &ldquo;just luck&rdquo; explanation.'
+         : '<br><br>That chance is <b>not</b> small, which means the gap you are looking at is comfortably explained by the &ldquo;the two are exactly equal&rdquo; scenario. Just like the 6-4 in step 1.') +
+    '<br><br><b>And this must never be forgotten:</b> a non-significant result does not mean &ldquo;there is no difference&rdquo;. ' +
+    'It means &ldquo;with this data, at this sample size, a difference <i>could not be shown</i>&rdquo;. Absence of evidence is not evidence of absence.');
   $('next9').classList.remove('hidden');
 };
 
@@ -864,45 +870,45 @@ $('next9').onclick = () => {
   const winner = r.accA > r.accB ? A : B;
   let truth = 2; if (sig) truth = r.accA > r.accB ? 0 : 1;
   const predOK = S.p3 === truth;
-  const LBL = ['A daha iyi', 'B daha iyi', 'anlamlı fark yok'];
+  const LBL = ['A daha iyi', 'B daha iyi', 'no significant difference'];
 
   REPORT = sig
     ? A + ' ile ' + B + ', ' + $('ds').selectedOptions[0].text.split(' —')[0] +
-      ' veri setinde 5×2cv çapraz doğrulama protokolüyle karşılaştırıldı. Alpaydın 5×2cv F-testine göre ' +
-      'aradaki fark istatistiksel olarak anlamlıdır (F(10,5) = ' + r.f.toFixed(2) + ', p = ' + pfmt(r.pf) + '). ' +
-      winner + ' tercih edilmelidir (ortalama doğruluk: ' + pct(r.accA) + ' vs ' + pct(r.accB) + ').'
+      ' dataset using a 5x2cv cross-validation protocol. According to the Alpaydin 5x2cv F-test, ' +
+      'the difference between them is statistically significant (F(10,5) = ' + r.f.toFixed(2) + ', p = ' + pfmt(r.pf) + '). ' +
+      winner + ' should be preferred (mean accuracy: ' + pct(r.accA) + ' vs ' + pct(r.accB) + ').'
     : A + ' ile ' + B + ', ' + $('ds').selectedOptions[0].text.split(' —')[0] +
-      ' veri setinde 5×2cv çapraz doğrulama protokolüyle karşılaştırıldı. Ortalama doğruluklar ' +
-      pct(r.accA) + ' ve ' + pct(r.accB) + ' olmakla birlikte, Alpaydın 5×2cv F-testi anlamlı bir fark ' +
-      'ortaya koymamıştır (F(10,5) = ' + r.f.toFixed(2) + ', p = ' + pfmt(r.pf) + '). ' +
-      'Bu veriyle iki model arasında üstünlük gösterilememiştir; seçim doğruluk dışındaki ölçütlere ' +
-      '(hız, yorumlanabilirlik, bakım maliyeti) bırakılmalıdır.';
+      ' dataset using a 5x2cv cross-validation protocol. The mean accuracies were ' +
+      pct(r.accA) + ' ve ' + pct(r.accB) + ', but the Alpaydin 5x2cv F-test did not establish a significant ' +
+      'difference (F(10,5) = ' + r.f.toFixed(2) + ', p = ' + pfmt(r.pf) + '). ' +
+      'With this data no superiority between the two models could be shown; the choice should be left to criteria ' +
+      'other than accuracy (speed, interpretability, maintenance cost).';
 
   $('reportOut').innerHTML =
-    '<div class="report"><div class="rk">◆ Kanıt kartı · Görev 01</div>' +
-    '<h3>' + (sig ? winner + ' — kanıtlanmış üstünlük' : 'Üstünlük gösterilemedi') + '</h3>' +
+    '<div class="report"><div class="rk">◆ Evidence card · Task 01</div>' +
+    '<h3>' + (sig ? winner + ' — proven advantage' : 'No advantage could be shown') + '</h3>' +
     '<div class="quote">' + REPORT + '</div>' +
     '<div class="meta">' +
       '<div>TEST<b>5×2cv F</b></div><div>F<b>' + r.f.toFixed(2) + '</b></div>' +
-      '<div>p<b>' + pfmt(r.pf) + '</b></div><div>EĞİTİM<b>10</b></div>' +
+      '<div>p<b>' + pfmt(r.pf) + '</b></div><div>FITS<b>10</b></div>' +
       '<div>TOPLAM XP<b>' + (S.xp + 20) + '</b></div>' +
     '</div></div>' +
     '<div class="verdict ' + (predOK ? 'v-ok' : 'v-no') + '"><b class="h">Tahminin · ' +
-      (predOK ? 'isabetli' : 'ıskaladı') + '</b>' +
-      'Adım 3\'te <i>“' + LBL[S.p3] + '”</i> demiştin. Gerçek sonuç: <i>“' + LBL[truth] + '”</i>. ' +
-      (predOK ? 'Sezgin bu veri setinde çalıştı.'
-              : '<b>Bu iyi haber.</b> Sezginin nerede yanıldığını öğrenmek, doğru bildiğin yerden çok daha öğretici — ' +
-                've zaten bütün görevin sebebi buydu.') + '</div>' +
-    '<div class="learn-box"><span class="h">✦ Bu görevden çıkan tek cümle</span>' +
-      '<b>Daha yüksek accuracy, daha iyi model demek değildir.</b> Bir farkın gerçek olduğunu ' +
-      'iddia edeceksen, o farkın şansla açıklanamayacağını gösteren bir protokolün ve doğru seçilmiş bir testin olmalı. ' +
-      'Bundan sonra okuduğun her model karşılaştırmasına şunu sor: <i>kaç kez eğitildi, hangi test uygulandı, p ne?</i></div>';
-  addXP(20, 'görev tamamlandı');
+      (predOK ? 'isabetli' : 'missed it') + '</b>' +
+      'At step 3 you said <i>&ldquo;' + LBL[S.p3] + '&rdquo;</i>. The actual result: <i>&ldquo;' + LBL[truth] + '”</i>. ' +
+      (predOK ? 'Your intuition held up on this dataset.'
+              : '<b>That is good news.</b> Finding out where your intuition is wrong teaches you far more than finding out where it was right, ' +
+                'and that was the whole point of this task.') + '</div>' +
+    '<div class="learn-box"><span class="h">✦ The one sentence to take away</span>' +
+      '<b>A higher accuracy does not mean a better model.</b> If you are going to claim a difference is ' +
+      'real, you need a protocol that shows it cannot be explained by chance, and a correctly chosen test. ' +
+      'Ask this of every model comparison you read from now on: <i>how many times was it fitted, which test was applied, what is p?</i></div>';
+  addXP(20, 'task complete');
   goStep(10);
 };
 $('copyRep').onclick = () => {
   navigator.clipboard.writeText(REPORT).then(() => {
-    $('copyRep').textContent = '✓ Kopyalandı';
+    $('copyRep').textContent = '✓ Copied';
     setTimeout(() => $('copyRep').textContent = '📋 Raporu kopyala', 1800);
   });
 };

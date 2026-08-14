@@ -79,7 +79,15 @@ const dersler = [];
 const disDersler = [];
 ROTALAR.forEach((r, ri) => r.dersler.forEach((rd, i) => {
   if (rd.durum !== 'hazir') return;
-  if (rd.dis){ disDersler.push({ yol: rd.dis, acik: i < UCRETSIZ }); return; }
+  /* Kendi sayfası olan ders iki dilde de var: ders-kanit.html ve
+     ders-kanit-en.html. İkisi de sitemap'e giriyor, hreflang ile eşlenmiş
+     hâlde kendi dosyalarında duruyorlar. */
+  if (rd.dis){
+    disDersler.push({ yol: rd.dis, acik: i < UCRETSIZ });
+    const en = rd.dis.replace(/\.html$/, '-en.html');
+    if (fs.existsSync(en)) disDersler.push({ yol: en, acik: i < UCRETSIZ });
+    return;
+  }
   const d = DERSLER[rd.id];
   /* Buraya düşmek gerçek bir tutarsızlıktır: müfredat dersi "hazır"
      diyor ama içeriği yok. Sessizce atlamak yerine haber ver. */
