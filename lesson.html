@@ -342,6 +342,7 @@ temaUygula(temaOku());
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="yapilandirma.js?v=d0e7d8f"></script>
 <script src="topluluk/ilerleme.js?v=d0e7d8f"></script>
+<script src="topluluk/geri-bildirim.js?v=d0e7d8f"></script>
 <script src="topluluk/hesap.js?v=d0e7d8f"></script>
 <script>
 const $ = id => document.getElementById(id);
@@ -668,10 +669,20 @@ function go(i){
       /* Ders bitince doluyor. Paylaşmanın en anlamlı anı burası: kişi
          az önce bir şeyi bitirdi ve söyleyecek somut bir şeyi var. */
       '<span id="paylasYer" style="margin-left:auto"></span></div>' +
+    /* Adım sonu geri bildirimi. HER adımda var, ders sonunda değil: kafası
+       karışan kişi dersi bitirmiyor, üçüncü adımda sekmeyi kapatıyor. Ders
+       sonuna koysaydık yalnız bitirenlerden, yani hiç kaybolmamış olanlardan
+       duyardık. Kayıt hangi adımdan geldiğini de tutuyor. */
+    '<div id="gbYer"></div>' +
     '</div>';
 
   $('host').innerHTML = html;
   useCanvas($('cv'), 1500, a.h || 600);
+
+  /* Adım her çizildiğinde yeniden kuruluyor: kap DOM'la beraber yenileniyor
+     ve adım numarası değişiyor. Arka uç yoksa modül hiçbir şey çizmiyor. */
+  if (typeof GERIBILDIRIM !== 'undefined')
+    GERIBILDIRIM.kur($('gbYer'), { dersId:DERS_ID, adim:i+1, dil:DIL });
 
   /* ---- durum & çizim ---- */
   let ph = 0, frames = null, playing = false, sel = null, answered = false;
