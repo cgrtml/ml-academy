@@ -101,7 +101,42 @@ function plot(R,x0,x1,y0,y1){
            ix:p => x0 + (p-R.x)/R.w*(x1-x0), iy:p => y0 + (R.y+R.h-p)/R.h*(y1-y0),
            x0,x1,y0,y1,R };
 }
-function clear(){ cx.fillStyle = K.bg; cx.fillRect(0,0,cvs.width,cvs.height); }
+/* ── tuvalin metin karşılığı · erişilebilirlik ──────────────────────────
+   <canvas> ekran okuyucuya HİÇBİR ŞEY söylemez; içine ne çizilirse çizilsin
+   boş bir kutudur. Öğretimin asıl yükü de burada, metinde değil, yani 165
+   görselleştirme görme engelli bir kullanıcıya tamamen kapalıydı.
+
+   Her widget'a elle açıklama yazmak yerine widget'ın KENDİ anlattığı şey
+   toplanıyor: başlık, alt başlık, çipler, eksen adları ve alt durum yazısı.
+   Bunlar zaten dört ortak yardımcıdan geçiyor (165 widget'ın 163'ü), o
+   yüzden tek yerden yakalanabiliyorlar ve durum değişince kendiliğinden
+   güncelleniyorlar.
+
+   Tuvale çizilen HER metni toplamak işe yaramaz: yüzlerce kopuk parça
+   çıkar ve okunmaz. Toplanan şey görselin kendi özeti.
+
+   lesson.html her çizimden sonra TUVAL_OZET() sonucunu canvas'ın
+   aria-label'ına yazıyor. Canlı rozetler zaten HTML olduğu için sayılar
+   ayrıca okunabiliyor. */
+let OZET = { bas:'', alt:'', cip:[], eksen:[], durum:'' };
+function ozetSifirla(){ OZET = { bas:'', alt:'', cip:[], eksen:[], durum:'' }; }
+
+function TUVAL_OZET(){
+  const p = [];
+  if (OZET.bas) p.push(OZET.bas.replace(/\s+/g,' ').trim());
+  if (OZET.alt) p.push(OZET.alt.replace(/\s+/g,' ').trim());
+  if (OZET.eksen.length) p.push(OZET.eksen.join(', '));
+  if (OZET.cip.length)   p.push(OZET.cip.join(' · '));
+  if (OZET.durum) p.push(OZET.durum.replace(/\s+/g,' ').trim());
+  let s = p.filter(Boolean).join('. ').replace(/\.\./g, '.');
+  if (s && !/[.!?]$/.test(s)) s += '.';
+  return s.length > 600 ? s.slice(0, 599).replace(/\s+\S*$/,'') + '…' : s;
+}
+
+function clear(){
+  ozetSifirla();
+  cx.fillStyle = K.bg; cx.fillRect(0,0,cvs.width,cvs.height);
+}
 function frame(P,xl,yl,xt,yt){
   cx.lineWidth = 1; cx.strokeStyle = K.grid; cx.font = '20px ui-monospace,monospace';
   (xt||[]).forEach(t => { cx.beginPath(); cx.moveTo(P.sx(t),P.R.y); cx.lineTo(P.sx(t),P.R.y+P.R.h); cx.stroke(); });
@@ -112,6 +147,19 @@ function frame(P,xl,yl,xt,yt){
   cx.textAlign = 'right';
   (yt||[]).forEach(t => cx.fillText(String(t), P.R.x-10, P.sy(t)+7));
   cx.textAlign = 'center';
+  /* Eksen adları görselin ne ölçtüğünü söyleyen en kısa bilgi; ekran
+     okuyucu özetine giriyorlar. */
+  /* Bazı widget'lar iki ayrı grafik çiziyor, yani frame() iki kez çağrılıyor;
+     aynı eksen adı iki kez girmesin. Tek harflik adlar ("x", "y") da hiçbir
+     şey anlatmadığı için özete alınmıyor. */
+  const eksenEkle = (on, ad) => {
+    const v = String(CEV(ad) || '').trim();
+    if (v.length < 3) return;
+    const satir = on + v;
+    if (OZET.eksen.indexOf(satir) < 0) OZET.eksen.push(satir);
+  };
+  if (xl) eksenEkle(LB('x ekseni: ','x axis: '), xl);
+  if (yl) eksenEkle(LB('y ekseni: ','y axis: '), yl);
   /* x etiketi txt() üzerinden geçiyor, sığmayınca orada küçülüyor. */
   if (xl) txt(xl, P.R.x+P.R.w/2, P.R.y+P.R.h+58, K.mut, 20, 'center', '400');
   if (yl){
@@ -174,6 +222,11 @@ const VIZ = {};
 /* ── veri tablosu ── */
 VIZ.tablo = s => {
   clear();
+  /* Bu widget ortak yardımcıların hiçbirini kullanmıyor (ne baslikSerit ne
+     frame ne durum), o yüzden ekran okuyucu özetini kendisi yazıyor. */
+  OZET.bas = LB('Veri tablosu', 'Data table');
+  OZET.alt = LB(S_.X.length + ' öğrenci; sütunlar: öğrenci, çalışma saati, sınav puanı',
+                S_.X.length + ' students; columns: student, study hours, exam score');
   const rows = S_.X.length, cw = [250,300,300], rh = 44;
   const W = cw[0]+cw[1]+cw[2];
   const x0 = (1500 - W)/2, y0 = 118;
@@ -11411,6 +11464,9 @@ VIZ.esik = s => {
 /* ── ağaçta yönlendirme: sert vs yumuşak ── */
 VIZ.agac = s => {
   clear();
+  /* Ortak yardımcıları kullanmayan ikinci widget; özetini kendisi yazıyor. */
+  OZET.bas = LB('Sert eşik ile yumuşak eşiğin ağaç üzerinde karşılaştırması',
+                'A hard threshold and a soft threshold compared on a tree');
   const t = s.t === undefined ? 5 : s.t, T = s.T === undefined ? 0.6 : s.T;
   const x = s.x === undefined ? 5.6 : s.x;
   const ciz = (ox, baslik, sert, renk) => {
@@ -11451,7 +11507,14 @@ VIZ.agac = s => {
 /* ── polinom uydurma (ezberleme dersi) ── */
 VIZ.polinom = s => {
   clear();
+  /* Eksenleri yalnızca "x" ve "y"; onlar özete alınmıyor (hiçbir şey
+     anlatmıyorlar) ve widget başka ortak yardımcı kullanmıyor, o yüzden
+     ekran okuyucu özetini kendisi yazıyor. Derece durumla değiştiği için
+     özet de her çizimde güncelleniyor. */
   const P0 = DATA.poly, deg = Math.round(s.derece);
+  OZET.bas = LB('Polinom uydurma', 'Polynomial fit');
+  OZET.alt = LB('Derece ' + deg + '; eğitim noktalarına uydurulan eğri ve test noktaları',
+                'Degree ' + deg + '; the curve fitted to the training points, and the test points');
   const trx = P0.tr.map(i => P0.x[i]), try_ = P0.tr.map(i => P0.y[i]);
   const c = polyfit(trx, try_, deg);
   const solo = s.solo;
@@ -11603,6 +11666,9 @@ function boru(x1,y1,x2,y2, kalinlik, renk, akis){
 }
 /* başlık şeridi (algomaster tarzı) */
 function baslikSerit(ust, alt, cipler){
+  OZET.bas = String(CEV(ust) || '');
+  if (alt) OZET.alt = String(CEV(alt) || '');
+  (cipler || []).forEach(([k,v]) => OZET.cip.push(String(CEV(k+'  '+v)).replace(/\s+/g,' ')));
   txt(ust, 750, 52, K.txt, 34);
   if (alt) txt(alt, 750, 86, K.mut, 20, 'center', '400');
   if (cipler){
@@ -11634,6 +11700,7 @@ function baslikSerit(ust, alt, cipler){
    yanından birden taşıyordu. Monospace olduğu için genişlik karakter sayısından
    güvenilir hesaplanıyor; sığmıyorsa punto kademeli düşüyor. */
 function durum(s, renk){
+  OZET.durum = String(CEV(s) || '');
   const enGenis = cvs.width - 80;
   let sz = 28;
   while (sz > 16 && String(s).length * sz * 0.6 > enGenis) sz -= 1;

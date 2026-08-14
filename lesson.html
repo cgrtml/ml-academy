@@ -704,6 +704,15 @@ function go(i){
   function draw(){
     const s = vizState();
     VIZ[a.viz](s);
+    /* Tuvalin metin karşılığı. <canvas> ekran okuyucuya hiçbir şey söylemez;
+       görselin kendi başlığı, eksenleri, çipleri ve durum yazısı viz.js'te
+       toplanıp buraya yazılıyor. Her çizimde yenileniyor, yani kaydırıcı
+       oynatılınca açıklama da güncelleniyor. */
+    if (typeof TUVAL_OZET === 'function'){
+      const ozet = TUVAL_OZET();
+      const cv = $('cv');
+      if (cv && ozet){ cv.setAttribute('role','img'); cv.setAttribute('aria-label', ozet); }
+    }
     // canlı kutular
     let lv = null;
     if (runSeq) lv = runSeq[runIdx].live;

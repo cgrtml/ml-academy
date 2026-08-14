@@ -7,6 +7,7 @@
 #   5) taşma ve çakışma · EN yerleşimi
 #   6) EN modunda tuvale Türkçe metin çiziliyor mu
 #   7) EN modunda çevrilmemiş metin var mı (tuval + arayüz)
+#   8) her görselin ekran okuyucu için metin karşılığı var mı
 #
 # 4, 5, 6 ve 7 sonradan eklendi. Öncesinde yalnız Türkçe yerleşim ölçülüyordu:
 # viz.js'teki VDIL localStorage'a bakıyor, Node'da yok, hep TR'ye düşüyordu.
@@ -31,3 +32,4 @@ echo; echo "── 4 · TAŞMA · TR ──";         node tasma-testi.js     2>
 echo; echo "── 5 · TAŞMA · EN ──"; DIL=en  node tasma-testi.js     2>&1 | tail -5
 echo; echo "── 6 · TUVAL DİLİ · EN ──";    node tuval-en-denetim.js 2>&1 | tail -4
 echo; echo "── 7 · ÇEVİRİ KAPSAMI · EN ──"; node en-denetim.js       2>&1 | tail -8
+echo; echo "── 8 · TUVAL ÖZETLERİ ──";     node ozet-denetim.js     2>&1 | tail -6
