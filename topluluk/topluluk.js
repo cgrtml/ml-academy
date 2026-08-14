@@ -157,11 +157,24 @@ const TOPLULUK = (() => {
       .not('body', 'is', null)
       .neq('body', '')
       .order('approved_at', { ascending:false })
-      .limit(limit || 6);
+      /* Elemeyi tarayıcı yapıyor, o yüzden fazladan çekiliyor: yoksa
+         boş kayıtlar limiti tüketip gerçek yorumları listeden düşürür. */
+      .limit((limit || 6) * 4);
     if (error) throw error;
-    /* Yalnızca boşluk karakterinden ibaret gövdeler sunucu filtresinden
-       geçebilir; onları da burada eliyoruz. */
-    return (data || []).filter(r => String(r.body || '').trim().length > 0);
+    /* Sunucu filtresi yalnız null ve boş dizeyi eliyor. Tek emojiden ibaret
+       bir gövde ("🔒" gibi) bu filtreden geçiyor ve sayfada beş yıldızlı ama
+       bomboş bir kart olarak duruyordu. Ölçüt uzunluk değil, HARF: en az üç
+       harf ya da rakam yoksa o kayıt yorum sayılmaz.
+
+       Bunun bedeli, "OK" gibi iki harflik gerçek bir yorumun da listeye
+       girmemesi. Kabul edilebilir, çünkü zaten hiçbir şey anlatmıyor.
+
+       Puan HER HÂLDE sayılıyor: ortalama ve dağılım community_stats()
+       üzerinden geliyor ve o fonksiyon gövdeye hiç bakmıyor, onaylı bütün
+       yorumları sayıyor (topluluk/sema.sql). Yani buradaki eleme kimsenin
+       oyunu silmiyor, yalnız gösterilecek kartı belirliyor. */
+    const harfli = x => (String(x || '').match(/[\p{L}\p{N}]/gu) || []).length >= 3;
+    return (data || []).filter(r => harfli(r.body)).slice(0, limit || 6);
   }
 
   /* ── çizim ── */
