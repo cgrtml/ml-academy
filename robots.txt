@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mltraining.org/sitemap.xml

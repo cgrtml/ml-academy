@@ -3,7 +3,23 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Ders · ML Academy</title>
+<title>Lesson · ML Academy</title>
+<!-- Bu sayfa uygulamanın kendisi; başlığı ve içeriği JS dolduruyor, o yüzden
+     tarayıcılara ve önizleme kartlarına verecek bir şeyi yok. Ders başına
+     doğru etiketler ders/<dil>/<id>.html sayfalarında duruyor ve paylaş
+     düğmesi oraya yönlendiriyor. Buradakiler yalnızca doğrudan bağlantı
+     paylaşan biri bomboş bir kart görmesin diye, site düzeyinde.
+     Başlık da "Ders" değil "Lesson": sayfanın varsayılan dili İngilizce. -->
+<meta name="description" content="An interactive machine learning course that runs in your browser. Every step hands you the controls and does not unlock until you have used them.">
+<meta property="og:type"        content="website">
+<meta property="og:site_name"   content="ML Academy">
+<meta property="og:title"       content="ML Academy · learn machine learning by actually running it">
+<meta property="og:description" content="An interactive machine learning course that runs in your browser. Every step hands you the controls and does not unlock until you have used them.">
+<meta property="og:image"       content="https://mltraining.org/gorsel/og.png">
+<meta property="og:image:width"  content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:image"       content="https://mltraining.org/gorsel/og.png">
 <style>
   :root{
     /* ── AÇIK TEMA ──────────────────────────────────────────────────────
@@ -455,9 +471,15 @@ function paylasKur(){
     baslik: ad + ' · ML Academy',
     metin: EN ? 'I just finished "' + ad + '" on ML Academy, an interactive machine learning course that runs in the browser.'
               : 'ML Academy\'de "' + ad + '" dersini bitirdim. Tarayıcıda çalışan interaktif bir makine öğrenmesi kursu.',
-    /* Adres dili taşıyor: ?lang= localStorage'daki tercihi de geçtiği için
-       Türkçe paylaşılan ders karşı tarafta Türkçe açılıyor. */
-    url: location.origin + location.pathname + '?id=' + encodeURIComponent(DERS_ID) + '&lang=' + DIL,
+    /* Paylaşılan adres uygulamanın kendisi DEĞİL, dersin iniş sayfası.
+       Sebep: LinkedIn, WhatsApp ve X önizleme kartını çıkarırken
+       JavaScript ÇALIŞTIRMAZ, ham HTML'i okur. lesson.html'in ham hâli her
+       ders için aynı ve boş ("Ders · ML Academy", boş h1, sıfır og etiketi),
+       yani buradan paylaşılan her ders aynı boş kartı veriyordu.
+       ders/<dil>/<id>.html sayfalarını ders-sayfa-uret.js üretiyor; doğru
+       başlık, özet ve og etiketleri orada duruyor ve sayfadaki düğme
+       kullanıcıyı buraya geri getiriyor. */
+    url: location.origin + '/ders/' + DIL + '/' + encodeURIComponent(DERS_ID) + '.html',
     /* Story görseli dersin kendi sonucunu gösteriyor: hangi ders, kaç adım,
        kaç XP. Genel bir tanıtım kartından daha çok paylaşılır çünkü kişinin
        söyleyecek somut bir şeyi var. */

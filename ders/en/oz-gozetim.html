@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Self-supervision: making the label out of the data · ML Academy</title>
+<meta name="description" content="If there is no label, invent one. In this setup the raw counts carry provably zero information about the topic, so all of the gain comes from the pretext task.">
+<link rel="canonical" href="https://mltraining.org/ders/en/oz-gozetim.html">
+<link rel="alternate" hreflang="en" href="https://mltraining.org/ders/en/oz-gozetim.html">
+<link rel="alternate" hreflang="tr" href="https://mltraining.org/ders/tr/oz-gozetim.html">
+<meta property="og:type"        content="article">
+<meta property="og:site_name"   content="ML Academy">
+<meta property="og:title"       content="Self-supervision: making the label out of the data">
+<meta property="og:description" content="If there is no label, invent one. In this setup the raw counts carry provably zero information about the topic, so all of the gain comes from the pretext task.">
+<meta property="og:url"         content="https://mltraining.org/ders/en/oz-gozetim.html">
+<meta property="og:image"       content="https://mltraining.org/gorsel/og.png">
+<meta property="og:image:width"  content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="Self-supervision: making the label out of the data">
+<meta name="twitter:description" content="If there is no label, invent one. In this setup the raw counts carry provably zero information about the topic, so all of the gain comes from the pretext task.">
+<meta name="twitter:image"       content="https://mltraining.org/gorsel/og.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"LearningResource","name":"Self-supervision: making the label out of the data","description":"If there is no label, invent one. In this setup the raw counts carry provably zero information about the topic, so all of the gain comes from the pretext task.","url":"https://mltraining.org/ders/en/oz-gozetim.html","inLanguage":"en","isAccessibleForFree":false,"learningResourceType":"Interactive lesson","educationalLevel":"Beginner to advanced","timeRequired":"PT16M","isPartOf":{"@type":"Course","name":"ML Academy","url":"https://mltraining.org/"},"provider":{"@type":"Person","name":"Cagri Temel","url":"https://mltraining.org/"}}</script>
+<style>
+  :root{--bg:#f6f8fc;--panel:#fff;--line:#dde5ef;--txt:#0f1b2d;--mut:#586a80;
+        --green:#0a8b68;--mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace}
+  @media(prefers-color-scheme:dark){:root{--bg:#080b11;--panel:#0f151e;--line:#1e2a3a;
+        --txt:#e6edf3;--mut:#8494a8;--green:#22d3a0}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);line-height:1.65;
+       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif}
+  .kap{max-width:720px;margin:0 auto;padding:40px 20px 90px}
+  a{color:var(--green)}
+  .ust{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+       color:var(--mut);margin-bottom:18px}
+  h1{font-size:clamp(24px,4vw,34px);line-height:1.18;letter-spacing:-.02em;margin:0 0 12px}
+  .alt{color:var(--mut);font-size:17px;margin:0 0 22px}
+  .satir{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:26px}
+  .cip{font-family:var(--mono);font-size:12px;padding:5px 11px;border-radius:99px;
+       border:1px solid var(--line);background:var(--panel);color:var(--mut)}
+  .cip.ok{border-color:var(--green);color:var(--green)}
+  .basla{display:inline-flex;align-items:center;gap:9px;background:var(--green);color:#fff;
+         font-size:16px;font-weight:700;padding:14px 24px;border-radius:12px;text-decoration:none}
+  h2{font-size:14px;font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;
+     color:var(--mut);margin:36px 0 12px;font-weight:700}
+  ul.kaynak{list-style:none;padding:0;margin:0;display:grid;gap:9px}
+  ul.kaynak li{background:var(--panel);border:1px solid var(--line);border-radius:11px;
+               padding:11px 14px;font-size:14px}
+  ul.kaynak b{font-weight:700}
+  .dip{margin-top:44px;padding-top:20px;border-top:1px solid var(--line);
+       font-family:var(--mono);font-size:12.5px;color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="kap">
+  <div class="ust"><a href="https://mltraining.org/?lang=en">ML Academy</a> · Track 3 · Large Language Models</div>
+  <h1>Self-supervision: making the label out of the data</h1>
+  <p class="alt">If there is no label, invent one. In this setup the raw counts carry provably zero information about the topic, so all of the gain comes from the pretext task.</p>
+  <div class="satir">
+    <span class="cip">4 steps</span>
+    <span class="cip">175 XP</span>
+    <span class="cip ">A free account is needed</span>
+  </div>
+  <a class="basla" href="https://mltraining.org/lesson.html?id=oz-gozetim&lang=en">Start the lesson &rarr;</a>
+  <h2>Sources</h2>
+<ul class="kaynak"><li><b>Devlin, J. et al.</b> 2019 · BERT: Pre-training of Deep Bidirectional Transformers · <i>NAACL 2019</i></li><li><b>Chen, T. et al.</b> 2020 · A Simple Framework for Contrastive Learning of Visual Representations · <i>ICML 2020</i></li><li><b>Balestriero, R. et al.</b> 2023 · A Cookbook of Self-Supervised Learning · <i>arXiv:2304.12210</i></li></ul>
+  <div class="dip">ML Academy · an interactive machine learning course that runs in your browser · <a href="https://mltraining.org/?lang=en">All lessons</a></div>
+</div>
+</body>
+</html>
