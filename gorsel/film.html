@@ -64,7 +64,7 @@
 <div class="sahne">
   <div class="ust">
     <span class="marka">ML ACADEMY</span>
-    <span class="yol">rota-0 / <b>ezberleme</b> · adım 2/4</span>
+    <span class="yol" id="yol">rota-0 / <b>ezberleme</b> · adım 2/4</span>
   </div>
   <div class="baslik" id="baslik">Modeli esnetelim</div>
 
@@ -79,8 +79,21 @@
   <div class="alt"><span>mltraining.org</span><b>KAYDIRICI SENDE</b></div>
 </div>
 
+<script>
+/* DİL, viz.js'ten ÖNCE ayarlanmalı. viz.js içindeki VDIL sabiti yüklenme
+   anında localStorage'dan okunuyor ve bir daha değişmiyor; tuvalin içine
+   çizilen etiketler (örneğin "derece 9") onun üzerinden çevriliyor.
+   Sonradan ayarlarsak tuval Türkçe kalır. */
+(function(){
+  var u = new URLSearchParams(location.search).get('lang');
+  if (u === 'en' || u === 'tr') localStorage.setItem('mlacad_dil', u);
+})();
+</script>
+<script src="../viz-sozluk.js"></script>
 <script src="../viz.js"></script>
 <script src="../content.js"></script>
+<script src="../content-en.js"></script>
+<script src="../arayuz-sozluk.js"></script>
 <script>
 (function(){
   'use strict';
@@ -93,9 +106,27 @@
      hızlı hem de sonucu birebir aynı. */
   const dogrudan = q.get('derece') ? parseInt(q.get('derece'), 10) : null;
 
-  const D = DERSLER['ezberleme'];
+  /* DİL · ?lang=en ile İngilizce kare üretilir.
+     Metin ÇEVİRİLMİYOR, sitenin gerçek İngilizce içeriğinden alınıyor:
+     ders adı ve adım başlığı content-en.js'ten, canlı kutu etiketleri
+     arayuz-sozluk.js'ten. Yani karedeki her kelime kullanıcının derste
+     göreceğiyle birebir aynı. */
+  const EN = (q.get('lang') || 'tr').toLowerCase() === 'en';
+  const enDers = EN && typeof DERSLER_EN !== 'undefined' ? DERSLER_EN['ezberleme'] : null;
+
+  const D = enDers || DERSLER['ezberleme'];
   const a = D.adimlar[1];                 // kaydırıcılı adım
+  const aTR = DERSLER['ezberleme'].adimlar[1];
   const c = a.controls[0];                // derece · 1..9
+
+  /* Canlı kutuların live() fonksiyonu İngilizce katmanda yeniden
+     tanımlanmıyor (fonksiyon değerli anahtarlar Türkçe'den korunuyor),
+     o yüzden etiketler arayüz sözlüğünden çevriliyor. Sitedeki CEVIR()
+     ile aynı tablo. */
+  const cevir = function(t){
+    if (!EN || typeof ARAYUZ_EN === 'undefined') return t;
+    return ARAYUZ_EN[t] || t;
+  };
 
   /* Kare numarasını kontrol değerine çevir.
      Başta ve sonda birer duraklama var: izleyicinin ilk hâli görmesi ve
@@ -115,25 +146,37 @@
 
   /* Durum, lesson.html'deki vizState() ile aynı sırayla kuruluyor:
      adımın kendi state'i, kontrol değeri, sonra derive(). */
-  let s = Object.assign({}, a.state || {});
+  let s = Object.assign({}, a.state || aTR.state || {});
   s[c.k] = derece;
-  if (a.derive){ s._d = a.derive(s); s = Object.assign({}, s, s._d); }
+  const derive = a.derive || aTR.derive;
+  if (derive){ s._d = derive(s); s = Object.assign({}, s, s._d); }
 
-  useCanvas(document.getElementById('cv'), 1200, 480);
+  /* MANTIKSAL BOYUT 1500x600 OLMALI.
+     viz.js içindeki çizimler mutlak koordinat kullanıyor (rect(800,150,...)
+     gibi), lesson.html de tuvali 1500x600 kuruyor. Başka bir boyut verilince
+     yerleşim kayıyor ve sağdaki kutular tuvalin dışında kalıyor. CSS boyutu
+     farklı olabilir, oran aynı kaldığı sürece sorun yok. */
+  useCanvas(document.getElementById('cv'), 1500, 600);
   VIZ[a.viz](s);
 
   /* Kaydırıcı görüntüsü */
   const oran = (derece - c.min) / (c.max - c.min);
   document.getElementById('kayAd').textContent = c.lb;
+  document.getElementById('baslik').textContent = a.t;
+  document.getElementById('yol').innerHTML = EN
+    ? 'track-0 / <b>memorisation</b> · step 2/4'
+    : 'rota-0 / <b>ezberleme</b> · adım 2/4';
+  document.querySelector('.alt b').textContent = EN ? 'THE SLIDER IS YOURS' : 'KAYDIRICI SENDE';
   document.getElementById('kayDeger').textContent = derece;
   document.getElementById('dolgu').style.width = (oran * 100) + '%';
   document.getElementById('tutamak').style.left = (oran * 100) + '%';
 
   /* Canlı sayılar dersin kendi live() fonksiyonundan. Elle yazılmıyor:
      videodaki sayılar da derste görülenlerle birebir aynı olsun. */
-  const lv = a.live ? a.live(s) : [];
+  const canliFn = a.live || aTR.live;
+  const lv = canliFn ? canliFn(s) : [];
   document.getElementById('canli').innerHTML = (lv || []).slice(0, 3).map(function(r){
-    return '<div class="cv"><div class="k">' + r[0] + '</div>' +
+    return '<div class="cv"><div class="k">' + cevir(r[0]) + '</div>' +
            '<div class="n" style="color:' + (r[2] || '#e6edf3') + '">' + r[1] + '</div></div>';
   }).join('');
 })();

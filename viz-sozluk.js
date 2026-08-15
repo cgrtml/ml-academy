@@ -3,6 +3,29 @@
    # ile temsil edilir ve karşılıkta aynı sırayla geri konur.
    Envanteri güncellemek için: node tuval-metin.js eksik   */
 var TUVAL_EN = {
+  /* ── 14 Ağustos 2026 · TUVAL_AYNI listesinden taşınanlar ──
+     Bu 18 etiket yanlışlıkla "İngilizcede aynı kalır" listesindeydi,
+     yani İngilizce derslerde tuvalin içinde Türkçe görünüyorlardı.
+     Site bütün derslerin çevrildiğini söylüyor; bunlar o iddiayı
+     delen kaçaklardı. */
+  "derece #": "degree #",
+  "boyut #": "dimension #",
+  "ADIM  #": "STEP  #",
+  "AYLIK  $#": "MONTHLY  $#",
+  "# bit": "# bits",
+  "# piksel": "# pixels",
+  "#×# havuz": "#×# pooling",
+  "#×# maks havuz": "#×# max pooling",
+  "IZGARA · # deneme": "GRID · # trials",
+  "RASTGELE · # deneme": "RANDOM · # trials",
+  "#e+# tur": "#e+# passes",
+  "#e+# kat": "#e+# times",
+  "TAKAS  a[#] ⇄ a[#]": "SWAP  a[#] ⇄ a[#]",
+  "f₁ SAPMASI": "f₁ DEVIATION",
+  "f₂ SAPMASI": "f₂ DEVIATION",
+  "ZAMAN  O(n²)": "TIME  O(n²)",
+  "BELLEK  O(#)": "MEMORY  O(#)",
+  "klipli τ = #": "clipped τ = #",
   "gürültü": "noise",
   "doğru sınıfa verilen olasılık": "probability given to the correct class",
   "kuş": "bird",
@@ -4216,20 +4239,20 @@ var TUVAL_AYNI = [
   "y ≤ #","x ≤ #","x = #","t = #","n = #","z = #","n =  #","n =   #","p = < #","L = #","h#[#]",
   "XᵀX + λI","NORMAL DENKLEM  ·  w = (XᵀX)⁻¹Xᵀy","∂σ / ∂t  =  σ(#−σ)/T","∂L/∂a = -","∂L/∂a = #",
   "L#: |β₁| + |β₂| ≤ t   →   ELMAS","GRADIENT BOOSTING","lr  #","MSE  #","PCA #°","Fisher #°","ŷ = #·x + #",
-  "∂/∂x₁","∂/∂x₂","∂/∂x₃","f = sin(x₁·x₂) + exp(x₂/x₃) − log(# + x₁²)","η = # / a","k  #","k = #","boyut #",
+  "∂/∂x₁","∂/∂x₂","∂/∂x₃","f = sin(x₁·x₂) + exp(x₂/x₃) − log(# + x₁²)","η = # / a","k  #","k = #",
   "COHEN κ  #","LLM-as-JUDGE","JUDGE","LSTM","KV CACHE","p = #","p = σ(z)","z = w·x + b","A · B","B · A","AB ≠ BA",
-  "n = #.#","#e+#×","#e+# tur","(n−#)! = #","ADIM  #","k-NEAREST NEIGHBORS","ROC  ·  AUC = #","$# / $# per M",
-  "AYLIK  $#","(SFT)","(RLHF/DPO)","(pretraining)","# bit","# ns","# ms","# piksel","#×# havuz","#×# maks havuz",
-  "IZGARA · # deneme","RASTGELE · # deneme","D=# KISAYOL","HESSIAN","# atama","#.# atama","KABA KUVVET (Nᴺ)",
+  "n = #.#","#e+#×","(n−#)! = #","k-NEAREST NEIGHBORS","ROC  ·  AUC = #","$# / $# per M",
+  "(SFT)","(RLHF/DPO)","(pretraining)","# ns","# ms",
+  "D=# KISAYOL","HESSIAN","# atama","#.# atama","KABA KUVVET (Nᴺ)",
   "■ Newton","SGD  #","Adam  #","SGD (lr #)","Adam (lr #)","log₁₀ MSE","RANDOM FOREST","BUBBLE SORT",
   "SUPPORT VECTOR MACHINE","PERPLEXITY","#-gram","T  #","top-k  #","top-p  #","C  #","C (ceza)","MARJ  #",
-  "N ≤ #","N = #","T = #","K = #","f = #","PC#  %#","#e+# kat","a[#]=#  >  a[#]=# ?","TAKAS  a[#] ⇄ a[#]",
-  "L − L∞ ∝ N^−α","L(N) = L∞ + A · N^(−α)","marj = # / ‖w‖","teorik γ¹⁰ = #","derece #","MODEL","test",
+  "N ≤ #","N = #","T = #","K = #","f = #","PC#  %#","a[#]=#  >  a[#]=# ?",
+  "L − L∞ ∝ N^−α","L(N) = L∞ + A · N^(−α)","marj = # / ‖w‖","teorik γ¹⁰ = #","MODEL","test",
   "norm","Q,K,V","Attention","x  (n × d)","# BLOK  #B","x = x + mlp","x = x + attn","BLOK  #M param",
   "softmax(QKᵀ/√d)·V","x̂ = x / rms(x) · γ","Q=x̂Wq  K=x̂Wk  V=x̂Wv","W₂·(SiLU(W₁x̂) ⊙ W₃x̂)",
   "get","getConfig","<fatura>...</fatura>","#, \"oran\": #}","ε = # · K = #","K=# / K=#","K = # DE",
   "Ada","Ege","Bora","Jale","Ceren","Deniz","Gizem","Hakan","Irmak","Fikret",
-  "f₁(x₁)","f₂(x₂)","f₁ SAPMASI","f₂ SAPMASI","ZAMAN  O(n²)","BELLEK  O(#)","klipli τ = #",
+  "f₁(x₁)","f₂(x₂)",
   "iade_edildi","islem_tutari","cihaz_yeni_mi","ulke_farkli_mi","manuel_inceleme","gecmis_islem_sayisi",
 /*SONAYNI*/
 ];
