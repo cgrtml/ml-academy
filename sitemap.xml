@@ -3,6 +3,7 @@
   <url><loc>https://mltraining.org/</loc><priority>1.0</priority></url>
   <url><loc>https://mltraining.org/modeller.html</loc><priority>0.8</priority></url>
   <url><loc>https://mltraining.org/about.html</loc><priority>0.5</priority></url>
+  <url><loc>https://mltraining.org/pilot.html</loc><priority>0.5</priority></url>
   <url><loc>https://mltraining.org/privacy.html</loc><priority>0.3</priority></url>
   <url><loc>https://mltraining.org/ders/en/algoritma.html</loc><priority>0.9</priority></url>
   <url><loc>https://mltraining.org/ders/tr/algoritma.html</loc><priority>0.9</priority></url>

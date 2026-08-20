@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Classroom Pilot · ML Academy</title>
+<link rel="canonical" href="https://mltraining.org/pilot.html">
+
+<meta property="og:type"        content="website">
+<meta property="og:site_name"   content="ML Academy">
+<meta property="og:title"       content="Classroom Pilot · ML Academy">
+<meta property="og:description" content="A free one-semester pilot for schools and colleges: 123 machine learning lessons that run in a browser tab, with a live opening session. No install, no licence, no cost.">
+<meta property="og:url"         content="https://mltraining.org/pilot.html">
+<meta property="og:image"       content="https://mltraining.org/gorsel/og.png">
+<meta property="og:image:width"  content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="Classroom Pilot · ML Academy">
+<meta name="twitter:description" content="A free one-semester pilot for schools and colleges: 123 machine learning lessons that run in a browser tab, with a live opening session.">
+<meta name="twitter:image"       content="https://mltraining.org/gorsel/og.png">
+
+<meta name="description" content="A free one-semester pilot for schools and colleges: 123 machine learning lessons that run in a browser tab, with a live opening session. No install, no licence, no cost.">
+
+<!--
+  ML Academy · sinif pilotu
+  ─────────────────────────────────────────────────────────────────────
+  Bu sayfa kurumlara gonderilen soguk e-postanin indigi yer. Tek isi
+  var: bir CTAE muduru ya da bolum baskani 90 saniyede "bu bedava,
+  kurulum yok, adam gercek" diyebilsin.
+
+  SAYILAR about.html ILE AYNI OLMAK ZORUNDA. 123 ders · 401 adim ·
+  165 simulasyon · 387 kaynak, denetim.js ciktisindan. Ders eklenince
+  iki sayfa birden guncellenecek.
+
+  URUNUN YAPMADIGI SEY VAAT EDILMEDI: ogretmen paneli ve kohort
+  analitigi yok, o yuzden sozu de verilmedi. Donem ortasi/sonu geri
+  bildirim gorusmesi var, otomatik rapor yok.
+
+  UNVAN KURALI about.html ile ayni: kurum adi verilmeyen sifat yok.
+-->
+
+<script>
+const TKEY = 'mlacad_tema';
+function temaOku(){
+  const k = localStorage.getItem(TKEY);
+  if (k === 'koyu' || k === 'acik') return k;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'koyu' : 'acik';
+}
+document.documentElement.setAttribute('data-tema', temaOku());
+</script>
+
+<style>
+  :root{
+    --bg:#ffffff; --bg2:#f6f8fc; --line:#e3e9f2; --line2:#d3dceb;
+    --txt:#0b1524; --mut:#5a6b81; --mut2:#8496ab;
+    --green:#0a8b68; --blue:#1668c9; --orange:#c2620d; --purple:#6d3fd4; --pink:#c92a72;
+    --ink:#070a0f;
+    --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  :root[data-tema="koyu"]{
+    --bg:#080b11; --bg2:#0f151e; --line:#1e2a3a; --line2:#2a394d;
+    --txt:#e6edf3; --mut:#8494a8; --mut2:#63758c;
+    --green:#22d3a0; --blue:#4cc4ff; --orange:#fb923c; --purple:#a78bfa; --pink:#f472b6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);line-height:1.68;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:780px;margin:0 auto;padding:0 26px}
+  a{color:var(--blue)}
+
+  nav{border-bottom:1px solid var(--line);background:var(--bg)}
+  .nav{display:flex;align-items:center;gap:14px;height:62px;max-width:1120px;margin:0 auto;padding:0 26px}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:800;text-decoration:none;color:var(--txt)}
+  .logo i{width:24px;height:24px;border-radius:7px;background:var(--ink);display:block;position:relative}
+  .logo i::after{content:'';position:absolute;left:4px;right:4px;bottom:5px;height:3px;border-radius:2px;
+    background:linear-gradient(90deg,#22d3a0,#4cc4ff,#fb923c,#a78bfa,#f472b6)}
+  .nav .geri{margin-left:auto;font-size:14px;color:var(--mut);text-decoration:none}
+
+  header{padding:60px 0 0}
+  .etiket{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+          color:var(--green);margin:0 0 14px}
+  h1{font-size:clamp(32px,4.8vw,44px);line-height:1.12;letter-spacing:-.032em;font-weight:850;margin:0}
+  .ozet{margin:20px 0 0;font-size:18.5px;color:var(--mut)}
+
+  h2{font-size:24px;line-height:1.28;letter-spacing:-.024em;font-weight:800;margin:56px 0 0}
+  h3{font-size:17px;font-weight:760;margin:0}
+  p{margin:14px 0 0;font-size:16.5px}
+  p.mut{color:var(--mut);font-size:15.5px}
+  code{font-family:var(--mono);font-size:13.5px}
+
+  .kural{margin-top:26px;padding:2px 0 2px 20px;border-left:3px solid var(--green);
+         font-size:19px;font-weight:700;line-height:1.5;letter-spacing:-.015em}
+
+  .sayilar{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+           border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-top:34px}
+  .sayilar div{background:var(--bg);padding:20px 14px;text-align:center}
+  .sayilar .n{font-size:26px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+  .sayilar .l{margin-top:3px;font-family:var(--mono);font-size:10px;letter-spacing:.13em;
+              text-transform:uppercase;color:var(--mut2)}
+  @media(max-width:640px){ .sayilar{grid-template-columns:1fr 1fr} }
+
+  .kod{margin-top:26px;border:1px solid var(--line);border-left:3px solid var(--green);
+       border-radius:0 16px 16px 0;overflow:hidden;background:var(--bg2)}
+  .kod pre{margin:0;padding:22px 24px;overflow-x:auto;font-family:var(--mono);
+           font-size:13.5px;line-height:1.85;color:var(--txt)}
+  .kod .bosluk{color:var(--green);font-weight:700}
+  .kod .not{border-top:1px solid var(--line);padding:18px 24px;font-size:15.3px;color:var(--mut);
+            background:var(--bg)}
+  .kod .not b{color:var(--txt);font-weight:700}
+
+  .liste{margin-top:26px;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .liste > div{border-bottom:1px solid var(--line);padding:20px 24px}
+  .liste > div:last-child{border-bottom:0}
+  .liste p{margin:6px 0 0;font-size:15.3px;color:var(--mut)}
+
+  .adimlar{margin-top:26px;display:flex;flex-direction:column;gap:22px}
+  .adim{display:grid;grid-template-columns:30px 1fr;gap:16px;align-items:start}
+  .adim .no{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--green);
+            border:1px solid var(--line2);border-radius:8px;text-align:center;padding:4px 0;
+            font-variant-numeric:tabular-nums}
+  .adim p{margin:5px 0 0;font-size:15.3px;color:var(--mut)}
+
+  .kim{margin-top:26px;border:1px solid var(--line);border-radius:18px;padding:26px;background:var(--bg2)}
+  .kim .ad{font-size:20px;font-weight:800;letter-spacing:-.02em}
+  .kim .rol{font-size:14.5px;color:var(--mut);margin-top:2px}
+  .kim p{font-size:15.8px}
+  .etiketler{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+  .etiketler span{border:1px solid var(--line2);border-radius:100px;padding:5px 13px;
+    font-size:13px;color:var(--mut);background:var(--bg)}
+  .baglar{display:flex;flex-wrap:wrap;gap:16px;margin-top:20px;font-size:14.5px}
+
+  .cagri{margin-top:34px;border:1px solid var(--line2);border-radius:18px;padding:26px;
+         background:var(--bg2)}
+  .cagri h3{font-size:19px;letter-spacing:-.02em}
+  .cagri p{font-size:15.8px}
+
+  footer{margin-top:76px;padding:34px 0 46px;border-top:1px solid var(--line);
+         font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--mut2)}
+  footer a{color:var(--mut)}
+
+  a:focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:4px}
+</style>
+</head>
+<body>
+
+<nav><div class="nav">
+  <a class="logo" href="index.html"><i></i> ML Academy</a>
+  <a class="geri" href="index.html">← Back to the site</a>
+</div></nav>
+
+<div class="wrap">
+
+<header>
+  <p class="etiket">Classroom pilot · one semester · no cost</p>
+  <h1>Machine learning that checks whether you actually learned it</h1>
+  <p class="ozet">ML Academy is a free machine learning course that runs entirely in a browser
+     tab, including the Python. Students do not watch lecture videos. They predict before they
+     see the result, then finish each lesson by writing the algorithm and running it.</p>
+</header>
+
+<p class="kural">I am offering a small number of schools and colleges a free one-semester pilot,
+   opened by a live 90-minute session from me.</p>
+
+<div class="sayilar">
+  <div><div class="n">123</div><div class="l">lessons</div></div>
+  <div><div class="n">401</div><div class="l">steps</div></div>
+  <div><div class="n">165</div><div class="l">simulations</div></div>
+  <div><div class="n">387</div><div class="l">references</div></div>
+</div>
+
+<h2>What students get</h2>
+<p>Five tracks run from no prior knowledge to large language models: foundations, classical
+   machine learning, deep learning, LLMs, and using AI responsibly. The algorithms are not
+   library calls. CART with Gini gain, random forests with bootstrap sampling, an MLP with
+   backpropagation, a BPE tokenizer and the rest are implemented from scratch, so the numbers
+   on screen come out of code the student can read.</p>
+<p>Python executes inside the browser tab. There is nothing for a district IT department to
+   install, approve, license or purchase, and it works on a Chromebook.</p>
+
+<h2>How a lesson ends</h2>
+<div class="kod">
+<pre><code>for step in range(2000):
+    gw, gb = gradient(w, b)
+    w = w <span class="bosluk">[ ? ]</span> lr <span class="bosluk">[ ? ]</span> gw
+    b = b <span class="bosluk">[ ? ]</span> lr <span class="bosluk">[ ? ]</span> gb</code></pre>
+<div class="not">The student fills the blanks and presses run. Write minus and the loss falls
+  from 2154 to 5.20. Write plus and the model climbs the hill and blows up, because they just
+  wrote gradient ascent. <b>Wrong answers are not rejected. They are executed, so the student
+  sees what their answer actually does.</b></div>
+</div>
+<p>Every lesson also asks for a prediction before the simulation runs. The student's hit rate
+   becomes a calibration score: one number showing where their intuition is unreliable. That is
+   the part most courses never measure.</p>
+
+<h2>Why this fits a classroom</h2>
+<div class="liste">
+  <div>
+    <h3>No procurement</h3>
+    <p>No licence, no purchase order, no vendor onboarding. Students open a link.</p>
+  </div>
+  <div>
+    <h3>No hardware barrier</h3>
+    <p>Everything runs in the browser tab, including the Python. A Chromebook is enough.</p>
+  </div>
+  <div>
+    <h3>Evidence, not vibes</h3>
+    <p>Overfitting, data leakage and statistical testing are taught early, by making students
+       trust a bad number first and then watching it break when the data is re-split.</p>
+  </div>
+  <div>
+    <h3>It supplements, it does not replace</h3>
+    <p>It sits inside an existing Business &amp; Computer Science pathway, AP CS course or
+       college CIS section rather than displacing anything already scheduled.</p>
+  </div>
+</div>
+
+<h2>What the pilot looks like</h2>
+<div class="adimlar">
+  <div class="adim">
+    <div class="no">1</div>
+    <div>
+      <h3>We agree on a class and a start date</h3>
+      <p>One teacher, one section. Thirty minutes on a call is enough to scope it.</p>
+    </div>
+  </div>
+  <div class="adim">
+    <div class="no">2</div>
+    <div>
+      <h3>I run a 90-minute opening session</h3>
+      <p>Live with the students, in person or over video. I taught this same format most
+         recently as a hands-on workshop at Washington State University.</p>
+    </div>
+  </div>
+  <div class="adim">
+    <div class="no">3</div>
+    <div>
+      <h3>Students work through a track over the term</h3>
+      <p>Self-paced. The first three lessons of every track are open to anyone; a free account,
+         with no card, unlocks the rest and keeps progress across devices.</p>
+    </div>
+  </div>
+  <div class="adim">
+    <div class="no">4</div>
+    <div>
+      <h3>I check in mid-term and again at the end</h3>
+      <p>I ask the teacher what broke and what worked, and I fix it. That feedback is the
+         reason I want a pilot at all.</p>
+    </div>
+  </div>
+</div>
+
+<h2>What I ask in return</h2>
+<div class="liste">
+  <div>
+    <h3>Honest feedback from the teacher</h3>
+    <p>Including, especially, the parts that did not work.</p>
+  </div>
+  <div>
+    <h3>Permission to say the pilot happened</h3>
+    <p>The name of the school and the number of students, nothing about individuals.</p>
+  </div>
+  <div>
+    <h3>A short letter of collaboration at the end</h3>
+    <p>Only if you are willing and only if the pilot went well.</p>
+  </div>
+</div>
+<p class="mut">That is the whole ask. There is no paid tier, no upsell and nothing to sign.
+   The course is free permanently, not free for a trial: there is no advertising, no sponsor,
+   no investor and no payment integration of any kind.</p>
+
+<h2>Who is behind it</h2>
+<div class="kim">
+  <div class="ad">Cagri Temel</div>
+  <div class="rol">Machine learning engineer · LLMs, retrieval and MLOps</div>
+  <p style="margin-top:14px">I wrote every lesson, every simulation and every verification test
+     in this course, and I give it away. My research is on making AI systems auditable: whether
+     a claim a system makes about its own reasoning can be checked by someone else. It has
+     appeared at the IEEE Conference on Artificial Intelligence (CAI 2026) and IEEE SoutheastCon
+     2026.</p>
+  <div class="etiketler">
+    <span>MS, Computer Science</span>
+    <span>IEEE Senior Member</span>
+    <span>AAAI Member</span>
+    <span>Reviewer · IEEE SMC International Conference</span>
+    <span>Program Committee · AAAI/ACM AIES 2026</span>
+  </div>
+  <div class="baglar">
+    <a href="https://cagritemel.com">cagritemel.com</a>
+    <a href="https://github.com/cgrtml/ml-academy">GitHub</a>
+    <a href="about.html">About this course</a>
+  </div>
+</div>
+
+<div class="cagri">
+  <h3>Starting a pilot</h3>
+  <p>Write to <a href="mailto:contact@mltraining.org">contact@mltraining.org</a> with the name of
+     your school or college, the course it would sit inside, and roughly how many students. I
+     answer every message myself.</p>
+  <p class="mut">You can also just open <a href="index.html">the course</a> and work through the
+     first lesson before you decide. That takes about ten minutes and tells you more than this
+     page does.</p>
+</div>
+
+</div>
+
+<footer><div class="wrap">
+  © 2026 CAGRI TEMEL ·
+  <a href="index.html">MLTRAINING.ORG</a> ·
+  <a href="about.html">ABOUT</a> ·
+  <a href="privacy.html">PRIVACY</a> ·
+  <a href="mailto:contact@mltraining.org">CONTACT</a>
+</div></footer>
+
+</body>
+</html>

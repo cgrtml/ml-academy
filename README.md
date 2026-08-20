@@ -12,9 +12,10 @@ unlocks the remaining lessons and keeps your progress across devices.
 **[Live demo](https://mltraining.org)**
 
 > **Note on language.** The interface has a TR/EN switch on the home page and on every lesson page.
-> **All 122 lessons are available in English**, including the labels drawn on the canvas. Translations
+> **All 123 lessons are available in English**, including the labels drawn on the canvas. Translations
 > live in `content-en.js` and the audit script checks that each one mirrors its Turkish original step
-> for step: 122/122 translated, no structural mismatches.
+> for step: 122/122 translated, no structural mismatches. The remaining lesson, the 5x2cv F-test, is a
+> standalone page with its own English version in `ders-kanit-en.html`.
 
 ![ML Academy home page in English](docs/img/home-en.png)
 
