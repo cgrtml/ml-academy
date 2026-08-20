@@ -12,14 +12,13 @@ unlocks the remaining lessons and keeps your progress across devices.
 **[Live demo](https://mltraining.org)**
 
 > **Note on language.** The interface has a TR/EN switch on the home page and on every lesson page.
-> Lesson content is translated one lesson at a time: the first lesson is fully English, including the
-> labels drawn on the canvas, and it carries an `EN` tag in the curriculum. Lessons that are not
-> translated yet still open in Turkish with the interface in English. Translations live in
-> `content-en.js` and the audit script checks that each one mirrors its Turkish original step for step.
+> **All 122 lessons are available in English**, including the labels drawn on the canvas. Translations
+> live in `content-en.js` and the audit script checks that each one mirrors its Turkish original step
+> for step: 122/122 translated, no structural mismatches.
 
 ![ML Academy home page in English](docs/img/home-en.png)
 
-![The first lesson, fully in English](docs/img/lesson-en.png)
+![A lesson running in English](docs/img/lesson-en.png)
 
 ## Why I built this
 

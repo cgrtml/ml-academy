@@ -11,11 +11,10 @@ hesap yeterli; hesap ayrıca ilerlemenizi cihazlar arasında taşıyor.
 
 **[Canlı demo](https://mltraining.org)**
 
-> **Dil hakkında.** Ana sayfada ve her ders sayfasında bir TR/EN düğmesi var. Ders içeriği tek tek
-> çevriliyor: ilk ders, görsellerin üstündeki etiketler dâhil tamamen İngilizce ve müfredatta `EN`
-> etiketiyle işaretli. Henüz çevrilmemiş dersler İngilizce arayüzle birlikte Türkçe açılıyor.
-> Çeviriler `content-en.js` dosyasında duruyor, denetim betiği her çevirinin Türkçe aslıyla adım adım
-> aynı iskelete sahip olduğunu kontrol ediyor.
+> **Dil hakkında.** Ana sayfada ve her ders sayfasında bir TR/EN düğmesi var. **122 dersin tamamı
+> İngilizce olarak mevcut**, görsellerin üstündeki etiketler dâhil. Çeviriler `content-en.js`
+> dosyasında duruyor, denetim betiği her çevirinin Türkçe aslıyla adım adım aynı iskelete sahip
+> olduğunu kontrol ediyor: 122/122 çevrildi, yapı uyuşmazlığı yok.
 
 ![ML Academy ana sayfa](docs/img/anasayfa.png)
 
