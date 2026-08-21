@@ -45,13 +45,15 @@ const HESAP = (() => {
       dogrula:'E-postana bir doğrulama bağlantısı gönderdik. Onayladıktan sonra giriş yapabilirsin.',
       hata:'Bir şey ters gitti',
       hataGiris:'E-posta ya da şifre hatalı.',
-      hataKayitli:'Bu e-posta zaten kayıtlı. Giriş yap sekmesinden devam edebilirsin.',
+      hataKayitli:'Bu e-posta zaten kayıtlı. Giriş yap sekmesinden devam edebilirsin. Doğrulama mailini hiç almadıysan yenisini isteyebilirsin.',
       hataOnaysiz:'Önce e-postandaki doğrulama bağlantısına tıkla.',
       hataEposta:'Bu e-posta adresi geçerli görünmüyor.',
       hataSifreKisa:'Şifre en az 8 karakter olmalı.',
       hataBekle:'Çok sık denendi. # saniye sonra tekrar dene.',
       hataAg:'Bağlantı kurulamadı. İnterneti kontrol edip tekrar dene.',
       gonderiliyor:'Gönderiliyor…',
+      tekrarGonder:'Maili tekrar gönder',
+      tekrarGonderildi:'Yeni bir doğrulama maili yola çıktı.',
       basariBas:'Hesabın açıldı',
       basariAlt:'# adresine bir doğrulama bağlantısı gönderdik. Bağlantıya tıkladıktan sonra giriş yapabilirsin.',
       basariNot:'Birkaç dakika içinde gelmezse spam klasörüne bak.',
@@ -116,13 +118,15 @@ const HESAP = (() => {
       dogrula:'We sent a confirmation link to your email. You can sign in once you confirm it.',
       hata:'Something went wrong',
       hataGiris:'Email or password is wrong.',
-      hataKayitli:'This email is already registered. Use the Sign in tab.',
+      hataKayitli:'This email is already registered. Use the Sign in tab. If the confirmation email never arrived, you can request a new one.',
       hataOnaysiz:'Please click the confirmation link in your email first.',
       hataEposta:'That email address does not look valid.',
       hataSifreKisa:'Password must be at least 8 characters.',
       hataBekle:'Too many attempts. Try again in # seconds.',
       hataAg:'Could not connect. Check your internet and try again.',
       gonderiliyor:'Sending…',
+      tekrarGonder:'Send the email again',
+      tekrarGonderildi:'A new confirmation email is on its way.',
       basariBas:'Your account is ready',
       basariAlt:'We sent a confirmation link to #. Click it and you can sign in.',
       basariNot:'If it does not arrive within a few minutes, check your spam folder.',
@@ -375,6 +379,30 @@ const HESAP = (() => {
      düğmenin hâlâ basılabilir olduğunu görüp tekrar basıyor, ikinci istek
      Supabase'in hız sınırına takılıyor ve ekranda kırmızı bir hata
      beliriyor. Oysa kayıt olmuştu. Bu yüzden form tamamen kaldırılıyor. */
+  /* ── doğrulama mailini yeniden gönder ──
+     Bu yoktu ve gerçek bir çıkmaz üretiyordu: maili spam'e düşen ya da 24
+     saatlik süreyi kaçıran kullanıcı tekrar kayıt olmayı denediğinde
+     "zaten kayıtlı" duvarına çarpıyor, elinde tek yol kalmıyordu. Okullara
+     açılmadan önce kapatılması gereken açıktı. */
+  function tekrarDug(arka, eposta){
+    const b = document.createElement('button');
+    b.textContent = t.tekrarGonder;
+    b.onclick = async () => {
+      b.disabled = true; b.textContent = t.gonderiliyor;
+      try {
+        const { error } = await sb.auth.resend({ type:'signup', email: eposta });
+        if (error) throw error;
+        mesaj(arka, t.tekrarGonderildi, true);
+        b.textContent = t.tekrarGonder;   // disabled kalıyor: üst üste basmanın
+                                          // tek sonucu Supabase'in hız sınırı
+      } catch (e){
+        mesaj(arka, hataCevir(e), false);
+        b.disabled = false; b.textContent = t.tekrarGonder;
+      }
+    };
+    return b;
+  }
+
   function basariEkrani(arka, eposta){
     const k = arka.querySelector('.hKart');
     k.classList.remove('genis');
@@ -384,10 +412,11 @@ const HESAP = (() => {
         <h3>${t.basariBas}</h3>
         <p class="alt">${t.basariAlt.replace('#', '<b>' + kacir(eposta) + '</b>')}</p>
         <p class="hBasariNot">${t.basariNot}</p>
-        <div class="hDug tek"><button id="hBitti" class="ana">${t.basariKapat}</button></div>
+        <div class="hDug" id="hBasariDug"><button id="hBitti" class="ana">${t.basariKapat}</button></div>
       </div>`;
     k.querySelector('.hKapat').onclick = kapat;
     k.querySelector('#hBitti').onclick = kapat;
+    k.querySelector('#hBasariDug').prepend(tekrarDug(arka, eposta));
   }
 
   const IKON = {
@@ -591,7 +620,15 @@ const HESAP = (() => {
              BOŞ identities dizisidir. */
           const zatenVar = data && data.user && Array.isArray(data.user.identities)
                            && data.user.identities.length === 0;
-          if (zatenVar){ mesaj(arka, t.hataKayitli, false); coz(); return; }
+          if (zatenVar){
+            mesaj(arka, t.hataKayitli, false);
+            const onceki = arka.querySelector('#hTekrarSar'); if (onceki) onceki.remove();
+            const sar = document.createElement('div');
+            sar.className = 'hDug tek'; sar.id = 'hTekrarSar';
+            sar.appendChild(tekrarDug(arka, eposta));
+            arka.querySelector('.hKart').appendChild(sar);
+            coz(); return;
+          }
 
           basariEkrani(arka, eposta);   // düğme artık yok, kilit de gereksiz
         } else {
