@@ -60,10 +60,13 @@
   .cv .n{margin-top:4px;font-size:22px;font-weight:700;letter-spacing:-.02em}
 
   /* ── altyazı · sesin yerine geçiyor ── */
-  .altyazi{position:absolute;left:0;right:0;bottom:46px;text-align:center;padding:0 90px;
+  /* Metin kadar yer kaplayan hap; tam genişlik bant oynatıcı çubuğu gibi
+     duruyordu. */
+  .altyaziKap{position:absolute;left:0;right:0;bottom:42px;text-align:center;padding:0 70px}
+  .altyazi{display:inline-block;padding:12px 24px;border-radius:12px;
+    background:rgba(6,9,14,.86);border:1px solid rgba(255,255,255,.07);
     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-    font-size:25px;line-height:1.35;font-weight:600;color:#e6edf3;letter-spacing:-.01em;
-    text-shadow:0 2px 20px #070a0f, 0 0 40px #070a0f}
+    font-size:24px;line-height:1.35;font-weight:600;color:#e6edf3;letter-spacing:-.01em}
   .altyazi em{color:#22d3a0;font-style:normal}
   .altyazi s{color:#ff6b6b;text-decoration:none}
 
@@ -118,7 +121,7 @@
     <div class="kUrl" id="kUrl"></div>
   </div>
 
-  <div class="altyazi gizle" id="altyazi"></div>
+  <div class="altyaziKap gizle" id="altyaziKap"><span class="altyazi" id="altyazi"></span></div>
 </div>
 
 <script>
@@ -146,7 +149,7 @@
      decodeURIComponent, metindeki gerçek '%' karakterinde (örneğin "%97
      doğruluk") URIError fırlatır ve sayfanın tamamı boş kalır. */
   const altyazi = q.get('altyazi');
-  if (altyazi){ g('altyazi').innerHTML = altyazi; goster(g('altyazi')); }
+  if (altyazi){ g('altyazi').innerHTML = altyazi; goster(g('altyaziKap')); }
 
   if (tip === 'kart'){
     goster(g('kartSahne'));
