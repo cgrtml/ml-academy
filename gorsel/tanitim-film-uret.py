@@ -41,7 +41,7 @@ KROM  = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 PORT  = 8915
 W, H  = 1280, 720
 FPS   = 30
-GECIS = 0.45          # sahneler arası çapraz geçiş, saniye
+GECIS = 0.26          # sahneler arası çapraz geçiş, saniye
 
 # ═══════════════════════════ SENARYO ═══════════════════════════
 # tur:
@@ -51,7 +51,7 @@ GECIS = 0.45          # sahneler arası çapraz geçiş, saniye
 DERS = "veri"         # rota 0'ın 2. dersi · ücretsiz (ilk 3 ders açık)
 
 SENARYO = [
-  {"tur":"kart","sure":3.6,"p":{"tip":"kart",
+  {"tur":"kart","sure":2.9,"p":{"tip":"kart",
     "buyuk":"Yapay zekâyı <em>yaparak</em> öğren",
     "orta":"Sıfırdan başlayanlar için. Tarayıcıda çalışır, kurulum istemez.",
     "url":"mltraining.org"}},
@@ -59,53 +59,53 @@ SENARYO = [
   # Kaydırma aralıkları uzun görüntü üzerinden ÖLÇÜLDÜ, tahmin değil:
   # y≈560'ta rakam şeridi ve "Her ders aynı beş adımı izler" başlığı,
   # y≈1800'de Rota 0 ve ilk üç dersin açık olduğu ızgara duruyor.
-  {"tur":"pan","sure":5.5,"sayfa":"index","y0":0,"y1":430,
+  {"tur":"pan","sure":3.9,"sayfa":"index","y0":0,"y1":430,
     "altyazi":"mltraining.org'u aç. Kurulum yok, indirme yok."},
-  {"tur":"pan","sure":5.5,"sayfa":"index","y0":430,"y1":610,
+  {"tur":"pan","sure":3.9,"sayfa":"index","y0":430,"y1":610,
     "altyazi":"123 ders, 401 etkileşimli adım, 165 canlı görselleştirme."},
-  {"tur":"pan","sure":6.0,"sayfa":"index","y0":645,"y1":880,
+  {"tur":"pan","sure":4.4,"sayfa":"index","y0":645,"y1":880,
     "altyazi":"Her ders aynı beş adımı izler: <em>hedef · gör · oyna · soru · özet</em>."},
-  {"tur":"pan","sure":5.5,"sayfa":"index","y0":1755,"y1":2150,
+  {"tur":"pan","sure":4.2,"sayfa":"index","y0":1755,"y1":2150,
     "altyazi":"Beş rota var. Her rotanın <em>ilk üç dersi herkese açık</em>."},
 
-  {"tur":"pan","sure":5.5,"ders":DERS,"adim":2,"y0":0,"y1":330,
+  {"tur":"pan","sure":4.1,"ders":DERS,"adim":2,"y0":0,"y1":330,
     "altyazi":"Bir ders aç. Solda adımlar, sağda konu."},
-  {"tur":"pan","sure":5.0,"ders":DERS,"adim":2,"y0":150,"y1":470,
+  {"tur":"pan","sure":3.9,"ders":DERS,"adim":2,"y0":150,"y1":470,
     "altyazi":"<em>1 · HEDEF</em> — Ne öğreneceğini tek cümleyle baştan söyler."},
-  {"tur":"pan","sure":4.5,"ders":DERS,"adim":2,"y0":520,"y1":744,
+  {"tur":"pan","sure":3.5,"ders":DERS,"adim":2,"y0":520,"y1":744,
     "altyazi":"<em>3 · OYNA</em> — Sonra kaydırıcıyı sana veriyor."},
 
   # Kaydırıcı hareketi: 1'den 10'a. Aradaki kareler hesaplanıyor.
-  {"tur":"dizi","sure":5.0,"sayfa":"ders","altyazi":"Oynattıkça sayılar yeniden hesaplanıyor — okumuyorsun, <em>deniyorsun</em>.",
+  {"tur":"dizi","sure":4.1,"sayfa":"ders","altyazi":"Oynattıkça sayılar yeniden hesaplanıyor — okumuyorsun, <em>deniyorsun</em>.",
    "kareler":[{"sayfa":"ders","id":DERS,"adim":2,"kaydir":780,"deger":v} for v in (1,3,5,7,9,10)]},
 
-  {"tur":"pan","sure":5.5,"ders":DERS,"adim":4,"y0":690,"y1":880,
+  {"tur":"pan","sure":4.1,"ders":DERS,"adim":4,"y0":690,"y1":880,
     "altyazi":"<em>4 · SORU</em> — Sonraki adımın kilidi doğru cevapla açılıyor."},
 
-  {"tur":"kart","sure":3.2,"p":{"tip":"kart","logo":"0",
+  {"tur":"kart","sure":2.6,"p":{"tip":"kart","logo":"0",
     "buyuk":"Peki ne öğreniyorsun?","orta":"Üç örnek, üç farklı rotadan."}},
 
   # Eşik 0.20'den 0.97'ye akıyor; vurucu hâl sonda.
-  {"tur":"dizi","sure":7.0,"altyazi":"Doğruluk yükseliyor… ama yakalanan dolandırıcılık <s>düşüyor</s>.",
+  {"tur":"dizi","sure":5.4,"altyazi":"Doğruluk yükseliyor… ama yakalanan dolandırıcılık <s>düşüyor</s>.",
    "kareler":[{"tip":"viz","ders":"metrikler","adim":0,"deger":d,"rota":0}
               for d in (0.20,0.35,0.50,0.62,0.75,0.86,0.93,0.97)]},
 
   # Polinom derecesi 1'den 9'a.
-  {"tur":"dizi","sure":6.0,"altyazi":"Modeli esnettikçe hata sıfıra iniyor. Ama model öğrenmiyor, <s>ezberliyor</s>.",
+  {"tur":"dizi","sure":4.8,"altyazi":"Modeli esnettikçe hata sıfıra iniyor. Ama model öğrenmiyor, <s>ezberliyor</s>.",
    "kareler":[{"tip":"viz","ders":"ezberleme","adim":1,"deger":d,"rota":0}
               for d in (1,2,3,4,5,6,7,8,9)]},
 
   # Sıcaklık 0.4'ten 1.6'ya: başarısızdan kazanmaya.
-  {"tur":"dizi","sure":6.0,"altyazi":"Sert eşik yerine yumuşak kapı: daha az parametreyle klasik ağacı <em>geçiyor</em>.",
+  {"tur":"dizi","sure":4.8,"altyazi":"Sert eşik yerine yumuşak kapı: daha az parametreyle klasik ağacı <em>geçiyor</em>.",
    "kareler":[{"tip":"viz","ders":"soft-tree","adim":0,"deger":d,"rota":1,"rozet":"NEURAL-TREES"}
               for d in (0.4,0.6,0.8,1.0,1.2,1.4,1.6)]},
 
-  {"tur":"kart","sure":4.2,"p":{"tip":"kart",
+  {"tur":"kart","sure":3.3,"p":{"tip":"kart",
     "buyuk":"Her ders bir <em>iddia</em> ile biter",
     "orta":"İddiayı okumuyorsun. Kaydırıcıyı oynatıp <em>kendin doğruluyorsun</em>."}},
-  {"tur":"kart","sure":6.5,"p":{"tip":"kart","rakam":"1",
+  {"tur":"kart","sure":4.8,"p":{"tip":"kart","rakam":"1",
     "buyuk":"Beş rota, tek yol","orta":"Hiç bilmeyenden büyük dil modellerine kadar."}},
-  {"tur":"kart","sure":6.0,"p":{"tip":"kart","logo":"0",
+  {"tur":"kart","sure":4.8,"p":{"tip":"kart","logo":"0",
     "buyuk":"Kurulum yok.<br>Ücret yok.",
     "orta":"Her rotanın ilk üç dersi herkese açık.","url":"mltraining.org"}},
 ]
@@ -154,8 +154,14 @@ def altyazi_katman(metin, i):
     return Image.open(hedef).convert("RGBA")
 
 def yumusat(x):
-    """smoothstep · doğrusal hareket videoda mekanik duruyor."""
+    """smoothstep · başta ve sonda yavaşlar. Duraklamalı dizilerde doğru."""
     return x * x * (3 - 2 * x)
+
+def cabuk(x):
+    """easeOut · hızlı başlar, yerine oturur. Kaydırma için bu gerekiyor:
+    smoothstep kaydırmayı hem başta hem sonda yavaşlattığı için hareket
+    sürükleniyormuş gibi duruyordu."""
+    return 1 - (1 - x) ** 3
 
 def bindir(kare, katman, gorunurluk):
     if katman is None or gorunurluk <= 0: return kare
@@ -171,7 +177,7 @@ def sahne_kareleri(s, idx):
     n = max(1, int(round(s["sure"] * FPS)))
     katman = altyazi_katman(s.get("altyazi"), idx)
     # altyazı ilk 0.4 sn'de beliriyor, son 0.4 sn'de kayboluyor
-    bel = int(0.4 * FPS)
+    bel = int(0.26 * FPS)
     def gor(i):
         if i < bel: return i / bel
         if i > n - bel: return max(0.0, (n - i) / bel)
@@ -184,7 +190,7 @@ def sahne_kareleri(s, idx):
         uzun = uzun_yakala(ad, p)
         ymaks = max(0, uzun.height - H)
         for i in range(n):
-            t = yumusat(i / max(1, n - 1))
+            t = cabuk(i / max(1, n - 1))
             y = int(round(s["y0"] + (s["y1"] - s["y0"]) * t))
             y = max(0, min(ymaks, y))
             yield bindir(uzun.crop((0, y, W, y + H)), katman, gor(i))
@@ -201,7 +207,7 @@ def sahne_kareleri(s, idx):
             imgs.append(Image.open(hedef).convert("RGB"))
         # Komşu kareler arasında ara değer: Chrome'u 30 fps çağırmadan
         # yumuşak hareket. Başta ve sonda kısa duraklama var.
-        bas, son = int(0.35 * FPS), int(0.55 * FPS)
+        bas, son = int(0.22 * FPS), int(0.38 * FPS)
         akis = max(1, n - bas - son)
         for i in range(n):
             if i < bas: konum = 0.0
