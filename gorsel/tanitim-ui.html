@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>ML Academy · arayüz karesi</title>
+<!--
+  ML Academy · tanıtım filminin ARAYÜZ karesi
+  ─────────────────────────────────────────────────────────────────────
+  tanitim-film.html grafikleri sitenin motoruyla yeniden çiziyordu. Bu sayfa
+  daha ileri gidiyor: sitenin GERÇEK sayfasını bir iframe'e alıyor ve o
+  sayfanın kendi fonksiyonlarını çağırarak istenen adıma getiriyor. Yani
+  karede görünen şey sitenin bir canlandırması değil, sitenin kendisi.
+
+  NEDEN IFRAME
+  Chrome'un --screenshot kipi sayfaya betik enjekte edemiyor, tıklayamıyor.
+  Aynı kaynaktaki bir iframe ise contentWindow üzerinden erişilebilir, yani
+  lesson.html'in kendi go(i) fonksiyonunu çağırıp adımı ilerletebiliyoruz.
+  Ekran kaydına göre üstünlüğü: fare titremiyor, kare hızı sabit, yeniden
+  üretilebilir.
+
+  PARAMETRELER
+    sayfa    · index | ders
+    id       · ders kimliği (yalnız sayfa=ders). Rotanın ilk 3 dersi
+               ücretsiz; kilitli ders seçilirse ekrana ödeme penceresi gelir.
+    adim     · lesson.html içindeki go(i) adımı
+    deger    · o adımın tek kaydırıcısına verilecek değer
+    kaydir   · iframe içinde dikey kaydırma (piksel)
+    altyazi  · alt bant metni
+-->
+<style>
+  html,body{margin:0;background:#070a0f;overflow:hidden}
+  .sahne{position:relative;width:1280px;height:720px;background:#070a0f;overflow:hidden}
+
+  /* Site 1440x900 kurgulanmış; 1280x720 kareye sığması için ölçekleniyor.
+     Kırpmak yerine ölçeklemek, kenar çubuğunun görünür kalmasını sağlıyor. */
+  .cerceve{position:absolute;left:0;top:0;width:1440px;height:900px;border:0;
+    transform:scale(0.8889);transform-origin:0 0}
+
+  .altyazi{position:absolute;left:0;right:0;bottom:26px;text-align:center;padding:0 80px;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    font-size:25px;line-height:1.35;font-weight:600;color:#fff;letter-spacing:-.01em;
+    text-shadow:0 2px 10px #000,0 0 30px #000,0 0 60px #000}
+  .altyazi em{color:#22d3a0;font-style:normal}
+  .altyazi s{color:#ff6b6b;text-decoration:none}
+  /* Altyazının arkasına yumuşak bir karartma: açık temada da okunur kalsın */
+  .perde{position:absolute;left:0;right:0;bottom:0;height:150px;
+    background:linear-gradient(to top,rgba(0,0,0,.82),rgba(0,0,0,0))}
+</style>
+</head>
+<body>
+<div class="sahne">
+  <iframe class="cerceve" id="cerceve"></iframe>
+  <div class="perde" id="perde" style="display:none"></div>
+  <div class="altyazi" id="altyazi" style="display:none"></div>
+</div>
+<script>
+(function(){
+  'use strict';
+  const q = new URLSearchParams(location.search);
+  const g = id => document.getElementById(id);
+
+  /* Tema ve dil iframe'den ÖNCE yazılmalı: aynı kaynak olduğu için iframe
+     bu localStorage'ı okuyor. Sonradan yazılırsa sayfa açık temayla açılır. */
+  try {
+    localStorage.setItem('mlacad_tema', q.get('tema') === 'acik' ? 'acik' : 'koyu');
+    localStorage.setItem('mlacad_dil',  q.get('dil')  === 'en'   ? 'en'   : 'tr');
+  } catch (e) {}
+
+  const altyazi = q.get('altyazi');
+  if (altyazi){
+    g('altyazi').innerHTML = altyazi;          // URLSearchParams zaten çözdü
+    g('altyazi').style.display = '';
+    g('perde').style.display = '';
+  }
+
+  const sayfa = q.get('sayfa') || 'index';
+  /* Yollar bir ÜST dizine: bu sayfa gorsel/ içinde duruyor, hedefler kökte. */
+  const hedef = sayfa === 'ders'
+    ? '../lesson.html?id=' + encodeURIComponent(q.get('id') || 'veri') + '&dil=tr'
+    : '../index.html';
+
+  const cerceve = g('cerceve');
+  cerceve.addEventListener('load', function(){
+    const w = cerceve.contentWindow;
+    try {
+      const adim = q.get('adim');
+      if (adim !== null && typeof w.go === 'function') w.go(parseInt(adim, 10));
+
+      /* Kaydırıcıyı istenen değere getir ve sayfanın kendi input olayını
+         tetikle; böylece grafik de sayfanın kendi kodu tarafından yeniden
+         çiziliyor, biz elle çizmiyoruz. */
+      const deger = q.get('deger');
+      if (deger !== null){
+        const inp = w.document.querySelector('input[type=range]');
+        if (inp){
+          inp.value = deger;
+          inp.dispatchEvent(new w.Event('input', { bubbles:true }));
+        }
+      }
+
+      const kaydir = parseInt(q.get('kaydir') || '0', 10);
+      if (kaydir) w.scrollTo(0, kaydir);
+    } catch (e) {
+      document.title = 'HATA: ' + e.message;
+    }
+  });
+  cerceve.src = hedef;
+})();
+</script>
+</body>
+</html>
