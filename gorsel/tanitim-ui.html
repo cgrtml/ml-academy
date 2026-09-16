@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>ML Academy · arayüz karesi</title>
+<!--
+  ML Academy · tanıtım filminin ARAYÜZ karesi
+  ─────────────────────────────────────────────────────────────────────
+  tanitim-film.html grafikleri sitenin motoruyla yeniden çiziyordu. Bu sayfa
+  daha ileri gidiyor: sitenin GERÇEK sayfasını bir iframe'e alıyor ve o
+  sayfanın kendi fonksiyonlarını çağırarak istenen adıma getiriyor. Yani
+  karede görünen şey sitenin bir canlandırması değil, sitenin kendisi.
+
+  NEDEN IFRAME
+  Chrome'un --screenshot kipi sayfaya betik enjekte edemiyor, tıklayamıyor.
+  Aynı kaynaktaki bir iframe ise contentWindow üzerinden erişilebilir, yani
+  lesson.html'in kendi go(i) fonksiyonunu çağırıp adımı ilerletebiliyoruz.
+  Ekran kaydına göre üstünlüğü: fare titremiyor, kare hızı sabit, yeniden
+  üretilebilir.
+
+  PARAMETRELER
+    sayfa    · index | ders
+    id       · ders kimliği (yalnız sayfa=ders). Rotanın ilk 3 dersi
+               ücretsiz; kilitli ders seçilirse ekrana ödeme penceresi gelir.
+    adim     · lesson.html içindeki go(i) adımı
+    deger    · o adımın tek kaydırıcısına verilecek değer
+    kaydir   · iframe içinde dikey kaydırma (piksel)
+    altyazi  · alt bant metni
+-->
+<style>
+  html,body{margin:0;background:#070a0f;overflow:hidden}
+  .sahne{position:relative;width:1280px;height:720px;background:#070a0f;overflow:hidden}
+
+  /* Site 1440x900 kurgulanmış; 1280x720 kareye sığması için ölçekleniyor.
+     Kırpmak yerine ölçeklemek, kenar çubuğunun görünür kalmasını sağlıyor. */
+  .cerceve{position:absolute;left:0;top:0;width:1440px;height:900px;border:0;
+    transform:scale(0.8889);transform-origin:0 0}
+
+  /* Altyazı tam genişlik bir bant DEĞİL: metin kadar yer kaplayan bir hap.
+     Tam genişlik karartma, videonun altına oynatıcı çubuğu koymuş gibi
+     duruyordu. */
+  .altyaziKap{position:absolute;left:0;right:0;bottom:30px;text-align:center;padding:0 70px}
+  .altyazi{display:inline-block;padding:13px 26px;border-radius:12px;
+    background:rgba(6,9,14,.86);border:1px solid rgba(255,255,255,.07);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    font-size:24px;line-height:1.35;font-weight:600;color:#fff;letter-spacing:-.01em}
+  .altyazi em{color:#22d3a0;font-style:normal}
+  .altyazi s{color:#ff6b6b;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="sahne">
+  <iframe class="cerceve" id="cerceve"></iframe>
+  <div class="altyaziKap" id="altyaziKap" style="display:none"><span class="altyazi" id="altyazi"></span></div>
+</div>
+<script>
+(function(){
+  'use strict';
+  const q = new URLSearchParams(location.search);
+  const g = id => document.getElementById(id);
+
+  /* Tema ve dil iframe'den ÖNCE yazılmalı: aynı kaynak olduğu için iframe
+     bu localStorage'ı okuyor. Sonradan yazılırsa sayfa açık temayla açılır. */
+  try {
+    localStorage.setItem('mlacad_tema', q.get('tema') === 'acik' ? 'acik' : 'koyu');
+    localStorage.setItem('mlacad_dil',  q.get('dil')  === 'en'   ? 'en'   : 'tr');
+  } catch (e) {}
+
+  const altyazi = q.get('altyazi');
+  if (altyazi){
+    g('altyazi').innerHTML = altyazi;          // URLSearchParams zaten çözdü
+    g('altyaziKap').style.display = '';
+  }
+
+  const TAM = q.get('tam') === '1';
+
+  /* Yalnız altyazı katmanı: iframe hiç yüklenmiyor, sahne saydam kalıyor. */
+  if (q.get('sadece') === 'altyazi'){
+    document.documentElement.style.background = 'transparent';
+    document.body.style.background = 'transparent';
+    document.querySelector('.sahne').style.background = 'transparent';
+    g('cerceve').style.display = 'none';
+    return;
+  }
+  const sayfa = q.get('sayfa') || 'index';
+  /* Yollar bir ÜST dizine: bu sayfa gorsel/ içinde duruyor, hedefler kökte. */
+  const hedef = sayfa === 'ders'
+    ? '../lesson.html?id=' + encodeURIComponent(q.get('id') || 'veri') + '&dil=tr'
+    : '../index.html';
+
+  const cerceve = g('cerceve');
+  cerceve.addEventListener('load', function(){
+    const w = cerceve.contentWindow;
+    try {
+      const adim = q.get('adim');
+      if (adim !== null && typeof w.go === 'function') w.go(parseInt(adim, 10));
+
+      /* Kaydırıcıyı istenen değere getir ve sayfanın kendi input olayını
+         tetikle; böylece grafik de sayfanın kendi kodu tarafından yeniden
+         çiziliyor, biz elle çizmiyoruz. */
+      const deger = q.get('deger');
+      if (deger !== null){
+        const inp = w.document.querySelector('input[type=range]');
+        if (inp){
+          inp.value = deger;
+          inp.dispatchEvent(new w.Event('input', { bubbles:true }));
+        }
+      }
+
+      const kaydir = parseInt(q.get('kaydir') || '0', 10);
+      if (kaydir) w.scrollTo(0, kaydir);
+
+      /* TAM kip: sahneyi ve iframe'i sayfanın tamamı kadar uzat, sonra
+         gereken kare yüksekliğini başlığa yaz. Ölçek 0.8889 olduğu için
+         kare yüksekliği de o oranda. */
+      if (TAM){
+        const yuk = Math.max(
+          w.document.documentElement.scrollHeight,
+          w.document.body ? w.document.body.scrollHeight : 0);
+        cerceve.style.height = yuk + 'px';
+        const sahne = document.querySelector('.sahne');
+        sahne.style.height = Math.ceil(yuk * 0.8889) + 'px';
+        sahne.style.overflow = 'visible';
+        const kap = g('altyaziKap');
+        if (kap) kap.style.display = 'none';      // tam kipte altyazı yok
+        document.title = 'YUK:' + Math.ceil(yuk * 0.8889);
+      }
+    } catch (e) {
+      document.title = 'HATA: ' + e.message;
+    }
+  });
+  cerceve.src = hedef;
+})();
+</script>
+</body>
+</html>
