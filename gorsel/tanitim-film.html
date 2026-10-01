@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>ML Academy · tanıtım filmi karesi</title>
+<!--
+  ML Academy · 60 saniyelik tanıtım filminin tek karesi
+  ─────────────────────────────────────────────────────────────────────
+  Bu sayfa insan için değil, kamera için. `?sahne=X&...` ile çağrılıyor ve
+  o kareyi çiziyor; gorsel/tanitim-uret.sh onu sırayla çağırıp kareleri
+  birleştiriyor.
+
+  NEDEN BÖYLE (gorsel/film.html ile aynı gerekçe)
+  Yapay zeka video üreticileri (Sora, Runway, Veo) bu iş için yanlış araç:
+  senin arayüzünü bilmedikleri için gerçeğe benzeyen ama UYDURMA bir arayüz
+  çiziyorlar. Buradaki grafikleri sitenin KENDİ motoru çiziyor — viz.js
+  içindeki gerçek kod, content.js içindeki gerçek ders verisi. Video ürünün
+  canlandırması değil, ürünün kendisi.
+
+  İKİ SAHNE TÜRÜ
+    tip=kart  · metin kartı. Rakamlar elle yazılmıyor, ROTALAR'dan sayılıyor.
+    tip=viz   · gerçek bir dersin gerçek adımı, kaydırıcı bir değerde.
+
+  Altyazı sesin yerine geçiyor: video sessiz izlenmek üzere tasarlandı,
+  sosyal medyada çoğu izleyici zaten sesi açmıyor.
+-->
+<style>
+  html,body{margin:0;background:#070a0f;overflow:hidden}
+  .sahne{position:relative;width:1280px;height:720px;background:#070a0f;
+    font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace}
+
+  /* ── üst bant ── */
+  .ust{position:absolute;left:44px;top:32px;right:44px;display:flex;align-items:center;gap:13px}
+  .marka{font-size:14px;font-weight:700;letter-spacing:.32em;color:#22d3a0}
+  .yol{font-size:13px;color:#5d7089}
+  .yol b{color:#c9d6e4;font-weight:600}
+
+  .baslik{position:absolute;left:44px;top:58px;right:44px;font-size:23px;font-weight:700;
+    color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    letter-spacing:-.02em}
+
+  /* Tuval kutusu sabit; içindeki tuval dersin kendi mantıksal yüksekliğine
+     göre ölçekleniyor (bkz. betikteki `a.h || 600`). Oran korunuyor, yoksa
+     viz.js'in mutlak koordinatlı çizimleri kayıyor. */
+  .tuval{position:absolute;left:44px;top:104px;width:1192px;height:466px;
+    display:flex;align-items:center;justify-content:center}
+  canvas{display:block}
+
+  /* ── kaydırıcı · gerçek input değil, çizilmiş ── */
+  .kay{position:absolute;left:44px;top:584px;width:540px}
+  .kayUst{display:flex;justify-content:space-between;font-size:12px;color:#5d7089;letter-spacing:.12em}
+  .kayUst b{color:#e6edf3;font-size:16px;letter-spacing:0}
+  .cubuk{margin-top:11px;height:5px;border-radius:3px;background:#1b2534;position:relative}
+  .cubuk i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:#4cc4ff}
+  .cubuk u{position:absolute;top:-7px;width:18px;height:18px;border-radius:50%;
+    background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.5);transform:translateX(-9px)}
+
+  .canli{position:absolute;right:44px;top:580px;display:flex;gap:30px}
+  .cv .k{font-size:10px;letter-spacing:.15em;color:#5d7089;text-transform:uppercase}
+  .cv .n{margin-top:4px;font-size:22px;font-weight:700;letter-spacing:-.02em}
+
+  /* ── altyazı · sesin yerine geçiyor ── */
+  /* Metin kadar yer kaplayan hap; tam genişlik bant oynatıcı çubuğu gibi
+     duruyordu. */
+  .altyaziKap{position:absolute;left:0;right:0;bottom:42px;text-align:center;padding:0 70px}
+  .altyazi{display:inline-block;padding:12px 24px;border-radius:12px;
+    background:rgba(6,9,14,.86);border:1px solid rgba(255,255,255,.07);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    font-size:24px;line-height:1.35;font-weight:600;color:#e6edf3;letter-spacing:-.01em}
+  .altyazi em{color:#22d3a0;font-style:normal}
+  .altyazi s{color:#ff6b6b;text-decoration:none}
+
+  .alt{position:absolute;left:44px;right:44px;bottom:16px;display:flex;
+    align-items:center;justify-content:space-between;font-size:12px;color:#3f5065}
+  .alt b{color:#22d3a0;letter-spacing:.18em}
+
+  /* ── metin kartı ── */
+  .kart{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;padding:0 110px;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+  .kLogo{font-family:'SF Mono',ui-monospace,monospace;font-size:20px;font-weight:700;
+    letter-spacing:.42em;color:#22d3a0;margin-bottom:34px}
+  .kBuyuk{font-size:52px;font-weight:800;color:#f2f7fb;letter-spacing:-.035em;line-height:1.14}
+  .kBuyuk em{color:#22d3a0;font-style:normal}
+  .kOrta{margin-top:26px;font-size:27px;font-weight:500;color:#9fb1c4;line-height:1.5;max-width:900px}
+  .kOrta em{color:#e6edf3;font-style:normal;font-weight:700}
+  .kUrl{position:absolute;bottom:56px;left:0;right:0;text-align:center;
+    font-family:'SF Mono',ui-monospace,monospace;font-size:19px;
+    letter-spacing:.22em;color:#22d3a0}
+
+  /* rakam şeridi */
+  .rakamlar{margin-top:46px;display:flex;gap:64px;justify-content:center}
+  .rk .s{font-size:50px;font-weight:800;color:#4cc4ff;letter-spacing:-.04em;line-height:1}
+  .rk .e{margin-top:12px;font-size:14px;letter-spacing:.2em;color:#5d7089;text-transform:uppercase}
+
+  .gizle{display:none}
+</style>
+</head>
+<body>
+<div class="sahne">
+
+  <!-- ── viz sahnesi ── -->
+  <div id="vizSahne" class="gizle">
+    <div class="ust"><span class="marka">ML ACADEMY</span><span class="yol" id="yol"></span></div>
+    <div class="baslik" id="baslik"></div>
+    <div class="tuval"><canvas id="cv"></canvas></div>
+    <div class="kay">
+      <div class="kayUst"><span id="kayAd"></span><b id="kayDeger"></b></div>
+      <div class="cubuk"><i id="dolgu"></i><u id="tutamak"></u></div>
+    </div>
+    <div class="canli" id="canli"></div>
+    <div class="alt"><span>mltraining.org</span><b id="rozet">KAYDIRICI SENDE</b></div>
+  </div>
+
+  <!-- ── metin kartı ── -->
+  <div id="kartSahne" class="kart gizle">
+    <div class="kLogo" id="kLogo">ML ACADEMY</div>
+    <div class="kBuyuk" id="kBuyuk"></div>
+    <div class="kOrta" id="kOrta"></div>
+    <div class="rakamlar gizle" id="rakamlar"></div>
+    <div class="kUrl" id="kUrl"></div>
+  </div>
+
+  <div class="altyaziKap gizle" id="altyaziKap"><span class="altyazi" id="altyazi"></span></div>
+</div>
+
+<script>
+/* DİL, viz.js'ten ÖNCE ayarlanmalı. viz.js içindeki VDIL sabiti yüklenme
+   anında localStorage'dan okunuyor ve bir daha değişmiyor; tuvalin içine
+   çizilen etiketler onun üzerinden çevriliyor. Sitenin varsayılanı İngilizce
+   olduğu için burada açıkça Türkçe'ye sabitleniyor, ?lang=en ile değişir. */
+(function(){
+  var u = new URLSearchParams(location.search).get('lang');
+  localStorage.setItem('mlacad_dil', (u === 'en') ? 'en' : 'tr');
+})();
+</script>
+<script src="../viz-sozluk.js"></script>
+<script src="../viz.js"></script>
+<script src="../content.js"></script>
+<script>
+(function(){
+  'use strict';
+  const q   = new URLSearchParams(location.search);
+  const tip = q.get('tip') || 'kart';
+  const g   = id => document.getElementById(id);
+  const goster = el => el.classList.remove('gizle');
+
+  /* URLSearchParams.get() değeri ZATEN çözüyor. İkinci bir
+     decodeURIComponent, metindeki gerçek '%' karakterinde (örneğin "%97
+     doğruluk") URIError fırlatır ve sayfanın tamamı boş kalır. */
+  const altyazi = q.get('altyazi');
+  if (altyazi){ g('altyazi').innerHTML = altyazi; goster(g('altyaziKap')); }
+
+  if (tip === 'kart'){
+    goster(g('kartSahne'));
+    const buyuk = q.get('buyuk'), orta = q.get('orta'), url = q.get('url');
+    if (buyuk) g('kBuyuk').innerHTML = buyuk;
+    if (orta)  g('kOrta').innerHTML  = orta;
+    if (url)   g('kUrl').textContent = url;
+    if (q.get('logo') === '0') g('kLogo').style.visibility = 'hidden';
+
+    /* Rakamlar ROTALAR'dan SAYILIYOR, elle yazılmıyor. Ders eklenince
+       video da güncelleniyor; yanlış rakam gösterme ihtimali yok. */
+    if (q.get('rakam') === '1'){
+      const dersSayisi = ROTALAR.reduce((a,r) => a + r.dersler.length, 0);
+      const dakika = ROTALAR.flatMap(r => r.dersler).reduce((a,d) => a + (d.sure||0), 0);
+      const veri = [
+        [ROTALAR.length, 'rota'],
+        [dersSayisi,     'ders'],
+        [Math.round(dakika/60) + ' saat', 'içerik'],
+        ['TR · EN',      'iki dil'],
+      ];
+      g('rakamlar').innerHTML = veri.map(([s,e]) =>
+        '<div class="rk"><div class="s">' + s + '</div><div class="e">' + e + '</div></div>').join('');
+      goster(g('rakamlar'));
+    }
+    return;
+  }
+
+  /* ── viz sahnesi · gerçek dersin gerçek adımı ── */
+  goster(g('vizSahne'));
+  const dersId = q.get('ders');
+  const adimNo = parseInt(q.get('adim') || '0', 10);
+  const deger  = parseFloat(q.get('deger'));
+
+  const D = DERSLER[dersId];
+  if (!D){ document.title = 'HATA: ders yok · ' + dersId; return; }
+  const a = D.adimlar[adimNo];
+  if (!a || !a.viz){ document.title = 'HATA: adim yok · ' + dersId + '/' + adimNo; return; }
+  const c = a.controls && a.controls[0];
+
+  let s = Object.assign({}, a.state || {});
+  if (c) s[c.k] = deger;
+  if (a.derive){ s._d = a.derive(s); s = Object.assign({}, s, s._d); }
+
+  /* MANTIKSAL BOYUT dersin kendisinden gelir: lesson.html de
+     `useCanvas($('cv'), 1500, a.h || 600)` diyor. viz.js çizimleri mutlak
+     koordinat kullandığı için başka bir değer yerleşimi kaydırıyor.
+     CSS boyutu kutuya oranı bozmadan sığdırılıyor. */
+  const mantikY = a.h || 600;
+  const KUTU_W = 1192, KUTU_H = 466;
+  const olcek = Math.min(KUTU_W / 1500, KUTU_H / mantikY);
+  const cv = g('cv');
+  cv.style.width  = Math.round(1500 * olcek) + 'px';
+  cv.style.height = Math.round(mantikY * olcek) + 'px';
+  useCanvas(cv, 1500, mantikY);
+  VIZ[a.viz](s);
+
+  g('yol').innerHTML = 'rota-' + (q.get('rota')||'0') + ' / <b>' + (D.ad||dersId) + '</b>';
+  g('baslik').textContent = a.t || '';
+  if (q.get('rozet')) g('rozet').textContent = q.get('rozet');
+
+  if (c){
+    const oran = (deger - c.min) / (c.max - c.min);
+    g('kayAd').textContent = c.lb;
+    g('kayDeger').textContent = c.fmt ? c.fmt(deger) : (Number.isInteger(deger) ? deger : deger.toFixed(3));
+    g('dolgu').style.width    = (oran*100) + '%';
+    g('tutamak').style.left   = (oran*100) + '%';
+  } else {
+    g('kay').style.visibility = 'hidden';
+  }
+
+  /* Canlı kutular dersin kendi live() çıktısı — sayılar uydurulmuyor. */
+  if (a.live){
+    g('canli').innerHTML = a.live(s).map(v =>
+      '<div class="cv"><div class="k">' + v[0] + '</div>' +
+      '<div class="n" style="color:' + (v[2] || '#e6edf3') + '">' + v[1] + '</div></div>').join('');
+  }
+})();
+</script>
+</body>
+</html>
