@@ -331,19 +331,19 @@ temaUygula(temaOku());
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="paylas.js?v=aec5b7b"></script>
-<script src="viz-sozluk.js?v=aec5b7b"></script>
-<script src="arayuz-sozluk.js?v=aec5b7b"></script>
-<script src="anlatim.js?v=aec5b7b"></script>
-<script src="anlatim-en.js?v=aec5b7b"></script>
-<script src="viz.js?v=aec5b7b"></script>
-<script src="content.js?v=aec5b7b"></script>
-<script src="content-en.js?v=aec5b7b"></script>
+<script src="paylas.js?v=0bd3ead"></script>
+<script src="viz-sozluk.js?v=0bd3ead"></script>
+<script src="arayuz-sozluk.js?v=0bd3ead"></script>
+<script src="anlatim.js?v=0bd3ead"></script>
+<script src="anlatim-en.js?v=0bd3ead"></script>
+<script src="viz.js?v=0bd3ead"></script>
+<script src="content.js?v=0bd3ead"></script>
+<script src="content-en.js?v=0bd3ead"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="yapilandirma.js?v=aec5b7b"></script>
-<script src="topluluk/ilerleme.js?v=aec5b7b"></script>
-<script src="topluluk/geri-bildirim.js?v=aec5b7b"></script>
-<script src="topluluk/hesap.js?v=aec5b7b"></script>
+<script src="yapilandirma.js?v=0bd3ead"></script>
+<script src="topluluk/ilerleme.js?v=0bd3ead"></script>
+<script src="topluluk/geri-bildirim.js?v=0bd3ead"></script>
+<script src="topluluk/hesap.js?v=0bd3ead"></script>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -437,7 +437,10 @@ const T = k => L10N[k][EN ? 1 : 0];
    bulunmaz; arayuz-sozluk.js üzerinden çevrilir. Sayılar # ile eşleşir. */
 const CEVIR = (() => {
   const SAYI = /-?\d+(?:[.,]\d+)?/g;
-  return v => {
+  /* Türkçe yüzde biçimi (%95.3) EN'de 95.3% olur; viz.js'teki yuzdeEN ile aynı kural */
+  const YUZDE = /(^|[^\d.])%(-?\d+(?:[.,]\d+)?)/g;
+  const yuzde = r => (typeof r === 'string' && r.indexOf('%') >= 0) ? r.replace(YUZDE, (m, on, n) => on + n + '%') : r;
+  const cevir = v => {
     if (!EN || v == null) return v;
     const s = String(v);
     /* önce arayüz sözlüğü, sonra tuval sözlüğü: kaydırıcı biçimlendiricileri
@@ -456,6 +459,7 @@ const CEVIR = (() => {
     }
     return v;
   };
+  return v => EN ? yuzde(cevir(v)) : v;
 })();
 const cevirLive = rows => (rows||[]).map(r => [CEVIR(r[0]), CEVIR(r[1]), r[2]]);
 

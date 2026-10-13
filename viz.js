@@ -49,7 +49,17 @@ const LB = (tr, en) => VDIL === 'en' ? en : tr;
    değiştirilip şablon aranır, karşılık bulunursa sayılar sırayla geri konur.
    Sözlük yoksa ya da karşılık yoksa metin olduğu gibi kalır. */
 const SAYI_RE = /-?\d+(?:[.,]\d+)?/g;
-function CEV(s){
+/* EN'de Türkçe yüzde biçimi (%95.3) İngilizce biçime (95.3%) çevrilir.
+   Sözlükte karşılığı olmayan, çalışma anında '%'+sayı ile üretilen etiketler
+   (aşırı uyum tablosu, attention ağırlıkları vb.) bu yüzden İngilizce sayfada
+   Türkçe biçimde görünüyordu. Önündeki karakter rakam ya da nokta ise
+   dokunulmaz, böylece "90% 95" gibi zaten İngilizce bir metin bozulmaz. */
+const YUZDE_TR = /(^|[^\d.])%(-?\d+(?:[.,]\d+)?)/g;
+function yuzdeEN(s){
+  return (typeof s === 'string' && s.indexOf('%') >= 0) ? s.replace(YUZDE_TR, (m, on, n) => on + n + '%') : s;
+}
+function CEV(s){ return VDIL === 'en' ? yuzdeEN(CEV_(s)) : s; }
+function CEV_(s){
   if (VDIL !== 'en' || s == null) return s;
   s = String(s);
   const D = (typeof TUVAL_EN !== 'undefined') ? TUVAL_EN : null;
