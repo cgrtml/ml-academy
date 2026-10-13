@@ -26,7 +26,7 @@ SUPA.saglayicilar = ['email'];        // 'google', 'github' eklenebilir
    NOT: bu kilit yalnızca ARAYÜZDEDİR. Ders içeriği content.js içinde ve o
    dosya herkese açıktır; kararlı biri kilidi aşabilir. Amaç kayıt olmayı
    teşvik etmek, içeriği korumak değil. */
-SUPA.ucretsizDers = 3;
+SUPA.ucretsizDers = 999;   // GEÇİCİ: IEEE Day Seattle için bütün dersler açık. 17 Eki 2026 Cumartesi 3 e geri al.
 
 /* ── TEK İSTEMCİ ──
    hesap.js ve topluluk.js ayrı ayrı createClient çağırıyordu. Aynı oturum
