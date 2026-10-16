@@ -647,11 +647,11 @@
   </div>
 </div></footer>
 
-<script src="paylas.js?v=5259991"></script>
-<script src="viz-sozluk.js?v=5259991"></script>
-<script src="viz.js?v=5259991"></script>
-<script src="content.js?v=5259991"></script>
-<script src="content-en.js?v=5259991"></script>
+<script src="paylas.js?v=7cf082c"></script>
+<script src="viz-sozluk.js?v=7cf082c"></script>
+<script src="viz.js?v=7cf082c"></script>
+<script src="content.js?v=7cf082c"></script>
+<script src="content-en.js?v=7cf082c"></script>
 <script>
 const $ = id => document.getElementById(id);
 const PKEY = 'mlacad_v2';
@@ -749,7 +749,7 @@ const TRJ = {
 /* Vitrin: her sekmenin ders kimliği ve iki dilde açıklaması.
    Sayılar ders tuvalinde yazan değerlerin aynısı (dogrula.sh denetliyor). */
 const VITRIN = [
-  {id:'nasil-ogrenir', ad:'r0-ogrenme',
+  {id:'nasil-ogrenir', enId:'how-machines-learn', ad:'r0-ogrenme',
    tr:'Doğruyu önce elinle oynatıyorsun, sonra kayıp haritasında modelin dibe nasıl indiğini görüyorsun.',
    en:'You move the line by hand first, then watch on the loss map how the model walks down to the bottom.'},
   {id:'soft-tree', ad:'r1-softtree',
@@ -817,9 +817,10 @@ function vitrinGoster(i, kullanici){
     if (j === i && !kullanici) b.classList.add('akar');
   });
   const v = VITRIN[i];
-  $('adres').textContent = 'mltraining.org/lesson.html?id=' + v.id;
+  const vid = DIL === 'en' && v.enId ? v.enId : v.id;
+  $('adres').textContent = 'mltraining.org/lesson.html?id=' + vid;
   $('vitrinYazi').textContent = DIL === 'en' ? v.en : v.tr;
-  $('vitrinBag').href = 'lesson.html?id=' + v.id;
+  $('vitrinBag').href = 'lesson.html?id=' + vid;
   clearTimeout(VZ);
   if (!kullanici) VZ = setTimeout(() => vitrinGoster((VI + 1) % VITRIN.length, false), 7000);
 }
@@ -1202,10 +1203,10 @@ dilUygula();
 <!-- ── Supabase · topluluk katmanı ──
      Ayarlar boşsa hiçbir istek atılmaz, topluluk bölümü gizli kalır. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="yapilandirma.js?v=5259991"></script>
-<script src="topluluk/topluluk.js?v=5259991"></script>
-<script src="topluluk/ilerleme.js?v=5259991"></script>
-<script src="topluluk/hesap.js?v=5259991"></script>
+<script src="yapilandirma.js?v=7cf082c"></script>
+<script src="topluluk/topluluk.js?v=7cf082c"></script>
+<script src="topluluk/ilerleme.js?v=7cf082c"></script>
+<script src="topluluk/hesap.js?v=7cf082c"></script>
 <script>
   const toplulukYenile = () => TOPLULUK.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL });
   toplulukYenile();
