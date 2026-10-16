@@ -47,7 +47,8 @@ const TKEY = 'mlacad_tema';
 function temaOku(){
   const k = localStorage.getItem(TKEY);
   if (k === 'koyu' || k === 'acik') return k;
-  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'koyu' : 'acik';
+  /* 15 Eki 2026: ana sayfa koyu; tercih yoksa dersler de koyu açılır */
+  return 'koyu';
 }
 document.documentElement.setAttribute('data-tema', temaOku());
 </script>

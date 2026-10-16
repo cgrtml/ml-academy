@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-tema="koyu">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -11,11 +11,10 @@
 <title>ML Academy · Learn machine learning by actually running it</title>
 <meta name="description" content="123 interactive machine learning lessons that run in your browser. No videos, no installation, no payment. Every number in every lesson is recomputed by a test before it ships.">
 <link rel="canonical" href="https://mltraining.org/">
+<meta name="theme-color" content="#07090c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='1' y='1' width='22' height='22' rx='6.5' fill='%230f131a'/%3E%3Cpath d='M5 16.5 9.2 11l3.3 3.2L18.8 6.5' fill='none' stroke='%233ee0b0' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 
 <!-- ── PAYLAŞIM ETİKETLERİ ──
-     Bunlar olmadan bağlantı nereye atılırsa atılsın (HN, Reddit, LinkedIn,
-     WhatsApp, Slack) boş bir kutu görünüyordu: başlık yok, açıklama yok,
-     görsel yok. Duyuru öncesi kapatılması gereken üç eksikten biriydi.
      Görsel gorsel/og.png · 1200x630 · gorsel/og-uret.sh ile üretiliyor. -->
 <meta property="og:type"        content="website">
 <meta property="og:site_name"   content="ML Academy">
@@ -30,541 +29,623 @@
 <meta name="twitter:description" content="123 interactive machine learning lessons that run in your browser. No videos, no installation, no payment. Every number in every lesson is recomputed by a test before it ships.">
 <meta name="twitter:image"       content="https://mltraining.org/gorsel/og.png">
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
 <style>
+  /* ══════════════════════════════════════════════════════════════════
+     TASARIM E · "ürün sitesi" (15 Ekim 2026)
+     ─────────────────────────────────────────────────────────────────
+     cairnstonelabs.com ile aynı dil: koyu zemin, Geist, ince çizgiler,
+     ızgara + ışıma hero, sekmeli ürün penceresi. Ana sayfa artık
+     yalnızca koyu; dersler kendi tema düğmesini koruyor.
+
+     DEĞİŞKEN ADLARI BİLEREK ESKİSİYLE AYNI (--bg, --panel, --txt, --mut,
+     --green ...): hesap.js, topluluk.js ve paylas.js pencerelerini bu
+     adlarla boyuyor. Adı değiştirmek o pencereleri bozar.
+
+     Vitrindeki görseller gerçek ders tuvallerinin ekran görüntüsü
+     (gorsel/vitrin/*-en.webp ve *-tr.webp). Dil değişince görsel de
+     değişir; Türkçe sayfada İngilizce görsel çıkmaz.
+     ══════════════════════════════════════════════════════════════════ */
   :root{
-    /* ── AÇIK TEMA ──────────────────────────────────────────────────────
-       10 Ağustos 2026'da koyudan açığa geçildi. Gerekçe: site "sıfırdan
-       öğren" diyor ve uzun anlatım metinleri okunuyor; eğitim siteleri
-       için açık zemin hem daha okunaklı hem daha davetkâr.
-
-       Görsellerin TUVALİ koyu kaldı (viz.js hiç değişmedi). Koyu tuval
-       açık sayfada bilinçli bir odak öğesi: dokümantasyon sitelerindeki
-       koyu kod bloğu deseninin aynısı.
-
-       Vurgu renkleri açık zemin için KOYULAŞTIRILDI. Koyu temada iyi
-       görünen #22d3a0 ve #4cc4ff beyaz üstünde kontrast bırakmıyor.
-       Birincil eylem rengi mavi; yeşil "ölçüldü / doğru" vurgusu olarak
-       kaldı.                                                              */
-    --bg:#f6f8fc; --panel:#ffffff; --panel2:#eef2f8; --line:#dde5ef;
-    --txt:#0f1b2d; --mut:#586a80;
-    --green:#0a8b68; --blue:#1668c9; --orange:#c2620d; --purple:#6d3fd4;
-    --pink:#c92a72; --yellow:#96690a; --red:#cf2f2f;
-    /* koyu tuvalin kendi zemini: görsel çerçevesi için */
-    --tuval:#070a0f; --tuvalCer:#1e2a3a;
-    /* Koyu YÜZEYLER (tuval, kod bloğu) için ayrı vurgu seti. Yukarıdaki
-       koyulaştırılmış renkler beyaz üstünde doğru, ama koyu kod bloğunda
-       okunmaz. Bunlar viz.js'in K paletiyle aynı değerler. */
-    --greenD:#22d3a0; --blueD:#4cc4ff; --orangeD:#fb923c; --purpleD:#a78bfa;
-    --pinkD:#f472b6; --yellowD:#facc15; --redD:#f87171; --tuvalTxt:#c9d6e4;
-    /* Yıldız ayrı bir renk: metin kontrastı için koyulaştırılmış sarı
-       (#96690a) çamurlu duruyor, yıldız altın görünmeli. */
-    --star:#e0930b;
-    /* Dolgu (yeşil/mavi/turuncu düğme) üstündeki yazı. Açık temada beyaz
-       doğru; koyu temada vurgu renkleri parlaklaştığı için koyu olmalı,
-       yoksa parlak yeşilin üstünde beyaz okunmaz. */
-    --anaTxt:#ffffff;
-    --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
-  }
-
-  /* ══ KOYU TEMA ══
-     Aynı sayfa, ters palet. Görsellerin tuvali her iki temada da koyu
-     kalır (viz.js temadan habersiz), koyu modda zaten sayfaya karışır.
-     Tercih localStorage'da; hiç seçim yapılmadıysa işletim sisteminin
-     ayarı kullanılır. */
-  :root[data-tema="koyu"]{
-    --bg:#080b11; --panel:#0f151e; --panel2:#141c28; --line:#1e2a3a;
-    --txt:#e6edf3; --mut:#8494a8;
-    --green:#22d3a0; --blue:#4cc4ff; --orange:#fb923c; --purple:#a78bfa;
-    --pink:#f472b6; --yellow:#facc15; --red:#f87171;
+    --bg:#07090c; --bg2:#0b0e13; --panel:#0f131a; --panel2:#141922;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.14);
+    --txt:#ecedf0; --txt2:#b6bac4; --mut:#80868f; --mut2:#565c66;
+    --green:#3ee0b0; --blue:#5cc8ff; --violet:#9aa8ff; --orange:#fb923c;
+    --purple:#a78bfa; --pink:#f472b6; --yellow:#facc15; --red:#f87171;
     --star:#facc15; --anaTxt:#04120d;
-    --mono:'SF Mono',ui-monospace,Menlo,Consolas,monospace;
+    --sans:"Geist",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --ease:cubic-bezier(.16,1,.3,1);
   }
-  .temaDug{width:32px;height:32px;flex:none;display:grid;place-items:center;
-    border-radius:9px;border:1px solid var(--line);background:var(--panel);
-    color:var(--mut);font-size:15px;cursor:pointer;padding:0;line-height:1}
-  .temaDug:hover{color:var(--txt);border-color:var(--mut)}
-  *{box-sizing:border-box}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;scroll-padding-top:84px}
   html,body{max-width:100%;overflow-x:hidden}
-  body{margin:0;background:var(--bg);color:var(--txt);
-       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;
-       line-height:1.6;-webkit-font-smoothing:antialiased}
-  a{text-decoration:none;color:inherit}
-  .wrap{max-width:1000px;margin:0 auto;padding:0 18px 100px}
-  .grid > *,.steps4 > *{min-width:0}
+  body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:16px;
+       line-height:1.6;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+  a{color:inherit;text-decoration:none}
+  img{display:block;max-width:100%}
+  button{font-family:inherit}
+  ::selection{background:rgba(92,200,255,.32)}
+  .kap{max-width:1200px;margin:0 auto;padding:0 28px}
+  @media(max-width:600px){ .kap{padding:0 16px} }
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+          color:var(--mut);margin-bottom:16px}
+  .kicker b{color:var(--green);font-weight:500}
+  .bh{text-wrap:balance;font-size:clamp(30px,4.2vw,48px);line-height:1.08;letter-spacing:-.035em;font-weight:620}
+  .bp{text-wrap:pretty;margin-top:18px;font-size:clamp(16px,1.4vw,18px);color:var(--txt2);max-width:640px}
+  .grad{background:linear-gradient(92deg,#c8f7ea 0%,#3ee0b0 38%,#5cc8ff 72%,#9aa8ff 100%);
+        -webkit-background-clip:text;background-clip:text;color:transparent}
+  .bolum{padding:120px 0 0}
+  @media(max-width:700px){ .bolum{padding-top:88px} }
 
-  /* ── hero ── */
-  header{text-align:center;padding:56px 0 34px}
-  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.26em;color:var(--mut);text-transform:uppercase}
-  .hUst{display:flex;gap:8px}
-  .kicker .alan{text-transform:none;letter-spacing:.06em;color:#5b6b80}
-  .kicker .alan::before{content:'·';margin:0 9px;color:#3a4a5c}
-  h1{font-size:clamp(30px,5.6vw,52px);margin:14px 0 12px;font-weight:850;letter-spacing:-.03em;line-height:1.12}
-  h1 .hl{background:linear-gradient(90deg,var(--green),var(--blue));-webkit-background-clip:text;
-         background-clip:text;color:transparent}
-  .sub{color:var(--mut);font-size:16px;max-width:610px;margin:0 auto 26px}
-  .cta{display:inline-flex;align-items:center;gap:10px;background:var(--green);color:var(--anaTxt);
-       font-weight:800;font-size:16px;padding:15px 30px;border-radius:12px;transition:.15s}
-  .cta:hover{filter:brightness(1.12);transform:translateY(-1px)}
-  .cta2{display:inline-flex;align-items:center;gap:8px;color:var(--mut);font-size:14px;
-        padding:15px 20px;font-family:var(--mono)}
-  .cta2:hover{color:var(--txt)}
+  /* ── düğmeler ── */
+  .btn{display:inline-flex;align-items:center;gap:9px;height:46px;padding:0 20px;border-radius:10px;
+       font-size:15px;font-weight:550;letter-spacing:-.005em;transition:background .2s,border-color .2s,transform .2s;
+       border:1px solid transparent;cursor:pointer;white-space:nowrap}
+  .btn-ana{background:var(--txt);color:#07090c}
+  .btn-ana:hover{background:#fff}
+  .btn-ikinci{color:var(--txt);border-color:var(--line2);background:rgba(255,255,255,.025)}
+  .btn-ikinci:hover{border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.06)}
+  .btn .ok{transition:transform .2s var(--ease)}
+  .btn:hover .ok{transform:translateX(3px)}
+  #startBtn{max-width:100%;overflow:hidden;text-overflow:ellipsis}
 
-  /* ── istatistik şeridi ── */
-  .stats{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:30px}
-  .sb{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 20px;min-width:118px}
-  .sb .n{font-family:var(--mono);font-size:23px;font-weight:800;line-height:1}
-  .sb .l{font-family:var(--mono);font-size:9.5px;letter-spacing:.15em;color:var(--mut);
-         text-transform:uppercase;margin-top:5px}
-
-  /* ── nasıl işliyor ── */
-  .how{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:24px;margin:36px 0 14px}
-  .how h3{margin:0 0 4px;font-size:17px}
-  .how .hs{color:var(--mut);font-size:13.5px;margin:0 0 18px}
-  .steps4{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
-  .s4{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
-  .s4 .n{font-family:var(--mono);font-size:10px;letter-spacing:.16em;font-weight:800;margin-bottom:6px}
-  .s4 .t{font-size:14px;font-weight:700;margin-bottom:4px}
-  .s4 .d{font-size:12.5px;color:var(--mut);line-height:1.5}
-
-  /* ── rota ── */
-  .rota{margin-top:32px}
-  .rhd{display:flex;align-items:center;gap:13px;margin-bottom:6px}
-  .rhd .ik{font-size:22px;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;
-           background:var(--panel2);border:1px solid var(--line);flex:none}
-  .rhd h2{font-size:20px;margin:0;font-weight:800;letter-spacing:-.01em}
-  .rhd .ct{font-family:var(--mono);font-size:11px;color:var(--mut);margin-left:auto;white-space:nowrap}
-  .rozet{color:var(--mut);font-size:13.5px;margin:0 0 14px 55px}
-  @media(max-width:600px){.rozet{margin-left:0}}
-
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:11px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:15px 17px;
-        display:flex;align-items:flex-start;gap:13px;transition:.15s}
-  .card.hazir{cursor:pointer}
-  .card.hazir:hover{border-color:var(--green);transform:translateY(-2px)}
-  .card.yapim{opacity:.62}
-  .card.planli{opacity:.42}
-  /* Kilitli ders: bütün bilgisi görünür, yalnızca tıklanamaz. */
-  .card.kilitli{cursor:pointer;position:relative;border-style:dashed}
-  .card.kilitli .body{opacity:.55}
-  .card.kilitli .no{opacity:.55}
-  .card.kilitli:hover{border-color:var(--orange);transform:none}
-  /* Kilit rozeti önceden "GİRİŞ 🔒" yazıyordu ve iki satıra taşan ders
-     başlıklarının üstüne biniyordu. Ayrıca 18 kartta birden aynı yazı
-     görsel gürültüydü. Artık yalnızca simge; kilitli olduğu zaten kesik
-     kenarlık ve soluk gövdeden anlaşılıyor. Başlığa da güvenlik payı
-     verildi ki simgenin altına hiç girmesin. */
-  .kilitRozet{position:absolute;top:9px;right:10px;width:24px;height:24px;
-    display:grid;place-items:center;font-size:12px;border-radius:8px;
-    color:var(--orange);background:rgba(194,98,13,.09);
-    border:1px solid rgba(194,98,13,.28)}
-  .card.kilitli .ad{padding-right:30px}
-  .card.kilitli:hover .kilitRozet{background:rgba(194,98,13,.18)}
-  .card .no{font-family:var(--mono);font-size:12px;font-weight:800;width:26px;height:26px;border-radius:8px;
-            display:grid;place-items:center;flex:none;background:var(--panel2);color:var(--mut);border:1px solid var(--line)}
-  .card.hazir .no{background:rgba(34,211,160,.16);color:var(--green);border-color:rgba(34,211,160,.4)}
-  .card.bitti .no{background:var(--green);color:var(--anaTxt);border-color:var(--green)}
-  .card .body{flex:1;min-width:0}
-  .card .ad{font-size:14.5px;font-weight:680;margin-bottom:4px}
-  .card .meta{font-family:var(--mono);font-size:10.5px;color:var(--mut);display:flex;gap:9px;flex-wrap:wrap;align-items:center}
-  .tag{font-family:var(--mono);font-size:9px;letter-spacing:.12em;padding:2.5px 7px;border-radius:5px;font-weight:800}
-  .t-hazir{background:rgba(34,211,160,.16);color:var(--green)}
-  .t-yapim{background:rgba(250,204,21,.14);color:var(--yellow)}
-  .t-planli{background:rgba(132,148,168,.14);color:var(--mut)}
-  .t-nt{background:rgba(167,139,250,.18);color:var(--purple)}
-  .pmini{height:3px;background:var(--line);border-radius:99px;margin-top:8px;overflow:hidden}
-  .pmini i{display:block;height:100%;background:var(--green);border-radius:99px}
-
-  /* Dil ve hesap düğmeleri tek bir sabit satırda durur. Önceden dil
-     absolute top:18px, hesap fixed top:56px idi; ikisi ayrı yerlere düşüyordu
-     ve İngilizcede uzayan "Sign in" düğmesi büsbütün kayıyordu. */
-  /* ── ÜST ÇUBUK ──
-     Önceden sağ üst köşede havada duran bir hap vardı: sayfa kaydırılınca
-     ders kartlarının üstüne biniyor, arkadaki başlıklar düğmelerin
-     arasından okunuyordu. Ayrıca about.html ve privacy.html gerçek bir
-     üst çubuğa sahipken ana sayfanın hiç çubuğu yoktu; site kendi
-     içinde tutarsız görünüyordu. Artık üç sayfa da aynı çubuğu
-     kullanıyor: solda marka, ortada bağlantılar, sağda tema/dil/hesap. */
-  .ustNav{position:sticky;top:0;z-index:60;background:var(--panel);
-    border-bottom:1px solid var(--line)}
-  .navIc{max-width:1000px;margin:0 auto;padding:0 18px;height:60px;
-    display:flex;align-items:center;gap:26px}
-  .marka{display:flex;align-items:center;gap:9px;font-weight:800;letter-spacing:-.01em;
-    color:var(--txt);font-size:16px}
-  .marka i{width:24px;height:24px;border-radius:7px;background:#070a0f;display:block;position:relative}
-  .marka i::after{content:'';position:absolute;left:4px;right:4px;bottom:5px;height:3px;border-radius:2px;
-    background:linear-gradient(90deg,#22d3a0,#4cc4ff,#fb923c,#a78bfa,#f472b6)}
-  .navBag{display:flex;gap:20px;font-size:14px;color:var(--mut)}
+  /* ── üst çubuk ── */
+  .ustNav{position:fixed;inset:0 0 auto 0;z-index:60;border-bottom:1px solid transparent;
+          transition:background .3s,border-color .3s}
+  .ustNav.kaydi{background:rgba(7,9,12,.74);backdrop-filter:saturate(1.6) blur(16px);
+          -webkit-backdrop-filter:saturate(1.6) blur(16px);border-color:var(--line)}
+  .navIc{height:66px;display:flex;align-items:center;gap:34px}
+  .marka{display:flex;align-items:center;gap:10px;font-weight:620;font-size:16px;letter-spacing:-.02em;white-space:nowrap}
+  .marka svg{width:24px;height:24px;flex:none}
+  .navBag{display:flex;gap:26px;font-size:14px;color:var(--txt2)}
+  .navBag a{transition:color .2s;white-space:nowrap}
   .navBag a:hover{color:var(--txt)}
   .navSag{margin-left:auto;display:flex;gap:10px;align-items:center}
-  @media(max-width:860px){ .navBag{display:none} }
-  @media(max-width:520px){ .navIc{gap:12px;padding:0 12px} .marka span{display:none} }
-  .dilbar{display:flex;gap:6px}
-  .dilbar button{font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:6px 12px;
-      border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--mut);cursor:pointer}
-  .dilbar button.on{background:var(--green);border-color:var(--green);color:var(--anaTxt);font-weight:800}
-  .dilnot{background:rgba(250,204,21,.08);border:1px solid rgba(250,204,21,.3);border-radius:11px;
-      padding:12px 16px;margin:0 auto 8px;max-width:620px;font-size:13px;color:var(--mut);display:none}
-  .foot{text-align:center;color:var(--mut);font-size:12.5px;margin-top:52px;font-family:var(--mono);line-height:2}
-  .foot a{color:var(--blue)}
-  .foot .telif{opacity:.72;font-size:11.5px}
-  .reset{background:none;border:1px solid var(--line);color:var(--mut);font-family:var(--mono);
-         font-size:11px;padding:6px 13px;border-radius:8px;cursor:pointer}
-  .reset:hover{color:var(--red);border-color:var(--red)}
-
-
-  /* ══════════════════════════════════════════════════════════════════
-     TASARIM D · "geliştirici aracı"
-     ─────────────────────────────────────────────────────────────────
-     demo/d.html'de karara bağlanan görsel dil. Yukarıdaki kurallar
-     yeniden yazılmadı; bu blok onların üstüne yazıyor. Sebep, kartları
-     ve rotaları üreten JavaScript'e hiç dokunmamak: sınıf adları ve
-     kimlikler aynı kaldığı için hiçbir davranış kırılmıyor.
-
-     Fikir: iyi yapılmış bir dokümantasyon sitesinin dili. 1 piksel
-     çizgiler, sıkı ızgara, sayılar ve etiketler için monospace. Amaç
-     mühendisin sayfayı görür görmez "altındaki şey düzgün yapılmış"
-     diye düşünmesi.
-
-     Sitenin en güçlü varlığı derslerin koyu tuvalde çalışan canlı
-     simülasyonlar olması. Bu yüzden hero'nun merkezinde çalışan bir ders
-     gibi görünen koyu panel var; her iki temada da koyu kalıyor, çünkü
-     ürünün tuvalini temsil ediyor.
-     ══════════════════════════════════════════════════════════════════ */
-
-  .wrap{max-width:1120px;padding:0 22px 90px}
+  @media(max-width:1020px){ .navBag{display:none} }
+  @media(max-width:560px){ .navIc{gap:10px} .marka span{display:none} .pyDug .pyY{display:none} }
+  .dilbar{display:flex;padding:3px;border:1px solid var(--line2);border-radius:9px;background:rgba(255,255,255,.02)}
+  .dilbar button{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;padding:5px 10px;border-radius:6px;
+      border:0;background:none;color:var(--mut);cursor:pointer}
+  .dilbar button.on{background:rgba(255,255,255,.1);color:var(--txt)}
+  .hUst{display:flex;gap:8px}
+  #hesapCubuk button{height:34px;padding:0 14px;border-radius:8px;font-size:13.5px;font-weight:550;cursor:pointer;
+      border:1px solid var(--line2);background:rgba(255,255,255,.03);color:var(--txt);white-space:nowrap}
+  #hesapCubuk button.birincil{background:var(--txt);color:#07090c;border-color:var(--txt)}
+  #hesapCubuk button:hover{border-color:rgba(255,255,255,.3)}
+  @media(max-width:760px){ #hesapCubuk button:not(.birincil):not(#hbHesap){display:none} }
 
   /* ── hero ── */
-  header{text-align:left;padding:64px 0 0;display:grid;
-    grid-template-columns:minmax(0,1fr) minmax(0,1.02fr);gap:56px;align-items:center}
-  @media(max-width:960px){ header{grid-template-columns:1fr;gap:36px;padding-top:44px} }
+  .hero{position:relative;padding:156px 0 40px;overflow:hidden}
+  .heroZemin{position:absolute;inset:0;pointer-events:none}
+  .heroZemin .izgara{position:absolute;inset:0;
+     background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+     background-size:64px 64px;opacity:.6;
+     -webkit-mask-image:radial-gradient(ellipse 70% 52% at 50% 18%,#000 30%,transparent 75%);
+             mask-image:radial-gradient(ellipse 70% 52% at 50% 18%,#000 30%,transparent 75%)}
+  .heroZemin .isik{position:absolute;left:50%;top:470px;width:1200px;height:640px;transform:translateX(-50%);
+     background:radial-gradient(closest-side,rgba(62,224,176,.22),rgba(92,200,255,.12) 50%,transparent 76%);filter:blur(34px)}
+  .heroIc{position:relative;text-align:center;display:flex;flex-direction:column;align-items:center}
+  .duyuru{display:inline-flex;align-items:center;gap:10px;padding:5px 14px 5px 5px;border:1px solid var(--line2);
+     border-radius:999px;font-size:13.5px;color:var(--txt2);background:rgba(255,255,255,.03);transition:border-color .2s,background .2s;max-width:100%}
+  .duyuru:hover{border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.06)}
+  .duyuru .et{background:var(--green);color:#04120d;font-weight:650;font-size:12px;padding:2px 9px;border-radius:999px;flex:none}
+  .duyuru .yz{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .duyuru .ok{color:var(--mut);transition:transform .2s var(--ease)}
+  .duyuru:hover .ok{transform:translateX(3px)}
+  .hero h1{margin-top:28px;font-size:clamp(40px,6.3vw,80px);line-height:1.02;letter-spacing:-.05em;font-weight:640;text-wrap:balance}
+  .hero .alt{text-wrap:pretty;margin-top:26px;max-width:680px;font-size:clamp(16.5px,1.6vw,19px);color:var(--txt2);line-height:1.6}
+  .heroDug{margin-top:34px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;max-width:100%}
+  .heroMeta{margin-top:22px;font-family:var(--mono);font-size:12.5px;color:var(--mut);letter-spacing:.02em}
+  .heroMeta i{font-style:normal;color:var(--mut2);margin:0 8px}
+  .yuk{opacity:0;transform:translateY(14px);animation:yuk .9s var(--ease) forwards;animation-delay:var(--d)}
+  @keyframes yuk{to{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){ .yuk{animation:none;opacity:1;transform:none} }
 
-  .heroUst{font-family:var(--mono);font-size:11.5px;letter-spacing:.15em;
-    text-transform:uppercase;color:var(--green);font-weight:700}
-  h1{font-size:clamp(34px,5.2vw,54px);margin:20px 0 0;letter-spacing:-.035em;
-    line-height:1.06;font-weight:850}
-  h1 .hl{background:none;-webkit-text-fill-color:currentColor;color:var(--green)}
-  .sub{margin:20px 0 0;font-size:17px;max-width:560px;color:var(--mut)}
+  /* ── vitrin: sekmeli ders penceresi ── */
+  .vitrin{margin-top:76px;width:100%;max-width:1120px}
+  .sekmeler{display:inline-flex;gap:4px;padding:4px;border:1px solid var(--line);border-radius:12px;
+     background:rgba(15,19,26,.72);backdrop-filter:blur(8px);margin-bottom:18px;flex-wrap:wrap;justify-content:center;max-width:100%}
+  .sekmeler button{position:relative;overflow:hidden;background:none;border:0;color:var(--mut);
+     font:500 13.5px var(--sans);padding:8px 14px;border-radius:8px;cursor:pointer;transition:color .2s,background .2s}
+  .sekmeler button b{font:500 11px var(--mono);color:var(--mut2);margin-right:7px;letter-spacing:.04em}
+  .sekmeler button:hover{color:var(--txt)}
+  .sekmeler button.on{color:var(--txt);background:rgba(255,255,255,.07)}
+  .sekmeler button.on b{color:var(--green)}
+  .sekmeler button i{position:absolute;left:10px;right:10px;bottom:3px;height:2px;border-radius:2px;
+     background:rgba(255,255,255,.08);overflow:hidden;opacity:0}
+  .sekmeler button.on i{opacity:1}
+  .sekmeler button i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,var(--green),var(--blue));
+     transform:scaleX(0);transform-origin:left}
+  .sekmeler button.on.akar i::after{animation:ilerle 7s linear forwards}
+  @keyframes ilerle{to{transform:scaleX(1)}}
+  @media(max-width:700px){ .sekmeler button span{display:none} .sekmeler button b{margin:0} }
 
-  .heroDug{margin-top:30px;display:flex;gap:11px;flex-wrap:wrap;align-items:center}
-  .cta{background:var(--green);color:var(--anaTxt);border-radius:9px;
-    padding:13px 22px;font-size:15px;font-weight:750}
-  .cta2{border:1px solid var(--line);border-radius:9px;padding:13px 18px;
-    font-size:14.5px;color:var(--txt);font-weight:650;background:var(--panel)}
-  .cta2:hover{border-color:var(--mut)}
-
-  .heroSat{margin-top:16px;font-family:var(--mono);font-size:12px;
-    letter-spacing:.04em;color:var(--mut)}
-  .heroOnay{margin-top:16px;display:inline-flex;align-items:center;gap:9px;
-    border:1px solid var(--line);border-radius:100px;padding:7px 15px;
-    font-family:var(--mono);font-size:11.5px;color:var(--mut);background:var(--panel)}
-  .heroOnay b{color:var(--green)}
-
-  /* ── koyu ders paneli · her iki temada koyu ── */
-  .tuvalPanel{background:#070a0f;border:1px solid #1e2a3a;border-radius:14px;
-    overflow:hidden;font-family:var(--mono)}
-  .tpUst{display:flex;align-items:center;gap:8px;padding:11px 15px;
-    border-bottom:1px solid #1e2a3a;font-size:11.5px;color:#5d7089}
-  .tpUst b{color:#c9d6e4;font-weight:600}
-  .tpUst .canli{margin-left:auto;color:#22d3a0;display:flex;align-items:center;gap:6px}
-  .tpUst .canli i{width:6px;height:6px;border-radius:50%;background:#22d3a0;display:block}
-  .tpCizim{padding:14px 15px 4px}
-  .tpCizim svg{display:block;width:100%;height:auto}
-  .tpKay{display:grid;grid-template-columns:1fr 1fr;gap:0 18px;padding:4px 15px 0}
-  .tpK{padding:9px 0;border-top:1px solid #141d29}
-  .tpK .st{display:flex;justify-content:space-between;font-size:11.5px;color:#5d7089}
-  .tpK .st b{color:#e6edf3;font-weight:600}
-  .tpK .cub{margin-top:7px;height:3px;border-radius:2px;background:#1b2534;position:relative}
-  .tpK .cub i{position:absolute;left:0;top:-3px;width:9px;height:9px;border-radius:50%;
-    background:#4cc4ff;display:block}
-  .tpSkor{padding:11px 15px;border-top:1px solid #141d29;font-size:11.5px;color:#5d7089;
-    display:flex;gap:14px;flex-wrap:wrap}
-  .tpSkor b{color:#e6edf3}
-  .tpSkor .mavi{color:#4cc4ff} .tpSkor .yesil{color:#22d3a0}
-  .tpKod{margin:0 15px 15px;background:#0b1119;border:1px solid #1b2534;border-radius:9px;
-    padding:11px 13px;font-size:11.5px;line-height:1.85;color:#8fa1b6;overflow-x:auto}
-  .tpKod .sat{white-space:pre}
-  .tpKod .vur{background:rgba(34,211,160,.09);color:#c9d6e4;
-    box-shadow:inset 2px 0 0 #22d3a0;margin:0 -13px;padding:0 13px}
-  .tpKod .anh{color:#a78bfa} .tpKod .say{color:#fb923c} .tpKod .not{color:#4a5b70}
-  .tpAlt{margin-top:11px;font-family:var(--mono);font-size:11px;line-height:1.7;color:var(--mut)}
+  .pencere{position:relative;border-radius:14px;border:1px solid var(--line2);background:#070a0f;overflow:hidden;text-align:left;
+     box-shadow:0 0 0 1px rgba(0,0,0,.6),0 40px 120px -20px rgba(0,0,0,.85),0 0 90px -20px rgba(62,224,176,.22)}
+  .pencere::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;
+     background:linear-gradient(180deg,rgba(255,255,255,.18),transparent 40%);
+     -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+     mask-composite:exclude;pointer-events:none;z-index:3}
+  .krom{display:grid;grid-template-columns:80px 1fr 80px;align-items:center;height:40px;padding:0 14px;
+     border-bottom:1px solid var(--line);background:#0a0d12}
+  .noktalar{display:flex;gap:7px}
+  .noktalar i{width:11px;height:11px;border-radius:50%;background:#23272e}
+  .adres{justify-self:center;font-family:var(--mono);font-size:12px;color:var(--mut);background:#11151b;
+     border:1px solid var(--line);padding:3px 14px;border-radius:6px;min-width:0;max-width:100%;
+     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+  .krom .canli{justify-self:end;display:flex;align-items:center;gap:6px;font:500 11px var(--mono);color:var(--green);letter-spacing:.06em}
+  .krom .canli i{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);animation:nabiz 1.6s ease-in-out infinite}
+  @keyframes nabiz{50%{opacity:.35}}
+  @media(max-width:560px){ .krom{grid-template-columns:44px 1fr 44px} .krom .canli span{display:none} }
+  .ekranlar{position:relative;aspect-ratio:1600/941;background:#070a0f}
+  .ekran{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;
+     transform:scale(.985);transition:opacity .6s var(--ease),transform .8s var(--ease);pointer-events:none}
+  .ekran.on{opacity:1;transform:none;pointer-events:auto}
+  .ekran img{width:100%;height:auto;max-height:100%;object-fit:contain}
+  .vitrinAlt{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px 20px;
+     border-top:1px solid var(--line);background:#0a0d12;min-height:62px}
+  .vitrinAlt p{font-size:14.5px;color:var(--txt2);line-height:1.5}
+  .vitrinAlt a{flex:none;font-size:14px;color:var(--txt);font-weight:550;display:inline-flex;gap:7px;align-items:center}
+  .vitrinAlt a:hover .ok{transform:translateX(3px)}
+  .vitrinAlt .ok{transition:transform .2s var(--ease)}
+  @media(max-width:640px){ .vitrinAlt{flex-direction:column;align-items:flex-start;gap:10px} }
 
   /* ── kanıt şeridi ── */
-  .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--line);
-    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
-    border-radius:0;margin:64px 0 0}
-  .sb{background:var(--bg);border:0;border-radius:0;padding:22px 16px;min-width:0;text-align:left}
-  .sb .n{font-size:25px;letter-spacing:-.03em;font-weight:800}
-  .sb .l{margin-top:3px;font-size:12px;color:var(--mut);font-family:inherit;
-    letter-spacing:0;text-transform:none}
-  @media(max-width:900px){ .stats{grid-template-columns:repeat(3,1fr)} }
-  @media(max-width:560px){ .stats{grid-template-columns:repeat(2,1fr)} }
-
-  /* Kişisel ilerleme ayrı satırda: ilk gelen ziyaretçiyi ilgilendirmiyor,
-     dönen kullanıcıyı ilgilendiriyor. Sıfırsa hiç görünmüyor. */
-  .kisisel{margin-top:14px;font-family:var(--mono);font-size:11.5px;color:var(--mut)}
+  .serit{margin-top:96px;display:grid;grid-template-columns:repeat(6,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .sb{padding:28px 20px;border-left:1px solid var(--line);min-width:0}
+  .sb:first-child{border-left:0}
+  .sb .n{font-size:clamp(26px,2.6vw,34px);font-weight:600;letter-spacing:-.04em;line-height:1}
+  .sb .l{margin-top:9px;font-size:13px;color:var(--mut);line-height:1.4}
+  .sb.yesil .n{color:var(--green)}
+  @media(max-width:960px){ .serit{grid-template-columns:repeat(3,1fr)} .sb:nth-child(4){border-left:0} .sb:nth-child(n+4){border-top:1px solid var(--line)} }
+  @media(max-width:560px){ .serit{grid-template-columns:repeat(2,1fr)} .sb{border-left:0;border-top:1px solid var(--line)} .sb:nth-child(-n+2){border-top:0} .sb:nth-child(even){border-left:1px solid var(--line)} .sb{padding:22px 14px} }
+  .kisisel{margin-top:14px;font-family:var(--mono);font-size:12px;color:var(--mut)}
   .kisisel b{color:var(--txt)}
 
-  /* ── bölüm başlıkları ── */
-  .kicker2{font-family:var(--mono);font-size:11px;letter-spacing:.19em;
-    text-transform:uppercase;color:var(--mut);margin-bottom:13px}
-  .how{background:none;border:0;border-radius:0;padding:0;margin:82px 0 0}
-  .how h3{font-size:clamp(25px,3.3vw,33px);letter-spacing:-.028em;font-weight:800;margin:0}
-  .how .hs{font-size:16.5px;max-width:660px;margin-top:13px}
-  .steps4{margin-top:34px}
-  .s4{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:19px 17px}
-  .s4:nth-child(1){border-top:2px solid var(--green)}
-  .s4:nth-child(2){border-top:2px solid var(--blue)}
-  .s4:nth-child(3){border-top:2px solid var(--orange)}
-  .s4:nth-child(4){border-top:2px solid var(--purple)}
-  .s4:nth-child(5){border-top:2px solid var(--pink)}
-  .s4 .n{font-family:var(--mono);font-size:11px;letter-spacing:.13em;font-weight:700}
-  .s4 .t{margin-top:10px;font-size:15.5px;font-weight:750}
-  .s4 .d{margin-top:7px;font-size:13.4px;line-height:1.6}
+  /* ── canlı ağ ── */
+  .canliBol{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:64px;align-items:center}
+  @media(max-width:960px){ .canliBol{grid-template-columns:1fr;gap:40px} }
+  .kontrol{margin-top:30px;display:flex;flex-wrap:wrap;gap:8px}
+  .kontrol button{height:36px;padding:0 14px;border-radius:9px;border:1px solid var(--line2);background:rgba(255,255,255,.02);
+     color:var(--txt2);font-size:13.5px;cursor:pointer;transition:all .2s}
+  .kontrol button:hover{color:var(--txt);border-color:rgba(255,255,255,.3)}
+  .kontrol button.on{color:#04120d;background:var(--green);border-color:var(--green);font-weight:600}
+  .kontrol .ayir{width:1px;background:var(--line2);margin:4px 6px}
+  .agNot{margin-top:22px;font-family:var(--mono);font-size:12px;color:var(--mut);line-height:1.8}
+  .agKutu{border:1px solid var(--line2);border-radius:16px;background:linear-gradient(180deg,#0d1117,#090c10);overflow:hidden;
+     box-shadow:0 30px 90px -30px rgba(0,0,0,.8),0 0 80px -30px rgba(92,200,255,.25)}
+  .agUst{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);font:500 12px var(--mono);color:var(--mut)}
+  .agUst .canli{margin-left:auto;color:var(--green);display:flex;gap:6px;align-items:center}
+  .agUst .canli i{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);animation:nabiz 1.6s ease-in-out infinite}
+  .agUst .canli.dur{color:var(--mut)} .agUst .canli.dur i{background:var(--mut);box-shadow:none;animation:none}
+  .agGov{display:grid;grid-template-columns:minmax(0,1fr) 190px}
+  @media(max-width:560px){ .agGov{grid-template-columns:1fr} }
+  .agGov canvas{display:block;width:100%;height:auto;aspect-ratio:1}
+  .agYan{border-left:1px solid var(--line);display:flex;flex-direction:column}
+  @media(max-width:560px){ .agYan{border-left:0;border-top:1px solid var(--line);flex-direction:row;flex-wrap:wrap} }
+  .olc{padding:12px 18px;border-bottom:1px solid var(--line);min-width:0}
+  @media(max-width:560px){ .olc{flex:1 1 33%;border-bottom:0;border-right:1px solid var(--line)} .olc:nth-child(3){border-right:0} }
+  .olc .k{font:500 11px var(--mono);color:var(--mut);letter-spacing:.06em;text-transform:uppercase}
+  .olc .v{margin-top:4px;font:500 22px var(--mono);letter-spacing:-.03em;color:var(--txt)}
+  .olc.yesil .v{color:var(--green)}
+  .kayipCiz{padding:12px 18px 14px;flex:1;display:flex;flex-direction:column;min-height:0}
+  @media(max-width:560px){ .kayipCiz{flex-basis:100%;border-top:1px solid var(--line);height:120px;flex:none} }
+  .kayipCiz canvas{width:100%;flex:1;min-height:60px;margin-top:8px}
 
-  /* ── doğrulama bölümü ── */
-  .dogrulama{margin-top:88px;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
-  @media(max-width:900px){ .dogrulama{grid-template-columns:1fr;gap:30px} }
-  .dogrulama h3{font-size:clamp(24px,3.1vw,31px);letter-spacing:-.026em;font-weight:800;margin:0}
-  .dogrulama p{margin-top:14px;font-size:16px;color:var(--mut)}
-  .kural{margin-top:24px;padding:3px 0 3px 19px;border-left:3px solid var(--green);
-    font-size:19px;font-weight:700;line-height:1.45;letter-spacing:-.015em;color:var(--txt)}
-  .terminal{background:#070a0f;border:1px solid #1e2a3a;border-radius:12px;overflow:hidden;
-    font-family:var(--mono)}
-  .tmUst{display:flex;align-items:center;gap:7px;padding:10px 14px;border-bottom:1px solid #1e2a3a}
-  .tmUst i{width:9px;height:9px;border-radius:50%;background:#243040;display:block}
-  .tmUst span{margin-left:9px;font-size:11px;color:#5d7089}
-  .tmGov{padding:15px;font-size:12px;line-height:2;color:#8fa1b6;overflow-x:auto}
+  /* ── yöntem ── */
+  .adimlar5{margin-top:52px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--line);
+     border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  @media(max-width:1000px){ .adimlar5{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  @media(max-width:560px){ .adimlar5{grid-template-columns:1fr} }
+  .s4{background:var(--bg2);padding:26px 22px 28px;position:relative;min-width:0}
+  .s4 .n{font:500 12px var(--mono);letter-spacing:.06em}
+  .s4 .t{margin-top:18px;font-size:17px;font-weight:600;letter-spacing:-.015em}
+  .s4 .d{margin-top:9px;font-size:14px;line-height:1.6;color:var(--mut)}
+  .s4::before{content:"";position:absolute;left:22px;top:0;width:28px;height:2px;background:var(--c)}
+
+  /* ── okullar için ── */
+  .okulIzgara{margin-top:52px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+  @media(max-width:1000px){ .okulIzgara{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  @media(max-width:560px){ .okulIzgara{grid-template-columns:1fr} }
+  .okK{border:1px solid var(--line);border-radius:16px;padding:26px 22px;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent);min-width:0}
+  .okK svg{width:26px;height:26px;color:var(--green)}
+  .okK h3{margin-top:20px;font-size:17px;font-weight:600;letter-spacing:-.015em}
+  .okK p{margin-top:8px;font-size:14.5px;color:var(--mut);line-height:1.6}
+  .pilotBant{margin-top:16px;border:1px solid rgba(62,224,176,.28);border-radius:18px;padding:34px 36px;
+     display:flex;align-items:center;justify-content:space-between;gap:28px;flex-wrap:wrap;position:relative;overflow:hidden;
+     background:radial-gradient(600px 220px at 0% 0%,rgba(62,224,176,.13),transparent 70%),radial-gradient(500px 220px at 100% 100%,rgba(92,200,255,.11),transparent 70%),var(--bg2)}
+  .pilotBant h3{font-size:clamp(21px,2.3vw,27px);font-weight:620;letter-spacing:-.025em;line-height:1.2}
+  .pilotBant p{margin-top:8px;color:var(--txt2);font-size:15.5px;max-width:640px}
+  @media(max-width:560px){ .pilotBant{padding:26px 20px} }
+
+  /* ── doğrulama ── */
+  .dogrulama{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:64px;align-items:center}
+  @media(max-width:960px){ .dogrulama{grid-template-columns:1fr;gap:36px} }
+  .kural{margin-top:28px;padding:4px 0 4px 20px;border-left:2px solid var(--green);font-size:clamp(18px,1.7vw,21px);
+     font-weight:550;line-height:1.45;letter-spacing:-.015em}
+  .terminal{background:#06080b;border:1px solid var(--line2);border-radius:14px;overflow:hidden;font-family:var(--mono);
+     box-shadow:0 30px 90px -30px rgba(0,0,0,.8)}
+  .tmUst{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--line);background:#0a0d12}
+  .tmUst i{width:11px;height:11px;border-radius:50%;background:#23272e;display:block}
+  .tmUst span{margin-left:10px;font-size:12px;color:var(--mut)}
+  .tmGov{padding:20px 22px;font-size:13.5px;line-height:2;color:#8f97a3;overflow-x:auto}
   .tmGov .sat{white-space:pre}
-  .tmGov .kmt{color:#4a5b70}
-  .tmGov .ok{color:#22d3a0}
-  .tmGov .sy{color:#e6edf3}
+  .tmGov .kmt{color:#4d5560} .tmGov .ok{color:var(--green)} .tmGov .sy{color:var(--txt)}
 
-  /* ── rotalar ── */
-  .rota{margin-top:72px}
-  .rota h2{font-size:clamp(21px,2.7vw,27px);letter-spacing:-.024em}
-  .card{border-radius:11px;padding:15px 17px}
-  .card:hover{border-color:var(--mut)}
-  .toplulukB{margin-top:88px}
-  .foot{margin-top:78px;padding-top:34px;border-top:1px solid var(--line)}
+  /* ── katalog kartı ── */
+  .katalog{display:flex;align-items:center;justify-content:space-between;gap:30px;flex-wrap:wrap;border:1px solid var(--line);
+     border-radius:18px;padding:32px 34px;background:var(--bg2);transition:border-color .2s}
+  .katalog:hover{border-color:var(--line2)}
+  .katalog h3{font-size:clamp(20px,2.2vw,26px);font-weight:620;letter-spacing:-.025em}
+  .katalog p{margin-top:8px;color:var(--mut);font-size:15px;max-width:720px}
+  .katalog .ok{transition:transform .2s var(--ease)}
+  .katalog:hover .ok{transform:translateX(4px)}
+  @media(max-width:560px){ .katalog{padding:24px 20px} }
 
+  /* ── müfredat ── */
+  .rota{margin-top:64px;padding-top:40px;border-top:1px solid var(--line)}
+  .rota:first-child{margin-top:48px}
+  .rhd{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .rhd .ik{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;font-size:19px;flex:none;
+     border:1px solid var(--line2);background:var(--panel)}
+  .rhd h2{font-size:clamp(20px,2.2vw,26px);font-weight:620;letter-spacing:-.025em;min-width:0}
+  .rhd h2 small{font:500 12px var(--mono);color:var(--mut);letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:2px}
+  .rhd .ct{margin-left:auto;font:500 12px var(--mono);color:var(--mut);white-space:nowrap}
+  .rozet{color:var(--mut);font-size:15px;margin:12px 0 22px 54px;max-width:720px}
+  @media(max-width:600px){ .rozet{margin-left:0} }
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px}
+  .grid > *{min-width:0}
+  .grid.kisa > *:nth-child(n+7){display:none}
+  .tumu{margin-top:14px;background:none;border:1px solid var(--line2);color:var(--txt2);border-radius:9px;height:36px;
+     padding:0 14px;font-size:13.5px;cursor:pointer}
+  .tumu:hover{color:var(--txt);border-color:rgba(255,255,255,.3)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 16px;
+        display:flex;align-items:flex-start;gap:13px;transition:border-color .2s,transform .2s,background .2s}
+  .card.hazir{cursor:pointer}
+  .card.hazir:hover{border-color:rgba(62,224,176,.45);background:var(--panel2);transform:translateY(-2px)}
+  .card.yapim{opacity:.62} .card.planli{opacity:.42}
+  .card.kilitli{cursor:pointer;position:relative;border-style:dashed}
+  .card.kilitli .body,.card.kilitli .no{opacity:.55}
+  .card.kilitli:hover{border-color:var(--orange)}
+  .kilitRozet{position:absolute;top:9px;right:10px;width:24px;height:24px;display:grid;place-items:center;font-size:12px;
+     border-radius:8px;color:var(--orange);background:rgba(251,146,60,.09);border:1px solid rgba(251,146,60,.28)}
+  .card.kilitli .ad{padding-right:30px}
+  .card .no{font:500 12px var(--mono);width:28px;height:28px;border-radius:8px;display:grid;place-items:center;flex:none;
+     background:var(--panel2);color:var(--mut);border:1px solid var(--line)}
+  .card.hazir .no{color:var(--green);border-color:rgba(62,224,176,.32);background:rgba(62,224,176,.08)}
+  .card.bitti .no{background:var(--green);color:#04120d;border-color:var(--green)}
+  .card .body{flex:1;min-width:0}
+  .card .ad{font-size:14.5px;font-weight:550;line-height:1.4;margin-bottom:6px;letter-spacing:-.005em}
+  .card .meta{font:12px var(--mono);color:var(--mut);display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .tag{font:500 10px var(--mono);letter-spacing:.08em;padding:2px 7px;border-radius:5px}
+  .t-hazir{background:rgba(62,224,176,.1);color:var(--green)}
+  .t-yapim{background:rgba(250,204,21,.12);color:var(--yellow)}
+  .t-planli{background:rgba(128,134,143,.14);color:var(--mut)}
+  .t-nt{background:rgba(167,139,250,.14);color:var(--purple)}
+  .pmini{height:3px;background:var(--line);border-radius:99px;margin-top:9px;overflow:hidden}
+  .pmini i{display:block;height:100%;background:var(--green);border-radius:99px}
+
+  /* ── yazan ── */
+  .yazan{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:56px;align-items:start;border:1px solid var(--line);
+     border-radius:20px;padding:44px;background:var(--bg2)}
+  @media(max-width:900px){ .yazan{grid-template-columns:1fr;gap:24px;padding:28px 22px} }
+  .yazan .ad{font-size:26px;font-weight:620;letter-spacing:-.03em}
+  .yazan .rol{margin-top:4px;color:var(--mut);font-size:15px}
+  .etiketler{margin-top:20px;display:flex;flex-wrap:wrap;gap:8px}
+  .etiketler span{font:500 12px var(--mono);color:var(--txt2);border:1px solid var(--line2);border-radius:999px;padding:4px 11px}
+  .yazan p{color:var(--txt2);font-size:16px}
+  .yazan p + p{margin-top:14px}
+  .yazan .bag{margin-top:20px;display:inline-flex;gap:7px;color:var(--txt);font-weight:550;font-size:15px}
+
+  .toplulukB{margin-top:120px}
+  /* topluluk.js kendi stilini basıyor; başlığı diğer bölümlerle eşitle */
+  #topluluk > h2{font-size:clamp(30px,4.2vw,48px)!important;line-height:1.08;letter-spacing:-.035em!important;font-weight:620!important;margin-bottom:14px!important}
+  #topluluk .tKart,#topluluk .tDagilim,#topluluk .tYorum{background:var(--bg2);border-color:var(--line)}
+
+  /* ── alt bilgi ── */
+  .altBilgi{margin-top:140px;border-top:1px solid var(--line);padding:56px 0 48px}
+  .altIc{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(3,minmax(0,1fr));gap:36px}
+  @media(max-width:800px){ .altIc{grid-template-columns:repeat(2,minmax(0,1fr))} .altIc > :first-child{grid-column:1/-1} }
+  .altIc h4{font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-bottom:14px}
+  .altIc a.marka{display:flex}
+  .altIc a{display:block;color:var(--txt2);font-size:14px;margin-bottom:9px;transition:color .2s}
+  .altIc a:hover{color:var(--txt)}
+  .altIc .acik{color:var(--mut);font-size:14px;margin-top:12px;max-width:340px}
+  .altSon{margin-top:48px;padding-top:22px;border-top:1px solid var(--line);display:flex;justify-content:space-between;
+     gap:16px;flex-wrap:wrap;align-items:center;font:12.5px var(--mono);color:var(--mut)}
+  .altSon a{color:var(--txt2)}
+  .enR{font:600 9px var(--mono);letter-spacing:.06em;color:var(--mut);border:1px solid var(--line2);border-radius:4px;padding:0 3px;vertical-align:2px}
+  .reset{background:none;border:1px solid var(--line2);color:var(--mut);font:12px var(--mono);padding:6px 12px;border-radius:8px;cursor:pointer}
+  .reset:hover{color:var(--red);border-color:var(--red)}
 </style>
-<script>
-/* ══ TEMA ANAHTARI ══
-   Tercih localStorage'da. Hiç seçim yapılmadıysa işletim sisteminin
-   ayarı kullanılır (prefers-color-scheme). Seçim yapıldıysa o kazanır.
-   Betik <head> içinde çalışır ki sayfa yanlış temayla bir an bile
-   görünüp sonra zıplamasın. */
-const TKEY = 'mlacad_tema';
-function temaUygula(t){
-  document.documentElement.setAttribute('data-tema', t);
-  const d = document.getElementById('temaDug');
-  if (d){
-    d.textContent = t === 'koyu' ? '☀' : '☾';
-    d.title = t === 'koyu' ? 'Açık temaya geç' : 'Koyu temaya geç';
-  }
-}
-function temaOku(){
-  const kayit = localStorage.getItem(TKEY);
-  if (kayit === 'koyu' || kayit === 'acik') return kayit;
-  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-       ? 'koyu' : 'acik';
-}
-temaUygula(temaOku());
-</script>
 </head>
 <body>
 
-<nav class="ustNav"><div class="navIc">
-  <a class="marka" href="index.html"><i></i> <span>ML Academy</span></a>
+<nav class="ustNav" id="ustNav"><div class="kap navIc">
+  <a class="marka" href="index.html" aria-label="ML Academy">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <defs><linearGradient id="mg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3ee0b0"/><stop offset=".55" stop-color="#5cc8ff"/><stop offset="1" stop-color="#9aa8ff"/></linearGradient></defs>
+      <rect x="1" y="1" width="22" height="22" rx="6.5" fill="#0f131a" stroke="rgba(255,255,255,.14)"/>
+      <path d="M5 16.5 9.2 11l3.3 3.2L18.8 6.5" fill="none" stroke="url(#mg)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="18.8" cy="6.5" r="1.9" fill="#9aa8ff"/>
+    </svg>
+    <span>ML Academy</span></a>
   <div class="navBag">
-    <a href="#rota0"        data-i="navMuf">müfredat</a>
-    <a href="#nasil"        data-i="navYon">yöntem</a>
-    <a href="modeller.html" data-i="navKat">model kataloğu</a>
-    <a href="about.html"    data-i="navHak">hakkında</a>
+    <a href="#mufredat"     data-i="navMuf">Müfredat</a>
+    <a href="#nasil"        data-i="navYon">Yöntem</a>
+    <a href="modeller.html" data-i="navKat">Model kataloğu</a>
+    <a href="#okullar"      data-i="navOkul">Okullar için</a>
+    <a href="about.html"    data-i="navHak">Hakkında <sup class="enR">EN</sup></a>
   </div>
   <div class="navSag">
     <button class="pyDug" id="paylasDug" type="button"></button>
-    <button class="temaDug" id="temaDug" aria-label="tema"></button>
-    <div class="dilbar">
-      <button data-dil="tr">TR</button>
+    <div class="dilbar" role="group" aria-label="Language">
       <button data-dil="en">EN</button>
+      <button data-dil="tr">TR</button>
     </div>
     <!-- hesap düğmeleri; Supabase yoksa boş kalır -->
     <div class="hUst" id="hesapCubuk"></div>
   </div>
 </div></nav>
 
-<div class="wrap" style="position:relative">
-
-  <header>
-    <div>
-      <div class="heroUst" data-i="heroUst">ÜCRETSİZ · TARAYICINDA ÇALIŞIR · <span id="heroDers">123</span> DERS</div>
-      <h1 data-i="h1">Makine öğrenmesini izleme.<br><span class="hl">Çalıştır.</span></h1>
-      <p class="sub" data-i="sub">Her algoritma sıfırdan yazıldı ve tarayıcında çalışıyor.
-         Kaydırıcıyı sen çeviriyorsun, model yanıt veriyor. Bir tahmin yapıyorsun,
-         kod onu kontrol ediyor.</p>
-      <div class="heroDug">
-        <a class="cta" id="startBtn" href="lesson.html?id=veri">Buradan başla ▶</a>
-        <a class="cta2" href="#rota0" data-i="ctaMuf">5 rotanın tamamı</a>
-      </div>
-      <div class="dilnot" id="dilnot"></div>
-      <div class="heroSat" data-i="heroSat">video yok · kurulum yok · ücret yok · reklam yok</div>
-      <div class="heroOnay"><b>✓</b>&nbsp;<span data-i="heroOnay">2.395 sayısal iddia testle doğrulandı · 0 uyuşmazlık</span></div>
+<main>
+<!-- ═══════════ HERO ═══════════ -->
+<section class="hero">
+  <div class="heroZemin" aria-hidden="true"><div class="izgara"></div><div class="isik"></div></div>
+  <div class="kap heroIc">
+    <a class="duyuru yuk" style="--d:0s" href="#okullar">
+      <span class="et" data-i="duyEt">Okullar</span>
+      <span class="yz" data-i="duyYz">Ücretsiz bir dönemlik sınıf pilotu</span>
+      <span class="ok">→</span>
+    </a>
+    <h1 class="yuk" style="--d:.08s" data-i="h1">Makine öğrenmesini izleme.<br><span class="grad">Çalıştır.</span></h1>
+    <p class="alt yuk" style="--d:.16s" data-i="sub">Verinin ne olduğundan dil modellerinin nasıl cevap ürettiğine kadar
+      <span class="nDers">123</span> etkileşimli ders. Her algoritma sıfırdan yazıldı ve tarayıcında canlı çalışıyor.
+      Kaydırıcıyı sen oynatıyorsun, model cevap veriyor. Tahminini sen yapıyorsun, kod kontrol ediyor.</p>
+    <div class="heroDug yuk" style="--d:.24s">
+      <a class="btn btn-ana" id="startBtn" href="lesson.html?id=veri">Buradan başla</a>
+      <a class="btn btn-ikinci" href="#mufredat"><span data-i="ctaMuf">5 rotaya göz at</span> <span class="ok">→</span></a>
     </div>
+    <div class="heroMeta yuk" style="--d:.3s" data-i="heroMeta">Ücretsiz<i>·</i>Kurulum yok<i>·</i>Reklam yok<i>·</i>Türkçe ve İngilizce</div>
 
-    <!-- ── ÇALIŞAN DERS PANELİ ──
-         Ürünün vaadini anlatmak yerine göstermek için. Rota 1'deki
-         "elinle bir doğru uydur, sonra gradient descent seni geçsin"
-         dersinin aynısı. Her iki temada da koyu kalıyor, çünkü derslerin
-         tuvali koyu; açık sayfadaki koyu panel dokümantasyon
-         sitelerindeki kod bloğu deseninin aynısı. -->
-    <div>
-      <div class="tuvalPanel">
-        <div class="tpUst"><span data-i="tpYol">rota-1 / <b>gradient-descent</b> · adım 4/9</span>
-          <span class="canli"><i></i><span data-i="tpCanli">CANLI</span></span></div>
-        <div class="tpCizim">
-          <svg viewBox="0 0 460 210" preserveAspectRatio="none" aria-hidden="true">
-            <g stroke="#141d29" stroke-width="1">
-              <line x1="0" y1="40"  x2="460" y2="40"/>
-              <line x1="0" y1="90"  x2="460" y2="90"/>
-              <line x1="0" y1="140" x2="460" y2="140"/>
-            </g>
-            <line x1="16" y1="176" x2="446" y2="52" stroke="#4cc4ff" stroke-width="2.5"
-                  stroke-dasharray="7 6"/>
-            <line x1="16" y1="164" x2="446" y2="30" stroke="#22d3a0" stroke-width="2.5"/>
-            <g fill="#6d8298">
-              <circle cx="52"  cy="168" r="3.4"/><circle cx="98"  cy="152" r="3.4"/>
-              <circle cx="146" cy="146" r="3.4"/><circle cx="192" cy="126" r="3.4"/>
-              <circle cx="238" cy="112" r="3.4"/><circle cx="284" cy="96"  r="3.4"/>
-              <circle cx="330" cy="74"  r="3.4"/><circle cx="376" cy="62"  r="3.4"/>
-              <circle cx="422" cy="44"  r="3.4"/>
-            </g>
-            <text x="444" y="20" text-anchor="end" fill="#22d3a0"
-                  font-family="monospace" font-size="11">gradient descent</text>
-            <text x="300" y="112" text-anchor="end" fill="#4cc4ff"
-                  font-family="monospace" font-size="11" data-i="tpSenin">senin doğrun</text>
-          </svg>
+    <!-- ── VİTRİN ──
+         Beş rotadan birer gerçek ders tuvali. Görseller playwright ile
+         lesson.html'den çekildi (koyu tema, ilgili adım). -->
+    <div class="vitrin yuk" style="--d:.38s">
+      <div class="sekmeler" role="tablist" id="sekmeler">
+        <button role="tab" class="on" data-t="0"><b>R0</b><span data-i="sk0">Makine nasıl öğrenir</span><i></i></button>
+        <button role="tab" data-t="1"><b>R1</b><span data-i="sk1">Yumuşak karar ağacı</span><i></i></button>
+        <button role="tab" data-t="2"><b>R2</b><span data-i="sk2">Canlı eğitilen ağ</span><i></i></button>
+        <button role="tab" data-t="3"><b>R3</b><span data-i="sk3">Dikkat mekanizması</span><i></i></button>
+        <button role="tab" data-t="4"><b>R4</b><span data-i="sk4">Fark gerçek mi?</span><i></i></button>
+      </div>
+      <div class="pencere">
+        <div class="krom"><span class="noktalar"><i></i><i></i><i></i></span>
+          <span class="adres" id="adres">mltraining.org/lesson.html?id=nasil-ogrenir</span>
+          <span class="canli"><i></i><span data-i="canli">CANLI</span></span></div>
+        <div class="ekranlar" id="ekranlar">
+          <div class="ekran on"><img data-ad="r0-ogrenme" alt="" width="1600" height="644"></div>
+          <div class="ekran"><img data-ad="r1-softtree" alt="" width="1600" height="878" loading="lazy"></div>
+          <div class="ekran"><img data-ad="r2-ag" alt="" width="1600" height="835" loading="lazy"></div>
+          <div class="ekran"><img data-ad="r3-attention" alt="" width="1600" height="941" loading="lazy"></div>
+          <div class="ekran"><img data-ad="r4-eval" alt="" width="1600" height="835" loading="lazy"></div>
         </div>
-        <div class="tpKay">
-          <div class="tpK"><div class="st"><span data-i="tpEgim">eğim w</span><b>1.62</b></div>
-            <div class="cub"><i style="left:58%"></i></div></div>
-          <div class="tpK"><div class="st"><span data-i="tpKesisim">kesişim b</span><b>0.48</b></div>
-            <div class="cub"><i style="left:34%"></i></div></div>
-        </div>
-        <div class="tpSkor">
-          <span data-i="tpMse">senin MSE <b class="mavi">0.4128</b></span>
-          <span>gradient descent <b class="yesil">0.2977</b></span>
-          <span data-i="tpAdim">200 adım sonra</span>
-        </div>
-        <div class="tpKod">
-          <div class="sat"><span class="not">1</span>  <span class="anh">for</span> step <span class="anh">in</span> range(<span class="say">200</span>):</div>
-          <div class="sat"><span class="not">2</span>    grad_w = <span class="say">2</span> * mean(x * (w*x + b - y))</div>
-          <div class="sat vur"><span class="not">3</span>    w -= <span class="say">0.1</span> * grad_w   <span class="not" data-i="tpNot"># bütün numara bu</span></div>
+        <div class="vitrinAlt">
+          <p id="vitrinYazi"></p>
+          <a id="vitrinBag" href="lesson.html?id=nasil-ogrenir"><span data-i="dersiAc">Bu dersi aç</span> <span class="ok">→</span></a>
         </div>
       </div>
-      <div class="tpAlt" data-i="tpAlt">Rota 1'den alındı · her ders böyle: bir model,
-        üstünde senin ellerin, geçilecek bir skor.</div>
     </div>
-  </header>
+  </div>
+</section>
 
+<div class="kap">
   <!-- ── KANIT ŞERİDİ ──
-       Altı sayı da müfredattan sayılıyor ya da denetim çıktısından
-       geliyor; hiçbiri elle yazılmadı. Kişisel ilerleme (XP, bitirilen)
-       buradan çıkarıldı: ilk gelen ziyaretçiyi ilgilendirmiyor ve
-       sıfır görünen iki kutu şeridi zayıflatıyordu. Aşağıda, yalnızca
-       ilerleme varsa görünen ayrı bir satırda duruyor. -->
-  <div class="stats">
+       Sayıların hiçbiri elle yazılmıyor: müfredattan sayılıyor. Tek istisna
+       doğrulanan iddia sayısı, o dogrula.sh çıktısından geliyor. -->
+  <div class="serit">
     <div class="sb"><div class="n" id="sHazir">-</div><div class="l" data-i="stHazir">ders, hepsi hazır</div></div>
     <div class="sb"><div class="n" id="sToplam">-</div><div class="l" data-i="stPlan">etkileşimli adım</div></div>
     <div class="sb"><div class="n" id="sGorsel">-</div><div class="l" data-i="stGor">canlı görselleştirme</div></div>
-    <div class="sb"><div class="n" id="sKilit">-</div><div class="l" data-i="stKil">kilit · <span id="sSoru">-</span> soru</div></div>
+    <div class="sb"><div class="n" id="sKilit">-</div><div class="l"><span data-i="stKil">kilit</span> · <span id="sSoru">-</span> <span data-i="stSoru">soru</span></div></div>
     <div class="sb"><div class="n" id="sKaynak">-</div><div class="l" data-i="stKay">akademik kaynak</div></div>
-    <div class="sb"><div class="n" style="color:var(--green)" id="sDogru">2.395 / 0</div><div class="l" data-i="stDog">doğrulanan iddia / uyuşmazlık</div></div>
+    <div class="sb yesil"><div class="n" id="sDogru">2.395</div><div class="l" data-i="stDog">testle doğrulanan sayı, 0 uyuşmazlık</div></div>
   </div>
   <div class="kisisel" id="kisisel" style="display:none">
     <span data-i="kisiselEt">senin ilerlemen</span> · <b id="sXP">0</b> XP ·
     <b id="sBitti">0</b> <span data-i="kisiselDers">ders bitti</span>
   </div>
 
-  <div class="how" id="nasil">
-    <div class="kicker2" data-i="howKick">yöntem</div>
-    <h3 data-i="howH">Her ders aynı beş adımı izler</h3>
-    <p class="hs" data-i="howS">Konu değişir, yöntem değişmez. Bir kere alıştıktan sonra her derste ne bekleyeceğini bilirsin.</p>
-    <div class="steps4">
-      <div class="s4"><div class="n" style="color:var(--green)" data-i="s0n">01 · HEDEF</div><div class="t" data-i="s0t">Ne öğreneceksin?</div>
-        <div class="d" data-i="s0d">Adım, ne kazanacağını tek cümleyle söyleyerek açılır. Neden burada olduğunu baştan bilirsin.</div></div>
-      <div class="s4"><div class="n" style="color:var(--blue)" data-i="s1n">02 · GÖR</div><div class="t" data-i="s1t">Animasyon</div>
-        <div class="d" data-i="s1d">Algoritma gözünün önünde adım adım çalışır. O an işleyen kod satırı vurgulanır, sayılar canlı değişir.</div></div>
-      <div class="s4"><div class="n" style="color:var(--orange)" data-i="s2n">03 · OYNA</div><div class="t" data-i="s2t">Kendin kır</div>
-        <div class="d" data-i="s2d">Kaydırıcılar sende. Modeli bozuncaya kadar oynayabilirsin; bir şeyi anlamanın en hızlı yolu onu kırmaktır.</div></div>
-      <div class="s4"><div class="n" style="color:var(--purple)" data-i="s3n">04 · SORU</div><div class="t" data-i="s3t">Kilidi aç</div>
-        <div class="d" data-i="s3d">İki tür kapı var: bazı adımlarda simülasyonu hedefe getirmen, bazılarında soruyu doğru cevaplaman gerekir. Şıkların her biri için neden doğru ya da yanlış olduğu açıklanır.</div></div>
-      <div class="s4"><div class="n" style="color:var(--pink)" data-i="s4n">05 · ÖZET</div><div class="t" data-i="s4t">Ne öğrendin?</div>
-        <div class="d" data-i="s4d">Adım biterken öğrendiğin tek paragrafta toplanır ve XP kazanırsın. İstediğin zaman geri dönüp okuyabilirsin.</div></div>
-    </div>
-  </div>
-
-  <a class="how" href="modeller.html" style="display:block;text-decoration:none;
-     background:linear-gradient(135deg,rgba(76,196,255,.10),rgba(34,211,160,.05));
-     border-color:rgba(76,196,255,.34)">
-    <h3 data-i="katH">📚 Model Kataloğu, <span style="color:var(--blue)">25 model, tek sayfa</span></h3>
-    <p class="hs" style="margin-bottom:0" data-i="katP">Derslere vakit ayıramadığın anlarda başvuru kaynağın.
-       Her model için: <b>ne yapar · nasıl çalışır · ne zaman kullanılır · ne zaman kullanılmaz ·
-       çalışan kod · kilit ayarlar · klasik tuzak.</b> Ara, filtrele, kodu kopyala.</p>
-  </a>
-
-  <!-- ── DOĞRULAMA ──
-       Sitenin başka hiçbir eğitim sitesinde olmayan iddiası bu, o yüzden
-       ana sayfada kendi bölümü var. Terminal çıktısı biçimi kasıtlı:
-       iddia pazarlama cümlesi değil, çalıştırılabilir bir kontrol. -->
-  <section class="dogrulama" id="dogrulama">
+  <!-- ═══════════ CANLI AĞ ═══════════
+       Sayfadaki küçük sinir ağı GERÇEKTEN eğitiliyor: 2-8-8-1, tanh,
+       sigmoid çıkış, ikili çapraz entropi, Adam, tam yığın. Ekrandaki
+       kayıp ve doğruluk o anki ağdan hesaplanıyor, animasyon değil.
+       Ekrandan çıkınca ya da sekme gizlenince durur, işlemciyi yemez. -->
+  <section class="bolum canliBol" id="canli">
     <div>
-      <div class="kicker2" data-i="dogKick">doğrulama</div>
-      <h3 data-i="dogBas">Ders metni testten geçiyor</h3>
-      <p data-i="dogAlt">Kurslar sayı alıntılar. Bu kurs onları kanıtlıyor. Bir betik
-         algoritmaları yeniden çalıştırıp her sonucu ders metninde yazan değerle
-         karşılaştırıyor. Tek hane kayarsa yayın durur.</p>
-      <div class="kural" data-i="dogKural">Bir sayı, onu yeniden hesaplayan bir test
-         olmadan derste yer alamaz.</div>
+      <div class="kicker"><b>●</b> <span data-i="cnKick">Canlı, bu sekmede</span></div>
+      <h2 class="bh" data-i="cnBas">Bu ağ şu anda öğreniyor.</h2>
+      <p class="bp" data-i="cnAlt">Video yok, sunucu yok. Küçük bir sinir ağı rastgele ağırlıklarla başlıyor
+        ve gördüğün noktalar üzerinde eğitiliyor. Veriyi değiştir, gürültü ekle ya da baştan başlat;
+        renkli sınırın veriye oturmasını izle.</p>
+      <div class="kontrol" id="agKontrol">
+        <button data-veri="sarmal" class="on" data-i="vSarmal">Sarmal</button>
+        <button data-veri="halka" data-i="vHalka">Halka</button>
+        <button data-veri="xor" data-i="vXor">Dört bölge</button>
+        <span class="ayir"></span>
+        <button id="agGurultu" data-i="vGur">Gürültü ekle</button>
+        <button id="agYeni" data-i="vYeni">↺ Baştan</button>
+      </div>
+      <div class="agNot" data-i="cnNot">mimari 2-8-8-1 · tanh · Adam · tam yığın<br>
+        Rota 2 bu ağı parça parça açıyor.</div>
     </div>
-    <div class="terminal">
-      <div class="tmUst"><i></i><i></i><i></i><span>dogrula.sh · son çalıştırma</span></div>
-      <div class="tmGov">
-        <div class="sat"><span class="kmt">$</span> ./dogrula.sh</div>
-        <div class="sat"><span class="kmt">→</span> sözdizimi          <span class="ok">✓</span></div>
-        <div class="sat"><span class="kmt">→</span> sayısal iddia      <span class="sy">2.395</span> bulundu</div>
-        <div class="sat"><span class="kmt">→</span> yeniden hesaplandı <span class="sy">2.395</span></div>
-        <div class="sat"><span class="kmt">→</span> uyuşmazlık         <span class="ok">0</span></div>
-        <div class="sat"><span class="kmt">→</span> kilit koşulu       <span class="ok">154 ✓</span> ulaşılabilir</div>
-        <div class="sat"><span class="kmt">→</span> görselleştirme     <span class="ok">165 ✓</span> çizildi</div>
-        <div class="sat"><span class="kmt">→</span> yerleşim taraması  <span class="ok">401 ✓</span> adım</div>
-        <div class="sat">&nbsp;</div>
-        <div class="sat"><span class="ok">PASS</span> <span class="kmt">· çıkış kodu 0</span></div>
+    <div class="agKutu">
+      <div class="agUst"><span data-i="agBas">sinir ağı · karar sınırı</span>
+        <span class="canli" id="agDurum"><i></i><span data-i="agEgit">eğitiliyor</span></span></div>
+      <div class="agGov">
+        <canvas id="agTuval" width="560" height="560" aria-label="Neural network decision boundary"></canvas>
+        <div class="agYan">
+          <div class="olc"><div class="k" data-i="olAdim">adım</div><div class="v" id="olAdim">0</div></div>
+          <div class="olc"><div class="k" data-i="olKayip">kayıp</div><div class="v" id="olKayip">-</div></div>
+          <div class="olc yesil"><div class="k" data-i="olDog">doğruluk</div><div class="v" id="olDog">-</div></div>
+          <div class="kayipCiz"><div class="k" style="font:500 11px var(--mono);color:var(--mut);letter-spacing:.06em;text-transform:uppercase" data-i="olEgri">kayıp eğrisi</div>
+            <canvas id="agEgri" width="300" height="140"></canvas></div>
+        </div>
       </div>
     </div>
   </section>
 
-  <div id="rotalar"></div>
+  <!-- ═══════════ YÖNTEM ═══════════ -->
+  <section class="bolum" id="nasil">
+    <div class="kicker" data-i="howKick">Yöntem</div>
+    <h2 class="bh" data-i="howH">Her ders aynı beş adımı izler.</h2>
+    <p class="bp" data-i="howS">Konu değişir, yöntem değişmez. Bir kere alıştıktan sonra her derste ne bekleyeceğini bilirsin.</p>
+    <div class="adimlar5">
+      <div class="s4" style="--c:var(--green)"><div class="n" style="color:var(--green)" data-i="s0n">01 · HEDEF</div><div class="t" data-i="s0t">Ne öğreneceksin?</div>
+        <div class="d" data-i="s0d">Adım, ne kazanacağını tek cümleyle söyleyerek açılır. Neden burada olduğunu baştan bilirsin.</div></div>
+      <div class="s4" style="--c:var(--blue)"><div class="n" style="color:var(--blue)" data-i="s1n">02 · GÖR</div><div class="t" data-i="s1t">Animasyon</div>
+        <div class="d" data-i="s1d">Algoritma gözünün önünde adım adım çalışır. O an işleyen kod satırı vurgulanır, sayılar canlı değişir.</div></div>
+      <div class="s4" style="--c:var(--orange)"><div class="n" style="color:var(--orange)" data-i="s2n">03 · OYNA</div><div class="t" data-i="s2t">Kendin kır</div>
+        <div class="d" data-i="s2d">Kaydırıcılar sende. Modeli bozuncaya kadar oynayabilirsin; bir şeyi anlamanın en hızlı yolu onu kırmaktır.</div></div>
+      <div class="s4" style="--c:var(--purple)"><div class="n" style="color:var(--purple)" data-i="s3n">04 · SORU</div><div class="t" data-i="s3t">Kilidi aç</div>
+        <div class="d" data-i="s3d">İki tür kapı var: bazı adımlarda simülasyonu hedefe getirmen, bazılarında soruyu doğru cevaplaman gerekir. Şıkların her biri için neden doğru ya da yanlış olduğu açıklanır.</div></div>
+      <div class="s4" style="--c:var(--pink)"><div class="n" style="color:var(--pink)" data-i="s4n">05 · ÖZET</div><div class="t" data-i="s4t">Ne öğrendin?</div>
+        <div class="d" data-i="s4d">Adım biterken öğrendiğin tek paragrafta toplanır ve XP kazanırsın. İstediğin zaman geri dönüp okuyabilirsin.</div></div>
+    </div>
+  </section>
+
+  <!-- ═══════════ OKULLAR İÇİN ═══════════
+       Buradaki her vaat pilot.html'de zaten yazılı olanın aynısı:
+       kalıcı ücretsiz, kurulum/onay/lisans yok, Chromebook yeterli,
+       her rotanın ilk üç dersi hesapsız açık. Yeni iddia eklenmedi. -->
+  <section class="bolum" id="okullar">
+    <div class="kicker" data-i="okKick">Okullar ve öğretmenler için</div>
+    <h2 class="bh" data-i="okBas">Kurulacak hiçbir şey yok.<br><span class="grad">Bir bağlantı yeter.</span></h2>
+    <p class="bp" data-i="okAlt">Öğrenci bir bağlantıyı açar ve ders başlar. Satın alma, lisans, BT onayı ya da
+      güçlü bir bilgisayar gerekmez.</p>
+    <div class="okulIzgara">
+      <div class="okK">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <h3 data-i="ok1b">Kalıcı olarak ücretsiz</h3>
+        <p data-i="ok1p">Deneme süresi değil. Reklam, sponsor, ücretli sürüm ya da ödeme altyapısı yok.</p></div>
+      <div class="okK">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M2 20h20"/></svg>
+        <h3 data-i="ok2b">Okul bilgisayarında çalışır</h3>
+        <p data-i="ok2p">Her şey tarayıcı sekmesinde çalışır. Bir Chromebook yeterli; BT biriminin kuracağı ya da onaylayacağı bir şey yok.</p></div>
+      <div class="okK">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16M8 15l4-4 3 3 5-6"/></svg>
+        <h3 data-i="ok3b">Sıfırdan dil modellerine</h3>
+        <p data-i="ok3p">Rota 0 hiçbir ön bilgi varsaymaz. Rota 3 sohbet modellerinin cevabı nasıl ürettiğini açar, Rota 4 yapay zekâyı ölçerek kullanmayı öğretir.</p></div>
+      <div class="okK">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg>
+        <h3 data-i="ok4b">Yazılım gibi denetlenir</h3>
+        <p data-i="ok4p">Derslerdeki her sayı, yayından önce onu yeniden hesaplayan bir testten geçer. Derslerde <span class="nKaynak">387</span> akademik kaynağa atıf var.</p></div>
+    </div>
+    <div class="pilotBant">
+      <div>
+        <h3 data-i="plBas">Bir dönemlik ücretsiz sınıf pilotu</h3>
+        <p data-i="plAlt">Bir öğretmen, bir sınıf. Öğrencilerle canlı 90 dakikalık bir açılış oturumu, dönem ortası ve sonunda
+          değerlendirme. Karşılığında yalnızca dürüst geri bildirim istiyoruz.</p>
+      </div>
+      <a class="btn btn-ana" href="pilot.html"><span data-i="plDug">Pilot sayfası (İngilizce)</span> <span class="ok">→</span></a>
+    </div>
+  </section>
+
+  <!-- ═══════════ DOĞRULAMA ═══════════ -->
+  <section class="bolum dogrulama" id="dogrulama">
+    <div>
+      <div class="kicker" data-i="dogKick">Doğrulama</div>
+      <h2 class="bh" data-i="dogBas">Ders metni testten geçiyor.</h2>
+      <p class="bp" data-i="dogAlt">Kurslar sayı alıntılar. Bu kurs onları kanıtlıyor. Bir betik algoritmaları
+        yeniden çalıştırıp her sonucu ders metninde yazan değerle karşılaştırıyor. Tek hane kayarsa yayın durur.</p>
+      <div class="kural" data-i="dogKural">Bir sayı, onu yeniden hesaplayan bir test olmadan derste yer alamaz.</div>
+    </div>
+    <div class="terminal">
+      <div class="tmUst"><i></i><i></i><i></i><span data-i="tmBas">dogrula.sh · son çalıştırma</span></div>
+      <div class="tmGov" id="tmGov"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════ KATALOG ═══════════ -->
+  <section class="bolum">
+    <a class="katalog" href="modeller.html">
+      <div>
+        <div class="kicker" data-i="katKick">Başvuru kaynağı</div>
+        <h3 data-i="katH">Model kataloğu: 25 model, tek sayfa</h3>
+        <p data-i="katP">Her model için ne yapar, nasıl çalışır, ne zaman kullanılır, ne zaman kullanılmaz,
+          çalışan kod, kilit ayarlar ve klasik tuzak. Ara, filtrele, kodu kopyala.</p>
+      </div>
+      <span class="btn btn-ikinci"><span data-i="katDug">Kataloğu aç</span> <span class="ok">→</span></span>
+    </a>
+  </section>
+
+  <!-- ═══════════ MÜFREDAT ═══════════ -->
+  <section class="bolum" id="mufredat">
+    <div class="kicker" data-i="mfKick">Müfredat</div>
+    <h2 class="bh" data-i="mfBas">Beş rota. Sıfırdan dil modellerine.</h2>
+    <p class="bp" data-i="mfAlt">Yeniysen Rota 0'dan başla. Değilsen istediğin rotaya atla; her ders kendi içinde tamamlanır.</p>
+    <div id="rotalar"></div>
+  </section>
+
+  <!-- ═══════════ YAZAN ═══════════ -->
+  <section class="bolum">
+    <div class="yazan">
+      <div>
+        <div class="kicker" data-i="yzKick">Yazan</div>
+        <div class="ad">Cagri Temel</div>
+        <div class="rol" data-i="yzRol">Makine öğrenmesi mühendisi · LLM, bilgi getirme ve MLOps</div>
+        <div class="etiketler">
+          <span data-i="yzE1">Bilgisayar Bilimi yüksek lisansı</span>
+          <span>IEEE Senior Member</span>
+          <span data-i="yzE3">AAAI üyesi</span>
+          <span data-i="yzE4">IEEE SMC hakemi</span>
+        </div>
+      </div>
+      <div>
+        <p data-i="yzP1">Bu kurstaki her dersi, her simülasyonu ve her doğrulama testini ben yazdım. Algoritmalar kütüphane
+          çağrısı değil: Gini kazancıyla CART, bootstrap ile rastgele orman, geri yayılımlı çok katmanlı ağ, BPE
+          tokenizer ve geri kalanı sıfırdan yazıldı. Ekranda gördüğün sayılar okuyabileceğin koddan çıkıyor.</p>
+        <p data-i="yzP2">Araştırmam yapay zekâ sistemlerini denetlenebilir kılmak üzerine: bir sistemin kendi akıl yürütmesi
+          hakkında söylediğinin başkası tarafından kontrol edilip edilemeyeceği.</p>
+        <a class="bag" href="about.html"><span data-i="yzBag">Hakkında <sup class="enR">EN</sup></span> <span>→</span></a>
+      </div>
+    </div>
+  </section>
 
   <!-- Topluluk: sayaçlar + onaylı yorumlar.
        Supabase yapılandırılana kadar TOPLULUK.kur() bu bölümü gizli tutar. -->
   <section class="toplulukB" id="topluluk" style="display:none"></section>
+</div>
+</main>
 
-  <div class="foot">
-    <span data-i="footP">ML Academy · mltraining.org · prototip</span><br>
-    <a href="modeller.html" data-i="footKat">model kataloğu</a> ·
-    <a href="https://github.com/cgrtml/ml-academy">GitHub</a> ·
-    <a href="about.html" data-i="footHak">hakkında</a> ·
-    <a href="privacy.html" data-i="footGiz">gizlilik</a><br>
-    <!-- Telif satırı. Kaynak herkese açık ama lisanssız değil: depo
-         okunabilir olsun diye açık, yeniden yayımlanabilsin diye değil.
-         Bunu yazmadan önce sitede tek bir hak bildirimi yoktu, yani
-         kopyalayan kişinin silmesi gereken hiçbir şey yoktu. -->
-    <span class="telif" data-i="footTel">© 2026 Cagri Temel · tüm hakları saklıdır ·
-      <a href="https://github.com/cgrtml/ml-academy/blob/main/LICENSE">lisans</a></span><br><br>
+<footer class="altBilgi"><div class="kap">
+  <div class="altIc">
+    <div>
+      <a class="marka" href="index.html" style="color:var(--txt)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="1" y="1" width="22" height="22" rx="6.5" fill="#0f131a" stroke="rgba(255,255,255,.14)"/><path d="M5 16.5 9.2 11l3.3 3.2L18.8 6.5" fill="none" stroke="url(#mg)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18.8" cy="6.5" r="1.9" fill="#9aa8ff"/></svg><span>ML Academy</span></a>
+      <p class="acik" data-i="altAcik">Makine öğrenmesini çalıştırarak öğreten ücretsiz bir kurs. mltraining.org</p>
+    </div>
+    <div><h4 data-i="altH1">Öğren</h4>
+      <a href="#mufredat" data-i="altA1">Müfredat</a>
+      <a href="lesson.html?id=veri" data-i="altA2">İlk ders</a>
+      <a href="modeller.html" data-i="altA3">Model kataloğu</a></div>
+    <div><h4 data-i="altH2">Okullar</h4>
+      <a href="pilot.html" data-i="altA4">Sınıf pilotu <sup class="enR">EN</sup></a>
+      <a href="#okullar" data-i="altA5">Neden sınıfa uygun</a></div>
+    <div><h4 data-i="altH3">Proje</h4>
+      <a href="about.html" data-i="altA6">Hakkında <sup class="enR">EN</sup></a>
+      <a href="https://github.com/cgrtml/ml-academy">GitHub</a>
+      <a href="privacy.html" data-i="altA7">Gizlilik <sup class="enR">EN</sup></a></div>
+  </div>
+  <!-- Telif satırı. Kaynak herkese açık ama lisanssız değil. -->
+  <div class="altSon">
+    <span data-i="footTel">© 2026 Cagri Temel · tüm hakları saklıdır · <a href="https://github.com/cgrtml/ml-academy/blob/main/LICENSE">lisans</a></span>
     <button class="reset" id="reset" data-i="footSif">↺ ilerlemeyi sıfırla</button>
   </div>
-</div>
+</div></footer>
 
 <script src="paylas.js?v=9296406"></script>
 <script src="viz-sozluk.js?v=9296406"></script>
@@ -577,31 +658,31 @@ const PKEY = 'mlacad_v2';
 let PROG = {};
 try { PROG = JSON.parse(localStorage.getItem(PKEY)) || {}; } catch(e){ PROG = {}; }
 
-/* ═══════ dil ═══════ */
+/* ═══════ dil ═══════
+   Türkçe metin HTML'in kendisinde, İngilizcesi burada. Her data-i
+   anahtarının burada bir karşılığı OLMALI; yoksa İngilizce sayfada
+   Türkçe kalır. denetim: dil-denetim betiği her anahtarı kontrol ediyor. */
 const EN = {
-  ctaKat:'📚 model catalogue',
-  stHazir:'lessons, all ready', stPlan:'interactive steps', stXp:'your XP', stBit:'completed',
-  navMuf:'curriculum', navYon:'method', navKat:'model catalogue', navHak:'about',
-  heroUst:'FREE · RUNS IN YOUR BROWSER · <span id="heroDers">123</span> LESSONS',
-  h1:'Don\'t watch machine<br>learning. <span class="hl">Run it.</span>',
-  sub:'Every algorithm is written from scratch and runs in your browser. You move the slider, the model responds. You make a prediction, the code checks it.',
-  ctaMuf:'All 5 tracks',
-  heroSat:'no videos · no installation · no payment · no ads',
-  heroOnay:'2,395 numeric claims verified by tests · 0 mismatches',
-  tpAlt:'Recreated from Track 1 · every lesson is this: a model, your hands on it, a score to beat.',
-  tpYol:'track-1 / <b>gradient-descent</b> · step 4/9', tpCanli:'LIVE',
-  tpSenin:'your line', tpEgim:'slope w', tpKesisim:'intercept b',
-  tpMse:'your MSE <b class="mavi">0.4128</b>', tpAdim:'after 200 steps',
-  tpNot:'# the whole trick',
-  howKick:'method',
-  stGor:'live visualizations', stKil:'gates · <span id="sSoru">-</span> questions',
-  stKay:'academic references', stDog:'claims verified / mismatches',
+  navMuf:'Curriculum', navYon:'Method', navKat:'Model catalogue', navOkul:'For schools', navHak:'About',
+  duyEt:'Schools', duyYz:'A free one-semester classroom pilot',
+  h1:'Don\'t watch machine learning.<br><span class="grad">Run it.</span>',
+  sub:'<span class="nDers">123</span> interactive lessons, from what data is to how language models produce an answer. Every algorithm is written from scratch and runs live in your browser. You move the slider, the model responds. You make a guess, the code checks it.',
+  ctaMuf:'Browse all 5 tracks',
+  heroMeta:'Free<i>·</i>No installation<i>·</i>No ads<i>·</i>English and Turkish',
+  sk0:'How a machine learns', sk1:'Soft decision trees', sk2:'A network training live',
+  sk3:'Attention', sk4:'Is the difference real?',
+  canli:'LIVE', dersiAc:'Open this lesson',
+  stHazir:'lessons, all ready', stPlan:'interactive steps', stGor:'live visualizations',
+  stKil:'gates', stSoru:'questions', stKay:'academic references',
+  stDog:'numbers verified by tests, 0 mismatches',
   kisiselEt:'your progress', kisiselDers:'lessons finished',
-  dogKick:'verification', dogBas:'The lesson text is under test',
-  dogAlt:'Courses quote numbers. This one proves them. A script re-runs the algorithms and compares each result against the value written in the lesson. If one digit drifts, the build stops.',
-  dogKural:'A number does not appear in a lesson unless a test recomputes it.',
-  heroSat:'5 TRACKS · 401 INTERACTIVE STEPS · 165 VISUALIZATIONS · 387 REFERENCES',
-  howH:'Every lesson follows the same five steps',
+  cnKick:'Live, in this tab', cnBas:'This network is learning right now.',
+  cnAlt:'No video and no server. A small neural network starts from random weights and trains on the points you see. Change the data, add noise or restart it, and watch the coloured boundary settle onto the data.',
+  vSarmal:'Spiral', vHalka:'Ring', vXor:'Four quadrants', vGur:'Add noise', vYeni:'↺ Restart',
+  cnNot:'architecture 2-8-8-1 · tanh · Adam · full batch<br>Track 2 takes this network apart piece by piece.',
+  agBas:'neural network · decision boundary', agEgit:'training', agBitti:'converged',
+  olAdim:'step', olKayip:'loss', olDog:'accuracy', olEgri:'loss curve',
+  howKick:'Method', howH:'Every lesson follows the same five steps.',
   howS:'The topic changes, the method does not. Once you get used to it you know what to expect in every lesson.',
   s0n:'01 · GOAL',  s0t:'What will you learn?',
   s0d:'The step opens by stating in one sentence what you will gain. You know from the outset why you are here.',
@@ -613,11 +694,35 @@ const EN = {
   s3d:'There are two kinds of gate: some steps ask you to drive the simulation to a target, others to answer a question. Every option explains why it is right or wrong.',
   s4n:'05 · SUMMARY', s4t:'What did you learn?',
   s4d:'The step closes with what you learned gathered into one paragraph, and you earn XP. You can go back and read it whenever you like.',
-  katH:'📚 Model Catalogue, <span style="color:var(--blue)">25 models on one page</span>',
-  katP:'Your reference when you do not have time for a full lesson. For each model: <b>what it does · how it works · when to use it · when not to use it · working code · key settings · the classic pitfall.</b> Search, filter, copy the code.',
-  footP:'ML Academy · mltraining.org · prototype', footKat:'model catalogue', footSif:'↺ reset progress',
-  footHak:'about',
-  footGiz:'privacy',
+  okKick:'For schools and teachers',
+  okBas:'Nothing to install.<br><span class="grad">A link is enough.</span>',
+  okAlt:'A student opens a link and the lesson starts. No purchase, no licence, no IT approval and no powerful computer.',
+  ok1b:'Free, permanently', ok1p:'Not a trial. No advertising, no sponsor, no paid tier and no payment integration of any kind.',
+  ok2b:'Runs on school computers', ok2p:'Everything runs in the browser tab. A Chromebook is enough; there is nothing for an IT department to install or approve.',
+  ok3b:'From zero to language models', ok3p:'Track 0 assumes no background. Track 3 opens up how chat models produce an answer, and Track 4 teaches how to use AI by measuring it.',
+  ok4b:'Checked like software', ok4p:'Every number in the lessons passes a test that recomputes it before release. The lessons cite <span class="nKaynak">387</span> academic references.',
+  plBas:'A free one-semester classroom pilot',
+  plAlt:'One teacher, one section. A live 90-minute opening session with the students, check-ins at mid-term and at the end. In return we ask only for honest feedback.',
+  plDug:'See the pilot',
+  dogKick:'Verification', dogBas:'The lesson text is under test.',
+  dogAlt:'Courses quote numbers. This one proves them. A script re-runs the algorithms and compares each result against the value written in the lesson. If one digit drifts, the build stops.',
+  dogKural:'A number does not appear in a lesson unless a test recomputes it.',
+  tmBas:'dogrula.sh · last run',
+  katKick:'Reference', katH:'Model catalogue: 25 models on one page',
+  katP:'For each model: what it does, how it works, when to use it, when not to use it, working code, key settings and the classic pitfall. Search, filter, copy the code.',
+  katDug:'Open the catalogue',
+  mfKick:'Curriculum', mfBas:'Five tracks. From zero to language models.',
+  mfAlt:'New to this? Start at Track 0. If not, jump to any track; every lesson stands on its own.',
+  yzKick:'Written by', yzRol:'Machine learning engineer · LLMs, retrieval and MLOps',
+  yzE1:'MS, Computer Science', yzE3:'AAAI Member', yzE4:'Reviewer · IEEE SMC',
+  yzP1:'I wrote every lesson, every simulation and every verification test in this course. The algorithms are not library calls: CART with Gini gain, random forests with bootstrap sampling, an MLP with backpropagation, a BPE tokenizer and the rest are implemented from scratch, so the numbers on screen come out of code you can read.',
+  yzP2:'My research is on making AI systems auditable: whether a claim a system makes about its own reasoning can be checked by someone else.',
+  yzBag:'About',
+  altAcik:'A free course that teaches machine learning by making you run it. mltraining.org',
+  altH1:'Learn', altA1:'Curriculum', altA2:'First lesson', altA3:'Model catalogue',
+  altH2:'Schools', altA4:'Classroom pilot', altA5:'Why it fits a classroom',
+  altH3:'Project', altA6:'About', altA7:'Privacy',
+  footSif:'↺ reset progress',
   footTel:'© 2026 Cagri Temel · all rights reserved · <a href="https://github.com/cgrtml/ml-academy/blob/main/LICENSE">licence</a>',
   rota:{
     0:['Start From Zero','For someone with no background. What data means, what a model is, how a machine learns. Start here.'],
@@ -627,69 +732,124 @@ const EN = {
     4:['Using AI in Practice','Not theory. Becoming a user who measures, proves and breaks things.'],
   },
   etiket:{hazir:'READY', yapim:'IN PROGRESS', planli:'PLANNED'},
-  dk:'min', adim:'steps', hazirSay:'ready',
-  baslik:'ML Academy · Learn AI from scratch',
-  basla:'Start here: ', devam:'Continue where you left off: ', bitti:'You finished everything ✓ ',
+  dk:'min', adim:'steps', hazirSay:'ready', rotaK:'Track',
+  tumunuGoster:n => 'Show all ' + n + ' lessons', azGoster:'Show fewer',
+  baslik:'ML Academy · Learn machine learning by actually running it',
+  basla:'Start here: ', devam:'Continue: ', bitti:'You finished everything ✓',
   sifirla:'All progress and XP will be deleted. Are you sure?',
 };
+/* Türkçe karşılıkları HTML'de olmayan, yalnızca JavaScript'in ürettiği metinler */
+const TRJ = {
+  agBitti:'yakınsadı', rotaK:'Rota', dk:'dk', adim:'adım', hazirSay:'hazır',
+  tumunuGoster:n => n + ' dersin tamamını göster', azGoster:'Daha az göster',
+  baslik:'ML Academy · Makine öğrenmesini çalıştırarak öğren',
+  basla:'Buradan başla: ', devam:'Kaldığın yerden devam: ', bitti:'Hepsini bitirdin ✓',
+  sifirla:'Tüm ilerleme ve XP silinecek. Emin misin?',
+};
+/* Vitrin: her sekmenin ders kimliği ve iki dilde açıklaması.
+   Sayılar ders tuvalinde yazan değerlerin aynısı (dogrula.sh denetliyor). */
+const VITRIN = [
+  {id:'nasil-ogrenir', ad:'r0-ogrenme',
+   tr:'Doğruyu önce elinle oynatıyorsun, sonra kayıp haritasında modelin dibe nasıl indiğini görüyorsun.',
+   en:'You move the line by hand first, then watch on the loss map how the model walks down to the bottom.'},
+  {id:'soft-tree', ad:'r1-softtree',
+   tr:'5 parametreli yumuşak karar ağacı 17 parametreli CART\'ı geçiyor: %93.8\'e karşı %92.5. neural-trees kütüphanesinin arkasındaki fikir.',
+   en:'A soft decision tree with 5 parameters beats CART with 17: 93.8% against 92.5%. The idea behind the neural-trees library.'},
+  {id:'backprop', ad:'r2-ag',
+   tr:'2-6-6-1\'lik bir ağ kimsenin tarif etmediği bir halkayı öğreniyor. Her kare gerçek bir eğitim adımı.',
+   en:'A 2-6-6-1 network learns a ring nobody described to it. Every frame is a real training step.'},
+  {id:'attention', ad:'r3-attention',
+   tr:'Sorgu, anahtar ve değer ışık demetleri olarak. Bugünkü dil modellerinin hepsinin içindeki mekanizma.',
+   en:'Query, key and value drawn as beams of light. The mechanism inside every modern language model.'},
+  {id:'eval', ad:'r4-eval',
+   tr:'A promptu %80, B promptu %90 alıyor. 10 örnekle fark kanıtlanamıyor; 200 örnekle kanıtlanıyor (p = 0.0051).',
+   en:'Prompt A scores 80%, prompt B 90%. With 10 examples the gap cannot be proven; with 200 it can (p = 0.0051).'},
+];
+function T(k){ return DIL === 'en' ? EN[k] : TRJ[k]; }
+
 /* ── VARSAYILAN DİL ──
-   10 Ağustos 2026'ya kadar varsayılan Türkçe'ydi. Hedef kitle ABD'ye
-   kayınca bu bir sorun oldu: dışarıdan gelen ziyaretçi Türkçe bir
-   başlıkla karşılaşıp geri dönüyordu.
-
-   Karar: varsayılan İNGİLİZCE, Türkçe bir seçenek. Tarayıcı diline
-   bakılmıyor; Türkiye'den gelen kullanıcı da İngilizce açılışı görüp TR
-   düğmesine basıyor. Sebep tutarlılık: paylaşılan her bağlantı, arama
-   sonuçları ve HN gibi yerlerden gelen ziyaretçi hep aynı sayfayı görmeli.
-
-   Kullanıcının açık seçimi her zaman kazanır ve localStorage'da kalır. */
+   Varsayılan İNGİLİZCE, Türkçe bir seçenek. ?lang=tr adresi tercihi
+   kalıcı olarak Türkçeye çevirir. Kullanıcının açık seçimi her zaman kazanır. */
 function varsayilanDil(){
-  /* 1 · ADRESTEKİ PARAMETRE EN ÜSTTE.
-     Türkçe bir dizinden ya da Türkçe bir gönderiden gelen kişi
-     ?lang=tr ile doğrudan Türkçe açılışa düşsün. Varsayılan İngilizce
-     olduğu için bu olmadan TR düğmesini kendisi bulmak zorundaydı.
-     Seçim kalıcı: bir kez geldikten sonra tercihi hatırlanıyor. */
   try {
     const p = new URLSearchParams(location.search);
     const u = (p.get('lang') || p.get('dil') || '').toLowerCase();
     if (u === 'tr' || u === 'en'){ localStorage.setItem('mlacad_dil', u); return u; }
   } catch(e){}
-  const secilmis = localStorage.getItem('mlacad_dil');
+  let secilmis = null;
+  try { secilmis = localStorage.getItem('mlacad_dil'); } catch(e){}
   return (secilmis === 'tr' || secilmis === 'en') ? secilmis : 'en';
 }
 let DIL = varsayilanDil();
 const TR = {};
 document.querySelectorAll('[data-i]').forEach(el => TR[el.dataset.i] = el.innerHTML);
 function dilUygula(){
+  const en = DIL === 'en';
   document.querySelectorAll('[data-i]').forEach(el => {
     const k = el.dataset.i;
-    el.innerHTML = DIL === 'en' ? (EN[k] || TR[k]) : TR[k];
+    el.innerHTML = en ? (EN[k] || TR[k]) : TR[k];
   });
   document.documentElement.lang = DIL;
-  if (DIL === 'en'){
-    const nCev = (typeof DERSLER_EN !== 'undefined') ? Object.keys(DERSLER_EN).length : 0;
-    const nTop = Object.keys(DERSLER).length;
-    $('dilnot').style.display = 'none';
-  } else $('dilnot').style.display = 'none';
-  document.querySelectorAll('.dilbar button').forEach(b =>
-    b.classList.toggle('on', b.dataset.dil === DIL));
+  document.title = T('baslik');
+  document.querySelectorAll('.dilbar button').forEach(b => b.classList.toggle('on', b.dataset.dil === DIL));
+  vitrinDil();
+  terminalCiz();
   paylasKur();
   ciz();
+  if (typeof AG !== 'undefined') AG.dil();
 }
-/* Paylaş düğmesi. Dil değişince etiketi de değişsin diye dilUygula()
-   içinden yeniden kuruluyor; PAYLAS.kur() bu yüzden tekrar çağrılabilir. */
+
+/* ═══════ vitrin ═══════ */
+let VI = 0, VZ = null;
+function vitrinDil(){
+  document.querySelectorAll('#ekranlar img').forEach((im, i) => {
+    im.src = 'gorsel/vitrin/' + im.dataset.ad + '-' + DIL + '.webp';
+    im.alt = (DIL === 'en' ? VITRIN[i].en : VITRIN[i].tr);
+  });
+  vitrinGoster(VI, false);
+}
+function vitrinGoster(i, kullanici){
+  VI = i;
+  document.querySelectorAll('#ekranlar .ekran').forEach((e, j) => e.classList.toggle('on', j === i));
+  document.querySelectorAll('#sekmeler button').forEach((b, j) => {
+    b.classList.toggle('on', j === i);
+    b.classList.remove('akar'); void b.offsetWidth;
+    if (j === i && !kullanici) b.classList.add('akar');
+  });
+  const v = VITRIN[i];
+  $('adres').textContent = 'mltraining.org/lesson.html?id=' + v.id;
+  $('vitrinYazi').textContent = DIL === 'en' ? v.en : v.tr;
+  $('vitrinBag').href = 'lesson.html?id=' + v.id;
+  clearTimeout(VZ);
+  if (!kullanici) VZ = setTimeout(() => vitrinGoster((VI + 1) % VITRIN.length, false), 7000);
+}
+document.querySelectorAll('#sekmeler button').forEach(b => b.onclick = () => vitrinGoster(+b.dataset.t, true));
+
+/* ═══════ doğrulama terminali ═══════
+   Sayılar dogrula.sh'in son başarılı çalıştırmasından. Binlik ayracı dile göre. */
+const DOGRULANAN = 2395;
+function terminalCiz(){
+  const en = DIL === 'en', s = n => n.toLocaleString(en ? 'en-US' : 'tr-TR');
+  const L = en
+    ? [['syntax','✓','ok'],['numeric claims',s(DOGRULANAN)+' found','sy'],['recomputed',s(DOGRULANAN),'sy'],
+       ['mismatches','0','ok'],['gate conditions','154 ✓ reachable','ok'],['visualizations','165 ✓ drawn','ok'],['layout scan','401 ✓ steps','ok']]
+    : [['sözdizimi','✓','ok'],['sayısal iddia',s(DOGRULANAN)+' bulundu','sy'],['yeniden hesaplandı',s(DOGRULANAN),'sy'],
+       ['uyuşmazlık','0','ok'],['kilit koşulu','154 ✓ ulaşılabilir','ok'],['görselleştirme','165 ✓ çizildi','ok'],['yerleşim taraması','401 ✓ adım','ok']];
+  $('tmGov').innerHTML = '<div class="sat"><span class="kmt">$</span> ./dogrula.sh</div>' +
+    L.map(([k, v, c]) => '<div class="sat"><span class="kmt">→</span> ' + k.padEnd(21, ' ') + '<span class="' + c + '">' + v + '</span></div>').join('') +
+    '<div class="sat">&nbsp;</div><div class="sat"><span class="ok">PASS</span> <span class="kmt">· ' + (en ? 'exit code 0' : 'çıkış kodu 0') + '</span></div>';
+  if ($('sDogru')) $('sDogru').textContent = s(DOGRULANAN);
+}
+
+/* Paylaş düğmesi. Dil değişince etiketi de değişsin diye yeniden kuruluyor. */
 function paylasKur(){
   if (typeof PAYLAS === 'undefined') return;
   const en = DIL === 'en';
-  /* hikaye.bas içindeki *yıldızlar* vurgu rengiyle çizilir.
-     Sayılar dogrula.sh'in doğruladığı sayılar, elle değiştirme. */
   PAYLAS.kur(document.getElementById('paylasDug'), {
     en,
     baslik: 'ML Academy',
     metin: en ? 'ML Academy: 123 interactive machine learning lessons that run in your browser. Free.'
               : 'ML Academy: tarayıcıda çalışan 123 derslik interaktif makine öğrenmesi kursu. Ücretsiz.',
-    /* Adres dili taşıyor. ?lang= parametresi localStorage'daki tercihi de
-       geçiyor, yani Türkçe paylaşılan bağlantı karşı tarafta Türkçe açılır. */
     url: 'https://mltraining.org/?lang=' + DIL,
     hikaye: {
       bas: en ? "Don't watch machine learning. *Run it.*"
@@ -704,73 +864,57 @@ function paylasKur(){
   });
 }
 document.querySelector('.dilbar').onclick = e => {
-  if (!e.target.dataset.dil) return;
+  if (!e.target.dataset.dil || e.target.dataset.dil === DIL) return;
   DIL = e.target.dataset.dil;
-  localStorage.setItem('mlacad_dil', DIL);
+  try { localStorage.setItem('mlacad_dil', DIL); } catch(e){}
   dilUygula();
-  if (typeof HESAP !== 'undefined') HESAP.dil(DIL);   // giriş/yorum ekranları da çevrilsin
-  /* Topluluk bölümü kendi sözlüğünü TOPLULUK.kur()'a geçen dille kuruyor.
-     Yeniden kurulmazsa dil düğmesine basılsa bile Türkçe kalıyordu:
-     sayfanın geri kalanı İngilizceyken "Topluluk / Ne diyorlar / kişi"
-     başlıkları Türkçe duruyordu. */
+  if (typeof HESAP !== 'undefined') HESAP.dil(DIL);
   if (typeof toplulukYenile === 'function') toplulukYenile();
 };
 
 const TAG = {hazir:['HAZIR','t-hazir'], yapim:['YAPIM AŞAMASINDA','t-yapim'], planli:['PLANLI','t-planli']};
+const ACIK_ROTA = new Set();      // "tamamını göster" denen rotalar
 
-/* Kilit bayrağı GLOBAL: dinleyici ayrı bir script bloğunda ve ciz() içinden
-   erişemiyordu. İlk sürümde tam bu yüzden hiçbir ders kilitlenmiyordu. */
+/* Kilit bayrağı GLOBAL: dinleyici ayrı bir script bloğunda. */
 let KILIT_ACIK = false;
 function ciz(){
-let nHazir = 0, nToplam = 0, nBitti = 0, xpTop = 0;
-/* Toplam ADIM sayısı. Kutulardan biri eskiden "planlı ders" gösteriyordu;
-   bütün dersler hazır olduğu için o sayı "hazır ders" ile aynı çıkıyor ve
-   hiçbir şey anlatmıyordu. Yerine müfredatın gerçek büyüklüğünü gösteren
-   adım sayısı kondu, DERSLER'den sayılıyor. */
-let nAdim = 0;
+let nHazir = 0, nBitti = 0, xpTop = 0, nAdim = 0;
 try {
-  nAdim = Object.values(DERSLER)
-    .reduce((a, d) => a + ((d && d.adimlar) ? d.adimlar.length : 0), 0);
+  nAdim = Object.values(DERSLER).reduce((a, d) => a + ((d && d.adimlar) ? d.adimlar.length : 0), 0);
 } catch(e){ nAdim = 0; }
 const en = DIL === 'en';
-/* EN başlık zinciri: tam çevrilmiş ders → çevrilmiş ders adı → Türkçe ad.
-   İkincisi olmadan arayüz İngilizceye geçiyor ama müfredattaki 111 ders adı
-   Türkçe kalıyordu. */
+/* EN başlık zinciri: tam çevrilmiş ders → çevrilmiş ders adı → Türkçe ad. */
 const adEN = d => {
   const tam = (typeof DERSLER_EN !== 'undefined') && DERSLER_EN[d.id];
   if (tam && tam.ad) return tam.ad;
   if (typeof DERS_ADI_EN !== 'undefined' && DERS_ADI_EN[d.id]) return DERS_ADI_EN[d.id];
   return d.ad;
 };
-if (en) document.title = EN.baslik;
 
 const UCRETSIZ = (typeof SUPA !== 'undefined' && SUPA.ucretsizDers) || 3;
 $('rotalar').innerHTML = ROTALAR.map(r => {
   const hazir = r.dersler.filter(d => d.durum === 'hazir').length;
-  nToplam += r.dersler.length; nHazir += hazir;
+  nHazir += hazir;
   const kartlar = r.dersler.map((d,i) => {
     const p = PROG[d.id];
     const enDers = (typeof DERSLER_EN !== 'undefined') ? DERSLER_EN[d.id] : null;
-    const cev = !!enDers;
     const ders = (en && enDers) || DERSLER[d.id];
-    const nAdim = ders ? ders.adimlar.length : 0;
-    const bitti = p && nAdim && p.done.length >= nAdim;
-    const oran = p && nAdim ? Math.round(p.done.length/nAdim*100) : 0;
+    const nA = ders ? ders.adimlar.length : 0;
+    const bitti = p && nA && p.done.length >= nA;
+    const oran = p && nA ? Math.round(p.done.length/nA*100) : 0;
     if (bitti) nBitti++;
     if (p) xpTop += p.xp || 0;
-    /* Her rotanın ilk N dersi herkese açık; gerisi kayıt ister.
-       Kilit yalnızca arayüzde: içerik content.js'te ve o dosya herkese açık. */
+    /* Her rotanın ilk N dersi herkese açık; gerisi kayıt ister. */
     const kilitli = KILIT_ACIK && i >= UCRETSIZ && d.durum === 'hazir';
     const link = (d.durum === 'hazir' && !kilitli) ? (d.dis || ('lesson.html?id=' + d.id)) : null;
     const inner =
       '<div class="no">'+(bitti ? '✓' : (i+1))+'</div>' +
       '<div class="body"><div class="ad">'+(en ? adEN(d) : d.ad)+'</div>' +
       '<div class="meta">' +
-        '<span class="tag '+TAG[d.durum][1]+'">'+(en?EN.etiket[d.durum]:TAG[d.durum][0])+'</span>' +
-        (cev ? '<span class="tag t-hazir">EN</span>' : '') +
+        (d.durum !== 'hazir' ? '<span class="tag '+TAG[d.durum][1]+'">'+(en?EN.etiket[d.durum]:TAG[d.durum][0])+'</span>' : '') +
         (d.rozet ? '<span class="tag t-nt">'+d.rozet+'</span>' : '') +
-        '<span>~'+d.sure+' '+(en?EN.dk:'dk')+'</span>' +
-        (nAdim ? '<span>· '+nAdim+' '+(en?EN.adim:'adım')+'</span>' : '') +
+        '<span>~'+d.sure+' '+T('dk')+'</span>' +
+        (nA ? '<span>· '+nA+' '+(en && nA === 1 ? 'step' : T('adim'))+'</span>' : '') +
       '</div>' +
       (oran ? '<div class="pmini"><i style="width:'+oran+'%"></i></div>' : '') +
       '</div>';
@@ -782,21 +926,28 @@ $('rotalar').innerHTML = ROTALAR.map(r => {
   }).join('');
   const rAd  = en && EN.rota[r.id] ? EN.rota[r.id][0] : r.ad;
   const rOzet= en && EN.rota[r.id] ? EN.rota[r.id][1] : r.ozet;
+  const acik = ACIK_ROTA.has(r.id), fazla = r.dersler.length > 6;
   return '<section class="rota" id="rota'+r.id+'">' +
     '<div class="rhd"><div class="ik" style="color:'+r.renk+'">'+r.ikon+'</div>' +
-    '<h2>'+(en?'Track ':'Rota ')+r.id+' · '+rAd+'</h2>' +
-    '<div class="ct">'+hazir+' / '+r.dersler.length+' '+(en?EN.hazirSay:'hazır')+'</div></div>' +
+    '<h2><small>'+T('rotaK')+' '+r.id+'</small>'+rAd+'</h2>' +
+    '<div class="ct">'+hazir+' / '+r.dersler.length+' '+T('hazirSay')+'</div></div>' +
     '<p class="rozet">'+rOzet+'</p>' +
-    '<div class="grid">'+kartlar+'</div></section>';
+    '<div class="grid'+(fazla && !acik ? ' kisa' : '')+'">'+kartlar+'</div>' +
+    (fazla ? '<button class="tumu" data-rota="'+r.id+'">'+(acik ? T('azGoster') : T('tumunuGoster')(r.dersler.length))+'</button>' : '') +
+    '</section>';
 }).join('');
+
+$('rotalar').querySelectorAll('.tumu').forEach(b => b.onclick = () => {
+  const id = +b.dataset.rota;
+  ACIK_ROTA.has(id) ? ACIK_ROTA.delete(id) : ACIK_ROTA.add(id);
+  ciz();
+  if (!ACIK_ROTA.has(id)) $('rota'+id).scrollIntoView({block:'start'});
+});
 
 $('sHazir').textContent = nHazir;
 $('sToplam').textContent = nAdim;
 
-/* KANIT ŞERİDİNDEKİ SAYILARIN HİÇBİRİ ELLE YAZILMIYOR.
-   README'nin başına gelen şey buydu: gerçekle arasında üç kat fark
-   birikmişti. Buradaki her sayı müfredattan sayılıyor, ders eklenince
-   kendiliğinden güncelleniyor. */
+/* KANIT ŞERİDİNDEKİ SAYILARIN HİÇBİRİ ELLE YAZILMIYOR: müfredattan sayılıyor. */
 (function sayaclar(){
   let gorsel = new Set(), kilit = 0, soru = 0, kaynak = 0;
   try {
@@ -814,16 +965,11 @@ $('sToplam').textContent = nAdim;
   yaz('sKilit',  kilit);
   yaz('sSoru',   soru);
   yaz('sKaynak', kaynak);
-  yaz('heroDers', nHazir);
+  document.querySelectorAll('.nDers').forEach(e => e.textContent = nHazir);
+  document.querySelectorAll('.nKaynak').forEach(e => e.textContent = kaynak);
 })();
 
-/* Kişisel satır yalnızca ilerleme varsa görünsün. Sıfır yazan iki kutu
-   ilk gelen ziyaretçide tam ters etki yapıyordu. */
 if ($('kisisel')) $('kisisel').style.display = (xpTop > 0 || nBitti > 0) ? '' : 'none';
-
-/* Binlik ayracı dile göre: Türkçe 2.395, İngilizce 2,395. Sabit yazılsaydı
-   dillerden birinde yanlış olurdu. */
-if ($('sDogru')) $('sDogru').textContent = (2395).toLocaleString(DIL === 'en' ? 'en-US' : 'tr-TR') + ' / 0';
 $('sXP').textContent = xpTop;
 $('sBitti').textContent = nBitti;
 
@@ -832,22 +978,34 @@ $('rotalar').querySelectorAll('[data-kilit]').forEach(k => {
   k.onclick = () => { if (typeof HESAP !== 'undefined') HESAP.kilitEkrani(); };
 });
 
-/* ══ ROTA BİTİŞ KONTROLÜ ══
-   Bir rotanın bütün hazır dersleri tamamlandıysa kutlama ve değerlendirme
-   ekranı çıkar. Her rota için YALNIZCA BİR KEZ: hangi rotanın sorulduğu
-   localStorage'da tutulur, yoksa her sayfa yenilemede tekrar açılırdı.
-   Zorunlu değil, "Şimdi değil" ile geçilebilir. */
+/* kaldığın yerden devam */
+const sirali = ROTALAR.flatMap(r => r.dersler).filter(d => d.durum === 'hazir' && !d.dis);
+const bitmedi = d => {
+  const p = PROG[d.id], n = DERSLER[d.id] ? DERSLER[d.id].adimlar.length : 0;
+  return !p || p.done.length < n;
+};
+const devam = (en && typeof DERSLER_EN !== 'undefined'
+                 ? sirali.find(d => DERSLER_EN[d.id] && bitmedi(d)) : null)
+              || sirali.find(bitmedi);
+if (devam){
+  const p = PROG[devam.id];
+  $('startBtn').href = 'lesson.html?id=' + devam.id;
+  $('startBtn').textContent = (p && p.done.length ? T('devam') : T('basla')) + (en ? adEN(devam) : devam.ad);
+} else if (sirali.length){
+  $('startBtn').textContent = T('bitti');
+}
+}
+
+/* ══ ROTA BİTİŞ KONTROLÜ ══ Her rota için yalnızca bir kez. */
 const RKEY = 'mlacad_rota_soruldu';
 function rotaBitisKontrol(){
   if (typeof HESAP === 'undefined' || !HESAP.rotaTebrik) return;
   let soruldu = {};
   try { soruldu = JSON.parse(localStorage.getItem(RKEY)) || {}; } catch(e){ soruldu = {}; }
-
   for (const r of ROTALAR){
     if (soruldu[r.id]) continue;
     const hazirlar = r.dersler.filter(d => d.durum === 'hazir' && !d.dis);
     if (!hazirlar.length) continue;
-
     let tamam = 0, xp = 0;
     for (const d of hazirlar){
       const ders = DERSLER[d.id];
@@ -856,63 +1014,193 @@ function rotaBitisKontrol(){
       if (pr && nA && pr.done.length >= nA){ tamam++; xp += pr.xp || 0; }
     }
     if (tamam < hazirlar.length) continue;
-
     soruldu[r.id] = Date.now();
     try { localStorage.setItem(RKEY, JSON.stringify(soruldu)); } catch(e){}
     const en = DIL === 'en';
-    HESAP.rotaTebrik({
-      ad:  (en && EN.rota[r.id]) ? EN.rota[r.id][0] : r.ad,
-      ders: tamam, xp, ikon: r.ikon,
-    });
-    return;                      // aynı anda tek kutlama
+    HESAP.rotaTebrik({ ad:(en && EN.rota[r.id]) ? EN.rota[r.id][0] : r.ad, ders: tamam, xp, ikon: r.ikon });
+    return;
   }
 }
-setTimeout(rotaBitisKontrol, 400);   // HESAP.kur() otursun diye küçük gecikme
-
-/* kaldığın yerden devam */
-const sirali = ROTALAR.flatMap(r => r.dersler).filter(d => d.durum === 'hazir' && !d.dis);
-const bitmedi = d => {
-  const p = PROG[d.id], n = DERSLER[d.id] ? DERSLER[d.id].adimlar.length : 0;
-  return !p || p.done.length < n;
-};
-/* EN modunda İngilizceye çevrilmiş bir dersle başlat, yoksa normal sıraya dön */
-const devam = (en && typeof DERSLER_EN !== 'undefined'
-                 ? sirali.find(d => DERSLER_EN[d.id] && bitmedi(d)) : null)
-              || sirali.find(bitmedi);
-if (devam){
-  const p = PROG[devam.id];
-  $('startBtn').href = 'lesson.html?id=' + devam.id;
-  $('startBtn').textContent = (p && p.done.length ? (en?EN.devam:'Kaldığın yerden devam: ')
-                                                  : (en?EN.basla:'Buradan başla: ')) +
-    (en ? adEN(devam) : devam.ad) + ' ▶';
-} else if (sirali.length){
-  $('startBtn').textContent = en ? EN.bitti : 'Hepsini bitirdin ✓, tekrar et ▶';
-}
-}
+setTimeout(rotaBitisKontrol, 400);
 
 $('reset').onclick = () => {
-  if (confirm(DIL === 'en' ? EN.sifirla : 'Tüm ilerleme ve XP silinecek. Emin misin?')){
-    /* Rota kutlama kaydı da sıfırlanmalı, yoksa ilerleme sıfırlandığı hâlde
-       rotalar "zaten soruldu" sayılıp bir daha hiç çıkmaz. */
-    localStorage.removeItem(PKEY); localStorage.removeItem(RKEY); location.reload();
+  if (confirm(T('sifirla'))){
+    try { localStorage.removeItem(PKEY); localStorage.removeItem(RKEY); } catch(e){}
+    location.reload();
   }
 };
 
-/* tema düğmesi */
-if (document.getElementById('temaDug')){
-  temaUygula(temaOku());                       // düğme artık var, simgeyi tazele
-  document.getElementById('temaDug').onclick = () => {
-    const y = document.documentElement.getAttribute('data-tema') === 'koyu' ? 'acik' : 'koyu';
-    localStorage.setItem(TKEY, y);
-    temaUygula(y);
-  };
-}
+/* üst çubuk: kaydırınca buzlu cam */
+const nav = $('ustNav');
+const navKontrol = () => nav.classList.toggle('kaydi', scrollY > 12);
+addEventListener('scroll', navKontrol, {passive:true}); navKontrol();
+
+/* ══════════════════════════════════════════════════════════════════
+   CANLI AĞ · 2-8-8-1 · tanh gizli katmanlar · sigmoid çıkış
+   İkili çapraz entropi, Adam (lr 0.03), tam yığın, 240 nokta.
+   Tohumlu RNG (mulberry32): aynı veri + aynı başlangıç her açılışta.
+   ══════════════════════════════════════════════════════════════════ */
+const AG = (function(){
+  const tuval = $('agTuval'), egri = $('agEgri');
+  const ctx = tuval.getContext('2d'), ectx = egri.getContext('2d');
+  const G = 72;                                   // karar ızgarası çözünürlüğü
+  const ofs = document.createElement('canvas'); ofs.width = G; ofs.height = G;
+  const octx = ofs.getContext('2d'), img = octx.createImageData(G, G);
+  const H = [2, 8, 8, 1];
+  let rng, W, B, mW, vW, mB, vB, t, X, Y, adim, kayiplar, veri = 'sarmal', gurultu = false, calisiyor = true, gorunur = false, son = 0;
+
+  function mulberry(a){ return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let x = Math.imul(a ^ a >>> 15, 1 | a);
+    x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x; return ((x ^ x >>> 14) >>> 0) / 4294967296; }; }
+  function gauss(){ const u = rng() || 1e-9, v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+
+  function veriUret(){
+    const N = 240; X = []; Y = [];
+    const s = gurultu ? 0.13 : 0.035;
+    for (let i = 0; i < N; i++){
+      let x, y, c = i % 2;
+      if (veri === 'halka'){
+        const r = c ? 0.25 + rng() * 0.25 : 0.68 + rng() * 0.25, a = rng() * 2 * Math.PI;
+        x = r * Math.cos(a); y = r * Math.sin(a);
+      } else if (veri === 'sarmal'){
+        const k = rng(), r = 0.1 + 0.8 * k, a = 3.2 * Math.PI * k + c * Math.PI;
+        x = r * Math.cos(a); y = r * Math.sin(a);
+      } else {
+        x = rng() * 1.8 - 0.9; y = rng() * 1.8 - 0.9;
+        if (Math.abs(x) < 0.06) x += x < 0 ? -0.06 : 0.06;
+        if (Math.abs(y) < 0.06) y += y < 0 ? -0.06 : 0.06;
+        c = (x * y > 0) ? 1 : 0;
+      }
+      X.push([x + gauss() * s, y + gauss() * s]); Y.push(c);
+    }
+  }
+  function agKur(){
+    W = []; B = []; mW = []; vW = []; mB = []; vB = [];
+    for (let l = 0; l < 3; l++){
+      const n = H[l], m = H[l + 1], sc = Math.sqrt(1 / n);
+      W.push(Array.from({length:m}, () => Array.from({length:n}, () => gauss() * sc * 1.2)));
+      B.push(new Array(m).fill(0));
+      mW.push(W[l].map(r => r.map(() => 0))); vW.push(W[l].map(r => r.map(() => 0)));
+      mB.push(new Array(m).fill(0)); vB.push(new Array(m).fill(0));
+    }
+    t = 0; adim = 0; kayiplar = [];
+  }
+  function ileri(x){
+    const A = [x];
+    for (let l = 0; l < 3; l++){
+      const a = A[l], z = W[l].map((r, j) => r.reduce((s, w, i) => s + w * a[i], B[l][j]));
+      A.push(l < 2 ? z.map(Math.tanh) : z.map(v => 1 / (1 + Math.exp(-v))));
+    }
+    return A;
+  }
+  function egit(){
+    const gW = W.map(L => L.map(r => r.map(() => 0))), gB = B.map(b => b.map(() => 0));
+    let kayip = 0, dogru = 0;
+    for (let k = 0; k < X.length; k++){
+      const A = ileri(X[k]), p = A[3][0], y = Y[k];
+      kayip += -(y * Math.log(p + 1e-9) + (1 - y) * Math.log(1 - p + 1e-9));
+      if ((p > 0.5) === (y === 1)) dogru++;
+      let d = [p - y];
+      for (let l = 2; l >= 0; l--){
+        const a = A[l];
+        for (let j = 0; j < d.length; j++){ gB[l][j] += d[j]; for (let i = 0; i < a.length; i++) gW[l][j][i] += d[j] * a[i]; }
+        if (l > 0) d = a.map((ai, i) => (1 - ai * ai) * d.reduce((s, dj, j) => s + dj * W[l][j][i], 0));
+      }
+    }
+    const n = X.length, lr = 0.006, b1 = 0.9, b2 = 0.999; t++;
+    for (let l = 0; l < 3; l++){
+      for (let j = 0; j < W[l].length; j++){
+        for (let i = 0; i < W[l][j].length; i++){
+          const g = gW[l][j][i] / n;
+          mW[l][j][i] = b1 * mW[l][j][i] + (1 - b1) * g; vW[l][j][i] = b2 * vW[l][j][i] + (1 - b2) * g * g;
+          W[l][j][i] -= lr * (mW[l][j][i] / (1 - b1 ** t)) / (Math.sqrt(vW[l][j][i] / (1 - b2 ** t)) + 1e-8);
+        }
+        const g = gB[l][j] / n;
+        mB[l][j] = b1 * mB[l][j] + (1 - b1) * g; vB[l][j] = b2 * vB[l][j] + (1 - b2) * g * g;
+        B[l][j] -= lr * (mB[l][j] / (1 - b1 ** t)) / (Math.sqrt(vB[l][j] / (1 - b2 ** t)) + 1e-8);
+      }
+    }
+    adim++;
+    return {kayip: kayip / n, dogruluk: dogru / n};
+  }
+  /* renkler: sınıf 1 yeşil-turkuaz, sınıf 0 mor-pembe; dersteki paletin aynısı */
+  const C1 = [62, 224, 176], C0 = [214, 72, 150], ZEM = [10, 13, 18];
+  function ciz(){
+    const d = img.data;
+    for (let gy = 0; gy < G; gy++) for (let gx = 0; gx < G; gx++){
+      const x = gx / (G - 1) * 2 - 1, y = 1 - gy / (G - 1) * 2;
+      const p = ileri([x, y])[3][0], c = p > 0.5 ? C1 : C0, a = Math.min(1, Math.abs(p - 0.5) * 2) * 0.5 + 0.08;
+      const o = (gy * G + gx) * 4;
+      d[o] = ZEM[0] + (c[0] - ZEM[0]) * a; d[o+1] = ZEM[1] + (c[1] - ZEM[1]) * a; d[o+2] = ZEM[2] + (c[2] - ZEM[2]) * a; d[o+3] = 255;
+    }
+    octx.putImageData(img, 0, 0);
+    const S = tuval.width;
+    ctx.imageSmoothingEnabled = true; ctx.drawImage(ofs, 0, 0, S, S);
+    ctx.strokeStyle = 'rgba(255,255,255,.05)'; ctx.lineWidth = 1;
+    for (let i = 1; i < 8; i++){ const v = i * S / 8; ctx.beginPath(); ctx.moveTo(v, 0); ctx.lineTo(v, S); ctx.moveTo(0, v); ctx.lineTo(S, v); ctx.stroke(); }
+    const r = S / 140;
+    for (let k = 0; k < X.length; k++){
+      const px = (X[k][0] + 1) / 2 * S, py = (1 - X[k][1]) / 2 * S;
+      ctx.beginPath(); ctx.arc(px, py, r, 0, 2 * Math.PI);
+      ctx.fillStyle = Y[k] ? '#7ff5d2' : '#ff8fc8'; ctx.fill();
+      ctx.lineWidth = r * 0.5; ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.stroke();
+    }
+    // kayıp eğrisi
+    const w = egri.width, h = egri.height; ectx.clearRect(0, 0, w, h);
+    if (kayiplar.length > 1){
+      const mx = Math.max(...kayiplar, 0.01);
+      ectx.beginPath();
+      kayiplar.forEach((v, i) => { const x = i / (kayiplar.length - 1) * w, y = h - 6 - v / mx * (h - 14); i ? ectx.lineTo(x, y) : ectx.moveTo(x, y); });
+      ectx.strokeStyle = '#5cc8ff'; ectx.lineWidth = 2.5; ectx.stroke();
+    }
+  }
+  function yaz(o){
+    const en = DIL === 'en';
+    $('olAdim').textContent = adim.toLocaleString(en ? 'en-US' : 'tr-TR');
+    $('olKayip').textContent = o ? o.kayip.toFixed(3) : '-';
+    $('olDog').textContent = o ? (en ? (o.dogruluk * 100).toFixed(1) + '%' : '%' + (o.dogruluk * 100).toFixed(1)) : '-';
+    const bitti = o && (adim >= 4000 || o.kayip < 0.02);
+    $('agDurum').classList.toggle('dur', !!bitti);
+    $('agDurum').querySelector('span').textContent = bitti ? T('agBitti') : (en ? EN.agEgit : TR.agEgit);
+    calisiyor = !bitti;
+  }
+  let sonO = null;
+  function dongu(){
+    if (gorunur && calisiyor && !document.hidden){
+      sonO = egit();
+      if (adim % 8 === 0 || adim < 40) kayiplar.push(sonO.kayip);
+      if (kayiplar.length > 240) kayiplar = kayiplar.filter((_, i) => i % 2 === 0);
+      ciz(); yaz(sonO);
+    }
+    requestAnimationFrame(dongu);
+  }
+  function yeni(tohum){
+    rng = mulberry(tohum); veriUret(); agKur(); calisiyor = true; sonO = null; ciz(); yaz(null);
+  }
+  let tohum = 7;
+  document.querySelectorAll('#agKontrol [data-veri]').forEach(b => b.onclick = () => {
+    veri = b.dataset.veri;
+    document.querySelectorAll('#agKontrol [data-veri]').forEach(x => x.classList.toggle('on', x === b));
+    yeni(tohum);
+  });
+  $('agGurultu').onclick = () => { gurultu = !gurultu; $('agGurultu').classList.toggle('on', gurultu); yeni(tohum); };
+  $('agYeni').onclick = () => yeni(++tohum);
+  function boyut(){
+    const dpr = Math.min(2, devicePixelRatio || 1), w = tuval.clientWidth || 560;
+    tuval.width = tuval.height = Math.round(w * dpr);
+    egri.width = Math.round((egri.clientWidth || 160) * dpr); egri.height = Math.round((egri.clientHeight || 80) * dpr);
+    ciz();
+  }
+  addEventListener('resize', boyut);
+  new IntersectionObserver(e => { gorunur = e[0].isIntersecting; }, {threshold:0.15}).observe(tuval);
+  yeni(tohum); requestAnimationFrame(() => { boyut(); dongu(); });
+  return { dil(){ yaz(sonO); } };
+})();
+
 dilUygula();
 </script>
 
 <!-- ── Supabase · topluluk katmanı ──
-     Ayarlar boşsa hiçbir istek atılmaz, topluluk bölümü gizli kalır.
-     Yani bu bloklar bugün siteye eklense de hiçbir şey bozulmaz. -->
+     Ayarlar boşsa hiçbir istek atılmaz, topluluk bölümü gizli kalır. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="yapilandirma.js?v=9296406"></script>
 <script src="topluluk/topluluk.js?v=9296406"></script>
@@ -922,21 +1210,11 @@ dilUygula();
   const toplulukYenile = () => TOPLULUK.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL });
   toplulukYenile();
   HESAP.dinle(async () => {
-    toplulukYenile();                   // yorum onaylanınca sayaçlar tazelensin
-    /* Kilit yalnızca Supabase yapılandırılmışken ve giriş yokken açık.
-       Arka uç yoksa hiçbir ders kilitlenmez, site eskisi gibi çalışır. */
+    toplulukYenile();
+    /* Kilit yalnızca Supabase yapılandırılmışken ve giriş yokken açık. */
     KILIT_ACIK = SUPA.hazir && !HESAP.girisli;
-    ciz();                              // ciz() global, rotalariCiz() değildi
-
-    /* ── İLERLEME SENKRONU ──
-       Site "ilerlemen cihazlar arasında saklanır" diyordu ama ilerleme
-       hiç sunucuya yazılmıyordu. Giriş yapılınca sunucudaki kayıt yerel
-       kayıtla BİRLEŞTİRİLİR: tamamlanan adımların birleşimi alınır,
-       XP'de büyük olan kazanır. Böylece hiçbir cihazda ilerleme geri
-       gitmez ve hesap açmadan önce yapılan ilerleme hesaba taşınır.
-
-       ciz() iki kez çağrılıyor: biri hemen, biri senkron bitince.
-       Kullanıcı ağ yanıtını beklemesin. */
+    ciz();
+    /* ── İLERLEME SENKRONU ── giriş yapılınca sunucudaki kayıt yerel kayıtla birleştirilir. */
     if (HESAP.girisli && SUPA.istemci){
       ILERLEME.kur(SUPA.istemci());
       ILERLEME.oturum(HESAP.kullanici);

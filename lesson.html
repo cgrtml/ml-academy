@@ -84,6 +84,7 @@
 
   .top{position:sticky;top:0;z-index:30;background:rgba(246,248,252,.92);backdrop-filter:blur(10px);
        border-bottom:1px solid var(--line);padding:11px 18px}
+  :root[data-tema="koyu"] .top{background:rgba(8,11,17,.86)}
   .top .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:16px}
   .top .bk{font-family:var(--mono);font-size:12px;color:var(--mut);white-space:nowrap}
   .top .bk:hover{color:var(--txt)}
@@ -290,14 +291,16 @@ function temaUygula(t){
   const d = document.getElementById('temaDug');
   if (d){
     d.textContent = t === 'koyu' ? '☀' : '☾';
-    d.title = t === 'koyu' ? 'Açık temaya geç' : 'Koyu temaya geç';
+    let en = true; try { en = localStorage.getItem('mlacad_dil') !== 'tr'; } catch(e){}
+    d.title = t === 'koyu' ? (en ? 'Switch to light theme' : 'Açık temaya geç')
+                           : (en ? 'Switch to dark theme' : 'Koyu temaya geç');
   }
 }
 function temaOku(){
   const kayit = localStorage.getItem(TKEY);
   if (kayit === 'koyu' || kayit === 'acik') return kayit;
-  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-       ? 'koyu' : 'acik';
+  /* 15 Eki 2026: ana sayfa koyu; tercih yoksa dersler de koyu açılır */
+  return 'koyu';
 }
 temaUygula(temaOku());
 </script>
@@ -557,6 +560,11 @@ if (!D){
     T('yokGov')+' <a href="index.html">'+T('listeDon')+'</a></p></div>';
   throw new Error('ders yok');
 }
+/* Alt bilgideki telif satırı. Önceden yalnızca "ders yok" yolunda
+   çevriliyordu; İngilizce derslerin altında Türkçe kalıyordu. */
+if ($('telifHak')) $('telifHak').textContent = T('telifHak');
+if ($('telifLis')) $('telifLis').textContent = T('telifLis');
+if ($('telifGiz')) $('telifGiz').textContent = T('telifGiz');
 
 /* ── ilerleme (localStorage) ── */
 const PKEY = 'mlacad_v2';

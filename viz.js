@@ -11510,7 +11510,7 @@ VIZ.agac = s => {
     return tah;
   };
   ciz(60,  'KLASİK KARAR AĞACI', true,  K.orange);
-  ciz(790, 'SOFT DECISION TREE  ·  neural-trees', false, K.green);
+  ciz(790, 'YUMUŞAK KARAR AĞACI  ·  neural-trees', false, K.green);
   txt('gelen örnek:  x = '+x.toFixed(2), 750, 578, K.yellow, 22);
 };
 
@@ -11804,6 +11804,12 @@ VIZ.noron = s => {
 };
 
 /* ═══════════════ ATTENTION, ışın demeti ═══════════════ */
+/* Dikkat cümlesinin sözcük karşılıkları. Genel sözlük bağlamı bilmiyor:
+   "çıktı" orada "output" demek, bu cümlede "climbed". Sorgu değiştirilince
+   kurulan cümleler de sözlükte yoktu ve İngilizce modda Türkçe kalıyordu;
+   bu yüzden aşağıda EN cümleleri doğrudan kuruluyor. */
+const DIKKAT_EN = {'kedi':'cat','masaya':'the table','çıktı':'climbed','çünkü':'because','o':'it','meraklıydı':'was curious'};
+const tokG = t => VDIL === 'en' ? (DIKKAT_EN[t] || CEV(t)) : t;
 VIZ.attention = s => {
   clear();
   const T = s.tokenlar, n = T.length, q = s.q, faz = s.faz || 0;
@@ -11842,7 +11848,7 @@ VIZ.attention = s => {
     const sec = i === q;
     const renk = sec ? '#fb923c' : (faz >= 3 && agir[i] > 0.22 ? '#2f6f8f' : '#232f3e');
     kutu3(X, ty+96, bw, 74, renk, {vurgu:sec, parla:sec,
-      yaziRenk: sec ? '#180c02' : '#e6edf3', yaziBoy:24, etiket:t});
+      yaziRenk: sec ? '#180c02' : '#e6edf3', yaziBoy:24, etiket:tokG(t)});
     if (faz >= 1) txt(sec ? 'SORGU  Q' : 'anahtar  K'+i, X+bw/2+DX/2, ty+6, sec ? K.orange : K.mut, 17);
   });
   /* skor matrisi */
@@ -11868,14 +11874,17 @@ VIZ.attention = s => {
       const y = 580 + i*34;
       cx.fillStyle = '#1a2432'; cx.fillRect(bx, y, 190, 24);
       cx.fillStyle = i===q ? K.orange : K.blue; cx.fillRect(bx, y, 190*agir[i], 24);
-      txt(t, bx-12, y+18, K.mut, 17, 'right');
+      txt(tokG(t), bx-12, y+18, K.mut, 17, 'right');
     });
   }
+  const enB = skor.indexOf(Math.max(...skor)), yuz = (agir[enB]*100).toFixed(0);
   const H = ['Cümledeki her kelime bir vektöre dönüştü.',
-    '“'+T[q]+'” kelimesi SORGU (Q) oluyor: “ben kime bakmalıyım?”',
+    VDIL === 'en' ? 'the word "'+tokG(T[q])+'" becomes the QUERY (Q): "who should I look at?"'
+                  : '“'+T[q]+'” kelimesi SORGU (Q) oluyor: “ben kime bakmalıyım?”',
     'Sorgu, her anahtarla çarpılıyor → benzerlik skorları',
     'Skorlar softmax’tan geçti → toplamı 1 olan ağırlıklar',
-    '“'+T[q]+'” artık %'+(agir[skor.indexOf(Math.max(...skor))]*100).toFixed(0)+' oranında “'+T[skor.indexOf(Math.max(...skor))]+'” bilgisini taşıyor'];
+    VDIL === 'en' ? '"'+tokG(T[q])+'" now carries '+yuz+'% of the information of "'+tokG(T[enB])+'"'
+                  : '“'+T[q]+'” artık %'+yuz+' oranında “'+T[enB]+'” bilgisini taşıyor'];
   if (H[faz]) durum(H[faz], faz>=3 ? K.green : K.blue);
 };
 
@@ -13263,10 +13272,10 @@ VIZ.softTree = s => {
   const st = softTreeEgit(3000, 2, T);
   const cart = agacKurCART(AGAC_VERI.X.map((_,i)=>i), 0, 4, 5, 2, null);
   const cd = agacDogruluk(cart);
-  baslikSerit('SOFT DECISION TREE  ·  neural-trees',
+  baslikSerit('YUMUŞAK KARAR AĞACI  ·  neural-trees',
     'Kapı doğrusal olduğu için ÇAPRAZ kesebilir. CART merdiven yapmak zorundaydı.',
     [['SICAKLIK T', T.toFixed(2), K.purple],
-     ['SOFT', '%'+(st.dogruluk*100).toFixed(1), st.dogruluk>0.93?K.green:K.red],
+     ['YUMUŞAK', '%'+(st.dogruluk*100).toFixed(1), st.dogruluk>0.93?K.green:K.red],
      ['CART d4', '%'+(cd*100).toFixed(1), K.orange]]);
   const ciz = (ox, baslik, fn, renk, altYazi) => {
     const P = plot(rect(ox,210,560,440), 0,10, 0,10);
@@ -13287,11 +13296,11 @@ VIZ.softTree = s => {
   };
   ciz(90,  'CART  ·  derinlik 4', x => agacTahminP(cart,x), K.orange,
       '17 parametre  ·  merdiven  ·  %'+(cd*100).toFixed(1));
-  ciz(760, 'SOFT TREE  ·  derinlik 1', st.tahmin, K.green,
+  ciz(760, 'YUMUŞAK AĞAÇ  ·  derinlik 1', st.tahmin, K.green,
       '5 parametre  ·  çapraz  ·  %'+(st.dogruluk*100).toFixed(1));
   txt('sarı kesikli = gerçek sınır (x + y = 10)', 750, 736, K.yellow, 17);
   durum(T < 0.8 ? '⚠ T çok küçük, sigmoid doydu, gradyan kayboldu, model ÖĞRENEMEDİ (%'+(st.dogruluk*100).toFixed(1)+')'
-      : 'T = '+T.toFixed(2)+' · soft tree 5 parametreyle CART\'ın 17 parametresini geçti',
+      : 'T = '+T.toFixed(2)+' · yumuşak ağaç 5 parametreyle CART\'ın 17 parametresini geçti',
       T < 0.8 ? K.red : K.green);
 };
 
@@ -14666,7 +14675,7 @@ VIZ.multihead = s => {
   const bas = s.bas === undefined ? -1 : Math.round(s.bas);
   baslikSerit('ÇOK BAŞLI DİKKAT',
     'Tek bir dikkat yetmez. Paralel başlar farklı ilişki türlerini aynı anda izler.',
-    [['BAŞ','4',K.blue], ['SORGU', MH_TOKEN[q], K.orange],
+    [['BAŞ','4',K.blue], ['SORGU', tokG(MH_TOKEN[q]), K.orange],
      ['GÖSTERİLEN', bas<0?'hepsi':MH_BAS[bas].ad.split('·')[0].trim(), K.green]]);
   const n = 6, bw = 150, gap = 16, tot = n*bw+(n-1)*gap, x0 = 750-tot/2, ty = 200;
   /* ışınlar */
@@ -14692,7 +14701,7 @@ VIZ.multihead = s => {
   MH_TOKEN.forEach((t,i) => {
     const X = x0 + i*(bw+gap), sec = i === q;
     kutu3(X, ty+96, bw, 72, sec ? '#fb923c' : '#232f3e',
-      {vurgu:sec, parla:sec, yaziRenk: sec?'#180c02':'#e6edf3', yaziBoy:23, etiket:t});
+      {vurgu:sec, parla:sec, yaziRenk: sec?'#180c02':'#e6edf3', yaziBoy:23, etiket:tokG(t)});
   });
   /* baş listesi */
   MH_BAS.forEach((b,bi) => {
@@ -14702,12 +14711,14 @@ VIZ.multihead = s => {
     txt(b.ad, 208, y+33, aktif?b.renk:'#3a4a5c', 19, 'left');
     const w = mhAgirlik(bi, q);
     const en = w.indexOf(Math.max(...w));
-    txt('→ "'+MH_TOKEN[en]+'"  %'+(w[en]*100).toFixed(0), 1292, y+33, aktif?K.txt:'#3a4a5c', 18, 'right');
+    txt(VDIL === 'en' ? '→ "'+tokG(MH_TOKEN[en])+'"  '+(w[en]*100).toFixed(0)+'%'
+                      : '→ "'+MH_TOKEN[en]+'"  %'+(w[en]*100).toFixed(0), 1292, y+33, aktif?K.txt:'#3a4a5c', 18, 'right');
     /* mini çubuklar */
     w.forEach((v,i) => box(700+i*54, y+16, 48, 20,
       (aktif?b.renk:'#2c3a4b')+(v>0.25?'cc':'44'), null));
   });
-  durum('"'+MH_TOKEN[q]+'" için 4 baş 4 farklı yere bakıyor, çıktıları birleştirilip tek vektör olur',
+  durum(VDIL === 'en' ? 'for "'+tokG(MH_TOKEN[q])+'" the 4 heads look at 4 different places; their outputs are joined into one vector'
+                      : '"'+MH_TOKEN[q]+'" için 4 baş 4 farklı yere bakıyor, çıktıları birleştirilip tek vektör olur',
     K.green);
 };
 

@@ -869,6 +869,8 @@ var ARAYUZ_EN = {
 
 /* Bilerek olduğu gibi bırakılanlar: simge, birim, model adı, kod parçası. */
 var ARAYUZ_AYNI = [
+  /* dikkat dersinin kaydırıcısı: tokG() EN modunda bunları zaten İngilizce verir */
+  "cat","the table","climbed","because","it","was curious",
   "x","w","b","k","C","T","r","f","OY","wd","x₀","x₁","F#","AUC","MSE","SGD","‖W‖","RNN","PCA","CoT","API","LLM",
   "Adam","∂L/∂w","∂L/∂b","p / q","BIT","# OY","DENK ρ","TEST","MODEL","TOKEN",
   "    n = <span class=\"fn\">len</span>(a)",

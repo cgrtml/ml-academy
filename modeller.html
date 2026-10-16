@@ -98,6 +98,7 @@
 
   .araclar{position:sticky;top:0;z-index:20;background:rgba(246,248,252,.94);backdrop-filter:blur(10px);
            border-bottom:1px solid var(--line);padding:12px 0;margin-bottom:22px}
+  :root[data-tema="koyu"] .araclar{background:rgba(8,11,17,.88)}
   .araclar .in{max-width:1060px;margin:0 auto;padding:0 18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   #ara{flex:1;min-width:200px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);
        border-radius:10px;padding:11px 15px;font-size:14px;font-family:inherit}
@@ -165,6 +166,12 @@
     background:var(--panel);border:1px solid var(--line);border-radius:14px;
     padding:7px 9px;box-shadow:0 3px 16px rgba(15,27,45,.13)}
   @media(max-width:640px){.ustBar{position:static;justify-content:center;margin:12px 0 0}}
+  .geriDug{font-family:var(--mono);font-size:12px;color:var(--mut);padding:0 6px;white-space:nowrap}
+  .geriDug:hover{color:var(--txt)}
+  .dilbarM{display:flex;padding:3px;border:1px solid var(--line);border-radius:9px}
+  .dilbarM button{font-family:var(--mono);font-size:11px;letter-spacing:.06em;padding:4px 9px;border-radius:6px;
+    border:0;background:none;color:var(--mut);cursor:pointer}
+  .dilbarM button.on{background:var(--panel2);color:var(--txt)}
   .yok{text-align:center;color:var(--mut);padding:50px 0;font-family:var(--mono);font-size:13px}
   .foot{text-align:center;color:var(--mut);font-size:12.5px;margin-top:40px;font-family:var(--mono);line-height:2}
   .foot .telif{opacity:.72;font-size:11.5px}
@@ -181,14 +188,16 @@ function temaUygula(t){
   const d = document.getElementById('temaDug');
   if (d){
     d.textContent = t === 'koyu' ? '☀' : '☾';
-    d.title = t === 'koyu' ? 'Açık temaya geç' : 'Koyu temaya geç';
+    let en = true; try { en = localStorage.getItem('mlacad_dil') !== 'tr'; } catch(e){}
+    d.title = t === 'koyu' ? (en ? 'Switch to light theme' : 'Açık temaya geç')
+                           : (en ? 'Switch to dark theme' : 'Koyu temaya geç');
   }
 }
 function temaOku(){
   const kayit = localStorage.getItem(TKEY);
   if (kayit === 'koyu' || kayit === 'acik') return kayit;
-  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-       ? 'koyu' : 'acik';
+  /* 15 Eki 2026: ana sayfa koyu; tercih yoksa dersler de koyu açılır */
+  return 'koyu';
 }
 temaUygula(temaOku());
 </script>
@@ -196,13 +205,13 @@ temaUygula(temaOku());
 <body>
 
 <!-- hesap çubuğu: index.html ile aynı yerde dursun -->
-<div class="ustBar"><button class="temaDug" id="temaDug" aria-label="tema"></button><div class="hUst" id="hesapCubuk"></div></div>
+<div class="ustBar"><a class="geriDug" href="index.html" data-m="geri">← ML Academy</a><button class="temaDug" id="temaDug" aria-label="tema"></button><div class="dilbarM"><button data-dil="en">EN</button><button data-dil="tr">TR</button></div><div class="hUst" id="hesapCubuk"></div></div>
 
 <header>
   <div class="wrap">
-    <div class="kicker">ML Academy · Model Kataloğu</div>
-    <h1>Hangi model, <span class="hl">ne işe yarar?</span></h1>
-    <p class="sub">Her model için tek sayfada: ne yapar · nasıl çalışır · ne zaman kullanılır ·
+    <div class="kicker" data-m="kicker">ML Academy · Model Kataloğu</div>
+    <h1 data-m="h1">Hangi model, <span class="hl">ne işe yarar?</span></h1>
+    <p class="sub" data-m="sub">Her model için tek sayfada: ne yapar · nasıl çalışır · ne zaman kullanılır ·
        <b>ne zaman kullanılmaz</b> · çalışan kod · kilit ayarlar · ve herkesin düştüğü tuzak.</p>
   </div>
 </header>
@@ -215,10 +224,10 @@ temaUygula(temaOku());
 
 <div class="wrap">
   <div id="liste"></div>
-  <div class="foot"><a href="index.html">← Derslere dön</a> ·
-    <a href="about.html">hakkında</a> ·
-    <a href="privacy.html">gizlilik</a><br>
-    <span class="telif">© 2026 Cagri Temel · tüm hakları saklıdır ·
+  <div class="foot"><a href="index.html" data-m="fDon">← Derslere dön</a> ·
+    <a href="about.html" data-m="fHak">hakkında</a> ·
+    <a href="privacy.html" data-m="fGiz">gizlilik</a><br>
+    <span class="telif" data-m="fTel">© 2026 Cagri Temel · tüm hakları saklıdır ·
       <a href="https://github.com/cgrtml/ml-academy/blob/main/LICENSE">lisans</a></span></div>
 </div>
 
@@ -227,9 +236,80 @@ temaUygula(temaOku());
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="topluluk/hesap.js?v=9296406"></script>
 <script src="modeller.js?v=9296406"></script>
+<script src="modeller-en.js?v=9296406"></script>
 <script>
 const $ = id => document.getElementById(id);
 let aktifF = 'hepsi';
+
+/* ══ DİL ══ (15 Ekim 2026)
+   Katalog önceden yalnızca Türkçeydi; İngilizce seçmiş ziyaretçi de Türkçe
+   sayfa görüyordu. İçeriğin İngilizcesi modeller-en.js'te (MODELLER_EN,
+   GOREVLER_EN), aynı kimliklerle. Türkçe metin HTML'de, İngilizcesi UI_EN'de.
+   Dil tercihi index.html ve lesson.html ile ortak: mlacad_dil. */
+function dilBul(){
+  try {
+    const u = (new URLSearchParams(location.search).get('lang') || '').toLowerCase();
+    if (u === 'tr' || u === 'en'){ localStorage.setItem('mlacad_dil', u); return u; }
+    const k = localStorage.getItem('mlacad_dil');
+    if (k === 'tr' || k === 'en') return k;
+  } catch(e){}
+  return 'en';
+}
+let DIL = dilBul();
+const EN_VAR = typeof MODELLER_EN !== 'undefined';
+const UI_EN = {
+  geri:'← ML Academy',
+  kicker:'ML Academy · Model catalogue',
+  h1:'Which model, <span class="hl">and what for?</span>',
+  sub:'One page per model: what it does · how it works · when to use it · <b>when not to use it</b> · working code · key settings · and the trap everyone falls into.',
+  fDon:'← Back to the lessons', fHak:'about', fGiz:'privacy',
+  fTel:'© 2026 Cagri Temel · all rights reserved · <a href="https://github.com/cgrtml/ml-academy/blob/main/LICENSE">licence</a>',
+  ara:'search:  tree, text, anomaly, overfitting, RAG…',
+  hepsi:'ALL', model:'models', yok:'no matching model',
+  nasil:'◆ How it works', neZaman:'✓ When to use it', neZamanDegil:'✗ When not to use it',
+  kod:'⚙ Code', kopyala:'copy', kopyalandi:'copied ✓', hiper:'◈ Key settings', tuzak:'⚠ The classic trap',
+  dersGit:'▶ Open the interactive lesson for this model', dersKilit:'🔒 This lesson needs an account',
+  seviye:{temel:'BASIC', orta:'INTERMEDIATE', ileri:'ADVANCED'},
+  baslik:'Model catalogue · ML Academy',
+};
+const UI_TR = {
+  ara:'ara:  ağaç, metin, anomali, aşırı uyum, RAG…',
+  hepsi:'HEPSİ', model:'model', yok:'eşleşen model yok',
+  nasil:'◆ Nasıl çalışır', neZaman:'✓ Ne zaman kullan', neZamanDegil:'✗ Ne zaman kullanma',
+  kod:'⚙ Kod', kopyala:'kopyala', kopyalandi:'kopyalandı ✓', hiper:'◈ Kilit ayarlar', tuzak:'⚠ Klasik tuzak',
+  dersGit:'▶ Bu modelin interaktif dersine git', dersKilit:'🔒 Bu ders için hesap gerekiyor',
+  seviye:{temel:'TEMEL', orta:'ORTA', ileri:'İLERİ'},
+  baslik:'Model kataloğu · ML Academy',
+};
+const EN_AKTIF = () => DIL === 'en' && EN_VAR;
+const U = k => (EN_AKTIF() ? UI_EN : UI_TR)[k];
+/* EN modunda modelin metin alanları İngilizcesiyle değiştirilir; gorev,
+   seviye, ders gibi davranış alanları Türkçe kayıttan gelir. */
+const MD = m => EN_AKTIF() && MODELLER_EN[m.id] ? Object.assign({}, m, MODELLER_EN[m.id]) : m;
+const GA = g => EN_AKTIF() && GOREVLER_EN[g] ? GOREVLER_EN[g].ad : GOREVLER[g].ad;
+const TR_M = {};
+document.querySelectorAll('[data-m]').forEach(el => TR_M[el.dataset.m] = el.innerHTML);
+function dilUygulaM(){
+  const en = EN_AKTIF();
+  document.querySelectorAll('[data-m]').forEach(el => {
+    el.innerHTML = en && UI_EN[el.dataset.m] ? UI_EN[el.dataset.m] : TR_M[el.dataset.m];
+  });
+  document.documentElement.lang = en ? 'en' : 'tr';
+  document.title = U('baslik');
+  temaUygula(temaOku());
+  $('ara').placeholder = U('ara');
+  document.querySelectorAll('.dilbarM button').forEach(b => b.classList.toggle('on', b.dataset.dil === DIL));
+  filtreCiz();
+  ciz();
+}
+document.querySelector('.dilbarM').onclick = e => {
+  const d = e.target.dataset.dil;
+  if (!d || d === DIL) return;
+  DIL = d;
+  try { localStorage.setItem('mlacad_dil', d); } catch(err){}
+  dilUygulaM();
+  if (typeof HESAP !== 'undefined' && HESAP.dil) HESAP.dil(DIL);
+};
 
 /* ── erişim kilidi ──
    BUG (10 Ağustos 2026): bu sayfa ders linkini kilidi hiç sormadan basıyordu,
@@ -253,51 +333,59 @@ function dersKilitli(id){
 }
 function dersLinki(id){
   if (!dersKilitli(id))
-    return '<a class="dersLink" href="lesson.html?id='+id+'">▶ Bu modelin interaktif dersine git</a>';
-  return '<button class="dersLink kilitli" data-ders="'+id+'">' +
-         '🔒 Bu ders için hesap gerekiyor</button>';
+    return '<a class="dersLink" href="lesson.html?id='+id+'">'+U('dersGit')+'</a>';
+  return '<button class="dersLink kilitli" data-ders="'+id+'">' + U('dersKilit') + '</button>';
 }
 
-$('filtreler').innerHTML =
-  '<button class="f on" data-g="hepsi" style="background:var(--green);border-color:var(--green)">HEPSİ</button>' +
-  Object.entries(GOREVLER).map(([k,v]) =>
-    '<button class="f" data-g="'+k+'" data-renk="'+v.renk+'">'+v.ad.toUpperCase()+'</button>').join('');
+function filtreCiz(){
+  $('filtreler').innerHTML =
+    '<button class="f" data-g="hepsi">'+U('hepsi')+'</button>' +
+    Object.entries(GOREVLER).map(([k,v]) =>
+      '<button class="f" data-g="'+k+'" data-renk="'+v.renk+'">'+GA(k).toLocaleUpperCase(EN_AKTIF() ? 'en-US' : 'tr-TR')+'</button>').join('');
+  document.querySelectorAll('.f').forEach(b => {
+    const on = b.dataset.g === aktifF;
+    b.classList.toggle('on', on);
+    b.style.background = on ? (b.dataset.renk || 'var(--green)') : '';
+    b.style.borderColor = on ? (b.dataset.renk || 'var(--green)') : '';
+    b.style.color = on ? '#fff' : '';
+  });
+}
 
 function ciz(){
   const q = $('ara').value.trim().toLowerCase();
-  const liste = MODELLER.filter(m => {
+  const liste = MODELLER.map(MD).filter(m => {
     if (aktifF !== 'hepsi' && !m.gorev.includes(aktifF)) return false;
     if (!q) return true;
     const hepsi = [m.ad, m.bir, m.nasil, m.tuzak, m.kod,
                    ...m.neZaman, ...m.neZamanDegil, ...m.hiper.flat()].join(' ').toLowerCase();
     return hepsi.includes(q);
   });
-  $('sayac').textContent = liste.length + ' / ' + MODELLER.length + ' model';
-  if (!liste.length){ $('liste').innerHTML = '<div class="yok">eşleşen model yok</div>'; return; }
+  $('sayac').textContent = liste.length + ' / ' + MODELLER.length + ' ' + U('model');
+  if (!liste.length){ $('liste').innerHTML = '<div class="yok">'+U('yok')+'</div>'; return; }
 
   $('liste').innerHTML = liste.map((m,i) => {
     const gz = m.gorev.map(g => '<span class="rz" style="background:'+GOREVLER[g].renk+'22;color:'+
-                GOREVLER[g].renk+'">'+GOREVLER[g].ad.toUpperCase()+'</span>').join('');
+                GOREVLER[g].renk+'">'+GA(g).toLocaleUpperCase(EN_AKTIF() ? 'en-US' : 'tr-TR')+'</span>').join('');
     return '<div class="kart" data-i="'+i+'">' +
       '<div class="bas"><div class="ok">▶</div><div class="gv">' +
         '<h3>'+m.ad+'</h3><p class="bir">'+m.bir+'</p>' +
         '<div class="rozetler">'+gz+
-          '<span class="rz sv">'+m.seviye.toUpperCase()+'</span>' +
+          '<span class="rz sv">'+(U('seviye')[m.seviye] || m.seviye.toUpperCase())+'</span>' +
           (m.rozet ? '<span class="rz nt">'+m.rozet+'</span>' : '') +
         '</div></div></div>' +
       '<div class="icerik">' +
-        '<div class="bl"><span class="h ns-h">◆ Nasıl çalışır</span><p>'+m.nasil+'</p></div>' +
+        '<div class="bl"><span class="h ns-h">'+U('nasil')+'</span><p>'+m.nasil+'</p></div>' +
         '<div class="bl iki">' +
-          '<div><span class="h ok-h">✓ Ne zaman kullan</span><ul>' +
+          '<div><span class="h ok-h">'+U('neZaman')+'</span><ul>' +
             m.neZaman.map(x=>'<li>'+x+'</li>').join('') + '</ul></div>' +
-          '<div><span class="h no-h">✗ Ne zaman kullanma</span><ul>' +
+          '<div><span class="h no-h">'+U('neZamanDegil')+'</span><ul>' +
             m.neZamanDegil.map(x=>'<li>'+x+'</li>').join('') + '</ul></div>' +
         '</div>' +
-        '<div class="bl"><span class="h kd-h">⚙ Kod<button class="kopyala" data-k="'+i+'">kopyala</button></span>' +
+        '<div class="bl"><span class="h kd-h">'+U('kod')+'<button class="kopyala" data-k="'+i+'">'+U('kopyala')+'</button></span>' +
           '<pre id="kod'+i+'">'+m.kod.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</pre></div>' +
-        '<div class="bl"><span class="h hp-h">◈ Kilit ayarlar</span><table>' +
+        '<div class="bl"><span class="h hp-h">'+U('hiper')+'</span><table>' +
           m.hiper.map(([a,b])=>'<tr><td>'+a+'</td><td>'+b+'</td></tr>').join('') + '</table></div>' +
-        '<div class="bl"><span class="h tz-h">⚠ Klasik tuzak</span><div class="tuzak">'+m.tuzak+'</div></div>' +
+        '<div class="bl"><span class="h tz-h">'+U('tuzak')+'</span><div class="tuzak">'+m.tuzak+'</div></div>' +
         (m.ders ? dersLinki(m.ders) : '') +
       '</div></div>';
   }).join('');
@@ -312,8 +400,8 @@ function ciz(){
   document.querySelectorAll('.kopyala').forEach(el => el.onclick = ev => {
     ev.stopPropagation();
     navigator.clipboard.writeText($('kod'+el.dataset.k).textContent);
-    el.textContent = 'kopyalandı ✓';
-    setTimeout(() => el.textContent = 'kopyala', 1500);
+    el.textContent = U('kopyalandi');
+    setTimeout(() => el.textContent = U('kopyala'), 1500);
   });
 }
 
@@ -321,23 +409,17 @@ $('ara').oninput = ciz;
 $('filtreler').onclick = e => {
   if (!e.target.dataset.g) return;
   aktifF = e.target.dataset.g;
-  document.querySelectorAll('.f').forEach(b => {
-    const on = b.dataset.g === aktifF;
-    b.classList.toggle('on', on);
-    b.style.background = on ? (b.dataset.renk || 'var(--green)') : '';
-    b.style.borderColor = on ? (b.dataset.renk || 'var(--green)') : '';
-    b.style.color = on ? '#fff' : '';
-  });
+  filtreCiz();
   ciz();
 };
-ciz();
+dilUygulaM();
 
 /* Giriş durumu. index.html ile aynı kurulum: dinle() ile durum değişimini
    yakala, kur() ile oturumu başlat. Giriş yapılınca kilitler açılıp liste
    yeniden çizilir. */
 if (typeof HESAP !== 'undefined' && typeof SUPA !== 'undefined' && SUPA.hazir){
   HESAP.dinle(() => { GIRISLI_M = HESAP.girisli; ciz(); });
-  HESAP.kur({ url:SUPA.url, anonKey:SUPA.anonKey,
+  HESAP.kur({ url:SUPA.url, anonKey:SUPA.anonKey, dil:DIL,
               saglayicilar:SUPA.saglayicilar });
 }
 

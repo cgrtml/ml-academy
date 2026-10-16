@@ -1989,7 +1989,7 @@ DERSLER_EN['noron'] = {
     goal:'You will see the four stages of an artificial neuron in order: multiply → add → add the bias → squash.',
     todo:'Use NEXT to walk through the five stages. Pay attention to the thickness and colour of the pipes.',
     kind:'phases', viz:'noron', h:760, xp:40,
-    learned:'<b>A neuron is a weighted sum plus a bias plus an activation.</b> Three operations, that is all.<br><br>A model like GPT-4 has <b>hundreds of billions</b> of these neurons, arranged in layers. The complexity is not in a single neuron, it is in the <b>number and the wiring</b>.',
+    learned:'<b>A neuron is a weighted sum plus a bias plus an activation.</b> Three operations, that is all.<br><br>In a model like GPT-3 the weights of these neurons add up to <b>175 billion</b>, arranged in layers. The complexity is not in a single neuron, it is in the <b>number and the wiring</b>.',
     phases:[
       {state:{girdi:[6,7,3.5], agirlik:[0.8,0.35,-0.6], bias:-1.2, faz:0},
        body:'<p>We are going to predict whether a student will pass an exam. We have three pieces of information: <b>hours studied, hours slept, previous grade</b>.</p>' +
@@ -2139,7 +2139,7 @@ DERSLER_EN['backprop'] = {
       {state:{faz:3},
        body:'<p><b style="color:#f87171">THE ERROR IS MEASURED.</b> The true answer is 1.00, the network said 0.83. The loss is <b>L = 0.186</b>.</p>' +
             '<p>Now the real question: <b>who is responsible for this error?</b> The network has dozens of weights. Which one should we change and by how much?</p>' +
-            '<p>The naive answer: nudge every weight one at a time and see how the error changes. But GPT-4 has 1.7 trillion weights, each needing its own forward pass. A lifetime would not be enough.</p>'},
+            '<p>The naive answer: nudge every weight one at a time and see how the error changes. But GPT-3 has 175 billion weights, each needing its own forward pass. A lifetime would not be enough.</p>'},
       {state:{faz:4},
        body:'<p><b style="color:#f87171">BACKPROPAGATION begins.</b> We go backwards from the last layer.</p>' +
             '<p>The output neuron\'s contribution to the error can be computed directly: ∂L/∂a = 0.43. The connection thicknesses now show the <b>size of the gradient</b>; a thick line means "this weight is guilty".</p>'},
@@ -3593,7 +3593,7 @@ DERSLER_EN['attention'] = {
     todo:'Read the sentence, then answer the question.',
     kind:'static', viz:'attention', h:880, xp:30,
     state:{ tokenlar:['kedi','masaya','çıktı','çünkü','o','meraklıydı'], q:4, faz:0 },
-    body:'<p>The sentence: <b>"the cat climbed on the table because it was curious"</b> (in Turkish on screen: "kedi masaya çıktı çünkü o meraklıydı").</p>' +
+    body:'<p>The sentence: <b>"the cat climbed on the table because it was curious"</b>.</p>' +
          '<p>Who is <b>"it"</b>? You know instantly: the cat. But how did you know?</p>' +
          '<p>There is no clue in the word "it" itself, it is two letters. Its meaning comes entirely from <b>the rest of the sentence</b>. And "cat" is four words back.</p>' +
          '<p>Older language models (RNN, LSTM) read the sentence left to right one word at a time and accumulated it in a "memory". In long sentences the information from the beginning faded away. In 2017 one paper changed that completely: <b>"Attention Is All You Need"</b>.</p>' +
@@ -3630,7 +3630,7 @@ DERSLER_EN['attention'] = {
       {state:{ tokenlar:['kedi','masaya','çıktı','çünkü','o','meraklıydı'], q:4, faz:2, skor:[3.1,0.4,0.9,0.2,2,1.6] },
        body:'<p><b>The scores are computed.</b> The query vector goes into a <b>dot product</b> with every key vector, that is the "multiply and add" you learned in an earlier lesson. If two vectors point in a similar direction the score comes out high.</p>' +
             '<p>The matrix below is <b>Q·Kᵀ</b>. The row with the orange frame is our query ("o", meaning "it").</p>' +
-            '<p>"kedi" (cat) is clearly ahead at <b>3.1</b>. The model found that the pronoun points at the cat <b>without learning a single grammar rule</b>, purely from vector similarity.</p>'},
+            '<p>"cat" is clearly ahead at <b>3.1</b>. The model found that the pronoun points at the cat <b>without learning a single grammar rule</b>, purely from vector similarity.</p>'},
       {state:{ tokenlar:['kedi','masaya','çıktı','çünkü','o','meraklıydı'], q:4, faz:3, skor:[3.1,0.4,0.9,0.2,2,1.6] },
        body:'<p><b>Softmax.</b> The raw scores turned into weights that sum to 1. Now we can read them as "56% cat, 19% it, 12% curious…".</p>' +
             '<p>The thickness of the beams shows those weights. The bundle going to "cat" is thick, the one going to "because" is almost nothing.</p>' +
@@ -3649,12 +3649,12 @@ DERSLER_EN['attention'] = {
     kind:'controls', viz:'attention', h:880, xp:60,
     state:{ tokenlar:['kedi','masaya','çıktı','çünkü','o','meraklıydı'], faz:3 },
     body:'<p>Every word has its own attention map. As you move the slider:</p>' +
-         '<p>· <b>"o" (it)</b> → <b style="color:#22d3a0">kedi (cat)</b>. The pronoun locks onto the noun it points at.<br>' +
-         '· <b>"masaya" (table)</b> → <b>çıktı (climbed)</b>. The noun looks at the verb that concerns it.<br>' +
-         '· <b>"çünkü" (because)</b> → <b>çıktı</b> and <b>meraklıydı</b>. The conjunction looks at both sides it joins.<br>' +
-         '· <b>"meraklıydı" (was curious)</b> → <b>kedi</b> and <b>o</b>. The adjective looks for the thing it describes.</p>' +
+         '<p>· <b>"it"</b> → <b style="color:#22d3a0">cat</b>. The pronoun locks onto the noun it points at.<br>' +
+         '· <b>"the table"</b> → <b>climbed</b>. The noun looks at the verb that concerns it.<br>' +
+         '· <b>"because"</b> → <b>climbed</b> and <b>was curious</b>. The conjunction looks at both sides it joins.<br>' +
+         '· <b>"was curious"</b> → <b>cat</b> and <b>it</b>. The adjective looks for the thing it describes.</p>' +
          '<p>None of these patterns was coded by hand. The model read billions of sentences and derived them <b>on its own</b>, from the single task of "predict the next word".</p>' +
-         '<p>Real models do not have a single attention but parallel <b>multi head</b> attention: one head tracks a grammatical relation, another semantic similarity, another a positional pattern. GPT-4 has roughly 96 layers × 96 heads.</p>',
+         '<p>Real models do not have a single attention but parallel <b>multi head</b> attention: one head tracks a grammatical relation, another semantic similarity, another a positional pattern. GPT-3 (175 billion parameters) has 96 layers × 96 heads.</p>',
     learned:'<b>Attention patterns are not taught, they emerge.</b> From a single simple objective, "predict the next word", grammar, reference and semantic relationships appear on their own.<br><br><b>Including the system producing the sentence you are reading right now</b>, every modern language model is this block stacked dozens of times. The difference is scale: more layers, more heads, more data.',
     controls:[{k:'q', lb:'QUERY WORD', min:0, max:5, step:1, val:4}],
     quiz:{

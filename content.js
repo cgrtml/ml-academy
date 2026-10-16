@@ -1167,7 +1167,7 @@ DERSLER['noron'] = {
          'Doğrusal işlemlerin bileşkesi yine doğrusaldır. <b>Sinir ağını “derin” yapan şey aktivasyon fonksiyonudur.</b></p>'},
     ],
     learned:'<b>Bir nöron = ağırlıklı toplam + bias + aktivasyon.</b> Üç işlem, o kadar.<br><br>' +
-      'GPT-4 gibi bir modelde bu nörondan <b>yüz milyarlarca</b> var, katmanlar hâlinde dizilmiş. ' +
+      'GPT-3 gibi bir modelde bu nöronların ağırlıkları toplam <b>175 milyar</b>, katmanlar hâlinde dizilmiş. ' +
       'Karmaşıklık tek bir nöronda değil, <b>sayıda ve bağlantı düzeninde</b>.',
     xp:40,
   },
@@ -1356,7 +1356,7 @@ DERSLER['attention'] = {
     todo:'Sorgu kelimesini değiştir. Her kelimenin <b>kime baktığına</b> dikkat et.',
     kind:'controls', viz:'attention', h:880,
     controls:[{k:'q', lb:'SORGU KELİMESİ', min:0, max:5, step:1, val:4,
-               fmt:v => ['kedi','masaya','çıktı','çünkü','o','meraklıydı'][v]}],
+               fmt:v => tokG(['kedi','masaya','çıktı','çünkü','o','meraklıydı'][v])}],
     state:{tokenlar:['kedi','masaya','çıktı','çünkü','o','meraklıydı'], faz:3},
     derive:s => {
       const M = [
@@ -1373,7 +1373,7 @@ DERSLER['attention'] = {
       const t = e.reduce((a,b)=>a+b,0), w = e.map(v=>v/t);
       const T = ['kedi','masaya','çıktı','çünkü','o','meraklıydı'];
       const en = w.indexOf(Math.max(...w));
-      return [['SORGU', T[s.q], K.orange], ['EN ÇOK BAKTIĞI', T[en], K.green],
+      return [['SORGU', tokG(T[s.q]), K.orange], ['EN ÇOK BAKTIĞI', tokG(T[en]), K.green],
               ['AĞIRLIK', '%'+(w[en]*100).toFixed(0)]]; },
     body:'<p>Her kelimenin kendi dikkat haritası var. Kaydırıcıyı gezdirdikçe:</p>' +
       '<p>· <b>“o”</b> → <b style="color:#22d3a0">kedi</b>. Zamir, işaret ettiği isme kilitleniyor.<br>' +
@@ -1384,7 +1384,7 @@ DERSLER['attention'] = {
       'sadece “sonraki kelimeyi tahmin et” görevinden bunları <b>kendisi çıkardı</b>.</p>' +
       '<p>Gerçek modellerde tek bir attention değil, paralel <b>çok başlı</b> attention var: ' +
       'bir baş dilbilgisel ilişkiyi, başkası anlamsal benzerliği, başkası konum örüntüsünü izliyor. ' +
-      'GPT-4\'te ~96 katman × ~96 baş.</p>',
+      'GPT-3\'te (175 milyar parametre) 96 katman × 96 baş var.</p>',
     quiz:{ q:'Attention ağırlıkları eğitim sırasında nereden geliyor?',
       opts:[
         {t:'Dilbilimciler tarafından elle tanımlanıyor', why:'Hayır. Hiç kimse “zamirler isimlere baksın” diye bir kural yazmadı. Bu örüntüler eğitimin <b>yan ürünü</b> olarak ortaya çıkıyor.'},
@@ -1423,7 +1423,7 @@ DERSLER['backprop'] = {
       '<p><b style="color:#f87171">HATA ÖLÇÜLDÜ.</b> Gerçek cevap 1.00, ağ 0.83 dedi. Kayıp <b>L = 0.186</b>.</p>' +
       '<p>Şimdi asıl soru: <b>bu hatadan kim sorumlu?</b> Ağda onlarca ağırlık var. Hangisini ne kadar değiştirmeliyiz?</p>' +
       '<p>Naif çözüm: her ağırlığı tek tek oynatıp hatanın nasıl değiştiğine bakmak. ' +
-      'Ama GPT-4\'te 1.7 trilyon ağırlık var, her biri için ayrı bir ileri geçiş, ömür yetmez.</p>',
+      'Ama GPT-3\'te 175 milyar ağırlık var, her biri için ayrı bir ileri geçiş, ömür yetmez.</p>',
       '<p><b style="color:#f87171">GERİ YAYILIM başlıyor.</b> Son katmandan geriye doğru gidiyoruz.</p>' +
       '<p>Çıktı nöronunun hataya katkısı doğrudan hesaplanabiliyor: ∂L/∂a = 0.43. ' +
       'Bağlantı kalınlıkları artık <b>gradyan büyüklüğünü</b> gösteriyor, kalın çizgi “bu ağırlık suçlu” demek.</p>',

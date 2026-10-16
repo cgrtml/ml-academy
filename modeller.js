@@ -49,7 +49,7 @@ model = make_pipeline(StandardScaler(), Ridge(alpha=1.0)).fit(X, y)`,
 {
   id:'logreg', ad:'Logistic Regression', gorev:['sin'], seviye:'temel',
   bir:'Doğrusal bir sınırla iki (veya çok) sınıfı ayırır ve olasılık üretir.',
-  nasil:'Ağırlıklı toplamı sigmoid\'den geçirir → 0–1 arası olasılık. Kayıp olarak çapraz entropi kullanır ve gradient descent ile eğitilir. Adında "regression" var ama işi sınıflandırmadır.',
+  nasil:'Ağırlıklı toplamı sigmoid\'den geçirir → 0-1 arası olasılık. Kayıp olarak çapraz entropi kullanır ve gradient descent ile eğitilir. Adında "regression" var ama işi sınıflandırmadır.',
   neZaman:['Kalibre olasılık istediğinde ("%73 ihtimalle dolandırıcılık")','Katsayı yorumu gerektiğinde, kredi, sağlık, denetim','Hızlı, sağlam bir temel çizgi olarak'],
   neZamanDegil:['Sınır eğriyse (halka içinde halka gibi)','Özellikler arası etkileşim önemliyse (elle eklemen gerekir)'],
   kod:`from sklearn.linear_model import LogisticRegression
@@ -129,7 +129,7 @@ print(pd.Series(model.feature_importances_, index=X.columns).sort_values(ascendi
   id:'gbm', ad:'Gradient Boosting (XGBoost / LightGBM / CatBoost)', gorev:['sin','reg'], seviye:'ileri',
   bir:'Ağaçları sırayla ekler; her yeni ağaç, önceki ağaçların yaptığı hatayı düzeltmeye çalışır.',
   nasil:'Random Forest ağaçları paralel ve bağımsız yetiştirir; boosting ise sıralı yetiştirir. Her adımda kalan hatanın (residual) gradyanına bir ağaç uydurulur. Yavaş yavaş, adım adım hata azaltılır.',
-  neZaman:['Tablo verisinde en yüksek doğruluğu istiyorsan, Kaggle\'ın kral modeli','Karışık tipli, eksik değerli gerçek dünya verisinde (LightGBM/CatBoost doğrudan yönetir)','Orta ölçekli veride (bin – birkaç milyon satır)'],
+  neZaman:['Tablo verisinde en yüksek doğruluğu istiyorsan, Kaggle\'ın kral modeli','Karışık tipli, eksik değerli gerçek dünya verisinde (LightGBM/CatBoost doğrudan yönetir)','Orta ölçekli veride (bin ile birkaç milyon satır)'],
   neZamanDegil:['Görüntü/ses/metin ham verisinde, derin öğrenme daha iyi','Çok az veri varsa, kolayca ezberler','Ayar yapacak vaktin yoksa (RF daha affedicidir)'],
   kod:`import lightgbm as lgb
 model = lgb.LGBMClassifier(
@@ -138,7 +138,7 @@ model = lgb.LGBMClassifier(
     X_tr, y_tr,
     eval_set=[(X_val, y_val)],
     callbacks=[lgb.early_stopping(100)])   # ERKEN DURDURMA ŞART`,
-  hiper:[['learning_rate','küçük = daha iyi ama daha yavaş. 0.01–0.1 arası'],['n_estimators','learning_rate ile ters ilişkili; erken durdurma ile birlikte kullan'],['num_leaves / max_depth','model karmaşıklığı, aşırı uyumun ana kaynağı'],['subsample / colsample','satır ve sütun örnekleme, düzenlileştirme']],
+  hiper:[['learning_rate','küçük = daha iyi ama daha yavaş. 0.01-0.1 arası'],['n_estimators','learning_rate ile ters ilişkili; erken durdurma ile birlikte kullan'],['num_leaves / max_depth','model karmaşıklığı, aşırı uyumun ana kaynağı'],['subsample / colsample','satır ve sütun örnekleme, düzenlileştirme']],
   tuzak:'Erken durdurmasız eğitmek. Boosting durmazsa mutlaka ezberler; doğrulama seti ile early_stopping olmazsa olmaz.',
   ders:null,
 },
@@ -165,7 +165,7 @@ f, p = cv52_f_test(model, DecisionTreeClassifier(max_depth=4), X, y)`,
   bir:'Sınıfları en geniş boşlukla ayıran sınırı arar; çekirdek hilesiyle bu sınır eğri olabilir.',
   nasil:'Sadece sınıra en yakın örnekleri (destek vektörleri) dikkate alır. RBF çekirdeği veriyi zihinsel olarak yüksek boyuta taşır ve orada düz bir düzlemle ayırır, gerçekte o boyuta hiç çıkmaz, sadece iç çarpımları hesaplar.',
   neZaman:['Orta boy veri (< ~100 bin satır) + yüksek boyut','Metin sınıflandırma (doğrusal SVM hâlâ çok güçlü)','Net bir marj varsa'],
-  neZamanDegil:['Büyük veride, eğitim O(n²)–O(n³) ölçeklenir','Olasılık gerektiğinde (SVM doğal olasılık üretmez)','Yorumlanabilirlik gerektiğinde'],
+  neZamanDegil:['Büyük veride, eğitim O(n²) ile O(n³) arasında ölçeklenir','Olasılık gerektiğinde (SVM doğal olasılık üretmez)','Yorumlanabilirlik gerektiğinde'],
   kod:`from sklearn.svm import SVC
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
@@ -212,7 +212,7 @@ print('gürültü:', np.sum(db.labels_ == -1))`,
   id:'pca', ad:'PCA (Temel Bileşen Analizi)', gorev:['boyut'], seviye:'orta',
   bir:'Veriyi, varyansın en çok olduğu yeni eksenlere döndürerek boyutu düşürür.',
   nasil:'Kovaryans matrisinin özvektörlerini bulur. Birinci bileşen verinin en çok yayıldığı yön, ikincisi ona dik olan en yayılan yön, vb. İlk birkaç bileşen genelde varyansın çoğunu taşır.',
-  neZaman:['Özellik sayısı çok, gürültü fazlaysa','Görselleştirme için 2–3 boyuta indirirken','Modelden önce hız kazanmak istediğinde'],
+  neZaman:['Özellik sayısı çok, gürültü fazlaysa','Görselleştirme için 2-3 boyuta indirirken','Modelden önce hız kazanmak istediğinde'],
   neZamanDegil:['Özellik yorumu gerekiyorsa, bileşenler karışımdır, anlamı yoktur','İlişki doğrusal değilse (UMAP/t-SNE veya kernel PCA)','Ölçeklemediysen, büyük ölçekli özellik tüm bileşenleri ele geçirir'],
   kod:`from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -334,7 +334,7 @@ model = AutoModelForSequenceClassification.from_pretrained(ad, num_labels=3)
 {
   id:'diffusion', ad:'Diffusion Model', gorev:['uret'], seviye:'ileri',
   bir:'Saf gürültüden başlayıp adım adım gürültüyü temizleyerek görüntü üretir.',
-  nasil:'Eğitimde görüntüye kademeli gürültü eklenir ve ağ "bu gürültüyü tahmin et" diye eğitilir. Üretimde süreç ters çevrilir: rastgele gürültüden başlanır, ağ her adımda biraz gürültü çıkarır, 20–50 adımda görüntü belirir.',
+  nasil:'Eğitimde görüntüye kademeli gürültü eklenir ve ağ "bu gürültüyü tahmin et" diye eğitilir. Üretimde süreç ters çevrilir: rastgele gürültüden başlanır, ağ her adımda biraz gürültü çıkarır, 20-50 adımda görüntü belirir.',
   neZaman:['Görüntü/ses/video üretimi','Koşullu üretim (metinden görsel)','Boyama, süper çözünürlük'],
   neZamanDegil:['Anlık üretim gerektiğinde, çok adımlı, yavaştır','Sınıflandırma gibi ayırt edici görevlerde'],
   kod:`from diffusers import StableDiffusionPipeline
@@ -350,7 +350,7 @@ gorsel = pipe('bir kedi, yağlı boya', num_inference_steps=30, guidance_scale=7
 {
   id:'embed', ad:'Embedding Modelleri', gorev:['dil','boyut'], seviye:'orta',
   bir:'Metni, anlamı yakın olanların birbirine yakın düştüğü bir sayı vektörüne çevirir.',
-  nasil:'Bir Transformer encoder, cümleyi sabit boyutlu bir vektöre (genelde 384–3072 boyut) indirir. Benzerlik kosinüs uzaklığıyla ölçülür. Arama, öneri ve RAG\'in temel taşıdır.',
+  nasil:'Bir Transformer encoder, cümleyi sabit boyutlu bir vektöre (genelde 384-3072 boyut) indirir. Benzerlik kosinüs uzaklığıyla ölçülür. Arama, öneri ve RAG\'in temel taşıdır.',
   neZaman:['Anlamsal arama, kelime eşleşmesi değil, anlam eşleşmesi','RAG boru hattında belge getirme','Kümeleme, tekrar bulma, öneri'],
   neZamanDegil:['Tam eşleşme gerektiğinde (ürün kodu, SKU → klasik arama)','Model dilini desteklemiyorsa, Türkçe için çok dilli model seç'],
   kod:`from sentence_transformers import SentenceTransformer
@@ -389,7 +389,7 @@ cfg = LoraConfig(r=16, lora_alpha=32, lora_dropout=0.05,
                  target_modules=['q_proj','v_proj'])
 model = get_peft_model(temel_model, cfg)
 model.print_trainable_parameters()   # ~%0.1`,
-  hiper:[['r','LoRA rankı, kapasite. 8–64 tipik'],['lora_alpha','ölçekleme, genelde 2×r'],['target_modules','hangi katmanlara takılacak']],
+  hiper:[['r','LoRA rankı, kapasite. 8-64 tipik'],['lora_alpha','ölçekleme, genelde 2×r'],['target_modules','hangi katmanlara takılacak']],
   tuzak:'Fine-tuning\'i bilgi enjeksiyonu sanmak. Model üslubu öğrenir, gerçekleri güvenilir biçimde ezberlemez ve eskisini unutabilir (katastrofik unutma).',
   ders:null,
 },
@@ -404,7 +404,7 @@ ce = CrossEncoder('BAAI/bge-reranker-v2-m3')
 ciftler = [(soru, p) for p in adaylar]          # 50 aday
 skor = ce.predict(ciftler)
 en_iyi = [adaylar[i] for i in skor.argsort()[::-1][:5]]`,
-  hiper:[['aday sayısı','50–100 getir, 3–8 tut'],['model','çok dilli olanı seç (Türkçe için m3)']],
+  hiper:[['aday sayısı','50-100 getir, 3-8 tut'],['model','çok dilli olanı seç (Türkçe için m3)']],
   tuzak:'Reranker eklemeden k\'yı büyütmek. Daha çok parça = daha çok gürültü; çözüm miktar değil, sıralama kalitesi.',
   ders:null,
 },
